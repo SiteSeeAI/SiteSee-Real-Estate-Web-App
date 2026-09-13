@@ -1,0 +1,35 @@
+{
+  "date": "2026 09 13",
+  "files": [
+    {
+      "path": "documents/design/SiteSee_Real_Estate_Content_Design_Brief_v1.0.md",
+      "size_bytes": 27006,
+      "sha256": "b019fe75ede99ba6ab556c39975ae2f291e0e6ca2fe88b253faed763991eda6f"
+    },
+    {
+      "path": "documents/design/SiteSee_Real_Estate_Website_Hierarchy.docx",
+      "size_bytes": 1056245,
+      "sha256": "7db2cc4a24f2733e4dc7dadf014e754384aabcd133bfa27980efaf9207a717c4"
+    },
+    {
+      "path": "documents/pricing/SiteSee_Real_Estate_Customer_Rate_Sheet.pdf",
+      "size_bytes": 458672,
+      "sha256": "223af91675a21bb3cc140d5a85ba8823cad39d8ad9eb6238cfd7a24ca8c544ee"
+    },
+    {
+      "path": "documents/source/real_estate_media_pricing.pdf",
+      "size_bytes": 299592,
+      "sha256": "e537c1cda33f9575c1e52cbfb2cd6be578b1acffbefa884c78fd6977a58859b7"
+    },
+    {
+      "path": "documents/source/commercial_real_estate_media_rates.pdf",
+      "size_bytes": 5967,
+      "sha256": "e922fa09b71d6d71438f7f72df3070f9f10be4f233f45b40a5e0257cf8fbf3bd"
+    },
+    {
+      "path": "documents/imagery/SiteSee-Commercial-Real-Estate-Image-Prompt-v1.0.txt",
+      "size_bytes": 33453,
+      "sha256": "985dfbdefeeb3344dcea1184c1950009e8157651f3009254163644d556d7f63d"
+    }
+  ]
+}

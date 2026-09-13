@@ -1,0 +1,345 @@
+SITESEE COMMERCIAL REAL ESTATE IMAGE PROMPT
+Version 1.0 | 2026 09 12
+64 scenes | 16:9 composition | Centered 4:3 crop | Flambient where appropriate
+
+HOW TO USE
+Copy the complete prompt between BEGIN PROMPT and END PROMPT into your image generator.
+Choose an image by its two-digit number. For example: "Generate Image 06."
+The prompt defaults to Image 01 when no image is selected.
+For a generator with a shorter prompt field, paste the shared photographic standard and just the selected scene.
+The 64 entries are individual scene concepts. Shared editing standards do not imply that unrelated scenes depict the same property.
+Flambient describes the visual treatment requested from the generator; this file does not represent a camera capture or an actual multi-exposure edit.
+
+BEGIN PROMPT
+
+Create one original, photorealistic commercial real estate image using the selected scene description. The result should have the visual quality of carefully composed, professionally photographed and edited architectural imagery prepared for a commercial property portfolio.
+
+Depict a plausible property with coherent construction, realistic materials, and furnishings or equipment appropriate to its use. Present the building and usable space clearly. Use the supplied scene; if no scene is selected, use Image 01 from the catalogue.
+
+FRAMING AND CROP
+Output a landscape 16:9 image at the highest supported native resolution. Compose the essential subject inside a centered 4:3 area that occupies 75% of the image width and the full height. Keep the outer 12.5% on each side expendable. Fill those side areas with natural scene continuation, such as landscaping, pavement, sky, floor, or secondary wall surfaces. Keep the main building, entrance, important equipment, and dominant furniture group comfortably inside the protected area as applicable. Leave additional breathing room above and below. Both the full frame and the centered crop must feel deliberately composed. Do not draw crop guides, borders, or blank margins. For a 3840 x 2160 frame, the centered crop would be 2880 x 2160, trimming 480 pixels from each side.
+
+ARCHITECTURAL CAMERA AND COMPOSITION
+Emulate a high-quality full-frame architectural camera with a rectilinear lens and perspective control. Favor the natural spatial rendering of approximately 24-35mm full-frame focal lengths; use a wider architectural lens only when the space requires it. Select sufficient camera distance to fit the subject without stretching its proportions. Keep the horizon level and vertical building lines straight and parallel, while allowing receding lines to converge naturally. No fisheye, barrel distortion, leaning buildings, stretched corners, or exaggerated room depth. Use an appropriate standing or slightly lower interior viewpoint; use an elevated viewpoint only when the scene specifies one. Establish clear visual hierarchy, purposeful leading lines, balanced negative space, and clean separation between foreground objects. Show convincing scale, circulation, ceiling height, and the relationship between spaces. Preserve fine detail with a deep-focus, approximately f/8-f/11 photographic appearance and restrained sharpening.
+
+LIGHTING AND FLAMBIENT
+For suitable interiors, emulate the finished appearance of a carefully aligned flash-and-ambient composite. Preserve ambient light direction, soft shadows, room depth, and the character of practical fixtures. Blend subtle bounced or diffused off-camera flash for accurate surface color, controlled mixed-light casts, and gentle shadow fill. Flash should be visually unobtrusive. Preserve natural warmth where fixtures create it.
+
+Where windows are visible, use the appearance of a restrained window exposure blend when needed. Retain plausible exterior detail and believable reflections; outdoor daylight should remain convincingly bright. Avoid dark pasted-in window views, halos around frames, flash reflections, hard flash shadows, double edges, glowing corners, and uniformly flattened illumination.
+
+Adapt the lighting to the property. Office suites, lobbies, guestrooms, restaurants, medical spaces, and model apartments generally suit subtle flambient treatment. Warehouses, hangars, manufacturing halls, and other large or reflective spaces should retain believable ambient lighting and falloff, with localized supplemental fill only where appropriate. For exteriors and elevated site views, use natural daylight or bright overcast conditions with controlled highlights and readable shadows.
+
+COLOR, MATERIALS, AND FINISH
+Use accurate white balance, restrained saturation, natural contrast, and realistic highlight rolloff. Preserve the actual appearance of concrete, brick, glass, metal, wood, fabric, and landscaping, including subtle ordinary wear appropriate to the scene. Keep glass transparent and reflective in physically plausible ways. Maintain a consistent professional editing standard across the collection while allowing each property's materials and lighting to retain their character.
+
+Do not use cinematic color grading, teal-and-orange treatment, dramatic sunset lighting, heavy HDR tone mapping, excessive clarity, bloom, lens flare, vignetting, crushed blacks, oversaturated skies or vegetation, plastic surfaces, or a CGI/illustration aesthetic. Avoid impossible structures, repeated or malformed objects, floating furnishings, implausible machinery, and contradictory shadows.
+
+PRESENTATION AND OUTPUT
+Keep scenes unoccupied. Include vehicles or aircraft only when the selected scene calls for them, at believable scale and subordinate to the architecture. Avoid prominent branding and decorative text. No captions, watermarks, logos, listing overlays, boundary lines, floor plans, or visible photographic equipment.
+
+Generate one complete standalone image for the selected scene, never a collage or contact sheet. Before returning it, check the architectural geometry, lighting consistency, material realism, and centered 4:3 crop.
+
+SCENE SELECTION
+Use the numbered scene I request from the catalogue below. If I have not selected one, create Image 01. If I say "next," advance by one scene from the last numbered image generated in this conversation. If I ask for a variation, retain the same scene number and photographic standards. Produce only the selected image unless I explicitly request multiple separate images. Scene titles and lighting notes are instructions, not text to place in the image.
+
+SCENE CATALOGUE
+
+01. Urban office mid-rise
+Lighting: Daylight.
+A contemporary six-story urban office building with a restrained glass-and-stone facade, a clearly defined main entrance, and modest street landscaping. Use a slightly oblique view that shows the front and one side, with enough camera distance to contain the complete building comfortably within the central crop. Nearby buildings remain secondary.
+
+02. Suburban office campus
+Lighting: Daylight.
+A landscaped suburban office campus with a three-story brick-and-glass principal building, a secondary wing, pedestrian paths, and realistic parking access. Show the main entrance and relationship between the buildings from ground level. Keep the main architectural group inside the central crop and use peripheral planting and pavement for the side margins.
+
+03. Smaller professional office building
+Lighting: Daylight.
+A well-maintained two-story professional office building with brick masonry, regular window bays, a covered entry, and a modest surface parking area. Choose an approachable three-quarter exterior view that clearly communicates its scale and access. Use realistic materials and ordinary commercial landscaping.
+
+04. Renovated brick building converted into offices
+Lighting: Daylight.
+An early twentieth-century brick industrial building sensitively converted into contemporary offices, with tall steel-framed windows, restored masonry, and a clear modern entrance. Show the facade and a short side elevation. Preserve subtle age and texture without distressed styling or exaggerated industrial decor.
+
+05. Reception and lobby
+Lighting: Flambient.
+A contemporary office reception with a modest stone or wood desk, a small visitor seating group, a glazed meeting room, and a visible corridor beyond. Compose from the visitor's approach, maintaining clear circulation. Keep the desk and seating group within the central crop, with no company name behind the desk.
+
+06. Open office with workstations
+Lighting: Flambient.
+A practical furnished office with orderly workstation groups, ergonomic chairs, acoustic ceiling treatments, perimeter windows, and a clear central aisle. Use a balanced diagonal view that explains desk spacing and circulation without exaggerating the floor area. Show subtle ambient daylight direction and accurate neutral surface colors.
+
+07. Private executive office
+Lighting: Flambient.
+A restrained executive office with a proportionate wood desk, task chair, two visitor chairs, low storage, and a window providing a plausible office-park view. Keep all principal furnishings comfortably within the central crop. Preserve realistic daylight brightness and quiet material detail without luxury-advertising styling.
+
+08. Conference room
+Lighting: Flambient.
+A professional conference room with a ten-seat table, evenly spaced chairs, a blank wall-mounted display, and one glazed perimeter wall. Position the camera at a natural height from a corner to show the full table and circulation space. Keep reflections, chair legs, and table geometry coherent.
+
+09. Vacant finished office suite
+Lighting: Flambient.
+An unfurnished, move-in-ready office suite with commercial carpet tile, a suspended acoustic ceiling, perimeter windows, and glazed partitions leading to private offices. Compose to show usable floor area and connections between spaces. Retain realistic room dimensions, gentle corner shading, and accurate whites.
+
+10. Unfinished office shell
+Lighting: Ambient with selective fill.
+A credible unfinished office floor with exposed concrete slab, visible structural columns, exterior glazing, and neatly routed base-building services overhead. Show a clean, unoccupied shell awaiting tenant improvements. Emphasize structural rhythm and daylight while retaining authentic unfinished materials and believable service connections.
+
+11. Coworking space
+Lighting: Flambient.
+A contemporary coworking interior with shared worktables, two enclosed meeting rooms, a small informal seating area, and clearly defined circulation. Use practical furnishings and acoustic finishes rather than excessive decorative props. Compose the principal worktable and meeting-room frontage within the central crop.
+
+12. Employee lounge and breakroom
+Lighting: Flambient.
+A workplace breakroom with a compact kitchenette, dining tables, a small lounge area, and daylight from side windows. Show the relationship between food preparation and seating with realistic aisle widths. Preserve natural cabinet and countertop colors, subtle fixture warmth, and controlled reflections.
+
+13. Distribution center exterior
+Lighting: Daylight.
+A modern distribution center with a precast concrete facade, an identifiable office entrance, a short visible run of loading docks, and a realistic truck court. Use a three-quarter view with sufficient distance for the principal building volume to survive the central crop. Keep peripheral pavement expendable; avoid a panoramic row that depends on the outer edges.
+
+14. Warehouse interior
+Lighting: Ambient with selective fill.
+A spacious warehouse with a high roof structure, coherent structural columns, concrete floors, and a small amount of correctly supported pallet racking along one side. Compose along a clear aisle to communicate height and usable volume. Let roof lighting and daylight establish natural falloff; avoid making the entire hall uniformly bright.
+
+15. Loading docks and truck court
+Lighting: Daylight.
+A warehouse loading elevation with four dock doors, credible dock seals and levelers, protective bollards, and a broad concrete truck apron. Use an angled view that keeps the complete selected dock group inside the central crop. Leave the court unoccupied so access and circulation remain easy to understand.
+
+16. Smaller warehouse with drive-in doors
+Lighting: Daylight.
+A modest owner-user warehouse with two ground-level overhead doors, a separate office entrance, painted metal or masonry cladding, and an ordinary paved forecourt. Show the full front and one side at a natural scale. Include realistic drainage, curbs, and door hardware without clutter.
+
+17. Manufacturing plant exterior
+Lighting: Daylight.
+A well-maintained manufacturing facility with an attached administrative entrance, a taller production hall, service access, and limited industrial landscaping. Use a clear three-quarter exterior view that distinguishes office and production functions. Show realistic roof equipment and utility placement without visually dominating the property.
+
+18. Assembly floor
+Lighting: Ambient with selective fill.
+An unoccupied manufacturing assembly hall with coherent workstations, appropriately supported conveyors, marked circulation aisles, and realistic overhead services. Show an organized production zone within a believable structural bay. Keep the main equipment group inside the central crop and preserve material texture and lighting depth.
+
+19. Machine shop and metal fabrication facility
+Lighting: Ambient with selective fill.
+A practical machine shop with a small group of enclosed CNC machines, metal workbenches, tool storage, and credible power and extraction connections. Show the building volume and clear aisle between equipment, with all machines idle. Use controlled metallic reflections and restrained supplemental fill rather than sparks or dramatic industrial lighting.
+
+20. Food processing and packaging facility
+Lighting: Ambient with selective fill.
+A clean food packaging hall with stainless-steel equipment, a coherent conveyor path, washable wall finishes, and a suitable floor with plausible drains. Depict an unoccupied facility between production runs. Emphasize room layout and usable space; keep metal reflections believable and avoid clinical overexposure.
+
+21. Combined showroom and warehouse
+Lighting: Flambient with ambient warehouse.
+A commercial flex property interior where a modest product showroom and reception area connect visibly to a warehouse through a wide opening. Show the relationship between customer-facing space and storage without branded merchandise. Balance subtle flambient treatment in the showroom with naturally deeper ambient light in the warehouse.
+
+22. Light industrial workshop with offices
+Lighting: Ambient with selective fill.
+A small light industrial workshop with a glazed office enclosure, two workbenches, a ground-level overhead door, and orderly material storage. Use a natural corner viewpoint to explain the layout and circulation. Preserve functional finishes and realistic wear without making the space look abandoned.
+
+23. Research laboratory
+Lighting: Flambient with controlled reflections.
+A plausible research laboratory with laboratory benches, under-bench cabinetry, a properly integrated fume hood, sinks, and enclosed storage. Keep equipment restrained and physically coherent. Show a clear central circulation route, believable services, accurate whites, and gentle reflections on glazed partitions and countertops.
+
+24. Data center server room
+Lighting: Ambient with selective fill.
+A realistic server room with two short, aligned rows of server racks, perforated doors, sensible cable management, and clearly defined service access. Use neutral installed lighting with restrained local fill and small realistic equipment indicators. Preserve the dark rack surfaces without cinematic blue lighting, glowing floors, or implausible cabling.
+
+25. Aircraft hangar exterior
+Lighting: Daylight.
+A private aviation hangar with a fully open, structurally plausible hangar door, an attached office entry, and an uncluttered apron. Position the camera far enough back to keep the full opening and roofline inside the central crop. The interior may read slightly darker than the exterior; no aircraft is required.
+
+26. Spacious hangar interior
+Lighting: Ambient with selective fill.
+A clear-span aircraft hangar with realistic steel framing, a clean concrete floor, an open door, and one unbranded light aircraft parked well inside the building. Show substantial circulation space around the aircraft and believable wing clearance. Keep the aircraft and the main structural opening within the central crop; the architecture remains the subject.
+
+27. Aircraft maintenance facility
+Lighting: Ambient with selective fill.
+An aviation maintenance hangar with one unbranded aircraft, practical mobile maintenance platforms, organized tool cabinets, and a small glazed support office. Keep equipment and access physically plausible, with no people or active repair activity. Show the full aircraft at a subordinate scale within a convincing maintenance bay.
+
+28. Elevated overview of a hangar complex
+Lighting: Daylight; elevated viewpoint.
+A modest airport hangar complex seen from a moderate oblique aerial viewpoint, showing several hangar buildings, connected aprons, a taxiway, and landside vehicle access. Keep the principal building group centered with clear spatial separation. Preserve a level horizon if visible and believable ground geometry; no parcel outlines or map labels.
+
+29. Private aviation terminal exterior
+Lighting: Daylight.
+A small fixed-base operator terminal serving private aviation, with a restrained modern facade, a covered passenger entrance, an adjoining apron, and a nearby hangar. Use a ground-level three-quarter view that explains the arrival sequence. Keep all principal architectural elements inside the central crop and avoid oversized airline-terminal features.
+
+30. Passenger and pilot lounge
+Lighting: Flambient.
+A private aviation terminal lounge with comfortable seating, a small reception counter, restrained wood accents, and large windows overlooking a plausible apron. Show a calm, practical space sized for a small terminal. Balance subtle flash with ambient daylight, maintaining realistic reflections and bright exterior views.
+
+31. Air cargo warehouse with apron access
+Lighting: Daylight.
+An airport cargo warehouse with a visible airside cargo opening, credible ground-handling access, and an attached administrative section. Show the building from a moderate oblique angle, with a small amount of unbranded stationary cargo equipment for scale. Keep the apron and building geometry coherent and the architecture dominant.
+
+32. Airport administrative office suite
+Lighting: Flambient.
+An airport administrative office suite with reception, two glazed private offices, a small meeting area, and windows facing nearby airport facilities. Use practical institutional finishes and a realistic scale. Show circulation and room connections with natural daylight direction, neutral colors, and restrained flash blending.
+
+33. Neighborhood shopping center
+Lighting: Daylight.
+A compact neighborhood shopping center with five modest storefront bays, an end unit, pedestrian frontage, and an ordinary parking area. Choose enough camera distance to keep the selected center within the central crop. Use varied but coherent storefront proportions, blank sign bands, and realistic landscaping.
+
+34. Freestanding retail building
+Lighting: Daylight.
+A freestanding single-tenant retail building with broad storefront glazing, a clear customer entrance, a modest covered frontage, and convenient parking access. Show the building from a three-quarter angle with room around the roofline and corners. Preserve realistic glass reflections and ordinary commercial materials.
+
+35. Urban storefront with apartments above
+Lighting: Daylight.
+A four-story mixed-use masonry building with ground-floor retail frontage and residential windows above. Show the complete principal facade from across a normal-width street, with a slight angle to reveal depth. Keep entry doors, storefront glazing, and the roofline within the central crop, with no named businesses.
+
+36. Vacant retail interior
+Lighting: Flambient.
+An unfurnished retail unit with a glazed storefront, a clear sales floor, a small rear service area, and appropriate ceiling lighting. Compose from inside toward the storefront at a realistic wide angle. Preserve the sense of depth and daylight while keeping the floor and sidewalls as natural crop margins.
+
+37. Restaurant dining room
+Lighting: Flambient.
+A commercially plausible restaurant dining room with a mix of tables and booths, clear server circulation, a discreet service station, and daylight through frontage windows. Keep the main seating group complete within the central crop. Preserve the natural warmth of fixtures without orange casts, dramatic darkness, or excessive decorative staging.
+
+38. Commercial kitchen
+Lighting: Ambient with carefully controlled fill.
+A functional commercial kitchen with a coherent cooking line beneath an extraction hood, stainless preparation counters, sinks, refrigeration, and clear working aisles. Show the spatial arrangement rather than food close-ups. Use restrained supplemental light with physically plausible metal reflections and no obvious flash hotspots.
+
+39. Coffee shop and bakery interior
+Lighting: Flambient.
+A modest coffee shop and bakery with a service counter, a small pastry display, a few tables, and a visible but secondary preparation area. Compose to show the customer path and frontage windows. Use natural wood and tile colors, subdued fixture warmth, and an uncluttered professional presentation.
+
+40. Brewery production and customer space
+Lighting: Ambient with selective fill.
+A small brewery interior where stainless brewing vessels are visible beyond a modest tasting counter and seating area. Show a plausible separation and circulation route between production and customer zones. Retain ambient depth in the production space and subtle color-correcting fill in the customer area, with controlled metal reflections.
+
+41. Medical office building exterior
+Lighting: Daylight.
+A contemporary medical office building with a covered patient entrance, readable pedestrian access, suitable parking, and a restrained masonry-and-glass facade. Use an approachable three-quarter view at ground level. Keep the entry, primary building volume, and roofline within the central crop.
+
+42. Outpatient clinic reception
+Lighting: Flambient.
+An outpatient clinic reception with a modest reception desk, well-spaced waiting chairs, accessible circulation, and a corridor leading to consultation rooms. Use calming but ordinary commercial finishes and limited decor. Preserve accurate whites and material colors while maintaining gentle natural shadow depth.
+
+43. Dental treatment suite
+Lighting: Flambient with controlled reflections.
+A realistic dental treatment room with a dental chair, correctly articulated examination light, fitted cabinetry, a sink, and sensible circulation. Keep the equipment mechanically plausible and at proper scale. Use soft ambient light with unobtrusive flash blending, avoiding sterile overexposure and false reflections.
+
+44. Physical therapy facility
+Lighting: Flambient.
+A practical physical therapy interior with several treatment tables, a small exercise zone, storage, and clear walkways. Show the room layout with restrained equipment and no patients. Maintain realistic space between apparatus, natural daylight, accurate neutral finishes, and gentle lighting falloff.
+
+45. Hotel exterior and covered arrival entrance
+Lighting: Daylight.
+A well-maintained contemporary hotel with a clearly defined covered arrival entrance, a visible guestroom wing, and realistic vehicle circulation. Use a three-quarter exterior view that keeps the main entrance and principal building mass centered. Include modest landscaping and normal daylight without dramatic sunset lighting.
+
+46. Hotel lobby
+Lighting: Flambient.
+A hotel lobby with a reception desk, a central seating group, visible circulation to elevators, and daylight from the arrival frontage. Show a commercially plausible scale and restrained furnishings. Preserve ambient light direction, natural fixture warmth, and accurate stone, wood, and fabric textures.
+
+47. Hotel guestroom
+Lighting: Flambient.
+A well-appointed but believable hotel guestroom with a king bed, two bedside tables, a small desk, luggage space, and a window. Compose from a natural corner position that includes the full bed and primary furniture group inside the central crop. Keep window brightness realistic and bedding textures crisp without artificial smoothness.
+
+48. Conference and banquet space
+Lighting: Ambient with distributed selective fill.
+A hotel conference and banquet room with a coherent ceiling grid, a modest arrangement of round tables, a small presentation area, and clear aisles. Compose to communicate capacity and circulation without making the room cavernous. Emulate restrained distributed flash blending only where needed while retaining natural lighting depth and realistic fixture warmth.
+
+49. Garden apartment community
+Lighting: Daylight.
+A garden apartment community with two- and three-story residential buildings, landscaped paths, a small shared courtyard, and visible entrances. Use a grounded exterior view focused on a compact building group. Preserve ordinary building proportions, believable landscaping, and realistic separation between structures.
+
+50. Urban apartment building
+Lighting: Daylight.
+A contemporary six-story apartment building with a clear residential entrance, a restrained mix of masonry and metal cladding, and a modest sidewalk setting. Show the front and one side with enough distance to retain the complete principal building inside the central crop. Avoid exaggerated luxury cues and dramatic city backdrops.
+
+51. Furnished model apartment
+Lighting: Flambient.
+A furnished apartment living and dining area with a compact kitchen beyond, ordinary contemporary furniture, and perimeter windows. Show the relationship between the three functions with honest room proportions. Keep the principal sofa and dining group inside the central crop, with believable daylight and neutral material color.
+
+52. Senior living common room
+Lighting: Flambient.
+A senior living common room with comfortable supportive seating, generous circulation, a small dining area, and a view toward a garden. Use warm but restrained commercial finishes and a practical layout. Keep the scene unoccupied and preserve accurate colors, soft ambient shadows, and realistic window brightness.
+
+53. Drive-up self-storage property
+Lighting: Daylight.
+A well-maintained drive-up self-storage facility with two short rows of storage buildings, aligned roll-up doors, a paved central aisle, and a small management office. Compose at a slight angle that shows door rhythm and access while keeping the main group within the central crop. Retain realistic pavement and door hardware.
+
+54. Climate-controlled storage corridor
+Lighting: Ambient with selective fill.
+A climate-controlled storage corridor with a coherent run of storage doors, a clean floor, overhead lighting, and a visible cross-corridor. Use a natural rectilinear view with believable width and repeated elements that remain structurally consistent. Preserve gentle light falloff without making the corridor glow.
+
+55. Covered RV and boat storage
+Lighting: Daylight.
+A covered RV and boat storage facility with believable steel canopies, adequate bay spacing, and a broad circulation aisle. Include one unbranded RV and one boat on a trailer as secondary scale references. Keep the principal canopy group and vehicles within the central crop and show realistic roof supports.
+
+56. Secured industrial outdoor storage yard
+Lighting: Daylight.
+A fenced industrial storage yard with a functional sliding gate, a modest office or service building, a broad gravel or paved surface, and a small organized material-storage zone. Show usable space and access from a natural elevated standing viewpoint. Keep the main operational area centered, with no boundary graphics.
+
+57. Automotive repair facility
+Lighting: Ambient with selective fill.
+An automotive repair interior with three service bays, structurally plausible vehicle lifts, organized tool storage, and a clear customer-to-workshop separation. Include one unbranded stationary vehicle for scale, keeping machinery idle and circulation open. Show the building volume with controlled metallic reflections and realistic lighting depth.
+
+58. Car wash property
+Lighting: Daylight.
+A modern small car wash property with a visible wash tunnel or bay entrance, clear vehicle circulation, and a modest vacuum area. Use a three-quarter exterior view that explains the complete operation. Keep the main building and entrance group within the central crop, with ordinary pavement and neutral colors.
+
+59. Convenience store and fuel canopy
+Lighting: Daylight.
+A convenience store with a modest fuel canopy, physically coherent dispenser islands, vehicle access, and a visible store entrance. Use a balanced exterior view that contains the canopy and principal store volume inside the central crop. Use unbranded equipment, realistic scale, and restrained surface reflections.
+
+60. Laundromat interior
+Lighting: Flambient with controlled reflections.
+A clean laundromat with correctly repeated washer and dryer units, folding counters, a small waiting area, and a clear central aisle. Compose to show customer circulation and the full principal equipment group. Preserve realistic stainless-steel reflections and neutral light without glare or impossible machine doors.
+
+61. Marina with docks and service building
+Lighting: Daylight.
+A small commercial marina with a modest service building, connected floating docks, a few unbranded moored boats, and believable shore access. Use a moderate elevated oblique view that keeps the principal building and dock cluster centered. Preserve realistic water reflections, dock connections, and everyday coastal or lakeside conditions.
+
+62. RV park
+Lighting: Daylight; elevated viewpoint.
+A modest RV park seen from a gentle elevated viewpoint, showing a coherent internal road, several occupied and unoccupied pads, a small reception building, and practical landscaping. Keep the core park group within the central crop. Use believable vehicle scale and site spacing, with no people or boundary overlays.
+
+63. Commercial development parcel
+Lighting: Daylight; elevated viewpoint.
+A plausible undeveloped commercial corner parcel with clear road frontage, visible access context, ordinary vegetation, and neighboring commercial uses kept secondary. Use an oblique elevated view to communicate the site's physical setting. Keep the principal open parcel centered; do not invent boundary markings, labels, utilities, or future buildings.
+
+64. Parking garage exterior and entrance
+Lighting: Daylight.
+A well-maintained multi-level parking garage with a clear vehicle entrance, visible circulation openings, a pedestrian entrance, and realistic structural spacing. Use a ground-level three-quarter view with the complete principal facade inside the central crop. Preserve concrete texture and naturally darker interior depth.
+
+END PROMPT
+
+QUICK COMMANDS
+Generate Image 01.
+Generate Image 06.
+Generate Image 26.
+Next.
+Create another variation of Image 17 with a slightly different camera position; retain the complete central 4:3 composition.
+Generate Images 05, 06, and 08 as three separate images; maintain the same photographic standard.
+For these selected images, depict the same property and preserve its architecture, finishes, furniture, and exterior context, using the first accepted image as a reference.
+
+REVIEW BEFORE ACCEPTING EACH IMAGE
+Confirm a 16:9 full frame.
+Check that a centered crop removing 12.5% from each side preserves the main subject.
+Check verticals, horizon, realistic proportions, and room or site circulation.
+Check natural color, plausible material reflections, and lighting direction.
+For flambient interiors, check for harsh flash shadows, flat lighting, edge halos, double images, and dark artificial window views.
+Confirm one complete image with no collage, captions, watermarks, or visible guides.
+Actual pixel dimensions and crop suitability must be checked on the generated output; the prompt alone does not verify them.
+
+REFERENCE BASIS
+The scene catalogue is an original production plan informed by public property categories and examples, rather than a reproduction of any particular listing.
+
+LoopNet commercial property categories:
+https://www.loopnet.com/
+
+CoStar public property records overview:
+https://www.costar.com/products/property-records
+
+Crexi aircraft hangar and office property example:
+https://www.crexi.com/properties/2351373/washington-16655-sf-aircraft-hangar-and-office-facility
+
+Ten-X public marketplace overview:
+https://www.ten-x.com/
+
+BizBuySell business premises and industry examples:
+https://www.bizbuysell.com/businesses-for-sale/
+
+Esoft explanation of flash-and-ambient blending:
+https://esoft.com/resources/blog/real-estate-flambient-photography-guide
+
+The basic flash-and-ambient blending description is informed by the Esoft guide. The scene-specific lighting choices, framing rules, composition instructions, and production catalogue are original directions for this collection.
+

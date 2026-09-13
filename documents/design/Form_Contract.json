@@ -1,0 +1,64 @@
+{
+  "date": "2026 09 13",
+  "stage": "design_preview",
+  "pricing": {
+    "fields": [
+      {
+        "name": "first-name",
+        "label": "First Name",
+        "type": "text",
+        "required": false
+      },
+      {
+        "name": "last-name",
+        "label": "Last Name",
+        "type": "text",
+        "required": false
+      },
+      {
+        "name": "company-name",
+        "label": "Company Name",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "email",
+        "label": "Email Address",
+        "type": "email",
+        "required": false
+      },
+      {
+        "name": "phone",
+        "label": "Phone Number",
+        "type": "tel",
+        "required": false
+      }
+    ],
+    "mailing_list_opt_out": {
+      "name": "mailing-list-opt-out",
+      "label": "Please exclude me from all mailing lists.",
+      "type": "checkbox",
+      "required": false,
+      "initially_checked": false
+    },
+    "subject": "Real Estate Div. - Pricing request.",
+    "subject_user_editable": false
+  },
+  "contact": {
+    "preferred_communication": {
+      "name": "preferred-communication",
+      "label": "Preferred Communication",
+      "type": "radio",
+      "options": [
+        "Call",
+        "Text",
+        "Email"
+      ],
+      "required": false,
+      "default": null
+    },
+    "discovery_call_removed": true
+  },
+  "submission_enabled": false,
+  "persistent_storage": false
+}
