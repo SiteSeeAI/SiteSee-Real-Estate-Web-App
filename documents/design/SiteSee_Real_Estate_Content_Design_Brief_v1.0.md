@@ -2,11 +2,11 @@
 
 2026 09 13
 
-Working revision: pricing request and Contact form specifications updated on 2026 09 13; dedicated Platform page and broader platform positioning retained. The user accepted the preceding pricing recommendations on 2026 09 13. Those launch recommendations are recorded below; actual delivery costs and AI usage allowances still require definition before publication.
+Working revision: real estate meeting use cases, location-based property notes, supporting files and team collaboration added on 2026 09 16. The pricing request and Contact form specifications approved on 2026 09 13 remain in place; dedicated Platform page and broader platform positioning retained. The user accepted the preceding pricing recommendations on 2026 09 13. Those launch recommendations are recorded below; actual delivery costs and AI usage allowances still require definition before publication.
 
 ## Scope
 
-Initial content and layout specification for the real estate division website. The current layout preview contains separate Platform and Services Provided views, accessible through the header and footer navigation. This is a design and content record; the complete website and independent pricing operation have not been implemented.
+Content and layout specification for the real estate division website. The six-page static design is implemented in the SiteSeeAI/SiteSee-Real-Estate repository, with separate Platform and Services Provided pages accessible through the header and footer. This remains a design-stage website; submission handling and the independent protected pricing operation are not live.
 
 The website uses the existing SiteSee visual identity and corporate page structure: the actual logo, Poppins and Inter, the current corporate palette, top hero sections, and a global footer. Image placeholders are intentional for this initial design pass; the user will provide imagery later.
 
@@ -19,7 +19,7 @@ Request Pricing Access is the primary header action. Division navigation stays w
 | Page | Content |
 | --- | --- |
 | Home | Short real estate introduction, hero image, featured photography and virtual experience, brief services introduction, company credibility section, and CTA. Use imagery and experience placeholders during the initial design pass. |
-| Platform | A dedicated, concise page explaining how SiteSee connects property media, spatial understanding, AI visualization, live review and engagement. Five alternating two-column sections, a sourced statistics break, CTAs and a brief company credibility section. |
+| Platform | A dedicated, concise page explaining how SiteSee connects property media, spatial understanding, AI visualization, live review, location-based notes and engagement. Six alternating two-column sections, a sourced statistics break, CTAs and a brief company credibility section. |
 | Services Provided | One compact page. One short paragraph per service explains what it is and why to include it. Alternate text and imagery in two columns, followed by a brief company section and CTA. |
 | Our Work | Photography and Virtual Experiences as the primary choices. Use placeholders until approved samples are supplied. Include video examples when supplied. |
 | Contact | Real estate project inquiry with Preferred Communication radio buttons: Call, Text, Email. |
@@ -29,7 +29,7 @@ Company history, the full cross-industry capability catalogue and educational re
 
 ## Platform: Positioning and Page Order
 
-The SiteSee platform is the central property presentation and evaluation environment. Its value comes from connecting the property, media, layout, possible changes, conversations and next actions. Online meetings are one important capability within that broader value.
+The SiteSee platform is the central property presentation and evaluation environment. Its value comes from connecting the property, media, layout, possible changes, conversations, location-based notes and next actions. Online meetings are one important capability within that broader value.
 
 The page gives each selected capability a short explanation and a practical real estate benefit. It does not reproduce the entire corporate feature catalogue or make meetings the hero message. Keep the same core platform proposition for individual agents, teams and brokerages; account capacity and access allocations vary with the plan.
 
@@ -39,12 +39,13 @@ The page gives each selected capability a short explanation and a practical real
 4. Floor plans and spatial context: imagery left, text right.
 5. Full-width statistics break with two attributed property-marketing examples.
 6. AI decluttering and redesign: text left, original/concept image placeholders right.
-7. Online meetings and guided review: imagery left, text right.
-8. Short CTA break linking to Our Work.
-9. Sharing, inquiries and engagement: text left, imagery right.
-10. Brief Why SiteSee credibility section.
-11. Closing CTA with simple single-property/subscription positioning.
-12. Shared real estate footer and corporate copyright/bottom navigation.
+7. In-platform meetings and guided review: imagery left, text right; remote buyers, co-buyers and tenants review together.
+8. Property notes and team collaboration: text left, imagery right; location-based questions, supporting files and shared context.
+9. Short CTA break linking to Our Work.
+10. Sharing, inquiries and engagement: imagery left, text right.
+11. Brief Why SiteSee credibility section.
+12. Closing CTA with simple single-property/subscription positioning.
+13. Shared real estate footer with direct links to In-Platform Meetings and Property Notes & Collaboration, plus corporate copyright/bottom navigation.
 
 Use two columns for the hero and capability rows. The statistics and CTA bands provide visual breaks. On mobile, stack copy before imagery. Placeholder labels describe the actual images/screenshots to supply; do not fabricate product screenshots or client results.
 
@@ -105,13 +106,27 @@ Caption: **AI concepts are clearly labeled alongside the original space.**
 
 Images: paired **Original Space** and **AI Design Concept** placeholders. Keep these within the imagery column. Approved examples should demonstrate the same room and retain clear original/concept labels.
 
-### Online Meetings & Guided Review
+### In-Platform Meetings & Guided Review
 
 **Bring The Conversation Into The Property.**
 
-Explore together with live audio/video, guided navigation, chat and screen sharing. Agents can answer questions where they arise and review the property with buyers, tenants and decision-makers wherever they are.
+Bring remote buyers, co-buyers and tenants into the same property experience for a live meeting. Use audio/video, guided navigation, chat and screen sharing to discuss the layout and answer questions while everyone can see the space.
+
+Review a shortlist before arranging visits, or include a decision-maker who cannot attend in person.
 
 Image: an agent and buyer reviewing a property inside SiteSee.
+
+### Property Notes & Team Collaboration
+
+**Keep The Question With The Space.**
+
+When a buyer asks about a kitchen finish or a tenant flags an access question, attach a note to that location in the property. Add supporting files so the detail stays with the space it describes.
+
+Share that context with the people involved in the listing. Agents and colleagues can return to the question and its history when preparing answers or the next property review.
+
+Image: an approved SiteSee Notes view showing a location-based question and supporting attachment within a property; placeholder until supplied.
+
+Section address: `platform.html#property-notes`. Preserve the existing `platform.html#online-meetings` address for meetings. The homepage capability links, Services introduction and shared footer link directly to these sections.
 
 ### Mid-Page CTA
 
@@ -175,7 +190,7 @@ Action: **View Our Work**
 
 ### Platform Cross-Link
 
-Bring your property media together with floor plans, AI design and live collaboration.
+Bring your property media together with floor plans, AI design, in-platform meetings and property notes. Link the last two phrases to their respective Platform sections.
 
 Action: **Explore The SiteSee Platform** — opens the division's Platform page.
 
@@ -287,6 +302,7 @@ Standard real estate capability bundle, updated for the dedicated Platform page:
 5. Contact and inquiry actions.
 6. Basic visitor/engagement analytics.
 7. Live property meetings with audio/video, guided navigation, chat and screen sharing, using the included allowance.
+8. Location-based property notes, supporting attachments and shared review context for agents and collaborators. Customer access permissions and any storage allowance must be specified in the plan; do not imply unrestricted access or unlimited storage.
 
 Define these as the Standard Real Estate Platform features. Keep the buying decision centered on active property capacity. The latest user direction explicitly includes AI decluttering and redesign in the platform story; do not present the product as principally a meeting service. SiteSee's current corporate AI page confirms property-side and selected buyer-side design using a credit system. This record does not set a new AI credit price, promise unlimited generation, or equate AI credits with meeting minutes. Bespoke development, separately commissioned AI/CGI production, advanced workflows and substantial managed reporting retain separate production/service scopes when requested.
 

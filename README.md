@@ -29,6 +29,12 @@ Edit the HTML pages directly. Styling is in `public/assets/css/site.css`; menu, 
 | Contact | [public/contact.html](public/contact.html) |
 | Request Pricing Access | [public/request-pricing-access.html](public/request-pricing-access.html) |
 
+## Real estate platform features
+
+Updated 2026 09 16. The Platform page now explains in-platform meetings for remote buyers, co-buyers and tenants, plus location-based property notes, supporting attachments and team collaboration. These sit alongside connected media, floor plans, AI visualization and engagement. Homepage capability links, the Services introduction and the shared footer provide direct links to the meeting and notes sections.
+
+The change record is [Real_Estate_Platform_Features_20260916.md](documents/design/Real_Estate_Platform_Features_20260916.md).
+
 ## Current behavior
 
 The pricing form has exactly five contact fields: First Name, Last Name, Company Name, Email Address and Phone Number. Only Company Name is required. An optional, initially unchecked checkbox reads “Please exclude me from all mailing lists.” Its state is included in the request preview. The subject is exactly `Real Estate Div. - Pricing request.`
@@ -39,7 +45,7 @@ Both forms validate and display a clearly labeled request preview. They do not s
 
 ## Documents
 
-All recovered website documents are indexed in [documents/README.md](documents/README.md), including the current brief, updated Word hierarchy, customer rate sheet, supplied pricing sources and imagery guidance. Their original bytes are retained, with a checksum manifest for reference.
+All recovered website documents are indexed in [documents/README.md](documents/README.md), including the current brief, updated Word hierarchy, customer rate sheet, supplied pricing sources and imagery guidance. The supplied source files are preserved, and the design brief tracks subsequent revisions. A checksum manifest records the six retained project/source documents.
 
 The website root is **public/**. Documents are stored separately and are not linked from public pages. The design does not contain a public copy of the protected rate sheet or an imitation access gate.
 
