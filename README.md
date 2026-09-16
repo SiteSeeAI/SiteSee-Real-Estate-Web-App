@@ -31,9 +31,13 @@ Edit the HTML pages directly. Styling is in `public/assets/css/site.css`; menu, 
 
 ## Real estate platform features
 
-Updated 2026 09 16. The Platform page now explains in-platform meetings for remote buyers, co-buyers and tenants, plus location-based property notes, supporting attachments and team collaboration. These sit alongside connected media, floor plans, AI visualization and engagement. Homepage capability links, the Services introduction and the shared footer provide direct links to the meeting and notes sections.
+Updated 2026 09 16. AI Decluttering & Redesign is now the second Platform capability section, with separate explanations and an original/concept comparison. Added interactive property details, guided highlights, preliminary measurements, exact-room links, private sharing, agent/brokerage presentation and multilingual content. The compact For Agents, Teams & Brokerages section also explains listing oversight. Meetings, notes and engagement remain part of the complete platform.
 
-The change record is [Real_Estate_Platform_Features_20260916.md](documents/design/Real_Estate_Platform_Features_20260916.md).
+Home leads its capability links with AI Decluttering & Redesign. Services links directly to AI, meetings and notes. All page footers link to AI and the team section as well as the existing meeting and notes sections.
+
+To review this pull request in GitHub Desktop, fetch the repository and select the **enhance-real-estate-platform-features** branch. Open `public/platform.html` in a browser or Dreamweaver; also review `public/index.html` and `public/services-provided.html`. The local preview instructions above apply.
+
+The current change record is [Real_Estate_Platform_Expansion_20260916.md](documents/design/Real_Estate_Platform_Expansion_20260916.md). The earlier meeting/notes update remains in [Real_Estate_Platform_Features_20260916.md](documents/design/Real_Estate_Platform_Features_20260916.md).
 
 ## Current behavior
 

@@ -2,7 +2,7 @@
 
 2026 09 13
 
-Working revision: real estate meeting use cases, location-based property notes, supporting files and team collaboration added on 2026 09 16. The pricing request and Contact form specifications approved on 2026 09 13 remain in place; dedicated Platform page and broader platform positioning retained. The user accepted the preceding pricing recommendations on 2026 09 13. Those launch recommendations are recorded below; actual delivery costs and AI usage allowances still require definition before publication.
+Working revision: the approved seven additional real estate capabilities and stronger AI Decluttering & Redesign presentation added on 2026 09 16, following the meeting and property-note update. The pricing request and Contact form specifications approved on 2026 09 13 remain in place; dedicated Platform page and broader platform positioning retained. The user accepted the preceding pricing recommendations on 2026 09 13. Those launch recommendations are recorded below; actual delivery costs and AI usage allowances still require definition before publication.
 
 ## Scope
 
@@ -19,7 +19,7 @@ Request Pricing Access is the primary header action. Division navigation stays w
 | Page | Content |
 | --- | --- |
 | Home | Short real estate introduction, hero image, featured photography and virtual experience, brief services introduction, company credibility section, and CTA. Use imagery and experience placeholders during the initial design pass. |
-| Platform | A dedicated, concise page explaining how SiteSee connects property media, spatial understanding, AI visualization, live review, location-based notes and engagement. Six alternating two-column sections, a sourced statistics break, CTAs and a brief company credibility section. |
+| Platform | A dedicated, concise page explaining how SiteSee connects property media, spatial understanding, AI visualization, live review, location-based notes and engagement. Six alternating two-column sections with compact capability explanations, a For Agents, Teams & Brokerages section, a sourced statistics break, CTAs and a brief company credibility section. |
 | Services Provided | One compact page. One short paragraph per service explains what it is and why to include it. Alternate text and imagery in two columns, followed by a brief company section and CTA. |
 | Our Work | Photography and Virtual Experiences as the primary choices. Use placeholders until approved samples are supplied. Include video examples when supplied. |
 | Contact | Real estate project inquiry with Preferred Communication radio buttons: Call, Text, Email. |
@@ -35,17 +35,18 @@ The page gives each selected capability a short explanation and a practical real
 
 1. Corporate-style header with Platform as a primary navigation item.
 2. Top hero selling the complete property experience, with a platform image placeholder and CTAs.
-3. Connected property presentation: text left, imagery right.
-4. Floor plans and spatial context: imagery left, text right.
-5. Full-width statistics break with two attributed property-marketing examples.
-6. AI decluttering and redesign: text left, original/concept image placeholders right.
+3. Connected property presentation: text left, imagery right; Interactive Property Details and Guided Property Highlights appear within the copy column.
+4. AI decluttering and redesign: original/concept image placeholders left, text right; separate AI Decluttering and AI Redesign explanations. AI appears near the top of the page.
+5. Floor plans and measurement tools: text left, imagery right; preliminary fit checks and on-site confirmation of final dimensions.
+6. Full-width statistics break with two attributed property-marketing examples.
 7. In-platform meetings and guided review: imagery left, text right; remote buyers, co-buyers and tenants review together.
 8. Property notes and team collaboration: text left, imagery right; location-based questions, supporting files and shared context.
 9. Short CTA break linking to Our Work.
-10. Sharing, inquiries and engagement: imagery left, text right.
-11. Brief Why SiteSee credibility section.
-12. Closing CTA with simple single-property/subscription positioning.
-13. Shared real estate footer with direct links to In-Platform Meetings and Property Notes & Collaboration, plus corporate copyright/bottom navigation.
+10. Sharing, inquiries and engagement: imagery left, text right; Links To Specific Rooms and Private Property Sharing appear within the copy column.
+11. For Agents, Teams & Brokerages: three compact text columns covering branding, listing oversight and multilingual content; stack on mobile.
+12. Brief Why SiteSee credibility section.
+13. Closing CTA with simple single-property/subscription positioning and configuration of additional options.
+14. Shared real estate footer with direct links to AI Decluttering & Redesign, In-Platform Meetings, Property Notes & Collaboration and For Agents, Teams & Brokerages, plus corporate copyright/bottom navigation.
 
 Use two columns for the hero and capability rows. The statistics and CTA bands provide visual breaks. On mobile, stack copy before imagery. Placeholder labels describe the actual images/screenshots to supply; do not fabricate product screenshots or client results.
 
@@ -71,13 +72,43 @@ Image: a real estate property displayed in the SiteSee platform; placeholder for
 
 Bring virtual experiences, photography, video and essential property details into one branded destination. Buyers and tenants can explore at their own pace and return to the information they need from a single link.
 
+**Interactive Property Details**
+
+Let buyers select a room or feature to review agent-provided renovation details, appliance specifications and supporting documents.
+
+**Guided Property Highlights**
+
+Give buyers a self-paced sequence of the property’s strongest features, with explanations that help them explore before contacting the agent.
+
 Image: property experience with photography and property details.
 
-### Floor Plans & Spatial Context
+### AI Decluttering & Redesign
+
+**Show What The Space Could Become.**
+
+Help buyers see the potential in a room that is crowded or styled for someone else. Explore changes within the property experience.
+
+**AI Decluttering**
+
+Digitally remove furniture and visual clutter so buyers can see the room’s space and layout more clearly.
+
+**AI Redesign**
+
+Explore alternative furnishings, finishes and styles. Help a buyer picture living there, or a tenant imagine the space for their business.
+
+Caption: **Compare the original space with clearly labeled AI concepts. Concepts illustrate possibilities; they do not show completed changes.**
+
+Images: paired **Original Space** and **AI Design Concept** placeholders. Keep these within the imagery column. Approved examples should demonstrate the same room and retain clear original/concept labels.
+
+### Floor Plans & Measurement Tools
 
 **Understand The Layout Before The Visit.**
 
 View floor plans, room dimensions and property details alongside the spaces they describe. Help people assess room relationships, access and whether a home or commercial space could suit their needs.
+
+**Measurement Tools**
+
+Use measurement tools for preliminary checks of furniture, equipment and room dimensions before arranging a visit. Confirm final dimensions on site.
 
 Image: property experience alongside its floor plan.
 
@@ -95,16 +126,6 @@ Published examples using Matterport 3D experiences. Results vary by property and
 | **20% — Faster home sales** | Comparative study of 700 residential listings, published by Matterport in 2020, using March 2018–July 2019 data in one Southern US metropolitan market. This is the study's reported comparison, not a guaranteed sales acceleration. [Source](https://matterport.com/blog/3d-tours-properties-sell-31-faster-and-higher-price). |
 
 The preview keeps a short source link directly beneath each statistic. Do not relabel these as SiteSee outcomes, apply them indiscriminately to commercial leasing, or copy unrelated corporate conversion/ROI figures without their applicable evidence.
-
-### AI Decluttering & Redesign
-
-**Show What The Space Could Become.**
-
-Remove visual clutter and explore alternative furnishings, finishes and styles. Help buyers picture living in a home, or tenants see how a space could work for their business.
-
-Caption: **AI concepts are clearly labeled alongside the original space.**
-
-Images: paired **Original Space** and **AI Design Concept** placeholders. Keep these within the imagery column. Approved examples should demonstrate the same room and retain clear original/concept labels.
 
 ### In-Platform Meetings & Guided Review
 
@@ -142,7 +163,37 @@ Action: **Explore Our Work**
 
 Share a branded link or embed the experience on your website, with clear ways to contact the agent. See which spaces and content receive attention to help you prepare more relevant follow-up conversations.
 
+**Links To Specific Rooms**
+
+Answer a follow-up with a link that opens the room or feature in question, so buyers and colleagues can pick up at the right place.
+
+**Private Property Sharing**
+
+Use protected access for off-market listings or selected property information shared with particular buyers and collaborators.
+
 Image: property inquiry actions and an approved engagement reporting view. Do not use invented performance values as actual client data.
+
+### For Agents, Teams & Brokerages
+
+**Present Every Listing With A Consistent Identity.**
+
+Whether you market one home or manage a brokerage’s listings, give buyers a recognizable experience and your team a consistent way to present each property.
+
+**Agent & Brokerage Branding**
+
+Carry your agent or brokerage identity through the property experience with configured logos, colors and presentation.
+
+**Listing Oversight**
+
+Keep presentation, publishing and access consistent across multiple listings while preserving each property’s individual details.
+
+**Multilingual Content**
+
+Offer property descriptions and guidance in configured languages to help international and relocating buyers evaluate the space.
+
+Branding, team permissions and language options are configured to your selected plan and property requirements.
+
+Action: **Discuss Your Team’s Needs** — opens Contact.
 
 ### Why SiteSee
 
@@ -156,7 +207,7 @@ Link: **About SiteSee** — https://sitesee.ai/company.html — new tab/window.
 
 **Start With One Property. Grow With Your Listings.**
 
-Choose a single property or a subscription for up to 3, 7 or 12 active properties, with the same core platform capabilities.
+Choose a single property or a subscription for up to 3, 7 or 12 active properties, with the same core platform capabilities. Additional branding, access and language options are scoped to your needs.
 
 Primary action: **Request Pricing Access**
 
@@ -190,7 +241,7 @@ Action: **View Our Work**
 
 ### Platform Cross-Link
 
-Bring your property media together with floor plans, AI design, in-platform meetings and property notes. Link the last two phrases to their respective Platform sections.
+Bring your property media together with floor plans, AI decluttering and redesign, in-platform meetings and property notes. Link the last three capabilities to their respective Platform sections.
 
 Action: **Explore The SiteSee Platform** — opens the division's Platform page.
 
@@ -309,6 +360,10 @@ Define these as the Standard Real Estate Platform features. Keep the buying deci
 An active slot means one concurrently published standard property experience within agreed source-model limits. Archive a concluded listing to release its slot; replacement-property setup remains separately scoped. No promise of unlimited free reactivations or permanent free archive storage is made. Multi-model, multi-building and unusually large properties need a defined capacity allowance or separate quote.
 
 To soften tier transitions, allow additional active properties at $49 per property per month while a higher-capacity plan would cost more. For example, three properties at $149 plus one additional property is $198; at seven properties, the $299 plan is cheaper than $149 plus four additions ($345). Each paid additional property contributes 60 meeting minutes and does not automatically add another named host. Recommend the higher plan as soon as it costs less. More than 12 active properties is a brokerage/custom-scope discussion.
+
+### Additional Feature Presentation
+
+The website describes interactive property details, guided property highlights, preliminary measurement tools, exact-room links, private sharing, brokerage presentation and multilingual content. These additions explain documented capabilities and their real estate uses; they do not change the approved rates, meeting allowances, AI credits or access allocations. Branding, team permissions and languages remain configured to the selected plan and property requirements.
 
 ### Meeting Allowance and Cost Basis
 
