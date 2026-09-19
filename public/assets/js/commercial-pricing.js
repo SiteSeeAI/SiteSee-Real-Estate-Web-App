@@ -11,7 +11,7 @@
   const selected = new Set(['photo']);
   let unlocked = false, reviewed = false, current = null;
   const quantity = (id,label,min,max,step,initial) => '<div class="quote-size"><label for="c-'+id+'">'+label+'</label><input id="c-'+id+'" name="'+id+'" type="number" min="'+min+'" max="'+max+'" step="'+step+'" value="'+initial+'" required disabled></div>';
-  Object.entries(Q.services).forEach(([key,service]) => {
+  Object.entries(Q.services).filter(([key])=>key!=='photo').forEach(([key,service]) => {
     const row = document.createElement('div'); row.className='quote-service';
     const top = document.createElement('div'); top.className='quote-row-top';
     const label = document.createElement('label'), check = document.createElement('input');
@@ -20,14 +20,13 @@
     const detail=document.createElement('small');detail.id='c-detail-'+key;detail.textContent=service.detail;text.append(detail);label.append(check,text);
     const price=document.createElement('span');price.id='c-price-'+key;price.className='quote-price';top.append(label,price);row.append(top);
     let controls='';
-    if(key==='hourly')controls=quantity('labor-hours','Hours On Site',1,5,.5,5);
-    if(key==='drone')controls=quantity('aerial-images','Finished Aerial Images',1,100,1,10);
+    if(key==='drone')controls=quantity('aerial-images','Finished Aerial Images',1,100,1,1);
     if(key==='floor')controls=quantity('plan-sets','Property Layout Sets',1,20,1,1);
     if(key==='video')controls=quantity('video-count','Number Of Finished Videos',1,20,1,1)+'<div class="quote-video-length"><span>Length Of Each Video</span><div class="quote-video-fields"><label for="c-video-minutes">Minutes<input id="c-video-minutes" type="number" min="1" max="3" step="1" value="1" required disabled></label><span aria-hidden="true">:</span><label for="c-video-seconds">Seconds<input id="c-video-seconds" type="number" min="0" max="59" step="1" value="0" required disabled></label></div></div><input id="c-video-slider" type="range" min="60" max="180" step="1" value="60" aria-label="Commercial video duration in seconds" aria-valuetext="1 minute 0 seconds"><p class="quote-note">$1,500 per finished video includes your chosen length from 1:00 to 3:00.</p>';
     if(controls){const extra=document.createElement('div');extra.className='quote-extra';extra.id='c-'+key+'-controls';extra.hidden=true;extra.innerHTML=controls;row.append(extra);}
     get('quote-services').append(row);
     check.addEventListener('change',()=>{
-      if(check.checked){selected.add(key);if(key==='photo')selected.delete('hourly');if(key==='hourly')selected.delete('photo');}else selected.delete(key);
+      if(check.checked)selected.add(key);else selected.delete(key);
       update();
     });
   });
@@ -63,10 +62,10 @@
     return Number(minutes.value) * 60 + Number(seconds.value);
   }
   function inputState() {
-    return {category:value('category'),sqft:value('sqft'),selected:[...selected],videoSeconds:videoSeconds(),videos:get('video-count').value,aerialImages:get('aerial-images').value,hours:get('labor-hours').value,plans:get('plan-sets').value,licenseType:value('licenseType'),licenseMonths:get('license-months').value,extendedHosting:get('extended-hosting').checked};
+    return {category:value('category'),sqft:value('sqft'),selected:[...selected],videoSeconds:videoSeconds(),videos:get('video-count').value,aerialImages:get('aerial-images').value,delivery:value('delivery'),platformMonths:get('platform-months').value,plans:get('plan-sets').value,licenseType:value('licenseType'),licenseMonths:get('license-months').value,extendedHosting:get('extended-hosting').checked};
   }
   function update() {
-    ['hourly','drone','video','floor'].forEach(key=>{
+    ['drone','video','floor'].forEach(key=>{
       const active=selected.has(key),controls=get(key+'-controls');controls.hidden=!active;controls.querySelectorAll('input').forEach(el=>{el.disabled=!active;});
     });
     const licenseEligible=['photo','drone','video'].some(key=>selected.has(key));
@@ -74,9 +73,10 @@
     get('license-fields').querySelectorAll('input').forEach(el=>{el.disabled=!licenseEligible;});
     const term=licenseEligible&&value('licenseType')==='term';get('license-term-controls').hidden=!term;get('license-months').disabled=!term;get('license-slider').disabled=!term;
     get('hosting-controls').hidden=!selected.has('mp');get('extended-hosting').disabled=!selected.has('mp');
+    const platform=value('delivery')==='platform';get('platform-controls').hidden=!platform;get('platform-controls').querySelectorAll('input').forEach(el=>{el.disabled=!platform;});
     get('request-status').hidden=true;
     const state=inputState();
-    Object.entries(Q.services).forEach(([key,service])=>{
+    Object.entries(Q.services).filter(([key])=>key!=='photo').forEach(([key,service])=>{
       get('service-'+key).checked=selected.has(key);
       try {const alone=Q.calculate({...state,selected:[key],licenseType:'term',licenseMonths:6,extendedHosting:false});const line=alone.lines.find(line=>line.key===key);get('price-'+key).textContent=(line.from?'From ':'')+Q.money(line.cents);}
       catch(_){get('price-'+key).textContent='—';}
@@ -85,6 +85,8 @@
     try {
       if(!get('property-sqft').validity.valid)throw new Error('Enter a whole-number property size within the commercial category.');
       current=Q.calculate(state);
+      get('photography-price').textContent=Q.money(current.photographyCents);
+      get('license-calculation').textContent=Q.money(current.licenseBaseCents)+' × '+(state.licenseType==='unlimited'?'50%':('30% ÷ 12 × '+state.licenseMonths+' months'))+' = '+Q.money(current.licenseCents);
       get('estimate-error').hidden=true;get('review-estimate').disabled=false;
       get('summary-total').textContent=current.pending?'Custom Quote':Q.money(current.totalCents);get('estimate-inline-total').textContent=get('summary-total').textContent;
       get('summary-subtotal').hidden=!current.pending;get('summary-subtotal').textContent='Priced items: '+Q.money(current.subtotalCents)+'. Final total requires confirmation.';
@@ -92,11 +94,11 @@
       get('summary-lines').replaceChildren();
       current.lines.forEach(line=>{const li=document.createElement('li'),a=document.createElement('span'),b=document.createElement('span');a.textContent=line.label;b.textContent=line.included?'Included':line.cents===null?'To Quote':(line.from?'From ':'')+Q.money(line.cents);li.append(a,b);get('summary-lines').append(li);});
       get('summary-duration').textContent=current.knownMinutes?'About '+Q.duration(current.knownMinutes)+(current.additionalCapture.length?' for timed services':''):current.hasOnSite?'Confirmed With Your Appointment':'No On-Site Visit Required';
-      const parts=[];if(current.matterportMinutes)parts.push('Matterport: '+Q.duration(current.matterportMinutes));if(current.laborMinutes)parts.push('Creative labor: '+Q.duration(current.laborMinutes));get('summary-breakdown').textContent=parts.join(' · ');
+      const parts=[];if(current.matterportMinutes)parts.push('Matterport: '+Q.duration(current.matterportMinutes));get('summary-breakdown').textContent=parts.join(' · ');
       get('estimate-inline-time').textContent='Time on site: '+get('summary-duration').textContent;
       get('summary-time-note').textContent=current.additionalCapture.length?'Time for '+current.additionalCapture.map(key=>Q.services[key].label).join(', ')+' will be confirmed. Building layout, escorts and access affect the schedule.':'Time is approximate. Building layout, escorts and access affect the schedule.';
       get('date-label').textContent=current.hasOnSite?'Preferred Shoot Date (Required For A Request)':'Preferred Completion Date (Required For A Request)';get('time-label').textContent=current.hasOnSite?'Preferred Start Time · Central Time':'Preferred Contact Time · Central Time';
-    }catch(error){current=null;get('estimate-error').hidden=false;get('estimate-error').textContent=error.message;get('summary-total').textContent='Complete Your Selection';get('estimate-inline-total').textContent='—';get('summary-subtotal').hidden=true;get('summary-lines').replaceChildren();get('summary-duration').textContent='—';get('summary-breakdown').textContent='';get('summary-time-note').textContent='';get('estimate-inline-time').textContent='';get('custom-quote-note').hidden=true;get('review-estimate').disabled=true;}
+    }catch(error){current=null;get('photography-price').textContent='—';get('license-calculation').textContent='';get('estimate-error').hidden=false;get('estimate-error').textContent=error.message;get('summary-total').textContent='Complete Your Selection';get('estimate-inline-total').textContent='—';get('summary-subtotal').hidden=true;get('summary-lines').replaceChildren();get('summary-duration').textContent='—';get('summary-breakdown').textContent='';get('summary-time-note').textContent='';get('estimate-inline-time').textContent='';get('custom-quote-note').hidden=true;get('review-estimate').disabled=true;}
   }
   get('open-estimate').addEventListener('click', () => {
     if (!validateFields(addressFields, true)) return;
@@ -127,10 +129,13 @@
     const seconds = Number(get('video-slider').value);
     get('video-minutes').value = Math.floor(seconds / 60); get('video-seconds').value = seconds % 60; syncVideoSlider();
   });
-  ['labor-hours','aerial-images','plan-sets','video-count'].forEach(id=>get(id).addEventListener('input',update));
+  ['aerial-images','plan-sets','video-count'].forEach(id=>get(id).addEventListener('input',update));
   form.querySelectorAll('[name=licenseType]').forEach(el=>el.addEventListener('change',update));
   get('license-months').addEventListener('input',()=>{if(get('license-months').validity.valid)get('license-slider').value=get('license-months').value;update();});
   get('license-slider').addEventListener('input',()=>{get('license-months').value=get('license-slider').value;update();});
+  form.querySelectorAll('[name=delivery]').forEach(el=>el.addEventListener('change',update));
+  get('platform-months').addEventListener('input',()=>{if(get('platform-months').validity.valid)get('platform-slider').value=get('platform-months').value;update();});
+  get('platform-slider').addEventListener('input',()=>{get('platform-months').value=get('platform-slider').value;update();});
   get('extended-hosting').addEventListener('change',update);
   get('review-estimate').addEventListener('click', () => {
     if (!unlocked || !validateFields(addressFields, true)) { syncAddress(); return; }

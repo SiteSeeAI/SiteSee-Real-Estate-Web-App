@@ -1,64 +1,62 @@
 # Commercial calculator and service pages — 2026 09 19
 
-## Residential checkpoint
+## Current revision
 
-PR #3 was merged into main at cdde174474deb123b7fe64cb5800ef4a9f2e3d44. “Estimated Time On Site” is gold and the phrase “additional capture” was removed from customer-facing email wording. The residential calculator, packages and per-second video behavior are preserved. This follow-up adds a market choice and a separate commercial estimator. No live server upload is performed.
+User corrections supersede the original photography tiers and term-license placeholders. Residential is unchanged. This commercial revision remains in PR #4 for review, including proposed factory continuation and platform pricing.
 
-## Commercial client fees
+## Photography and square footage
 
-Source: the attached commercial_real_estate_media_rates(1).pdf, using Retail Fee / Client Fee only. Internal outsourcing costs, margin calculations and production-business commentary are not copied into the public website.
+Photography is automatic in every commercial estimate. Removed the Commercial Property Photography checkbox and Hourly Creative Labor option. Category cards show size ranges only. A separate photography estimate and the full summary update from either the slider or exact square-footage input.
 
-| Service | Calculator treatment |
+| Category | Calculator range | Photography fee before licensing |
+| --- | --- | --- |
+| Small commercial / retail | 1–10,000 sq ft | max($350, square feet × $0.075) |
+| Warehouse / office | 10,000–50,000 sq ft | $750 + (square feet − 10,000) × $0.00875 |
+| Factory / industrial | 50,000–1,000,000 sq ft | $1,100 + (square feet − 50,000) × $0.00875 |
+
+The user supplied the $350 small-property minimum, $750 warehouse minimum and $1,100 at 50,000 sq ft. The warehouse increment is ($1,100 − $750) / (50,000 − 10,000) = $0.00875 per added square foot, not $0.24. A direct $0.24 multiplier would contradict those endpoints.
+
+Small-property scaling is a proposed $0.075/sq ft with the required $350 floor, meeting $750 at 10,000 sq ft without a price jump. Below approximately 4,667 sq ft the minimum holds. Shared endpoints are valid in either adjacent category with identical fees. Factory pricing provisionally continues the warehouse increment beyond 50,000 sq ft because no later price endpoint was supplied. The existing 1,000,000 sq ft limit is an input bound, not a newly supplied factory rate-card maximum; larger projects require a quote. The factory slope and small-property scaling can be revised after review.
+
+## Optional services
+
+| Service | Client fee |
 | --- | --- |
-| Small commercial / retail photography | $750 per property under 10,000 sq ft |
-| Warehouse / office photography | $1,200 per property at 10,000–49,999 sq ft |
-| Factory / industrial photography | From $2,500 at 50,000+ sq ft; final scope requires a quote |
-| Creative labor | $950 / 5 hours = $190 per hour; 1–5 hours in half-hour increments; a labor-only alternative to the photography tier |
-| Drone / aerial stills | User override: $42 per finished image; 10 images = $420 |
-| Commercial video | $1,500 per finished video, 1–3 minutes; quantity scales the fee |
-| Matterport | User override: $0.10 per sq ft with a $199 minimum; six months of hosting included |
-| Schematic floor plans | $150 per property layout set; quantity scales the fee |
-| Property website | User override: $185 per listing website |
+| Aerial photographs | $42 per finished image; default one; input 1–100 |
+| Matterport | $0.10/sq ft; $199 minimum; six months hosting |
+| Finished commercial video | $1,500 per 1–3 minute video; input 1–20 videos |
+| Schematic floor plans | $150 per property layout set; input 1–20 sets |
 
-The source provides a single photography fee for each property tier and a single $1,500 fee for a 1–3 minute video. It does not provide within-tier endpoints or separate video-duration prices. The calculator therefore preserves these quoted units; it does not invent a per-square-foot photography slope or divide $1,500 by an assumed video length. Video duration is requested to the second but does not alter the supplied per-video fee. A time-scaled commercial video tariff and any within-tier photography interpolation need explicit endpoints.
+Video and layout fees remain from the attached commercial rate sheet. No internal production costs or margins are shown. There is no commercial per-second video slope because the source supplies one fee for the 1–3 minute deliverable.
 
-Small/warehouse fees are property coverage estimates; industrial is a starting amount. Labor-only selections are marked for a custom quote because the PDF says on-site creative labor only. The engine prevents charging both a photography tier and alternative hourly labor. It does not claim that $190/hour includes all delivered media.
+## Licensing
 
-Commercial input bounds: property-size slider up to 1,000,000 sq ft, 1–100 aerial images, 1–20 finished videos and 1–20 layout sets. Larger work is quoted directly. The labels state the property-size limit; quantity bounds are input controls, not price guarantees for larger orders.
+Term license = (still photography + aerial image fees) × 0.30 / 12 × selected months. Default six, maximum eighteen. This replaces the prior included-six-month photography license. Surcharges are 15% at six months, 30% at twelve and 45% at eighteen. The number input and slider stay synchronized. Rounding occurs once to cents after multiplying the combined eligible base.
 
-## Licensing and hosting
+Unlimited license = (still photography + aerial image fees) × 0.50. Matterport, video, floor plans, website and platform charges are excluded from both license bases. Video licensing is discussed separately; adding video preserves the calculated photography license but marks the final combined total for confirmation.
 
-The default media term is six months. The term slider runs from six through eighteen months in one-month increments. The user did not supply the incremental licensing premium for months 7–18; those selections show Custom Quote and an explicit priced-services subtotal. No unapproved premium is silently set to zero.
+Matterport includes six months hosting regardless of the photography license or platform term. Requesting hosting beyond six months flags a separate quote. This revision does not invent a Matterport renewal fee or promise unlimited Matterport use.
 
-Unlimited photography licensing adds 50% of the photography and aerial-still fees. This is the review implementation of “photography only”: Matterport, websites, layout sets and labor are excluded from that license base. For a photography-only quote plus Matterport, this equals 50% of the total minus Matterport. Mixed video licensing and industrial work with an unconfirmed base price require a custom quote. The customer label is an unlimited photography license; the calculator does not promise copyright ownership transfer.
+## Delivery platform proposal
 
-Matterport always includes six months of hosting. Selecting a longer media term or an unlimited photography license never extends Matterport hosting. A separate “Discuss Matterport Hosting Beyond Six Months” option marks renewal pricing for conversation. No hosting renewal fee has been recommended or implemented yet.
+The user requested a selectable platform and invited a price proposal. Exactly one delivery option is selected:
 
-Concrete example: $750 property photography + $420 aerial images + $500 Matterport at 5,000 sq ft = $1,670 at six months. Unlimited photography licensing adds $585, giving $2,255; Matterport hosting remains six months.
+| Delivery | Fee |
+| --- | --- |
+| Media files only | No delivery platform fee |
+| Dedicated property website | $185 |
+| SiteSee platform | Proposed $185 setup + $25/month per property |
 
-## Workflow and time estimates
+Platform defaults to six months ($335), with its own synchronized number/slider controls through eighteen months ($635). Twelve months is $485. Full setup and selected-term fees are included in the estimate and email, separately itemized. This is proposed pricing for review, not an existing approved rate. No automatic renewal or billing is configured. Platform selection does not also charge a separate website. Its term is independent of photography licensing and Matterport hosting; capture is not bundled into it.
 
-The first choice is Residential or Commercial. Neither estimator appears before that choice. Each has its own required address fields, explicit Continue action, service state and contact form. Invalidating the address hides its estimator and request fields. Switching market preserves each form’s own state without mixing prices or licenses.
+## Forms and service pages
 
-A property-type query parameter may preselect the corresponding form from its service landing page. It contains no personal information. Browser History restrictions in a local-file preview do not prevent the market choice.
+Residential/commercial selection, separate required address gates and contact forms remain intact. Invalidating an address hides its estimator and request fields. Scheduling requests need a future date/time in Central Time; self-email does not require scheduling. Emails use the selected market's subject and prepare explicit mailto drafts; nothing claims automatic delivery or confirmed booking.
 
-Each quote email uses its own exact market subject. Commercial uses `Commercial SiteSee Real Estate Quote`. Email actions open a draft in the visitor’s mail app; no automatic delivery is claimed. Appointment date and time remain required only for appointment requests, not a self-copy. All contact/address fields and the explicit mailing-list preference are required. The appointment is not a reservation.
+The Services page links separate residential-services.html and commercial-services.html process pages. Each covers selection, scheduling, field capture, post-production and delivery within 24 hours of the completed shoot. Existing image galleries remain separate. Commercial service copy now reflects calculated photography and term licensing.
 
-Commercial scan time uses the supplied scan-density estimate: square feet × 9 / 1,000 minutes. Five hours of selected creative labor displays five hours. Commercial photography duration is not extrapolated from the residential 35-minutes-per-1,000-sq-ft assumption. Other service times are named for confirmation; industrial layouts and access requirements affect the actual schedule.
+Commercial on-site time remains a partial estimate: Matterport uses square feet × 9 / 1,000 minutes; photography and other service timing are confirmed with the appointment. The residential photography time model is not applied to warehouses/factories.
 
-## Service landing pages
+## Verification
 
-Services Provided now has separate Residential Photography and Commercial Photography sections linking to:
-
-- public/residential-services.html
-- public/commercial-services.html
-
-Both pages describe five steps: choose services, select the shoot, field capture, post-production and delivery within 24 hours of the completed shoot. The prose explains how the media helps buyers/tenants and how preparation affects the appointment. The commercial page also explains license terms and separate Matterport hosting. The existing image-only masonry galleries are preserved and linked independently. Footer links make both process pages accessible throughout the site.
-
-## Validation and review
-
-Fifteen Node tests pass across the residential and commercial engines. Commercial checks cover all client units, minimum Matterport fees, six-month hosting, quantity totals, licensing exclusions, 7–18 month quote status, incompatible selections and commercial email content. DOM interaction checks pass for market switching, state separation, address gate/re-lock, quantity changes, license changes, hosting requests, photography/labor exclusivity, required fields and correct email subject. Browser form primitives were simulated in the DOM checks.
-
-JavaScript syntax, CSS parsing, unique IDs, label/ARIA targets and 508 local links/assets pass. Live visual browser review remains outstanding due to the previously documented browser-preview restriction. No messages have been sent and no production site has been deployed.
-
-Review public/pricing.html, public/services-provided.html, public/residential-services.html and public/commercial-services.html. The remaining pricing decisions are the 7–18 month premium schedule, any commercial photography/video interpolation endpoints, the license base for mixed non-photography orders, and hosting renewal fees beyond six months.
+Sixteen Node tests pass, covering both markets, minimums, exact sizes, shared boundaries, increasing factory pricing, unit fees, every license endpoint, excluded license charges, independent platform terms, duplicate prevention, invalid input and quote email contents. DOM interaction checks exercise sliders and number inputs in all three categories, license/platform controls, service selections, required fields, address re-lock and market isolation. Browser primitives in that harness are simulated; rendered desktop/mobile visual review remains outstanding. This PR does not deploy to the live server.

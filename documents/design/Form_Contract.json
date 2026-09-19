@@ -96,7 +96,7 @@
     "subject": "Commercial SiteSee Real Estate Quote",
     "license_default_months": 6,
     "license_max_months": 18,
-    "extended_term_premium": "Custom quote pending approved schedule",
+    "extended_term_premium": "Still and aerial fees * 0.30 / 12 * chosen months; applies to all 6\u201318 month terms",
     "unlimited_photography_surcharge": 0.5,
     "unlimited_basis": "Property photography and aerial image fees only; exclude Matterport and non-photography services",
     "mixed_video_unlimited_license": "Custom quote",
@@ -104,6 +104,22 @@
     "matterport_minimum": 199,
     "matterport_hosting_included_months": 6,
     "matterport_extended_hosting": "Separate quote, not automatically extended by the media license",
-    "automatic_delivery": false
+    "automatic_delivery": false,
+    "photography": "Automatically included; small max(350, sqft * .075); above 10000: 750 + (sqft - 10000) * .00875",
+    "factory_rate_status": "Proposed continuation of warehouse slope beyond 50000",
+    "aerial_default_images": 1,
+    "delivery_options": [
+      "files",
+      "website",
+      "platform"
+    ],
+    "platform_proposal": {
+      "setup": 185,
+      "monthly": 25,
+      "default_months": 6,
+      "maximum_months": 18,
+      "excludes": "Photography licensing, Matterport capture and hosting",
+      "website_duplicate": false
+    }
   }
 }
