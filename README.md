@@ -47,11 +47,19 @@ On 2026 09 17, the approved Human Writing samples were applied to the homepage i
 
 See [Real_Estate_Approved_Editorial_Revisions_20260917.md](documents/design/Real_Estate_Approved_Editorial_Revisions_20260917.md) for scope and verification.
 
+## Commercial calculator and separate service pages — 2026 09 19
+
+`public/pricing.html` begins with a Residential / Commercial choice. Each market has a separate estimator, address gate and request fields. Residential prices, packages, timing and one-second video pricing are preserved. Commercial client rates come from the supplied commercial rate sheet, with the requested aerial, website and Matterport overrides. Commercial has six-month default licensing, 7–18 month quote requests, an unlimited photography license, and a separate request for Matterport hosting after six months.
+
+Services Provided now has separate Residential Photography and Commercial Photography sections. They link to `public/residential-services.html` and `public/commercial-services.html`. Both process pages describe choosing services, selecting a shoot, field production, post-production and delivery within 24 hours of the completed shoot. The existing image-only galleries remain separate.
+
+Review [Commercial_Pricing_20260919.md](documents/design/Commercial_Pricing_20260919.md) for pricing sources, unit calculations and the remaining commercial pricing decisions. Run `node --test tests/*.test.cjs` for both calculators. The new work does not configure automatic mail delivery, confirm calendar availability or deploy to the live server.
+
 ## Current behavior
 
-The residential pricing page is now `public/pricing.html`. All address and agent-detail fields are required. The estimator appears after a complete property address is entered and the agent selects Continue. The page supports live square-footage estimates, media bundles with duplicate-service locks, video-duration pricing, twilight quantities, estimated capture time and preferred appointment requests. Both date and time are required for appointment requests. The original pricing-access URL redirects to this page.
+The shared pricing page is `public/pricing.html`. All address and agent-detail fields are required. The selected market’s estimator appears after a complete property address is entered and the agent selects Continue. The page supports live square-footage estimates, media bundles with duplicate-service locks, video-duration pricing, twilight quantities, estimated capture time and preferred appointment requests. Both date and time are required for appointment requests. The original pricing-access URL redirects to this page.
 
-The page prepares email drafts to the agent or sales@sitesee.ai with subject `Residential SiteSee Real Estate Quote`. The visitor must press Send in their own email app. Copy Quote provides a fallback. No automatic email delivery or booking confirmation is claimed. The separate Contact form remains a design preview.
+The page prepares email drafts to the agent or sales@sitesee.ai with subject `Residential SiteSee Real Estate Quote` or `Commercial SiteSee Real Estate Quote`, matching the selected market. The visitor must press Send in their own email app. Copy Quote provides a fallback. No automatic email delivery or booking confirmation is claimed. The separate Contact form remains a design preview.
 
 Read [Residential_Pricing_20260919.md](documents/design/Residential_Pricing_20260919.md) for formulas, required fields, email behavior, time estimates and validation. Large/Luxury standalone photography endpoint prices and automatic email delivery remain open launch items. Run `node --test tests/quote-engine.test.cjs` to verify calculator behavior.
 

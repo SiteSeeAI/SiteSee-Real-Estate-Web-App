@@ -80,5 +80,30 @@
     "discovery_call_removed": true
   },
   "submission_enabled": false,
-  "persistent_storage": false
+  "persistent_storage": false,
+  "market_choice": {
+    "name": "property-type",
+    "required": true,
+    "options": [
+      "residential",
+      "commercial"
+    ],
+    "initial": null,
+    "behavior": "Separate hidden form panels; preserve selections within each market."
+  },
+  "commercial": {
+    "fields": "Same required address, agent, preference and appointment fields as residential",
+    "subject": "Commercial SiteSee Real Estate Quote",
+    "license_default_months": 6,
+    "license_max_months": 18,
+    "extended_term_premium": "Custom quote pending approved schedule",
+    "unlimited_photography_surcharge": 0.5,
+    "unlimited_basis": "Property photography and aerial image fees only; exclude Matterport and non-photography services",
+    "mixed_video_unlimited_license": "Custom quote",
+    "matterport_rate_per_sqft": 0.1,
+    "matterport_minimum": 199,
+    "matterport_hosting_included_months": 6,
+    "matterport_extended_hosting": "Separate quote, not automatically extended by the media license",
+    "automatic_delivery": false
+  }
 }
