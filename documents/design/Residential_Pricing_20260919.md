@@ -14,7 +14,7 @@ The page uses the existing SiteSee logo, Poppins and Inter, yellow accents and s
 
 Small photography retains the approved calculator: max($150, area × $0.0952), below 2,000 sq ft. Average photography is $245 + (area − 2,000) × $0.0175 across 2,000–4,000 sq ft. Exact shared category boundaries remain selectable in the adjacent category, as in the approved preview; this can create price steps. Large and Luxury standalone photography remains a custom quote because their endpoint prices have not been finalized. No missing rates are invented.
 
-Matterport is max($69, area × $0.06). Website $65, drone $120, Zillow $95, 2D floor plan $50, virtual twilight $35 per image. Video is $225 + (minutes − 1) × $62.50 from one to three minutes. The slider and duration field use 0.1-minute increments. Twilight quantities are whole images (1–100).
+Matterport is max($69, area × $0.06). Website $65, drone $120, Zillow $95, 2D floor plan $50, virtual twilight $35 per image. Video is $225 + (seconds − 60) × $125 / 120 from 60 to 180 seconds. The slider advances one second; paired minutes/seconds inputs accept exact durations. Displayed prices round to cents only after calculation. The $225/$350 endpoints differ by $125, not $75. Examples: 1:01 = $226.04; 2:00 = $287.50; 2:59 = $348.96. Twilight quantities are whole images (1–100).
 
 Silver $220, Gold $499 and Platinum $995 keep the supplied rate-sheet inclusions and prices. Package charges replace included à-la-carte charges. Gold includes one minute of video; Platinum includes two. Video duration is locked while included, since a package-upgrade price has not been authorized.
 
@@ -44,3 +44,9 @@ Automatic email delivery remains a launch dependency: connect a server-side mail
 Open `public/pricing.html` directly in a browser or Dreamweaver. No build is required. Alternatively run `python3 -m http.server 8765 --directory public`, then open `http://localhost:8765/pricing.html`.
 
 Try a complete address; Average / 2,680 sq ft; add Matterport; switch to Gold and Platinum; switch back to individual services; change the address to an invalid ZIP; and complete the required agent fields and preferred appointment. Email actions prepare drafts and require the reviewer to press Send; sending is unnecessary for layout and calculator review.
+
+## Hero and video refinement — 2026 09 19
+
+The desktop hero now uses the existing image across the full section behind a broad, continuous gradient: fully opaque at the left, 10% opacity (90% transparency) at the section midpoint, and transparent by 65%. The copy remains above the overlay. The stacked mobile layout retains its solid text area, with the image transition expanded from 30% to 37.5% (25% wider).
+
+Standalone video supports every second from 1:00 through 3:00. Gold/Platinum inclusions remain locked to their included durations, without a duplicate standalone charge. Timing copy explicitly names services whose time is not included; Matterport is already included when selected.

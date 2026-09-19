@@ -21,7 +21,7 @@
     const price = document.createElement('span'); price.className = 'quote-price'; price.id = 'price-' + key; top.append(label, price); row.append(top);
     if (key === 'video') {
       const controls = document.createElement('div'); controls.className = 'quote-extra'; controls.id = 'video-controls'; controls.hidden = true;
-      controls.innerHTML = '<div class="quote-size"><label for="video-minutes">Video Length · Minutes</label><input id="video-minutes" name="minutes" type="number" min="1" max="3" step="0.1" value="1" required disabled></div><input id="video-slider" type="range" min="1" max="3" step="0.1" value="1" aria-label="Video length in minutes"><div class="quote-range-labels"><span>1 minute · $225</span><span>3 minutes · $350</span></div>';
+      controls.innerHTML = '<div class="quote-video-length"><span>Video Length</span><div class="quote-video-fields"><label for="video-minutes">Minutes<input id="video-minutes" name="videoMinutes" type="number" min="1" max="3" step="1" value="1" required disabled></label><span aria-hidden="true">:</span><label for="video-seconds">Seconds<input id="video-seconds" name="videoSecondsPart" type="number" min="0" max="59" step="1" value="0" required disabled></label></div></div><input id="video-slider" type="range" min="60" max="180" step="1" value="60" aria-label="Video length in seconds" aria-valuetext="1 minute 0 seconds"><div class="quote-range-labels"><span>1 minute · $225</span><span>3 minutes · $350</span></div>';
       row.append(controls);
     }
     if (key === 'twilight') {
@@ -58,13 +58,18 @@
     get('request-status').hidden = true;
     if (unlocked) update();
   }
+  function videoSeconds() {
+    const minutes = get('video-minutes'), seconds = get('video-seconds');
+    if (!minutes.value.trim() || !seconds.value.trim() || !minutes.validity.valid || !seconds.validity.valid) return NaN;
+    return Number(minutes.value) * 60 + Number(seconds.value);
+  }
   function inputState() {
-    return { category: value('category'), package: value('package'), sqft: value('sqft'), selected: [...selected], minutes: get('video-minutes').value, images: get('twilight-images').value };
+    return { category: value('category'), package: value('package'), sqft: value('sqft'), selected: [...selected], videoSeconds: videoSeconds(), images: get('twilight-images').value };
   }
   function update() {
     const state = inputState(), pack = Q.packages[state.package];
     const videoActive = selected.has('video') && !pack.includes.includes('video');
-    get('video-controls').hidden = !videoActive; get('video-minutes').disabled = !videoActive; get('video-slider').disabled = !videoActive;
+    get('video-controls').hidden = !videoActive; get('video-minutes').disabled = !videoActive; get('video-seconds').disabled = !videoActive; get('video-slider').disabled = !videoActive;
     get('twilight-controls').hidden = !selected.has('twilight'); get('twilight-images').disabled = !selected.has('twilight');
     get('request-status').hidden = true;
     Object.entries(Q.services).forEach(([key, service]) => {
@@ -83,7 +88,7 @@
     get('summary-property').textContent = addressText() + ' · ' + Number(state.sqft).toLocaleString() + ' sq ft';
     try {
       if (!get('property-sqft').validity.valid) throw new Error('Enter a whole-number property size within the selected category.');
-      if (videoActive && !get('video-minutes').validity.valid) throw new Error('Enter a video length from 1 to 3 minutes in 0.1-minute steps.');
+      if (videoActive && (!Number.isInteger(state.videoSeconds) || state.videoSeconds < 60 || state.videoSeconds > 180)) throw new Error('Enter a video length from 1:00 to 3:00 in whole seconds.');
       current = Q.calculate(state);
       get('estimate-error').hidden = true;
       get('summary-total').textContent = current.pending ? 'Custom Quote' : Q.money(current.totalCents);
@@ -96,13 +101,13 @@
       const appendLine = (label, cost) => { const li = document.createElement('li'), a = document.createElement('span'), b = document.createElement('span'); a.textContent = label; b.textContent = cost; li.append(a,b); get('summary-lines').append(li); };
       if (current.packageCents) appendLine(current.package + ' Package', Q.money(current.packageCents));
       current.lines.forEach(line => appendLine(line.label, line.included ? 'Included' : line.cents === null ? 'To Confirm' : Q.money(line.cents)));
-      get('summary-duration').textContent = current.knownMinutes ? 'About ' + Q.duration(current.knownMinutes) + (current.additionalCapture.length ? ' + additional capture' : '') : current.additionalCapture.length ? 'Confirmed With Your Appointment' : 'No On-Site Visit Required';
+      get('summary-duration').textContent = current.knownMinutes ? 'About ' + Q.duration(current.knownMinutes) + (current.additionalCapture.length ? ' for photography / Matterport' : '') : current.additionalCapture.length ? 'Confirmed With Your Appointment' : 'No On-Site Visit Required';
       const parts = [];
       if (current.photographyMinutes) parts.push('Photography: ' + Q.duration(current.photographyMinutes));
       if (current.matterportMinutes) parts.push('Matterport: ' + Q.duration(current.matterportMinutes));
       get('summary-breakdown').textContent = parts.join(' · ');
       get('estimate-inline-time').textContent = 'Time on site: ' + get('summary-duration').textContent;
-      get('summary-time-note').textContent = current.additionalCapture.length ? 'Additional time for ' + current.additionalCapture.map(k => Q.services[k].label).join(', ') + ' will be confirmed. Layout and access can affect time on site.' : 'Allow for property layout, access and readiness. Times are approximate and rounded up to five minutes.';
+      get('summary-time-note').textContent = current.additionalCapture.length ? 'Time for ' + current.additionalCapture.map(k => Q.services[k].label).join(', ') + ' is not included above and will be confirmed with your appointment. Layout and access can affect time on site.' : 'Allow for property layout, access and readiness. Times are approximate and rounded up to five minutes.';
       get('date-label').textContent = current.hasOnSite ? 'Preferred Shoot Date (Required For A Request)' : 'Preferred Completion Date (Required For A Request)';
       get('time-label').textContent = current.hasOnSite ? 'Preferred Start Time · Central Time' : 'Preferred Contact Time · Central Time';
     } catch (error) {
@@ -129,8 +134,20 @@
   form.querySelectorAll('[name=package]').forEach(radio => radio.addEventListener('change', update));
   get('property-sqft').addEventListener('input', () => { if (get('property-sqft').validity.valid) get('property-slider').value = get('property-sqft').value; update(); });
   get('property-slider').addEventListener('input', () => { get('property-sqft').value = get('property-slider').value; update(); });
-  get('video-minutes').addEventListener('input', () => { if (get('video-minutes').validity.valid) get('video-slider').value = get('video-minutes').value; update(); });
-  get('video-slider').addEventListener('input', () => { get('video-minutes').value = get('video-slider').value; update(); });
+  const syncVideoSlider = () => {
+    const seconds = videoSeconds();
+    if (Number.isInteger(seconds) && seconds >= 60 && seconds <= 180) {
+      get('video-slider').value = seconds;
+      get('video-slider').setAttribute('aria-valuetext', Math.floor(seconds / 60) + ' minutes ' + (seconds % 60) + ' seconds');
+    }
+    update();
+  };
+  get('video-minutes').addEventListener('input', syncVideoSlider);
+  get('video-seconds').addEventListener('input', syncVideoSlider);
+  get('video-slider').addEventListener('input', () => {
+    const seconds = Number(get('video-slider').value);
+    get('video-minutes').value = Math.floor(seconds / 60); get('video-seconds').value = seconds % 60; syncVideoSlider();
+  });
   get('twilight-images').addEventListener('input', update);
   get('review-estimate').addEventListener('click', () => {
     if (!unlocked || !validateFields(addressFields, true)) { syncAddress(); return; }

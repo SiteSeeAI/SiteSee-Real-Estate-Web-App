@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const Q = require('../public/assets/js/quote-engine.js');
-const quote = overrides => Q.calculate({category:'average',package:'custom',sqft:2680,selected:['photo'],minutes:1,images:1,...overrides});
+const quote = overrides => Q.calculate({category:'average',package:'custom',sqft:2680,selected:['photo'],videoSeconds:60,images:1,...overrides});
 test('photography interpolates within Average and respects the Small minimum', () => {
   assert.equal(quote({sqft:2000}).totalCents,24500);
   assert.equal(quote({sqft:2680}).totalCents,25690);
@@ -17,7 +17,9 @@ test('Matterport minimum and per-foot prices', () => {
   assert.equal(quote({category:'luxury',sqft:10000,selected:['mp']}).totalCents,60000);
 });
 test('video endpoints, midpoint and quantity-based twilight', () => {
-  for (const [minutes,total] of [[1,22500],[2,28750],[3,35000],[1.5,25625]]) assert.equal(quote({selected:['video'],minutes}).totalCents,total);
+  for (const [videoSeconds,total] of [[60,22500],[61,22604],[90,25625],[120,28750],[179,34896],[180,35000]]) assert.equal(quote({selected:['video'],videoSeconds}).totalCents,total);
+  for(let videoSeconds=61;videoSeconds<=180;videoSeconds++) assert.ok(quote({selected:['video'],videoSeconds}).totalCents > quote({selected:['video'],videoSeconds:videoSeconds-1}).totalCents);
+  assert.equal(quote({selected:['video'],videoSeconds:179}).lines[0].label,'Property Video · 2:59');
   assert.equal(quote({selected:['twilight'],images:3}).totalCents,10500);
 });
 test('all packages suppress duplicate charges for included services', () => {
@@ -46,7 +48,7 @@ test('on-site timing adds capture only and does not duplicate package services',
   assert.equal(bundled.knownMinutes,440);assert.deepEqual(bundled.additionalCapture,['drone','video','floor']);
 });
 test('invalid selections cannot yield a usable total', () => {
-  for(const input of [{sqft:1999},{sqft:4001},{sqft:2680.5},{sqft:NaN},{selected:[]},{selected:['unknown']},{selected:['video'],minutes:0},{selected:['video'],minutes:4},{selected:['twilight'],images:0},{selected:['twilight'],images:1.5},{selected:['twilight'],images:101}]) assert.throws(()=>quote(input));
+  for(const input of [{sqft:1999},{sqft:4001},{sqft:2680.5},{sqft:NaN},{selected:[]},{selected:['unknown']},{selected:['video'],videoSeconds:59},{selected:['video'],videoSeconds:181},{selected:['video'],videoSeconds:61.5},{selected:['video'],videoSeconds:NaN},{selected:['twilight'],images:0},{selected:['twilight'],images:1.5},{selected:['twilight'],images:101}]) assert.throws(()=>quote(input));
 });
 test('quote email contains exact subject, address, prices and requested appointment', () => {
   const text=Q.emailBody(quote({package:'gold',selected:['mp']}),{first:'Test',last:'Agent',company:'Example Realty',email:'test@example.com',phone:'5555550100',street:'123 Example Street',city:'Two Rivers',state:'WI',zip:'54241',optOut:'Yes'},{date:'2027-01-20',time:'10:00'});
