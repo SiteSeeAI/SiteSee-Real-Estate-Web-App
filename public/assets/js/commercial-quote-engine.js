@@ -91,7 +91,7 @@
     }
     const pending = reasons.length > 0;
     const matterportMinutes = chosen.has('mp') ? mpSqft * 9 / 1000 : 0;
-    const photographyMinutes = sqft * 35 / 1000;
+    const photographyMinutes = sqft * 1.5 / 1000;
     const videoMinutes = chosen.has('video') ? videos * seconds * 15 / 60 : 0;
     const droneMinutes = chosen.has('drone') ? 20 : 0;
     const knownMinutes = Math.ceil((photographyMinutes + matterportMinutes + videoMinutes + droneMinutes) / 5) * 5;

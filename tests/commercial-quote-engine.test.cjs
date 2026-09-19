@@ -53,16 +53,19 @@ test('email identifies photography area, scanned area, platform term and view co
  assert.ok(body.includes('Estimated Time On Site:'));assert.ok(body.includes('Photography:'));assert.ok(!body.includes('proposed for review'));assert.ok(!body.includes('Additional capture'));
 });
 
-test('both markets use the same photography, scan, video and drone timing',()=>{
+test('commercial photography uses 1.5 minutes per thousand while residential retains 35',()=>{
  const R=require('../public/assets/js/quote-engine.js');
  for(const sqft of [1000,2680,10000]){
   const r=R.calculate({category:sqft<2000?'small':sqft<=4000?'average':'luxury',package:'custom',sqft,selected:['photo','mp','video','drone'],videoSeconds:90,images:1});
   const c=quote({sqft,selected:['mp','video','drone'],videoSeconds:90});
-  for(const key of ['photographyMinutes','matterportMinutes','videoMinutes','droneMinutes','knownMinutes'])assert.equal(c[key],r[key],key);
+  assert.equal(c.photographyMinutes,sqft*1.5/1000);assert.equal(r.photographyMinutes,sqft*35/1000);
+  for(const key of ['matterportMinutes','videoMinutes','droneMinutes'])assert.equal(c[key],r[key],key);
+  assert.equal(c.knownMinutes,Math.ceil((c.photographyMinutes+c.matterportMinutes+c.videoMinutes+c.droneMinutes)/5)*5);
   assert.deepEqual(c.additionalCapture,[]);
  }
+ for(const [category,sqft,minutes] of [['small',10000,15],['mid',50000,75],['large',100000,150]]){const q=quote({category,sqft});assert.equal(q.photographyMinutes,minutes);assert.equal(q.knownMinutes,minutes)}
  const c=quote({category:'large',sqft:60000,matterportSqft:2000,selected:['mp','video','drone'],videoSeconds:120,videos:2,aerialImages:100});
- assert.equal(c.photographyMinutes,2100);assert.equal(c.matterportMinutes,18);assert.equal(c.videoMinutes,60);assert.equal(c.droneMinutes,20);assert.equal(c.knownMinutes,2200);
+ assert.equal(c.photographyMinutes,90);assert.equal(c.matterportMinutes,18);assert.equal(c.videoMinutes,60);assert.equal(c.droneMinutes,20);assert.equal(c.knownMinutes,190);
  assert.equal(quote({selected:['video'],videoSeconds:61}).videoMinutes,15.25);
 });
 

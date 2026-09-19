@@ -68,7 +68,10 @@
         "residential",
         "commercial"
       ],
-      "photography_minutes_per_1000_sqft": 35,
+      "photography_minutes_per_1000_sqft": {
+        "residential": 35,
+        "commercial": 1.5
+      },
       "matterport_minutes_per_1000_scanned_sqft": 9,
       "video_minutes_per_finished_minute": 15,
       "video_uses_exact_seconds": true,
