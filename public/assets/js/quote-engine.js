@@ -77,7 +77,7 @@
     quote.lines.forEach(line => lines.push(line.label + ': ' + (line.included ? 'Included' : line.cents === null ? 'Custom quote required' : money(line.cents))));
     lines.push('', 'Estimated total: ' + (quote.pending ? 'Custom quote required; priced items total ' + money(quote.subtotalCents) : money(quote.totalCents)));
     lines.push('Estimated photography / Matterport time: ' + duration(quote.knownMinutes));
-    if (quote.additionalCapture.length) lines.push('Additional capture time to be confirmed for: ' + quote.additionalCapture.map(key => services[key].label).join(', '));
+    if (quote.additionalCapture.length) lines.push('Time to be confirmed for: ' + quote.additionalCapture.map(key => services[key].label).join(', '));
     if (appointment) lines.push('Preferred date: ' + appointment.date, 'Preferred time: ' + appointment.time + ' Central Time', 'Appointment is requested, not confirmed.');
     lines.push('Exclude from mailing lists: ' + details.optOut, '', 'Final property scope and appointment availability are confirmed by SiteSee.');
     return lines.join('\n');
