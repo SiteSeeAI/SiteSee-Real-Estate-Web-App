@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict'),Q=require('../public/assets/js/commercial-quote-engine.js');
-const quote=overrides=>Q.calculate({category:'small',sqft:5000,selected:[],aerialImages:1,videos:1,videoSeconds:60,plans:1,views360:1,licenseType:'term',licenseMonths:6,delivery:'files',platformMonths:6,extendedHosting:false,...overrides});
+const quote=overrides=>Q.calculate({category:'small',sqft:5000,selected:[],aerialImages:1,videos:1,videoSeconds:60,plans:1,views360:1,licenseType:'term',licenseMonths:6,delivery:'files',platformMonths:6,hostingMonths:6,hostingPrepaid:false,...overrides});
 const fee=(q,key)=>q.lines.find(line=>line.key===key)?.cents;
 test('category prices include photography and increase from 10,001 square feet',()=>{
  for(const sqft of [1,1000,4000])assert.equal(quote({sqft}).photographyCents,35000);
@@ -24,7 +24,7 @@ test('independent Matterport coverage controls fee and time without changing pho
  const reduced=quote({category:'mid',sqft:40000,selected:['mp'],matterportSqft:5000});assert.equal(reduced.photographyCents,q.photographyCents);assert.equal(fee(reduced,'mp'),50000);assert.equal(reduced.matterportMinutes,45);
  for(const matterportSqft of [1,1000,1990])assert.equal(fee(quote({selected:['mp'],matterportSqft}),'mp'),19900);
  assert.equal(fee(quote({selected:['mp'],matterportSqft:1991}),'mp'),19910);
- assert.equal(quote({selected:['mp'],extendedHosting:true}).pending,true);
+ assert.equal(quote({selected:['mp'],hostingMonths:18}).pending,false);
 });
 test('360 photos require both Matterport and platform and are excluded from license base',()=>{
  assert.throws(()=>quote({selected:['views360']}),/subscription/);
@@ -64,4 +64,19 @@ test('both markets use the same photography, scan, video and drone timing',()=>{
  const c=quote({category:'large',sqft:60000,matterportSqft:2000,selected:['mp','video','drone'],videoSeconds:120,videos:2,aerialImages:100});
  assert.equal(c.photographyMinutes,2100);assert.equal(c.matterportMinutes,18);assert.equal(c.videoMinutes,60);assert.equal(c.droneMinutes,20);assert.equal(c.knownMinutes,2200);
  assert.equal(quote({selected:['video'],videoSeconds:61}).videoMinutes,15.25);
+});
+
+test('hosting includes six months and prices only the extension at the selected payment rate',()=>{
+ const baseline=quote({selected:['mp']});
+ for(const [hostingMonths,regular,advance] of [[6,0,0],[7,699,499],[12,4194,2994],[18,8388,5988]]){
+  for(const [hostingPrepaid,expected] of [[false,regular],[true,advance]]){
+   const q=quote({selected:['mp'],hostingMonths,hostingPrepaid});assert.equal(q.hostingCents,expected);assert.equal(fee(q,'hosting'),expected);assert.equal(q.totalCents,baseline.totalCents+expected);assert.equal(q.licenseBaseCents,baseline.licenseBaseCents);assert.equal(q.knownMinutes,baseline.knownMinutes);assert.equal(q.hostingExtraMonths,hostingMonths-6);assert.equal(q.pending,false);
+  }
+ }
+ const prepaid=quote({selected:['mp'],hostingMonths:18,hostingPrepaid:true,licenseType:'unlimited',platformMonths:12});assert.equal(prepaid.licenseCents,18750);assert.equal(prepaid.hostingCents,5988);
+ const off=quote({selected:[],hostingMonths:18,hostingPrepaid:true});assert.equal(off.hostingCents,0);assert.equal(off.hostingMonths,0);assert.equal(fee(off,'hosting'),undefined);
+ for(const hostingMonths of [0,5,19,6.5,'',NaN])assert.throws(()=>quote({selected:['mp'],hostingMonths}));
+ assert.throws(()=>quote({selected:['mp'],hostingPrepaid:'true'}));
+ const body=Q.emailBody(prepaid,{first:'Test',last:'Agent',company:'Example',email:'agent@example.com',phone:'5555550100',street:'123 Example Street',city:'Two Rivers',state:'WI',zip:'54241',optOut:'Yes'});
+ for(const part of ['18 months total','12 additional months','$4.99/month paid in advance','$59.88','does not collect payment'])assert.ok(body.includes(part),part);
 });

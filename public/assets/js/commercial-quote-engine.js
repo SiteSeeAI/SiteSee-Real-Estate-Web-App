@@ -47,6 +47,13 @@
     if (chosen.has('views360') && !chosen.has('mp')) throw new Error('Select Matterport before adding individual 360° views.');
     if (chosen.has('views360') && (!Number.isInteger(views) || views < 1 || views > 100)) throw new Error('Choose 1–100 individual 360° photos.');
     if (chosen.has('mp') && (!Number.isInteger(mpSqft) || mpSqft < 1 || mpSqft > sqft)) throw new Error('Matterport coverage must be a whole number from 1 sq ft to the property’s total square footage.');
+    const hostingMonths = Number(input.hostingMonths === undefined ? 6 : input.hostingMonths);
+    const hostingPrepaid = input.hostingPrepaid === true;
+    if (chosen.has('mp') && (!Number.isInteger(hostingMonths) || hostingMonths < 6 || hostingMonths > 18)) throw new Error('Choose a Matterport hosting term from 6 to 18 total months.');
+    if (chosen.has('mp') && input.hostingPrepaid !== undefined && typeof input.hostingPrepaid !== 'boolean') throw new Error('Choose whether to pay for hosting in advance.');
+    const hostingExtraMonths = chosen.has('mp') ? hostingMonths - 6 : 0;
+    const hostingMonthlyCents = hostingPrepaid ? 499 : 699;
+    const hostingCents = hostingExtraMonths * hostingMonthlyCents;
     if (chosen.has('drone') && (!Number.isInteger(images) || images < 1 || images > 100)) throw new Error('Choose 1–100 aerial images.');
     if (chosen.has('video') && (!Number.isInteger(videos) || videos < 1 || videos > 20 || !Number.isInteger(seconds) || seconds < 60 || seconds > 180)) throw new Error('Choose 1–20 videos and a length from 1:00 to 3:00.');
     if (chosen.has('floor') && (!Number.isInteger(plans) || plans < 1 || plans > 20)) throw new Error('Choose 1–20 property layout sets.');
@@ -77,7 +84,11 @@
     const licenseLabel = licenseType === 'unlimited' ? 'Unlimited Media License' : months + '-Month Media License · First Six Months Included';
     lines.push({key:'license',label:licenseLabel,cents:licenseCents,included:licenseCents===0});
     subtotal += licenseCents;
-    if (chosen.has('mp') && input.extendedHosting) reasons.push('Matterport hosting beyond the included six months requires a separate agreement.');
+    if (chosen.has('mp')) {
+      const label = 'Matterport Hosting · ' + hostingMonths + ' Months Total' + (hostingExtraMonths ? ' · ' + hostingExtraMonths + ' Additional at ' + money(hostingMonthlyCents) + '/Month · ' + (hostingPrepaid ? 'Pay In Advance' : 'Billed Monthly') : ' · First Six Included');
+      lines.push({key:'hosting',label,cents:hostingCents,included:hostingExtraMonths===0});
+      subtotal += hostingCents;
+    }
     const pending = reasons.length > 0;
     const matterportMinutes = chosen.has('mp') ? mpSqft * 9 / 1000 : 0;
     const photographyMinutes = sqft * 35 / 1000;
@@ -85,7 +96,7 @@
     const droneMinutes = chosen.has('drone') ? 20 : 0;
     const knownMinutes = Math.ceil((photographyMinutes + matterportMinutes + videoMinutes + droneMinutes) / 5) * 5;
     const unestimated = ['floor','views360'].filter(key => chosen.has(key));
-    return { market:'commercial',sqft,matterportSqft:chosen.has('mp')?mpSqft:0,views360:chosen.has('views360')?views:0,category:cat.label,package:'Individual Commercial Services',packageCents:0,lines,subtotalCents:subtotal,totalCents:pending?null:subtotal,pending,pendingReasons:reasons,licenseEligible,licenseLabel,licenseMonths:licenseType==='term'?months:null,licenseCents,matterportIncludedMonths:chosen.has('mp')?6:0,extendedHosting:chosen.has('mp')&&!!input.extendedHosting,delivery:platform?'platform':delivery,platformMonths:platform?platformMonths:null,photographyCents:fees.photo,licenseBaseCents:mediaBase,photographyMinutes,matterportMinutes,videoMinutes,droneMinutes,knownMinutes,additionalCapture:unestimated,hasOnSite:true,services:[...chosen] };
+    return { market:'commercial',sqft,matterportSqft:chosen.has('mp')?mpSqft:0,views360:chosen.has('views360')?views:0,category:cat.label,package:'Individual Commercial Services',packageCents:0,lines,subtotalCents:subtotal,totalCents:pending?null:subtotal,pending,pendingReasons:reasons,licenseEligible,licenseLabel,licenseMonths:licenseType==='term'?months:null,licenseCents,matterportIncludedMonths:chosen.has('mp')?6:0,extendedHosting:hostingExtraMonths>0,hostingMonths:chosen.has('mp')?hostingMonths:0,hostingExtraMonths,hostingMonthlyCents:chosen.has('mp')?hostingMonthlyCents:0,hostingPrepaid:chosen.has('mp')&&hostingPrepaid,hostingCents,delivery:platform?'platform':delivery,platformMonths:platform?platformMonths:null,photographyCents:fees.photo,licenseBaseCents:mediaBase,photographyMinutes,matterportMinutes,videoMinutes,droneMinutes,knownMinutes,additionalCapture:unestimated,hasOnSite:true,services:[...chosen] };
   }
   function emailBody(quote,details,appointment) {
     const lines=[subject,'','Agent: '+details.first+' '+details.last,'Company: '+details.company,'Email: '+details.email,'Phone: '+details.phone,'Property: '+details.street+', '+details.city+', '+details.state+' '+details.zip,'Photography area: '+quote.sqft.toLocaleString()+' sq ft','Category: '+quote.category];
@@ -96,7 +107,7 @@
     lines.push('Media licensing covers still photography, aerial images and videography. First six months included; extended terms charge only additional months. Matterport, individual 360° views, floor plans, website and platform fees are excluded from the license surcharge.');
     lines.push('','Estimated total: '+(quote.pending?'Custom Quote — priced items '+money(quote.subtotalCents):money(quote.totalCents)));
     quote.pendingReasons.forEach(reason=>lines.push(reason));
-    if (quote.matterportIncludedMonths) lines.push('Matterport hosting: six months included. Media licensing does not extend hosting or grant unlimited Matterport use.');
+    if (quote.matterportIncludedMonths) lines.push('Matterport hosting: six months included. Selected term: '+quote.hostingMonths+' months total; '+quote.hostingExtraMonths+' additional months at '+money(quote.hostingMonthlyCents)+'/month '+(quote.hostingPrepaid?'paid in advance':'billed monthly')+'. Hosting term cost: '+money(quote.hostingCents)+'. The estimate includes the full selected term; this quote does not collect payment. Media licensing and SiteSee platform subscription terms remain separate.');
     lines.push('Estimated Time On Site: '+duration(quote.knownMinutes));
     for (const [key,label] of [['photographyMinutes','Photography'],['matterportMinutes','Matterport'],['videoMinutes','Video'],['droneMinutes','Drone / Aerial']]) if (quote[key]) lines.push(label+': '+duration(quote[key]));
     if(quote.additionalCapture.length)lines.push('Time to confirm for: '+quote.additionalCapture.map(key=>services[key].label).join(', '));

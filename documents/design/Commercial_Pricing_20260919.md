@@ -2,7 +2,7 @@
 
 ## Approved calculator revision
 
-The quote page keeps its existing layout, photography, CSS, address gate, required request fields and residential pricing. Both markets share the updated timing rules below. Commercial client fees below supersede the earlier rate-sheet tiers and pricing proposals. Photography is automatic; no photography checkbox or creative-labor / half-day service is offered.
+The quote page keeps its existing layout, photography, CSS, address gate, required request fields and residential pricing. Both markets retain the approved timing rules below; no timing formula changed in the hosting revision. Commercial client fees below supersede the earlier rate-sheet tiers and pricing proposals. Photography is automatic; no photography checkbox or creative-labor / half-day service is offered.
 
 | Category | Calculator range | Photography fee |
 | --- | --- | --- |
@@ -30,7 +30,7 @@ Extended license: base × 0.30 ÷ 12 × max(0, total months − 6), maximum eigh
 
 The supplied $1,834 media example gives $275.10 for a twelve-month term, $550.20 for eighteen months, or $917 for unlimited use. Video rights are part of the selected media license and no longer force a separate quote.
 
-Matterport hosting includes six months. Neither the media license nor SiteSee platform term extends Matterport hosting. Longer hosting is flagged for a separate agreement; no renewal price is fabricated.
+Matterport hosting includes the first six months. A separate slider and exact number input choose 6–18 total months. Additional months are $6.99 each when billed monthly, or $4.99 each with Pay In Advance checked. The estimate includes the complete selected extension cost as a separate hosting line, outside the media license base. At 12 months total this is $41.94 monthly-billed or $29.94 prepaid; at 18 months total it is $83.88 or $59.88. Six months adds no charge. Hosting controls hide and disable when Matterport is removed, and its hosting charge is removed. This form quotes the term; it does not collect payment. Hosting, media licensing and platform subscription retain separate term controls. The two requested explanatory descriptions below the license options have been removed without changing their calculations.
 
 ## Forms, duration and delivery
 
@@ -40,4 +40,4 @@ Both markets calculate photography as property square feet × 35 / 1,000 minutes
 
 ## Verification
 
-All 18 commercial/residential Node tests pass. DOM interaction checks cover the warehouse increment from 10,001 sq ft, category-specific factory starting fee, independent Matterport slider/input, scan-area limits and clamping, platform position and term, Matterport-and-platform-dependent 360 visibility, disabled state and removal, matching market timing, included package video lengths, fixed drone allowances, commercial video quantities, duplicate website prevention, video duration, included license months, request emails, required contact fields, address re-lock and market isolation. Native browser form primitives are simulated in the DOM harness; rendered browser review remains outstanding. The page retains its CSS and existing layout. This work updates PR #4; it does not deploy to the live server.
+All 19 commercial/residential Node tests pass. DOM interaction checks cover the warehouse increment from 10,001 sq ft, category-specific factory starting fee, independent Matterport slider/input, scan-area limits and clamping, platform position and term, Matterport-and-platform-dependent 360 visibility, disabled state and removal, matching market timing, included package video lengths, fixed drone allowances, commercial video quantities, duplicate website prevention, video duration, included license months, request emails, required contact fields, address re-lock and market isolation. Native browser form primitives are simulated in the DOM harness; rendered browser review remains outstanding. The page retains its CSS and existing layout. This work updates PR #4; it does not deploy to the live server.
