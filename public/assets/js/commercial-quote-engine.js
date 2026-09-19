@@ -15,7 +15,7 @@
     photo: { label: 'Property Photography', detail: 'Interior and exterior photography calculated from property size.' },
     platform: { label: 'SiteSee Platform', detail: '$49 per month per property. Present your media and individual 360° views in a SiteSee Experience.' },
     mp: { label: 'Matterport 3D Experience', detail: '$0.10 per scanned sq ft, $199 minimum. Choose the areas you want scanned. Six months of hosting included.*' },
-    views360: { label: 'Single 360° Views', detail: '$25 per photo, placed as a view within your SiteSee Experience. Requires a SiteSee platform subscription.' },
+    views360: { label: 'Single 360° Views', detail: '$25 per photo, added to your Matterport project as views within a SiteSee Experience. Requires Matterport and a SiteSee platform subscription.' },
     drone: { label: 'Drone / Aerial Photos', detail: '$42 per finished image. Show the building, grounds and access.' },
     video: { label: 'Cinematic B2B Video Walkthrough', detail: 'Choose your finished video length, from 1:00 to 3:00. Minimum investment: $500 per video.' },
     floor: { label: 'Schematic Floor Plans', detail: '$150 per property layout set, delivered in PDF / JPEG.' }
@@ -44,6 +44,7 @@
     const platform = chosen.has('platform'), platformMonths = Number(input.platformMonths === undefined ? 6 : input.platformMonths);
     if (platform && (!Number.isInteger(platformMonths) || platformMonths < 6 || platformMonths > 18)) throw new Error('Choose a platform term from 6 to 18 months.');
     if (chosen.has('views360') && !platform) throw new Error('Single 360° views require a SiteSee platform subscription.');
+    if (chosen.has('views360') && !chosen.has('mp')) throw new Error('Select Matterport before adding individual 360° views.');
     if (chosen.has('views360') && (!Number.isInteger(views) || views < 1 || views > 100)) throw new Error('Choose 1–100 individual 360° photos.');
     if (chosen.has('mp') && (!Number.isInteger(mpSqft) || mpSqft < 1 || mpSqft > sqft)) throw new Error('Matterport coverage must be a whole number from 1 sq ft to the property’s total square footage.');
     if (chosen.has('drone') && (!Number.isInteger(images) || images < 1 || images > 100)) throw new Error('Choose 1–100 aerial images.');
@@ -79,8 +80,12 @@
     if (chosen.has('mp') && input.extendedHosting) reasons.push('Matterport hosting beyond the included six months requires a separate agreement.');
     const pending = reasons.length > 0;
     const matterportMinutes = chosen.has('mp') ? mpSqft * 9 / 1000 : 0;
-    const unestimated = ['photo','drone','video','floor','views360'].filter(key => chosen.has(key));
-    return { market:'commercial',sqft,matterportSqft:chosen.has('mp')?mpSqft:0,views360:chosen.has('views360')?views:0,category:cat.label,package:'Individual Commercial Services',packageCents:0,lines,subtotalCents:subtotal,totalCents:pending?null:subtotal,pending,pendingReasons:reasons,licenseEligible,licenseLabel,licenseMonths:licenseType==='term'?months:null,licenseCents,matterportIncludedMonths:chosen.has('mp')?6:0,extendedHosting:chosen.has('mp')&&!!input.extendedHosting,delivery:platform?'platform':delivery,platformMonths:platform?platformMonths:null,photographyCents:fees.photo,licenseBaseCents:mediaBase,photographyMinutes:0,matterportMinutes,knownMinutes:Math.ceil(matterportMinutes/5)*5,additionalCapture:unestimated,hasOnSite:true,services:[...chosen] };
+    const photographyMinutes = sqft * 35 / 1000;
+    const videoMinutes = chosen.has('video') ? videos * seconds * 15 / 60 : 0;
+    const droneMinutes = chosen.has('drone') ? 20 : 0;
+    const knownMinutes = Math.ceil((photographyMinutes + matterportMinutes + videoMinutes + droneMinutes) / 5) * 5;
+    const unestimated = ['floor','views360'].filter(key => chosen.has(key));
+    return { market:'commercial',sqft,matterportSqft:chosen.has('mp')?mpSqft:0,views360:chosen.has('views360')?views:0,category:cat.label,package:'Individual Commercial Services',packageCents:0,lines,subtotalCents:subtotal,totalCents:pending?null:subtotal,pending,pendingReasons:reasons,licenseEligible,licenseLabel,licenseMonths:licenseType==='term'?months:null,licenseCents,matterportIncludedMonths:chosen.has('mp')?6:0,extendedHosting:chosen.has('mp')&&!!input.extendedHosting,delivery:platform?'platform':delivery,platformMonths:platform?platformMonths:null,photographyCents:fees.photo,licenseBaseCents:mediaBase,photographyMinutes,matterportMinutes,videoMinutes,droneMinutes,knownMinutes,additionalCapture:unestimated,hasOnSite:true,services:[...chosen] };
   }
   function emailBody(quote,details,appointment) {
     const lines=[subject,'','Agent: '+details.first+' '+details.last,'Company: '+details.company,'Email: '+details.email,'Phone: '+details.phone,'Property: '+details.street+', '+details.city+', '+details.state+' '+details.zip,'Photography area: '+quote.sqft.toLocaleString()+' sq ft','Category: '+quote.category];
@@ -92,7 +97,8 @@
     lines.push('','Estimated total: '+(quote.pending?'Custom Quote — priced items '+money(quote.subtotalCents):money(quote.totalCents)));
     quote.pendingReasons.forEach(reason=>lines.push(reason));
     if (quote.matterportIncludedMonths) lines.push('Matterport hosting: six months included. Media licensing does not extend hosting or grant unlimited Matterport use.');
-    lines.push('Known on-site time: '+duration(quote.knownMinutes));
+    lines.push('Estimated Time On Site: '+duration(quote.knownMinutes));
+    for (const [key,label] of [['photographyMinutes','Photography'],['matterportMinutes','Matterport'],['videoMinutes','Video'],['droneMinutes','Drone / Aerial']]) if (quote[key]) lines.push(label+': '+duration(quote[key]));
     if(quote.additionalCapture.length)lines.push('Time to confirm for: '+quote.additionalCapture.map(key=>services[key].label).join(', '));
     if(appointment)lines.push('Preferred date: '+appointment.date,'Preferred time: '+appointment.time+' Central Time','Appointment requested, not confirmed.');
     lines.push('Exclude from mailing lists: '+details.optOut,'','Final property scope, licensing and appointment availability are confirmed by SiteSee.');

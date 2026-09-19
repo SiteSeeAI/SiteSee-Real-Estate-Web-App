@@ -12,7 +12,7 @@
   let unlocked = false, reviewed = false, current = null;
   const quantity = (id,label,min,max,step,initial) => '<div class="quote-size"><label for="c-'+id+'">'+label+'</label><input id="c-'+id+'" name="'+id+'" type="number" min="'+min+'" max="'+max+'" step="'+step+'" value="'+initial+'" required disabled></div>';
   Object.entries(Q.services).filter(([key])=>key!=='photo').forEach(([key,service]) => {
-    const row = document.createElement('div'); row.className='quote-service';
+    const row = document.createElement('div'); row.className='quote-service';row.id='c-row-'+key;row.hidden=key==='views360';
     const top = document.createElement('div'); top.className='quote-row-top';
     const label = document.createElement('label'), check = document.createElement('input');
     check.type='checkbox';check.id='c-service-'+key;check.name='service-'+key;check.checked=selected.has(key);
@@ -69,8 +69,11 @@
   }
   function update() {
     const platform=selected.has('platform');
-    if(!platform)selected.delete('views360');
-    get('service-views360').disabled=!platform;
+    const matterport=selected.has('mp');
+    if(!platform||!matterport)selected.delete('views360');
+    get('row-views360').hidden=!matterport;
+    get('row-views360').style.opacity=platform?'':'0.6';
+    get('service-views360').disabled=!platform||!matterport;
     get('service-views360').setAttribute('aria-describedby','c-detail-views360');
     const website=form.querySelector('[name=delivery][value=website]');
     if(platform&&website.checked){website.checked=false;form.querySelector('[name=delivery][value=files]').checked=true;}
@@ -94,7 +97,7 @@
     const state=inputState();
     Object.entries(Q.services).filter(([key])=>key!=='photo').forEach(([key,service])=>{
       get('service-'+key).checked=selected.has(key);
-      try {const alone=Q.calculate({...state,selected:key==='views360'?['platform','views360']:[key],delivery:'files',licenseType:'term',licenseMonths:6,extendedHosting:false});const line=alone.lines.find(line=>line.key===key);get('price-'+key).textContent=key==='platform'?'$49 / month':(line.from?'From ':'')+Q.money(line.cents);}
+      try {const alone=Q.calculate({...state,selected:key==='views360'?['platform','mp','views360']:[key],delivery:'files',licenseType:'term',licenseMonths:6,extendedHosting:false});const line=alone.lines.find(line=>line.key===key);get('price-'+key).textContent=key==='platform'?'$49 / month':(line.from?'From ':'')+Q.money(line.cents);}
       catch(_){get('price-'+key).textContent='—';}
     });
     get('quote-address').textContent=addressText();get('summary-property').textContent=addressText()+' · '+Number(state.sqft).toLocaleString()+' sq ft';
@@ -109,10 +112,10 @@
       get('custom-quote-note').hidden=!current.pending;get('custom-quote-note').textContent=current.pendingReasons.join(' ');
       get('summary-lines').replaceChildren();
       current.lines.forEach(line=>{const li=document.createElement('li'),a=document.createElement('span'),b=document.createElement('span');a.textContent=line.label;b.textContent=line.included?'Included':line.cents===null?'To Quote':(line.from?'From ':'')+Q.money(line.cents);li.append(a,b);get('summary-lines').append(li);});
-      get('summary-duration').textContent=current.knownMinutes?'About '+Q.duration(current.knownMinutes)+(current.additionalCapture.length?' for timed services':''):current.hasOnSite?'Confirmed With Your Appointment':'No On-Site Visit Required';
-      const parts=[];if(current.matterportMinutes)parts.push('Matterport: '+Q.duration(current.matterportMinutes));get('summary-breakdown').textContent=parts.join(' · ');
+      get('summary-duration').textContent=current.knownMinutes?'About '+Q.duration(current.knownMinutes):current.hasOnSite?'Confirmed With Your Appointment':'No On-Site Visit Required';
+      const parts=[];for(const [key,label] of [['photographyMinutes','Photography'],['matterportMinutes','Matterport'],['videoMinutes','Video'],['droneMinutes','Drone / Aerial']])if(current[key])parts.push(label+': '+Q.duration(current[key]));get('summary-breakdown').textContent=parts.join(' · ');
       get('estimate-inline-time').textContent='Time on site: '+get('summary-duration').textContent;
-      get('summary-time-note').textContent=current.additionalCapture.length?'Time for '+current.additionalCapture.map(key=>Q.services[key].label).join(', ')+' will be confirmed. Building layout, escorts and access affect the schedule.':'Time is approximate. Building layout, escorts and access affect the schedule.';
+      get('summary-time-note').textContent=current.additionalCapture.length?'Time for '+current.additionalCapture.map(key=>Q.services[key].label).join(', ')+' is not included above and will be confirmed with your appointment. Layout and access can affect time on site.':'Allow for property layout, access and readiness. Times are approximate and rounded up to five minutes.';
       get('date-label').textContent=current.hasOnSite?'Preferred Shoot Date (Required For A Request)':'Preferred Completion Date (Required For A Request)';get('time-label').textContent=current.hasOnSite?'Preferred Start Time · Central Time':'Preferred Contact Time · Central Time';
     }catch(error){current=null;get('photography-price').textContent='—';get('license-calculation').textContent='';get('estimate-error').hidden=false;get('estimate-error').textContent=error.message;get('summary-total').textContent='Complete Your Selection';get('estimate-inline-total').textContent='—';get('summary-subtotal').hidden=true;get('summary-lines').replaceChildren();get('summary-duration').textContent='—';get('summary-breakdown').textContent='';get('summary-time-note').textContent='';get('estimate-inline-time').textContent='';get('custom-quote-note').hidden=true;get('review-estimate').disabled=true;}
   }

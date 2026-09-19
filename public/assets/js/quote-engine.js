@@ -59,8 +59,11 @@
     const photographyMinutes = chosen.has('photo') ? sqft * 35 / 1000 : 0;
     // 150 scans * 30 seconds + 15 minutes at 10,000 sq ft = 90 minutes.
     const matterportMinutes = chosen.has('mp') ? sqft * 9 / 1000 : 0;
-    const additionalCapture = ['drone', 'zillow', 'video', 'floor'].filter(key => chosen.has(key));
-    return { sqft, category: cat.label, package: pack.label, packageCents: pack.cents, lines, subtotalCents: subtotal, totalCents: pending ? null : subtotal, pending, photographyMinutes, matterportMinutes, knownMinutes: Math.ceil((photographyMinutes + matterportMinutes) / 5) * 5, additionalCapture, hasOnSite: photographyMinutes > 0 || matterportMinutes > 0 || additionalCapture.length > 0 };
+    const videoMinutes = chosen.has('video') ? (pack.includes.includes('video') ? pack.minutes * 15 : videoSeconds * 15 / 60) : 0;
+    const droneMinutes = chosen.has('drone') ? 20 : 0;
+    const additionalCapture = ['zillow', 'floor'].filter(key => chosen.has(key));
+    const knownMinutes = Math.ceil((photographyMinutes + matterportMinutes + videoMinutes + droneMinutes) / 5) * 5;
+    return { sqft, category: cat.label, package: pack.label, packageCents: pack.cents, lines, subtotalCents: subtotal, totalCents: pending ? null : subtotal, pending, photographyMinutes, matterportMinutes, videoMinutes, droneMinutes, knownMinutes, additionalCapture, hasOnSite: knownMinutes > 0 || additionalCapture.length > 0 };
   }
   function videoDuration(seconds) {
     return Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0');
@@ -76,7 +79,8 @@
     if (quote.packageCents) lines.push('Package: ' + money(quote.packageCents));
     quote.lines.forEach(line => lines.push(line.label + ': ' + (line.included ? 'Included' : line.cents === null ? 'Custom quote required' : money(line.cents))));
     lines.push('', 'Estimated total: ' + (quote.pending ? 'Custom quote required; priced items total ' + money(quote.subtotalCents) : money(quote.totalCents)));
-    lines.push('Estimated photography / Matterport time: ' + duration(quote.knownMinutes));
+    lines.push('Estimated Time On Site: ' + duration(quote.knownMinutes));
+    for (const [key,label] of [['photographyMinutes','Photography'],['matterportMinutes','Matterport'],['videoMinutes','Video'],['droneMinutes','Drone / Aerial']]) if (quote[key]) lines.push(label + ': ' + duration(quote[key]));
     if (quote.additionalCapture.length) lines.push('Time to be confirmed for: ' + quote.additionalCapture.map(key => services[key].label).join(', '));
     if (appointment) lines.push('Preferred date: ' + appointment.date, 'Preferred time: ' + appointment.time + ' Central Time', 'Appointment is requested, not confirmed.');
     lines.push('Exclude from mailing lists: ' + details.optOut, '', 'Final property scope and appointment availability are confirmed by SiteSee.');

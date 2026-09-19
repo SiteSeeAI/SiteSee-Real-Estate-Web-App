@@ -62,7 +62,30 @@
     "subject": "Residential SiteSee Real Estate Quote",
     "subject_user_editable": false,
     "delivery": "mailto draft in visitor email app; self-copy or sales@sitesee.ai request",
-    "automatic_delivery": false
+    "automatic_delivery": false,
+    "on_site_timing": {
+      "applies_to": [
+        "residential",
+        "commercial"
+      ],
+      "photography_minutes_per_1000_sqft": 35,
+      "matterport_minutes_per_1000_scanned_sqft": 9,
+      "video_minutes_per_finished_minute": 15,
+      "video_uses_exact_seconds": true,
+      "commercial_video_quantity_multiplies_time": true,
+      "residential_package_video_minutes": {
+        "gold": 15,
+        "platinum": 30
+      },
+      "drone_minutes_per_visit": 20,
+      "drone_quantity_multiplies_time": false,
+      "round_total_up_to_minutes": 5,
+      "unestimated_services": [
+        "zillow",
+        "floor",
+        "views360"
+      ]
+    }
   },
   "contact": {
     "preferred_communication": {
@@ -115,9 +138,12 @@
     "matterport_area": "Separate number input and slider, 1 sq ft through total property size; does not alter photography area",
     "single_360_photos": {
       "per_photo": 25,
-      "requires": "SiteSee platform selection",
-      "scan_required": false,
-      "removed_when_platform_deselected": true
+      "requires": "Matterport and SiteSee platform selections",
+      "scan_required": true,
+      "removed_when_platform_deselected": true,
+      "hidden_until": "Matterport selected",
+      "disabled_until": "Both Matterport and SiteSee platform selected",
+      "removed_when_matterport_deselected": true
     },
     "video": {
       "per_second": 8.333,

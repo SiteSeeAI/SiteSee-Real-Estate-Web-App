@@ -101,10 +101,12 @@
       const appendLine = (label, cost) => { const li = document.createElement('li'), a = document.createElement('span'), b = document.createElement('span'); a.textContent = label; b.textContent = cost; li.append(a,b); get('summary-lines').append(li); };
       if (current.packageCents) appendLine(current.package + ' Package', Q.money(current.packageCents));
       current.lines.forEach(line => appendLine(line.label, line.included ? 'Included' : line.cents === null ? 'To Confirm' : Q.money(line.cents)));
-      get('summary-duration').textContent = current.knownMinutes ? 'About ' + Q.duration(current.knownMinutes) + (current.additionalCapture.length ? ' for photography / Matterport' : '') : current.additionalCapture.length ? 'Confirmed With Your Appointment' : 'No On-Site Visit Required';
+      get('summary-duration').textContent = current.knownMinutes ? 'About ' + Q.duration(current.knownMinutes) : current.additionalCapture.length ? 'Confirmed With Your Appointment' : 'No On-Site Visit Required';
       const parts = [];
       if (current.photographyMinutes) parts.push('Photography: ' + Q.duration(current.photographyMinutes));
       if (current.matterportMinutes) parts.push('Matterport: ' + Q.duration(current.matterportMinutes));
+      if (current.videoMinutes) parts.push('Video: ' + Q.duration(current.videoMinutes));
+      if (current.droneMinutes) parts.push('Drone / Aerial: ' + Q.duration(current.droneMinutes));
       get('summary-breakdown').textContent = parts.join(' · ');
       get('estimate-inline-time').textContent = 'Time on site: ' + get('summary-duration').textContent;
       get('summary-time-note').textContent = current.additionalCapture.length ? 'Time for ' + current.additionalCapture.map(k => Q.services[k].label).join(', ') + ' is not included above and will be confirmed with your appointment. Layout and access can affect time on site.' : 'Allow for property layout, access and readiness. Times are approximate and rounded up to five minutes.';

@@ -45,7 +45,9 @@ test('on-site timing adds capture only and does not duplicate package services',
   assert.equal(mixed.knownMinutes,45);assert.deepEqual(mixed.additionalCapture,[]);
   assert.equal(quote({selected:['website','twilight']}).hasOnSite,false);
   const bundled=quote({category:'luxury',sqft:10000,package:'platinum',selected:['photo','mp']});
-  assert.equal(bundled.knownMinutes,440);assert.deepEqual(bundled.additionalCapture,['drone','video','floor']);
+  assert.equal(bundled.knownMinutes,490);assert.deepEqual(bundled.additionalCapture,['floor']);
+  assert.equal(bundled.videoMinutes,30);assert.equal(bundled.droneMinutes,20);
+  assert.equal(quote({package:'gold',selected:['video'],videoSeconds:180}).videoMinutes,15);
 });
 test('invalid selections cannot yield a usable total', () => {
   for(const input of [{sqft:1999},{sqft:4001},{sqft:2680.5},{sqft:NaN},{selected:[]},{selected:['unknown']},{selected:['video'],videoSeconds:59},{selected:['video'],videoSeconds:181},{selected:['video'],videoSeconds:61.5},{selected:['video'],videoSeconds:NaN},{selected:['twilight'],images:0},{selected:['twilight'],images:1.5},{selected:['twilight'],images:101}]) assert.throws(()=>quote(input));
@@ -53,5 +55,14 @@ test('invalid selections cannot yield a usable total', () => {
 test('quote email contains exact subject, address, prices and requested appointment', () => {
   const text=Q.emailBody(quote({package:'gold',selected:['mp']}),{first:'Test',last:'Agent',company:'Example Realty',email:'test@example.com',phone:'5555550100',street:'123 Example Street',city:'Two Rivers',state:'WI',zip:'54241',optOut:'Yes'},{date:'2027-01-20',time:'10:00'});
   assert.ok(text.startsWith('Residential SiteSee Real Estate Quote\n'));
+  assert.ok(text.includes('Estimated Time On Site:'));assert.ok(text.includes('Video: 15 min'));
   for(const value of ['123 Example Street, Two Rivers, WI 54241','$659.80','Gold','Included','2027-01-20','10:00 Central Time','not confirmed','Exclude from mailing lists: Yes'])assert.ok(text.includes(value));
+});
+
+test('video time follows finished seconds and drone time is counted once', () => {
+  for (const [videoSeconds, minutes] of [[60,15],[61,15.25],[90,22.5],[180,45]]) {
+    const q=quote({selected:['video'],videoSeconds});assert.equal(q.videoMinutes,minutes);assert.equal(q.knownMinutes,Math.ceil(minutes/5)*5);assert.deepEqual(q.additionalCapture,[]);
+  }
+  const q=quote({category:'small',sqft:1000,selected:['photo','mp','video','drone','drone'],videoSeconds:60});
+  assert.equal(q.knownMinutes,80);assert.equal(q.droneMinutes,20);assert.equal(q.photographyMinutes,35);assert.equal(q.matterportMinutes,9);assert.deepEqual(q.additionalCapture,[]);
 });
