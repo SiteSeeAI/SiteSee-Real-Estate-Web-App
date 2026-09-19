@@ -36,7 +36,8 @@
       if (changeHash) history.replaceState(null, '', '#' + tab.getAttribute('aria-controls'));
     };
     const fromHash = () => {
-      const chosen = tabs.find(tab => '#' + tab.getAttribute('aria-controls') === location.hash);
+      const hash = ['#residential', '#commercial'].includes(location.hash) ? '#photography' : location.hash;
+      const chosen = tabs.find(tab => '#' + tab.getAttribute('aria-controls') === hash);
       if (chosen) selectTab(chosen, false);
     };
     tabs.forEach((tab, index) => {
@@ -123,3 +124,4 @@
     submit.disabled = false;
   });
 })();
+

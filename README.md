@@ -2,7 +2,7 @@
 
 Initial website design, 2026 09 13.
 
-Six responsive HTML pages implement the approved SiteSee Real Estate structure, with the existing SiteSee logo, Poppins and Inter, yellow accents, a shared header and footer, alternating content sections, and intentional image placeholders.
+Eight responsive HTML pages implement the approved SiteSee Real Estate structure, with the existing SiteSee logo, Poppins and Inter, yellow accents, a shared header and footer, alternating content sections, and property photography. Platform-specific graphics remain for a later pass.
 
 ## View the design
 
@@ -26,6 +26,8 @@ Edit the HTML pages directly. Styling is in `public/assets/css/site.css`; menu, 
 | Platform | [public/platform.html](public/platform.html) |
 | Services Provided | [public/services-provided.html](public/services-provided.html) |
 | Our Work | [public/our-work.html](public/our-work.html) |
+| Residential Photography | [public/residential-photography.html](public/residential-photography.html) |
+| Commercial Photography | [public/commercial-photography.html](public/commercial-photography.html) |
 | Contact | [public/contact.html](public/contact.html) |
 | Request Pricing Access | [public/request-pricing-access.html](public/request-pricing-access.html) |
 
@@ -66,3 +68,10 @@ This commit begins the design stage. It does not deploy the site, configure a su
 Before launch, supply approved imagery and experience URLs; implement and verify server-side submission handling, opt-out persistence and response delivery; implement the independent protected pricing workflow; confirm the production host and subdomain; and complete browser review at desktop and mobile widths. Serve only `public/`, then deliberately remove design-preview messages and indexing restrictions when the operational site is ready.
 
 Validation and the remaining review limitation are recorded in [documents/design/Initial_Design_Record_20260913.md](documents/design/Initial_Design_Record_20260913.md).
+
+
+## Photography galleries and image placement — 2026 09 19
+
+Our Work links to separate Residential Photography and Commercial Photography pages, containing all 50 residential and 35 commercial images. Galleries display images only, without captions, lightboxes or image click actions, with a contained hover zoom. Selected photography now appears on Home, Platform, Services Provided and Our Work. See [the photography record](documents/design/Photography_Galleries_20260919.md) for placements, deferred graphics and validation.
+
+Review `public/our-work.html`, follow both gallery links, then review Home, Platform and Services Provided on desktop and mobile. This change does not deploy the website.
