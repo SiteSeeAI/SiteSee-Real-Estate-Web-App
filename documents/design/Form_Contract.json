@@ -96,29 +96,46 @@
     "subject": "Commercial SiteSee Real Estate Quote",
     "license_default_months": 6,
     "license_max_months": 18,
-    "extended_term_premium": "Still and aerial fees * 0.30 / 12 * chosen months; applies to all 6\u201318 month terms",
+    "extended_term_premium": "(photography + aerial + video) * 0.30 / 12 * max(0, total months - 6); first six included, 18 months total maximum",
     "unlimited_photography_surcharge": 0.5,
-    "unlimited_basis": "Property photography and aerial image fees only; exclude Matterport and non-photography services",
-    "mixed_video_unlimited_license": "Custom quote",
+    "unlimited_basis": "Property photography, aerial images and video only; exclude Matterport, individual 360 views, platform, website and floor plans",
+    "mixed_video_unlimited_license": "Included in the 50% media licensing base",
     "matterport_rate_per_sqft": 0.1,
     "matterport_minimum": 199,
     "matterport_hosting_included_months": 6,
     "matterport_extended_hosting": "Separate quote, not automatically extended by the media license",
     "automatic_delivery": false,
-    "photography": "Automatically included; small max(350, sqft * .075); above 10000: 750 + (sqft - 10000) * .00875",
-    "factory_rate_status": "Proposed continuation of warehouse slope beyond 50000",
+    "photography": "Automatically included by selected category: small max(350, sqft * .075); mid 750 + (sqft - 10000) * .05; large 2500 + (sqft - 50000) * .05",
+    "factory_rate_status": "Approved starting fee $2500 at 50000 sq ft and $0.05 per additional sq ft",
     "aerial_default_images": 1,
     "delivery_options": [
       "files",
-      "website",
-      "platform"
+      "website"
     ],
-    "platform_proposal": {
-      "setup": 185,
-      "monthly": 25,
+    "matterport_area": "Separate number input and slider, 1 sq ft through total property size; does not alter photography area",
+    "single_360_photos": {
+      "per_photo": 25,
+      "requires": "SiteSee platform selection",
+      "scan_required": false,
+      "removed_when_platform_deselected": true
+    },
+    "video": {
+      "per_second": 8.333,
+      "minimum": 500,
+      "min_seconds": 60,
+      "max_seconds": 180,
+      "show_per_second_rate": false
+    },
+    "independent_website": 175,
+    "platform": {
+      "monthly": 49,
+      "setup": 0,
       "default_months": 6,
+      "minimum_months": 6,
       "maximum_months": 18,
-      "excludes": "Photography licensing, Matterport capture and hosting",
+      "position": "Services & Additions, immediately above Matterport",
+      "estimate": "Full selected term, separately itemized",
+      "excludes": "Media licensing, Matterport capture and hosting",
       "website_duplicate": false
     }
   }
