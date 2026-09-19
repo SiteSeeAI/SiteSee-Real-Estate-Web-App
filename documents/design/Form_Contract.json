@@ -1,48 +1,68 @@
 {
-  "date": "2026 09 13",
-  "stage": "design_preview",
+  "date": "2026 09 19",
+  "stage": "pricing_page_review",
   "pricing": {
-    "fields": [
+    "page": "public/pricing.html",
+    "legacy_page": "public/request-pricing-access.html",
+    "address_gate": {
+      "fields": [
+        "street",
+        "city",
+        "state",
+        "zip"
+      ],
+      "all_required": true,
+      "behavior": "Explicit Continue button; invalidated address hides estimator and request fields."
+    },
+    "agent_fields": [
       {
-        "name": "first-name",
-        "label": "First Name",
-        "type": "text",
-        "required": false
+        "name": "first",
+        "required": true
       },
       {
-        "name": "last-name",
-        "label": "Last Name",
-        "type": "text",
-        "required": false
+        "name": "last",
+        "required": true
       },
       {
-        "name": "company-name",
-        "label": "Company Name",
-        "type": "text",
+        "name": "company",
         "required": true
       },
       {
         "name": "email",
-        "label": "Email Address",
-        "type": "email",
-        "required": false
+        "required": true
       },
       {
         "name": "phone",
-        "label": "Phone Number",
-        "type": "tel",
-        "required": false
+        "required": true
+      },
+      {
+        "name": "optOut",
+        "required": true
       }
     ],
     "mailing_list_opt_out": {
-      "name": "mailing-list-opt-out",
-      "label": "Please exclude me from all mailing lists.",
-      "type": "checkbox",
-      "required": false,
-      "initially_checked": false
+      "name": "optOut",
+      "type": "select",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "required": true,
+      "default": null
     },
-    "subject": "Real Estate Div. - Pricing request.",
-    "subject_user_editable": false
+    "appointment": {
+      "fields": [
+        "date",
+        "time"
+      ],
+      "required_for": "appointment request",
+      "timezone": "America/Chicago",
+      "confirmed": false
+    },
+    "subject": "Residential SiteSee Real Estate Quote",
+    "subject_user_editable": false,
+    "delivery": "mailto draft in visitor email app; self-copy or sales@sitesee.ai request",
+    "automatic_delivery": false
   },
   "contact": {
     "preferred_communication": {

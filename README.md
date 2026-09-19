@@ -29,7 +29,7 @@ Edit the HTML pages directly. Styling is in `public/assets/css/site.css`; menu, 
 | Residential Photography | [public/residential-photography.html](public/residential-photography.html) |
 | Commercial Photography | [public/commercial-photography.html](public/commercial-photography.html) |
 | Contact | [public/contact.html](public/contact.html) |
-| Request Pricing Access | [public/request-pricing-access.html](public/request-pricing-access.html) |
+| Residential Pricing & Quote | [public/pricing.html](public/pricing.html) |
 
 ## Real estate platform features
 
@@ -49,23 +49,23 @@ See [Real_Estate_Approved_Editorial_Revisions_20260917.md](documents/design/Real
 
 ## Current behavior
 
-The pricing form has exactly five contact fields: First Name, Last Name, Company Name, Email Address and Phone Number. Only Company Name is required. An optional, initially unchecked checkbox reads “Please exclude me from all mailing lists.” Its state is included in the request preview. The subject is exactly `Real Estate Div. - Pricing request.`
+The residential pricing page is now `public/pricing.html`. All address and agent-detail fields are required. The estimator appears after a complete property address is entered and the agent selects Continue. The page supports live square-footage estimates, media bundles with duplicate-service locks, video-duration pricing, twilight quantities, estimated capture time and preferred appointment requests. Both date and time are required for appointment requests. The original pricing-access URL redirects to this page.
 
-Contact includes one optional Preferred Communication radio group: Call, Text, Email. Discovery Call has been removed. This initial Contact layout uses the same five contact fields plus a project message; no additional Contact validation requirements have been approved.
+The page prepares email drafts to the agent or sales@sitesee.ai with subject `Residential SiteSee Real Estate Quote`. The visitor must press Send in their own email app. Copy Quote provides a fallback. No automatic email delivery or booking confirmation is claimed. The separate Contact form remains a design preview.
 
-Both forms validate and display a clearly labeled request preview. They do not send email, post submissions, store personal data or grant pricing access. Submit buttons remain disabled until the preview handler is installed. No-JavaScript users can still navigate and read the site. The portfolio includes keyboard-accessible Photography and Virtual Experiences tabs.
+Read [Residential_Pricing_20260919.md](documents/design/Residential_Pricing_20260919.md) for formulas, required fields, email behavior, time estimates and validation. Large/Luxury standalone photography endpoint prices and automatic email delivery remain open launch items. Run `node --test tests/quote-engine.test.cjs` to verify calculator behavior.
 
 ## Documents
 
 All recovered website documents are indexed in [documents/README.md](documents/README.md), including the current brief, updated Word hierarchy, customer rate sheet, supplied pricing sources and imagery guidance. The supplied source files are preserved, and the design brief tracks subsequent revisions. A checksum manifest records the six retained project/source documents.
 
-The website root is **public/**. Documents are stored separately and are not linked from public pages. The design does not contain a public copy of the protected rate sheet or an imitation access gate.
+The website root is **public/**. Documents are stored separately and are not linked from public pages. The source rate sheet remains outside public/. The approved residential rates are now in the customer-facing calculator; the property-address step is a form workflow, not an access-control mechanism.
 
 ## Production status
 
 This commit begins the design stage. It does not deploy the site, configure a subdomain, modify the corporate website or activate submission handling. `noindex` and `robots.txt` discourage indexing during design review; they are not access controls.
 
-Before launch, supply approved imagery and experience URLs; implement and verify server-side submission handling, opt-out persistence and response delivery; implement the independent protected pricing workflow; confirm the production host and subdomain; and complete browser review at desktop and mobile widths. Serve only `public/`, then deliberately remove design-preview messages and indexing restrictions when the operational site is ready.
+Before launch, supply approved imagery and experience URLs; implement and verify server-side submission handling, opt-out persistence and response delivery; finalize Large/Luxury photography endpoints; confirm the production host and subdomain; and complete browser review at desktop and mobile widths. Serve only `public/`, then deliberately remove design-preview messages and indexing restrictions when the operational site is ready.
 
 Validation and the remaining review limitation are recorded in [documents/design/Initial_Design_Record_20260913.md](documents/design/Initial_Design_Record_20260913.md).
 
