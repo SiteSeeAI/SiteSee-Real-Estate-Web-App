@@ -44,6 +44,7 @@
     if (chosen.has('twilight') && (!Number.isSafeInteger(images) || images < 1 || images > 100)) throw new Error('Enter a whole number from 1 to 100 twilight images.');
     const photo = input.category === 'small' ? Math.max(15000, Math.round(sqft * 9.52))
       : input.category === 'average' ? Math.round(24500 + (sqft - 2000) * 1.75)
+      : input.category === 'large' ? Math.round(35000 + (sqft - 4000) * 7.5)
       : input.category === 'luxury' ? Math.round(42500 + (sqft - 5000) * 11.76)
       : null;
     const rates = { photo, website: 6500, drone: 12000, zillow: 9500, video: Math.round(22500 + (videoSeconds - 60) * 12500 / 120), floor: 5000, twilight: images * 3500, mp: Math.max(6900, sqft * 6) };

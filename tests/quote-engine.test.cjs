@@ -32,12 +32,15 @@ test('all packages suppress duplicate charges for included services', () => {
   assert.equal(quote({package:'gold',selected:['mp','photo','video']}).totalCents,65980);
   assert.equal(quote({package:'platinum',selected:['zillow']}).totalCents,109000);
 });
-test('Large photography remains pending until its complete rate is recovered', () => {
-  for(const [category,sqft] of [['large',4000],['large',4500],['large',5000]]) {
-    const result=quote({category,sqft,selected:['photo','mp']});
-    assert.equal(result.totalCents,null);assert.equal(result.pending,true);
-    assert.equal(result.subtotalCents,sqft*6);
+test('Large photography scales from $350 to the proposed $425 upper endpoint', () => {
+  for(const [sqft,cents] of [[4000,35000],[4001,35008],[4500,38750],[4999,42493],[5000,42500]]) {
+    const result=quote({category:'large',sqft,selected:['photo','mp']});
+    assert.equal(fee(result,'photo'),cents);assert.equal(result.pending,false);
+    assert.equal(result.totalCents,cents+sqft*6);
+    assert.ok(result.lines.find(line=>line.key==='photo').label.includes('50–60 photos'));
   }
+  for(const [name,pack] of Object.entries(Q.packages).filter(([name])=>name!=='custom'))
+    assert.equal(quote({category:'large',sqft:4500,package:name,selected:['photo']}).totalCents,pack.cents);
 });
 test('Luxury starts at $425 and adds $0.1176 per square foot above 5000', () => {
   for (const [sqft,cents] of [[5000,42500],[5001,42512],[6000,54260],[7500,71900],[9999,101288],[10000,101300]]) {

@@ -63,7 +63,7 @@ The shared pricing page is `public/pricing.html`. All address and agent-detail f
 
 The page prepares email drafts to the agent or sales@sitesee.ai with subject `Residential SiteSee Real Estate Quote` or `Commercial SiteSee Real Estate Quote`, matching the selected market. The visitor must press Send in their own email app. Copy Quote provides a fallback. No automatic email delivery or booking confirmation is claimed. The separate Contact form remains a design preview.
 
-Residential photography is always selected and disabled. The square-footage slider and number field are disabled for Silver, Gold and Platinum and enabled for Individual Services. Residential video retains its duration slider. Luxury photography uses $425 + (sqft − 5,000) × $0.1176. Read [Residential_Pricing_20260919.md](documents/design/Residential_Pricing_20260919.md) for formulas, required fields, email behavior, time estimates and validation. The Large Home standalone photography formula and automatic email delivery remain open launch items. Run `node --test tests/quote-engine.test.cjs` to verify calculator behavior.
+Residential photography is always selected and disabled. The square-footage slider and number field are disabled for Silver, Gold and Platinum and enabled for Individual Services. Residential video retains its duration slider. Luxury photography uses $425 + (sqft − 5,000) × $0.1176. Read [Residential_Pricing_20260919.md](documents/design/Residential_Pricing_20260919.md) for formulas, required fields, email behavior, time estimates and validation. Large Home uses the proposed $350-to-$425 scale across 4,000–5,000 sq ft ($0.075 per additional sq ft); its upper endpoint still needs confirmation. Automatic email delivery remains an open launch item. Run `node --test tests/quote-engine.test.cjs` to verify calculator behavior.
 
 ## Documents
 
@@ -75,7 +75,7 @@ The website root is **public/**. Documents are stored separately and are not lin
 
 This commit begins the design stage. It does not deploy the site, configure a subdomain, modify the corporate website or activate submission handling. `noindex` and `robots.txt` discourage indexing during design review; they are not access controls.
 
-Before launch, supply approved imagery and experience URLs; implement and verify server-side submission handling, opt-out persistence and response delivery; resolve the Large Home photography formula; confirm the production host and subdomain; and complete browser review at desktop and mobile widths. Serve only `public/`, then deliberately remove design-preview messages and indexing restrictions when the operational site is ready.
+Before launch, supply approved imagery and experience URLs; implement and verify server-side submission handling, opt-out persistence and response delivery; confirm the proposed Large Home upper endpoint; confirm the production host and subdomain; and complete browser review at desktop and mobile widths. Serve only `public/`, then deliberately remove design-preview messages and indexing restrictions when the operational site is ready.
 
 Validation and the remaining review limitation are recorded in [documents/design/Initial_Design_Record_20260913.md](documents/design/Initial_Design_Record_20260913.md).
 
