@@ -95,7 +95,17 @@
     "range_sliders": [
       "residential property size",
       "residential video duration"
-    ]
+    ],
+    "luxury_photography": {
+      "min_sqft": 5000,
+      "max_sqft": 10000,
+      "starting_price": 425,
+      "per_additional_sqft": 0.1176,
+      "formula": "425 + (sqft - 5000) * 0.1176",
+      "round_to_cents_after_calculation": true
+    },
+    "large_photography_status": "Starting price $350 recovered; complete formula not recovered; remains Custom Quote",
+    "temporary_repair_workflow": "Until pricing is fixed, start each new fix on a new branch and preserve earlier repair branches"
   },
   "contact": {
     "preferred_communication": {

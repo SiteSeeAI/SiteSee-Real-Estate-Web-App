@@ -32,11 +32,23 @@ test('all packages suppress duplicate charges for included services', () => {
   assert.equal(quote({package:'gold',selected:['mp','photo','video']}).totalCents,65980);
   assert.equal(quote({package:'platinum',selected:['zillow']}).totalCents,109000);
 });
-test('unapproved Large and Luxury photography never becomes a fabricated price', () => {
-  for(const [category,sqft] of [['large',4500],['luxury',7500]]) {
+test('Large photography remains pending until its complete rate is recovered', () => {
+  for(const [category,sqft] of [['large',4000],['large',4500],['large',5000]]) {
     const result=quote({category,sqft,selected:['photo','mp']});
     assert.equal(result.totalCents,null);assert.equal(result.pending,true);
     assert.equal(result.subtotalCents,sqft*6);
+  }
+});
+test('Luxury starts at $425 and adds $0.1176 per square foot above 5000', () => {
+  for (const [sqft,cents] of [[5000,42500],[5001,42512],[6000,54260],[7500,71900],[9999,101288],[10000,101300]]) {
+    const q=quote({category:'luxury',sqft});
+    assert.equal(q.pending,false);assert.equal(fee(q,'photo'),cents);assert.equal(q.totalCents,cents);
+  }
+  const withScan=quote({category:'luxury',sqft:7500,selected:['photo','mp']});
+  assert.equal(withScan.totalCents,116900);assert.equal(fee(withScan,'mp'),45000);
+  for(const [packageName,cents] of [['silver',22000],['gold',49900],['platinum',99500]]) {
+    const q=quote({category:'luxury',sqft:7500,package:packageName});
+    assert.equal(q.totalCents,cents);assert.equal(fee(q,'photo'),0);
   }
 });
 test('on-site timing adds capture only and does not duplicate package services', () => {

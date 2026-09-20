@@ -12,7 +12,7 @@ The page uses the existing SiteSee logo, Poppins and Inter, yellow accents and s
 
 ## Prices
 
-Small photography retains the approved calculator: max($150, area × $0.0952), below 2,000 sq ft. Average photography is $245 + (area − 2,000) × $0.0175 across 2,000–4,000 sq ft. Exact shared category boundaries remain selectable in the adjacent category, as in the approved preview; this can create price steps. Large and Luxury standalone photography remains a custom quote because their endpoint prices have not been finalized. No missing rates are invented.
+Small photography retains the approved calculator: max($150, area × $0.0952), below 2,000 sq ft. Average photography is $245 + (area − 2,000) × $0.0175 across 2,000–4,000 sq ft. Exact shared category boundaries remain selectable in the adjacent category, as in the approved preview; this can create price steps. Luxury photography is $425 + (area − 5,000) × $0.1176 across 5,000–10,000 sq ft, using the recovered starting fee and per-foot rate. The rate applies above 5,000 so the starting price remains $425. Large Home remains a custom quote because its complete rate could not be recovered; the available history gives only its $350 starting price.
 
 Matterport is max($69, area × $0.06). Website $65, drone $120, Zillow $95, 2D floor plan $50, virtual twilight $35 per image. Video is $225 + (seconds − 60) × $125 / 120 from 60 to 180 seconds. The video slider advances one second; paired minutes/seconds inputs accept exact durations and stay synchronized with it. Displayed prices round to cents only after calculation. The $225/$350 endpoints differ by $125, not $75. Examples: 1:01 = $226.04; 2:00 = $287.50; 2:59 = $348.96. Twilight quantities are whole images (1–100).
 
@@ -34,7 +34,7 @@ Automatic email delivery remains a launch dependency: connect a server-side mail
 
 ## Validation
 
-- `node --test tests/quote-engine.test.cjs`: ten tests pass, covering price boundaries, per-foot rates, packages and duplication, video duration, quantities, invalid inputs, capture times, package video duration, fixed drone allowance and email content.
+- `node --test tests/quote-engine.test.cjs`: eleven tests pass, covering price boundaries, per-foot rates, packages and duplication, video duration, quantities, invalid inputs, capture times, package video duration, fixed drone allowance and email content.
 - DOM interaction checks using Linkedom pass for the address gate/re-lock, package locks, live estimates, video changes, required agent fields, exact-subject email drafts, and date/time requirements. Browser validation primitives were simulated; this is not a rendered-browser test.
 - JavaScript syntax, CSS parsing, required field attributes, duplicate IDs, and local link/asset checks pass.
 - Visual desktop/mobile browser review remains outstanding. Local Chromium installation timed out, and the cloud browser rejected the local preview with `net::ERR_BLOCKED_BY_CLIENT`. No claim of browser visual verification is made.
@@ -53,8 +53,18 @@ Standalone video supports every second from 1:00 through 3:00 through the slider
 
 ## Category and control correction — 2026 09 20
 
-The Small/Average photography formulas and Silver/Gold/Platinum prices are unchanged. Service-row prices now read the individual line fee, avoiding duplicate photography when showing an add-on price. Large/Luxury could not be restored from history: both the original residential commit and the recovered discussion leave their ending prices unresolved. No new rate is substituted. The current page still identifies those individual photography quotes as Custom Quote.
+The Small/Average photography formulas and Silver/Gold/Platinum prices are unchanged. Service-row prices now read the individual line fee, avoiding duplicate photography when showing an add-on price. The saved preview and original residential code used a null photography rate for Large and Luxury before the slider removal. A subsequent thread search recovered Luxury’s $425 starting fee and $0.1176 per-square-foot instruction, implemented in the recovery below. Large’s complete formula remains unresolved.
 
 ## Residential slider restoration — 2026 09 20
 
 Slider removal applies to commercial pricing only. Residential property-size and video-duration sliders are restored from the prior implementation. The property-size slider stays disabled and gray with Silver, Gold or Platinum and active for Individual Services. Photography stays mandatory. Pricing formulas, capture-time calculations, and commercial behavior are unchanged by this restoration.
+
+## Luxury rate recovery — 2026 09 20
+
+Branch: `fix/residential-pricing-recovery-20260920`, based on the restored residential slider commit `e98bd5d5ff79ccfd213004fb8aec16e762372792`. Each subsequent repair must start on a new branch while this pricing repair is ongoing, as requested by the user. Preserve prior repair branches for comparison and recovery.
+
+The recovered thread specifies Luxury at 5,000–10,000 sq ft, starting at $425, with a rate of $0.1176 per square foot. Applying the rate to area above the starting point gives $425 at 5,000; $719 at 7,500; and $1,013 at 10,000. Prices round to cents after calculation. This implements the recovered numbers; the saved older code did not contain a working Luxury formula.
+
+Large’s $350 starting price was recovered, but no additional-foot rate or upper price was recovered. The next category’s $425 starting fee has not been assumed to be Large’s endpoint. Large remains the only residential photography category requiring a custom quote.
+
+The Small/Average formulas, all bundle fees, service rates, timing calculations, mandatory photography, restored residential sliders, bundle size locks, and commercial code are unchanged.
