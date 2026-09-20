@@ -21,7 +21,7 @@
     const price=document.createElement('span');price.id='c-price-'+key;price.className='quote-price';top.append(label,price);row.append(top);
     let controls='';
     if(key==='platform')controls=quantity('platform-months','Platform Term · Months',6,18,1,6)+'<div class="quote-range-labels"><span>6 months</span><span>18 months</span></div><p class="quote-note">$49 per month. Your estimate includes the full selected term; six months is $294. Matterport capture and hosting remain separate. An independent property website is available separately for $175.</p>';
-    if(key==='mp')controls=quantity('matterport-sqft','Area To Scan · Square Feet',1,5000,1,5000)+'<div class="quote-range-labels"><span>1 sq ft</span><span id="c-matterport-max">5,000 sq ft</span></div><p class="quote-note">Scan only the areas you need. Photography still covers the property size selected above. Add individual 360° views for other spaces with a SiteSee platform subscription.</p>';
+    if(key==='mp')controls=quantity('matterport-sqft','Area To Scan · Square Feet',1,5000,1,5000)+'<div class="quote-range-labels"><span>1 sq ft</span><span id="c-matterport-max">5,000 sq ft</span></div><p class="quote-note">Scan only the areas you need. Photography coverage follows the category selected above. Add individual 360° views for other spaces with a SiteSee platform subscription.</p>';
     if(key==='views360')controls=quantity('views360-count','Individual 360° Photos',1,100,1,1);
     if(key==='drone')controls=quantity('aerial-images','Finished Aerial Images',1,100,1,1);
     if(key==='floor')controls=quantity('plan-sets','Property Layout Sets',1,20,1,1);
@@ -66,7 +66,7 @@
     return Number(minutes.value) * 60 + Number(seconds.value);
   }
   function inputState() {
-    return {category:value('category'),sqft:value('sqft'),photoCount:get('photo-count').value,matterportSqft:get('matterport-sqft').value,views360:get('views360-count').value,selected:[...selected],videoSeconds:videoSeconds(),videos:get('video-count').value,aerialImages:get('aerial-images').value,delivery:value('delivery'),platformMonths:get('platform-months').value,plans:get('plan-sets').value,licenseType:value('licenseType'),licenseMonths:get('license-months').value,hostingMonths:get('hosting-months').value,hostingPrepaid:get('hosting-prepaid').checked};
+    return {category:value('category'),photoCount:get('photo-count').value,matterportSqft:get('matterport-sqft').value,views360:get('views360-count').value,selected:[...selected],videoSeconds:videoSeconds(),videos:get('video-count').value,aerialImages:get('aerial-images').value,delivery:value('delivery'),platformMonths:get('platform-months').value,plans:get('plan-sets').value,licenseType:value('licenseType'),licenseMonths:get('license-months').value,hostingMonths:get('hosting-months').value,hostingPrepaid:get('hosting-prepaid').checked};
   }
   function update() {
     const platform=selected.has('platform');
@@ -80,15 +80,12 @@
     website.disabled=false;
     if(website.checked)selected.add('website');else selected.delete('website');
     get('website-note').textContent='$175 for a dedicated listing website. Also available with the SiteSee platform; charged once.';
-    const propertySize=Number(get('property-sqft').value),cat=Q.categories[value('category')];
+    const cat=Q.categories[value('category')];
     get('photo-count').min=get('photo-slider').min=cat.photoMin;
     get('photo-range-min').textContent=cat.photoMin+' photos';
     get('photo-inclusions').textContent=cat.photoMin+'–'+cat.photosIncluded+' photos included. Additional photos above '+cat.photosIncluded+' are '+Q.money(cat.extraPhotoCents)+' each. Maximum 100 total photos.';
-    if(Number.isInteger(propertySize)&&propertySize>=cat.min&&propertySize<=cat.max){
-      get('matterport-sqft').max=propertySize;
-      get('matterport-max').textContent=propertySize.toLocaleString()+' sq ft';
-      if(Number(get('matterport-sqft').value)>propertySize)get('matterport-sqft').value=propertySize;
-    }
+    get('matterport-sqft').max=cat.max;
+    get('matterport-max').textContent=cat.max.toLocaleString()+' sq ft';
     ['platform','mp','views360','drone','video','floor'].forEach(key=>{
       const active=selected.has(key),controls=get(key+'-controls');controls.hidden=!active;controls.querySelectorAll('input').forEach(el=>{el.disabled=!active;});
     });
@@ -104,9 +101,8 @@
       try {const alone=Q.calculate({...state,selected:key==='views360'?['platform','mp','views360']:[key],delivery:'files',licenseType:'term',licenseMonths:6,hostingMonths:6,hostingPrepaid:false});const line=alone.lines.find(line=>line.key===key);get('price-'+key).textContent=key==='platform'?'$49 / month':(line.from?'From ':'')+Q.money(line.cents);}
       catch(_){get('price-'+key).textContent='—';}
     });
-    get('quote-address').textContent=addressText();get('summary-property').textContent=addressText()+' · '+Number(state.sqft).toLocaleString()+' sq ft';
+    get('quote-address').textContent=addressText();get('summary-property').textContent=addressText()+' · '+cat.label;
     try {
-      if(!get('property-sqft').validity.valid)throw new Error('Enter a whole-number property size within the commercial category.');
       current=Q.calculate(state);
       get('hosting-calculation').textContent=current.hostingExtraMonths?Q.money(current.hostingCents)+' for '+current.hostingExtraMonths+' additional months '+(current.hostingPrepaid?'paid in advance.':'billed at '+Q.money(current.hostingMonthlyCents)+' per month.'):'First six months included · No additional hosting charge.';
       get('photography-price').textContent=Q.money(current.photographyCents);
@@ -118,10 +114,11 @@
       get('custom-quote-note').hidden=!current.pending;get('custom-quote-note').textContent=current.pendingReasons.join(' ');
       get('summary-lines').replaceChildren();
       current.lines.forEach(line=>{const li=document.createElement('li'),a=document.createElement('span'),b=document.createElement('span');a.textContent=line.label;b.textContent=line.included?'Included':line.cents===null?'To Quote':(line.from?'From ':'')+Q.money(line.cents);li.append(a,b);get('summary-lines').append(li);});
-      get('summary-duration').textContent=current.knownMinutes?'About '+Q.duration(current.knownMinutes):current.hasOnSite?'Confirmed With Your Appointment':'No On-Site Visit Required';
-      const parts=[];for(const [key,label] of [['photographyMinutes','Photography'],['matterportMinutes','Matterport'],['videoMinutes','Video'],['droneMinutes','Drone / Aerial']])if(current[key])parts.push(label+': '+Q.duration(current[key]));get('summary-breakdown').textContent=parts.join(' · ');
+      get('summary-duration').textContent=current.knownMinutes?'About '+Q.durationRange(current.knownMinutes,current.knownMinutesMax):current.hasOnSite?'Confirmed With Your Appointment':'No On-Site Visit Required';
+      const parts=[];for(const [key,label] of [['photographyMinutes','Photography'],['matterportMinutes','Matterport'],['videoMinutes','Video'],['droneMinutes','Drone / Aerial']])if(current[key])parts.push(label+': '+(key==='photographyMinutes'?Q.durationRange(current[key],current.photographyMinutesMax):Q.duration(current[key])));get('summary-breakdown').textContent=parts.join(' · ');
       get('estimate-inline-time').textContent='Time on site: '+get('summary-duration').textContent;
       get('summary-time-note').textContent=current.additionalCapture.length?'Time for '+current.additionalCapture.map(key=>Q.services[key].label).join(', ')+' is not included above and will be confirmed with your appointment. Layout and access can affect time on site.':'Allow for property layout, access and readiness. Times are approximate and rounded up to five minutes.';
+      get('summary-time-note').textContent+=' Photography time reflects the selected category’s size range.';
       get('date-label').textContent=current.hasOnSite?'Preferred Shoot Date (Required For A Request)':'Preferred Completion Date (Required For A Request)';get('time-label').textContent=current.hasOnSite?'Preferred Start Time · Central Time':'Preferred Contact Time · Central Time';
     }catch(error){current=null;get('photo-addition').textContent='';get('hosting-calculation').textContent='';get('photography-price').textContent='—';get('license-calculation').textContent='';get('estimate-error').hidden=false;get('estimate-error').textContent=error.message;get('summary-total').textContent='Complete Your Selection';get('estimate-inline-total').textContent='—';get('summary-subtotal').hidden=true;get('summary-lines').replaceChildren();get('summary-duration').textContent='—';get('summary-breakdown').textContent='';get('summary-time-note').textContent='';get('estimate-inline-time').textContent='';get('custom-quote-note').hidden=true;get('review-estimate').disabled=true;}
   }
@@ -132,16 +129,15 @@
   addressFields.forEach(field => { field.addEventListener('input', syncAddress); field.addEventListener('change', syncAddress); });
   agentFields.forEach(field => field.addEventListener('input', () => { validateField(field); get('request-status').hidden = true; }));
   form.querySelectorAll('[name=category]').forEach(radio => radio.addEventListener('change', () => {
-    const cat = Q.categories[value('category')], size = get('property-sqft');
-    size.min = cat.min; size.max = cat.max;
-    size.value = Math.min(cat.max, Math.max(cat.min, Number(size.value) || cat.min));
+    const cat = Q.categories[value('category')];
     get('photo-count').value=get('photo-slider').value=cat.photosIncluded;
-    get('range-min').textContent = cat.min.toLocaleString() + ' sq ft'; get('range-max').textContent = cat.max.toLocaleString() + ' sq ft'; update();
+    if(Number(get('matterport-sqft').value)>cat.max)get('matterport-sqft').value=cat.max;
+    update();
   }));
 
   get('photo-count').addEventListener('input',()=>{if(get('photo-count').validity.valid)get('photo-slider').value=get('photo-count').value;update();});
   get('photo-slider').addEventListener('input',()=>{get('photo-count').value=get('photo-slider').value;update();});
-  ['property-sqft','matterport-sqft','video-minutes','video-seconds','aerial-images','plan-sets','video-count','views360-count','license-months','platform-months','hosting-months'].forEach(id=>get(id).addEventListener('input',update));
+  ['matterport-sqft','video-minutes','video-seconds','aerial-images','plan-sets','video-count','views360-count','license-months','platform-months','hosting-months'].forEach(id=>get(id).addEventListener('input',update));
   form.querySelectorAll('[name=licenseType],[name=delivery]').forEach(el=>el.addEventListener('change',update));
   get('hosting-prepaid').addEventListener('change',update);
   get('review-estimate').addEventListener('click', () => {

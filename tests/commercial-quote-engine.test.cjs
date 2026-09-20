@@ -100,3 +100,20 @@ test('commercial photography allowances and additional-image prices apply by cat
  const q=quote({category:'mid',sqft:10000,photoCount:46,licenseType:'unlimited',selected:['website','platform']});assert.equal(q.extraPhotoCents,2670);assert.equal(q.licenseCents,61335);assert.equal(q.photographyCents,122670);
  assert.equal(quote({category:'large',sqft:250000}).basePhotographyCents,250000);assert.equal(Q.categories.large.max,250000);
 });
+
+test('commercial quotes work without a property-size field and give category-based photography time ranges',()=>{
+ for(const [category,cents,minimum,maximum] of [['small',75000,5,15],['mid',120000,15,75],['large',250000,75,375]]){
+  const q=quote({category,sqft:undefined});assert.equal(q.sqft,null);assert.equal(q.totalCents,cents);assert.equal(q.knownMinutes,minimum);assert.equal(q.knownMinutesMax,maximum);assert.equal(q.pending,false);
+  const extra=quote({category,sqft:undefined,photoCount:100});assert.equal(extra.totalCents,cents+(100-Q.categories[category].photosIncluded)*Q.categories[category].extraPhotoCents);
+ }
+ const q=quote({category:'mid',sqft:undefined,selected:['mp','video','drone'],matterportSqft:20000});
+ assert.equal(fee(q,'mp'),200000);assert.equal(q.photographyMinutes,15);assert.equal(q.photographyMinutesMax,75);assert.equal(q.matterportMinutes,180);assert.equal(q.videoMinutes,15);assert.equal(q.droneMinutes,20);assert.equal(q.knownMinutes,230);assert.equal(q.knownMinutesMax,290);
+ const body=Q.emailBody(q,{first:'Test',last:'Agent',company:'Example',email:'agent@example.com',phone:'5555550100',street:'123 Example Street',city:'Two Rivers',state:'WI',zip:'54241',optOut:'Yes'});
+ assert.ok(!body.includes('Photography area:'));assert.ok(body.includes('20,000 sq ft scanned'));assert.ok(body.includes('Photography: 15 min–1 hr 15 min'));assert.ok(body.includes('Estimated Time On Site: 3 hrs 50 min–4 hrs 50 min'));
+});
+test('independent scan area is bounded by category when property size is not entered',()=>{
+ const q=quote({category:'small',sqft:undefined,selected:['mp'],matterportSqft:10000});assert.equal(fee(q,'mp'),100000);
+ assert.throws(()=>quote({category:'small',sqft:undefined,selected:['mp'],matterportSqft:10001}));
+ assert.throws(()=>quote({category:'large',sqft:undefined,selected:['mp'],matterportSqft:250001}));
+ const exact=quote({category:'mid',sqft:20000});assert.equal(exact.photographyMinutesMax,exact.photographyMinutes);assert.equal(exact.knownMinutesMax,exact.knownMinutes);assert.equal(Q.durationRange(exact.knownMinutes,exact.knownMinutesMax),'30 min');
+});

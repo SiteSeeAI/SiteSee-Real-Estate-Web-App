@@ -132,7 +132,8 @@
       "actual_whole_square_feet_supported": true
     },
     "commercial_property_size_slider": false,
-    "photo_count_display": "Residential category choices, selected photography service, quote summary and email; bundle-specific photo counts remain their included amounts"
+    "photo_count_display": "Residential category choices, selected photography service, quote summary and email; bundle-specific photo counts remain their included amounts",
+    "commercial_property_size_field": false
   },
   "contact": {
     "preferred_communication": {
@@ -195,7 +196,7 @@
       "files",
       "website"
     ],
-    "matterport_area": "Separate number input, 1 sq ft through total property size; does not alter photography fee",
+    "matterport_area": "Independent number input, 1 sq ft through category maximum; category changes clamp coverage only if needed",
     "single_360_photos": {
       "per_photo": 25,
       "requires": "Matterport and SiteSee platform selections",
@@ -251,6 +252,14 @@
     "independent_website_selection": "Services add-on checkbox synchronized with delivery radio; $175 charged once; available alongside platform",
     "range_sliders": [
       "photo quantity"
-    ]
+    ],
+    "property_size_field": {
+      "present": false,
+      "hidden_replacement": false,
+      "quote_requires_size": false,
+      "residential_affected": false
+    },
+    "photography_timing_without_size": "Range based on category minimum and maximum at 1.5 minutes per 1000 sq ft; add known scan, video and drone minutes to both bounds; round up to five minutes",
+    "quote_email_size": "Omit exact photography area unless an optional exact size was explicitly supplied"
   }
 }
