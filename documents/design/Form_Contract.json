@@ -178,7 +178,32 @@
       "position": "Services & Additions, immediately above Matterport",
       "estimate": "Full selected term, separately itemized",
       "excludes": "Media licensing, Matterport capture and hosting",
-      "website_duplicate": false
-    }
+      "website_duplicate": false,
+      "independent_website_allowed": true
+    },
+    "factory_max_sqft": 250000,
+    "photography_quantities": {
+      "small": {
+        "included_min": 25,
+        "included_max": 30,
+        "extra_photo_fee": 30
+      },
+      "mid": {
+        "included_min": 30,
+        "included_max": 45,
+        "extra_photo_fee": 26.7
+      },
+      "large": {
+        "included_min": 45,
+        "included_max": 55,
+        "extra_photo_fee": 25
+      },
+      "maximum_total_photos": 100,
+      "default": "Category included maximum",
+      "additional_fee_basis": "Only photos above the category included maximum",
+      "category_change": "Reset to included maximum",
+      "license_base_includes_extra_photography": true
+    },
+    "independent_website_selection": "Services add-on checkbox synchronized with delivery radio; $175 charged once; available alongside platform"
   }
 }

@@ -8,19 +8,27 @@ The quote page keeps its existing layout, photography, CSS, address gate, requir
 | --- | --- | --- |
 | Small commercial / retail | 1–10,000 sq ft | max($350, square feet × $0.075) |
 | Warehouse / office | 10,000–50,000 sq ft | $750 + (square feet − 10,000) × $0.05 |
-| Factory / industrial | 50,000–1,000,000 sq ft | $2,500 + (square feet − 50,000) × $0.05 |
+| Factory / industrial | 50,000–250,000 sq ft | $2,500 + (square feet − 50,000) × $0.05 |
 
-The latest warehouse correction supersedes the earlier $1,200 maximum: 10,001 sq ft is $750.05 and 50,000 sq ft is $2,750. Factory starts at the separately approved $2,500 at 50,000 sq ft; the category boundary is intentionally not continuous. Do not silently replace either anchor. The existing 1,000,000 sq ft calculator ceiling remains; larger projects are quoted directly.
+The latest warehouse correction supersedes the earlier $1,200 maximum: 10,001 sq ft is $750.05 and 50,000 sq ft is $2,750. Factory starts at the separately approved $2,500 at 50,000 sq ft; the category boundary is intentionally not continuous. Do not silently replace either anchor. The Factory / Industrial calculator maximum is 250,000 sq ft; larger projects are quoted directly.
 
 ## Services and independent coverage
 
-- SiteSee platform is a service immediately above Matterport, $49/month without setup fees. Its selected term defaults to six months and retains the existing 6–18 month controls. The full term is itemized in the estimate: six months is $294. Platform and independent website cannot be charged together.
+- SiteSee platform is a service immediately above Matterport, $49/month without setup fees. Its selected term defaults to six months and retains the existing 6–18 month controls. The full term is itemized in the estimate: six months is $294. An independent property website can be added with the platform. Its service checkbox and delivery radio stay synchronized; the $175 website is charged once.
 - Matterport has its own square-footage number input and slider. Coverage must be 1 sq ft through the photography property size. Its fee is max($199, covered square feet × $0.10); reducing coverage changes its fee and scan-time estimate, not the photography charge. Increasing property size does not increase the selected scan area. Reducing property size below selected coverage clamps that coverage to the new property size.
 - Single 360° photos are $25 each, default one, 1–100 photos. They are placed as views within a SiteSee Experience and require platform selection. The entire row is hidden until Matterport is selected. With Matterport selected, the row is disabled and grayed out until the platform is also selected. Removing either prerequisite deselects the add-on and removes its charge; removing Matterport also hides the row. The engine requires both prerequisites, including for calls outside the form.
 - Aerial photographs are $42 per finished image; default one, 1–100 images.
 - Cinematic B2B video uses the specified $8.333/second with a $500 minimum per video, 60–180 seconds, 1–20 videos. The rate is not shown in the video field; the price updates from minutes/seconds or the slider. Prices use the literal approved multiplier: 60 seconds is $500, 120 seconds $999.96 and 180 seconds $1,499.94. Each video's fee is rounded to cents before multiplying the video count.
 - Schematic floor plans retain $150 per property layout set, 1–20 sets.
-- Independent property website is $175.
+- Independent property website is $175. It appears in Services & Additions as well as the delivery radio selection and remains available with a SiteSee platform subscription.
+
+## Photography quantities
+
+The existing square-footage-based photography fee remains the base charge. It includes 25–30 photos for Small Commercial / Retail, 30–45 for Warehouse / Office and 45–55 for Factory / Industrial. A total-photograph number input and slider default to the upper included allowance (30 / 45 / 55), allow the included range, and cap the entire photography order at 100 photos.
+
+Additional charges apply only above the upper included allowance: $30 each above 30 small-property photos; $26.70 each above 45 warehouse/office photos; $25 each above 55 factory/industrial photos. Small's $30 extra-image rate uses the user's $750 ÷ 25 example. At 100 photos, the respective extra-image charges are $2,100 / $1,468.50 / $1,125. Selecting a new category resets the quantity to its included maximum. Invalid quantities cannot produce a quote.
+
+The estimate separately itemizes the base photography fee and added photos. Added photography is part of the media-license base. The website, Matterport, aerial, hosting and other service charges are not duplicated or changed. Quote emails include the total requested photo count, additional count and unit price. On-site timing remains based on the approved area/video/drone formulas; this revision does not invent a per-photo capture-time rule.
 
 ## Licensing and hosting
 
@@ -40,4 +48,4 @@ Commercial photography is property square feet × 1.5 / 1,000 minutes: 10,000 sq
 
 ## Verification
 
-All 19 commercial/residential Node tests pass. DOM interaction checks cover the warehouse increment from 10,001 sq ft, category-specific factory starting fee, independent Matterport slider/input, scan-area limits and clamping, platform position and term, Matterport-and-platform-dependent 360 visibility, disabled state and removal, separate commercial/residential photography rates and unchanged scan/video/drone timing, included package video lengths, fixed drone allowances, commercial video quantities, duplicate website prevention, video duration, included license months, request emails, required contact fields, address re-lock and market isolation. Native browser form primitives are simulated in the DOM harness; rendered browser review remains outstanding. The page retains its CSS and existing layout. This work updates PR #4; it does not deploy to the live server.
+All 20 commercial/residential Node tests pass. DOM interaction checks cover the warehouse increment from 10,001 sq ft, category-specific factory starting fee, independent Matterport slider/input, scan-area limits and clamping, platform position and term, Matterport-and-platform-dependent 360 visibility, disabled state and removal, separate commercial/residential photography rates and unchanged scan/video/drone timing, included package video lengths, fixed drone allowances, commercial video quantities, website checkbox/radio synchronization with a platform subscription and single charging, photo-quantity allowances and unit fees, 100-photo limit, 250,000-sq-ft factory limit, video duration, included license months, request emails, required contact fields, address re-lock and market isolation. Native browser form primitives are simulated in the DOM harness; rendered browser review remains outstanding. The page retains its CSS and existing layout. This work updates PR #4; it does not deploy to the live server.

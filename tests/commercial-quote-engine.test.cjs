@@ -31,11 +31,12 @@ test('360 photos require both Matterport and platform and are excluded from lice
  assert.throws(()=>quote({selected:['platform','views360']}),/Matterport/);
  const q=quote({selected:['mp','platform','views360'],views360:4,licenseType:'unlimited'});assert.equal(fee(q,'views360'),10000);assert.equal(fee(q,'platform'),29400);assert.equal(q.licenseBaseCents,37500);assert.equal(q.matterportSqft,5000);assert.equal(q.totalCents,145650);
 });
-test('platform bills $49 per month without setup and prevents duplicate website selection',()=>{
+test('platform and independent website may be combined without charging the website twice',()=>{
  const base=quote().totalCents;
  for(const platformMonths of [6,12,18]){const q=quote({selected:['platform'],platformMonths});assert.equal(q.totalCents,base+platformMonths*4900);assert.equal(q.licenseMonths,6);assert.equal(q.lines.some(x=>x.key==='platform-setup'),false)}
  assert.equal(quote({delivery:'website'}).totalCents,base+17500);
- assert.throws(()=>quote({selected:['platform'],delivery:'website'}),/already presents/);
+ for(const selected of [['platform'],['platform','website'],['platform','website','website']]){const q=quote({selected,delivery:'website'});assert.equal(q.totalCents,base+29400+17500);assert.equal(q.lines.filter(l=>l.key==='website').length,1);assert.equal(q.websiteIncluded,true)}
+ assert.equal(quote({selected:['website']}).totalCents,base+17500);
 });
 test('aerial and video unit prices preserve exact seconds and minimum',()=>{
  assert.equal(fee(quote({selected:['drone'],aerialImages:2}),'drone'),8400);
@@ -44,7 +45,7 @@ test('aerial and video unit prices preserve exact seconds and minimum',()=>{
  assert.equal(fee(quote({selected:['floor'],plans:2}),'floor'),30000);
 });
 test('invalid selected-service inputs cannot yield a quote',()=>{
- for(const input of [{selected:['hourly']},{selected:['nope']},{sqft:10001},{category:'mid',sqft:50001},{category:'large',sqft:1000001},{sqft:2.5},{selected:['mp'],matterportSqft:0},{selected:['mp'],matterportSqft:5001},{selected:['mp'],matterportSqft:''},{selected:['mp'],matterportSqft:2.5},{selected:['mp','platform','views360'],views360:0},{selected:['mp','platform','views360'],views360:1.5},{selected:['drone'],aerialImages:0},{selected:['video'],videoSeconds:59},{selected:['video'],videoSeconds:181},{selected:['video'],videos:0},{selected:['floor'],plans:0},{licenseMonths:5},{licenseMonths:19},{licenseMonths:6.5},{licenseType:'forever'},{delivery:'platform'},{selected:['platform'],platformMonths:5},{selected:['platform'],platformMonths:19}])assert.throws(()=>quote(input));
+ for(const input of [{selected:['hourly']},{selected:['nope']},{sqft:10001},{category:'mid',sqft:50001},{category:'large',sqft:250001},{sqft:2.5},{selected:['mp'],matterportSqft:0},{selected:['mp'],matterportSqft:5001},{selected:['mp'],matterportSqft:''},{selected:['mp'],matterportSqft:2.5},{selected:['mp','platform','views360'],views360:0},{selected:['mp','platform','views360'],views360:1.5},{selected:['drone'],aerialImages:0},{selected:['video'],videoSeconds:59},{selected:['video'],videoSeconds:181},{selected:['video'],videos:0},{selected:['floor'],plans:0},{licenseMonths:5},{licenseMonths:19},{licenseMonths:6.5},{licenseType:'forever'},{delivery:'platform'},{selected:['platform'],platformMonths:5},{selected:['platform'],platformMonths:19}])assert.throws(()=>quote(input));
 });
 test('email identifies photography area, scanned area, platform term and view count',()=>{
  const q=quote({category:'mid',sqft:20000,matterportSqft:3000,selected:['mp','platform','views360'],views360:2,licenseType:'unlimited'});
@@ -82,4 +83,15 @@ test('hosting includes six months and prices only the extension at the selected 
  assert.throws(()=>quote({selected:['mp'],hostingPrepaid:'true'}));
  const body=Q.emailBody(prepaid,{first:'Test',last:'Agent',company:'Example',email:'agent@example.com',phone:'5555550100',street:'123 Example Street',city:'Two Rivers',state:'WI',zip:'54241',optOut:'Yes'});
  for(const part of ['18 months total','12 additional months','$4.99/month paid in advance','$59.88','does not collect payment'])assert.ok(body.includes(part),part);
+});
+
+test('commercial photography allowances and additional-image prices apply by category',()=>{
+ for(const [category,sqft,min,included,unit] of [['small',10000,25,30,3000],['mid',10000,30,45,2670],['large',50000,45,55,2500]]){
+  const base=quote({category,sqft});assert.equal(base.photoCount,included);assert.equal(base.extraPhotos,0);
+  for(const photoCount of [min,included])assert.equal(quote({category,sqft,photoCount}).totalCents,base.totalCents);
+  for(const photoCount of [included+1,100]){const q=quote({category,sqft,photoCount});const extra=(photoCount-included)*unit;assert.equal(q.extraPhotoCents,extra);assert.equal(q.photographyCents,base.photographyCents+extra);assert.equal(q.totalCents,base.totalCents+extra);assert.equal(q.licenseBaseCents,base.licenseBaseCents+extra);assert.equal(q.knownMinutes,base.knownMinutes);assert.equal(q.lines.filter(l=>l.key==='extraPhotos').length,1);}
+  for(const photoCount of [min-1,101,50.5,''])assert.throws(()=>quote({category,sqft,photoCount}));
+ }
+ const q=quote({category:'mid',sqft:10000,photoCount:46,licenseType:'unlimited',selected:['website','platform']});assert.equal(q.extraPhotoCents,2670);assert.equal(q.licenseCents,38835);assert.equal(q.photographyCents,77670);
+ assert.equal(quote({category:'large',sqft:250000}).basePhotographyCents,1250000);assert.equal(Q.categories.large.max,250000);
 });
