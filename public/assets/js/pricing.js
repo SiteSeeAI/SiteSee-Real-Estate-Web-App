@@ -21,7 +21,7 @@
     const price = document.createElement('span'); price.className = 'quote-price'; price.id = 'price-' + key; top.append(label, price); row.append(top);
     if (key === 'video') {
       const controls = document.createElement('div'); controls.className = 'quote-extra'; controls.id = 'video-controls'; controls.hidden = true;
-      controls.innerHTML = '<div class="quote-video-length"><span>Video Length</span><div class="quote-video-fields"><label for="video-minutes">Minutes<input id="video-minutes" name="videoMinutes" type="number" min="1" max="3" step="1" value="1" required disabled></label><span aria-hidden="true">:</span><label for="video-seconds">Seconds<input id="video-seconds" name="videoSecondsPart" type="number" min="0" max="59" step="1" value="0" required disabled></label></div></div><div class="quote-range-labels"><span>1 minute · $225</span><span>3 minutes · $350</span></div>';
+      controls.innerHTML = '<div class="quote-video-length"><span>Video Length</span><div class="quote-video-fields"><label for="video-minutes">Minutes<input id="video-minutes" name="videoMinutes" type="number" min="1" max="3" step="1" value="1" required disabled></label><span aria-hidden="true">:</span><label for="video-seconds">Seconds<input id="video-seconds" name="videoSecondsPart" type="number" min="0" max="59" step="1" value="0" required disabled></label></div></div><input id="video-slider" type="range" min="60" max="180" step="1" value="60" aria-label="Video length in seconds" aria-valuetext="1 minute 0 seconds"><div class="quote-range-labels"><span>1 minute · $225</span><span>3 minutes · $350</span></div>';
       row.append(controls);
     }
     if (key === 'twilight') {
@@ -68,9 +68,9 @@
   }
   function update() {
     const state = inputState(), pack = Q.packages[state.package];
-    get('property-sqft').disabled = state.package !== 'custom';
+    get('property-sqft').disabled = get('property-slider').disabled = state.package !== 'custom';
     const videoActive = selected.has('video') && !pack.includes.includes('video');
-    get('video-controls').hidden = !videoActive; get('video-minutes').disabled = !videoActive; get('video-seconds').disabled = !videoActive;
+    get('video-controls').hidden = !videoActive; get('video-minutes').disabled = !videoActive; get('video-seconds').disabled = !videoActive; get('video-slider').disabled = !videoActive;
     get('twilight-controls').hidden = !selected.has('twilight'); get('twilight-images').disabled = !selected.has('twilight');
     get('request-status').hidden = true;
     Object.entries(Q.services).forEach(([key, service]) => {
@@ -129,15 +129,28 @@
   addressFields.forEach(field => { field.addEventListener('input', syncAddress); field.addEventListener('change', syncAddress); });
   agentFields.forEach(field => field.addEventListener('input', () => { validateField(field); get('request-status').hidden = true; }));
   form.querySelectorAll('[name=category]').forEach(radio => radio.addEventListener('change', () => {
-    const cat = Q.categories[value('category')], size = get('property-sqft');
-    size.min = cat.min; size.max = cat.max;
-    size.value = Math.min(cat.max, Math.max(cat.min, Number(size.value) || cat.min));
+    const cat = Q.categories[value('category')], size = get('property-sqft'), slider = get('property-slider');
+    size.min = slider.min = cat.min; size.max = slider.max = cat.max;
+    size.value = slider.value = Math.min(cat.max, Math.max(cat.min, Number(size.value) || cat.min));
     get('range-min').textContent = cat.min.toLocaleString() + ' sq ft'; get('range-max').textContent = cat.max.toLocaleString() + ' sq ft'; update();
   }));
   form.querySelectorAll('[name=package]').forEach(radio => radio.addEventListener('change', update));
-  get('property-sqft').addEventListener('input', update);
-  get('video-minutes').addEventListener('input', update);
-  get('video-seconds').addEventListener('input', update);
+  get('property-sqft').addEventListener('input', () => { if (get('property-sqft').validity.valid) get('property-slider').value = get('property-sqft').value; update(); });
+  get('property-slider').addEventListener('input', () => { get('property-sqft').value = get('property-slider').value; update(); });
+  const syncVideoSlider = () => {
+    const seconds = videoSeconds();
+    if (Number.isInteger(seconds) && seconds >= 60 && seconds <= 180) {
+      get('video-slider').value = seconds;
+      get('video-slider').setAttribute('aria-valuetext', Math.floor(seconds / 60) + ' minutes ' + (seconds % 60) + ' seconds');
+    }
+    update();
+  };
+  get('video-minutes').addEventListener('input', syncVideoSlider);
+  get('video-seconds').addEventListener('input', syncVideoSlider);
+  get('video-slider').addEventListener('input', () => {
+    const seconds = Number(get('video-slider').value);
+    get('video-minutes').value = Math.floor(seconds / 60); get('video-seconds').value = seconds % 60; syncVideoSlider();
+  });
   get('twilight-images').addEventListener('input', update);
   get('review-estimate').addEventListener('click', () => {
     if (!unlocked || !validateFields(addressFields, true)) { syncAddress(); return; }

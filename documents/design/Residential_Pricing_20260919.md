@@ -7,14 +7,14 @@ The page uses the existing SiteSee logo, Poppins and Inter, yellow accents and s
 ## Form flow
 
 1. Street address, city, state and ZIP are required. An explicit Continue button opens the estimator. This avoids showing dimmed, unusable controls and keeps the initial task short. Erasing or invalidating the address hides the estimator, summary and request form again. This is a UI progression, not an authentication or rate-sheet security boundary.
-2. The agent selects one category and a package or individual services. Photography is mandatory, checked and disabled in the form, and enforced in the engine even for add-on-only input. Included services are checked and disabled; stored individual selections are restored when switching away from a package. Totals include each service once. Residential sliders have been removed. The property-size number field is disabled and gray with Silver, Gold or Platinum and re-enabled for Individual Services; unused add-on inputs are disabled.
+2. The agent selects one category and a package or individual services. Photography is mandatory, checked and disabled in the form, and enforced in the engine even for add-on-only input. Included services are checked and disabled; stored individual selections are restored when switching away from a package. Totals include each service once. Residential property-size and video-duration sliders remain available and synchronized with their number inputs. The property-size slider and number field are disabled and gray with Silver, Gold or Platinum and re-enabled for Individual Services; unused add-on inputs are disabled.
 3. First name, last name, company, email, phone and mailing-list preference are all required before creating an email draft. The original optional opt-out checkbox becomes an explicit required Yes/No choice so all request fields are complete without forcing either marketing preference. A quote copy can be prepared without selecting a shoot date. Both date and time are required for an appointment request. Dates and times are validated against Central Time. The request does not reserve or confirm availability.
 
 ## Prices
 
 Small photography retains the approved calculator: max($150, area × $0.0952), below 2,000 sq ft. Average photography is $245 + (area − 2,000) × $0.0175 across 2,000–4,000 sq ft. Exact shared category boundaries remain selectable in the adjacent category, as in the approved preview; this can create price steps. Large and Luxury standalone photography remains a custom quote because their endpoint prices have not been finalized. No missing rates are invented.
 
-Matterport is max($69, area × $0.06). Website $65, drone $120, Zillow $95, 2D floor plan $50, virtual twilight $35 per image. Video is $225 + (seconds − 60) × $125 / 120 from 60 to 180 seconds. Paired minutes/seconds inputs accept exact durations; the video slider has been removed. Displayed prices round to cents only after calculation. The $225/$350 endpoints differ by $125, not $75. Examples: 1:01 = $226.04; 2:00 = $287.50; 2:59 = $348.96. Twilight quantities are whole images (1–100).
+Matterport is max($69, area × $0.06). Website $65, drone $120, Zillow $95, 2D floor plan $50, virtual twilight $35 per image. Video is $225 + (seconds − 60) × $125 / 120 from 60 to 180 seconds. The video slider advances one second; paired minutes/seconds inputs accept exact durations and stay synchronized with it. Displayed prices round to cents only after calculation. The $225/$350 endpoints differ by $125, not $75. Examples: 1:01 = $226.04; 2:00 = $287.50; 2:59 = $348.96. Twilight quantities are whole images (1–100).
 
 Silver $220, Gold $499 and Platinum $995 keep the supplied rate-sheet inclusions and prices. Package charges replace included à-la-carte charges. Gold includes one minute of video; Platinum includes two. Video duration is locked while included, since a package-upgrade price has not been authorized.
 
@@ -49,8 +49,12 @@ Try a complete address; Average / 2,680 sq ft; add Matterport; switch to Gold an
 
 The desktop hero now uses the existing image across the full section behind a broad, continuous gradient: fully opaque at the left, 10% opacity (90% transparency) at the section midpoint, and transparent by 65%. The copy remains above the overlay. The stacked mobile layout retains its solid text area, with the image transition expanded from 30% to 37.5% (25% wider).
 
-Standalone video supports every second from 1:00 through 3:00 through the minutes and seconds number fields. Gold/Platinum inclusions remain locked to their included durations, without a duplicate standalone charge. Timing copy explicitly names services whose time is not included; Matterport is already included when selected.
+Standalone video supports every second from 1:00 through 3:00 through the slider and minutes/seconds number fields. Gold/Platinum inclusions remain locked to their included durations, without a duplicate standalone charge. Timing copy explicitly names services whose time is not included; Matterport is already included when selected.
 
 ## Category and control correction — 2026 09 20
 
 The Small/Average photography formulas and Silver/Gold/Platinum prices are unchanged. Service-row prices now read the individual line fee, avoiding duplicate photography when showing an add-on price. Large/Luxury could not be restored from history: both the original residential commit and the recovered discussion leave their ending prices unresolved. No new rate is substituted. The current page still identifies those individual photography quotes as Custom Quote.
+
+## Residential slider restoration — 2026 09 20
+
+Slider removal applies to commercial pricing only. Residential property-size and video-duration sliders are restored from the prior implementation. The property-size slider stays disabled and gray with Silver, Gold or Platinum and active for Individual Services. Photography stays mandatory. Pricing formulas, capture-time calculations, and commercial behavior are unchanged by this restoration.

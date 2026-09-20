@@ -91,9 +91,10 @@
     },
     "photography_required": true,
     "photography_checkbox": "Always checked, disabled and gray; enforced by quote engine",
-    "property_size_input": "Numeric only; disabled for Silver, Gold and Platinum; enabled for Individual Services",
+    "property_size_input": "Synchronized number input and slider; both disabled for Silver, Gold and Platinum; enabled for Individual Services",
     "range_sliders": [
-      "commercial total photo quantity only"
+      "residential property size",
+      "residential video duration"
     ]
   },
   "contact": {
