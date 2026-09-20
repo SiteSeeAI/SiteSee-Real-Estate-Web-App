@@ -68,3 +68,20 @@ The recovered thread specifies Luxury at 5,000–10,000 sq ft, starting at $425,
 Large’s $350 starting price was recovered, but no additional-foot rate or upper price was recovered. The next category’s $425 starting fee has not been assumed to be Large’s endpoint. Large remains the only residential photography category requiring a custom quote.
 
 The Small/Average formulas, all bundle fees, service rates, timing calculations, mandatory photography, restored residential sliders, bundle size locks, and commercial code are unchanged.
+
+## Photo counts and interpolation — 2026 09 20
+
+Branch: `fix/residential-photo-counts-20260920`, based on the preceding Luxury recovery branch. Residential category choices, selected photography details, quote summaries and emails now include these ranges:
+
+| Category | Photos |
+| --- | --- |
+| Small Home / Condo | 25–30 |
+| Average Home | 30–50 |
+| Large Home | 50–60 |
+| Luxury Home | 50+ |
+
+Silver, Gold and Platinum retain their respective 25 HDR / 35 HDR / 50+ HDR photo inclusions. Category ranges describe individual photography coverage; they do not introduce a residential per-photo charge or replace the existing area-based pricing.
+
+The user reconfirmed the interpolation method: starting fee plus actual area above the category start multiplied by (ending fee − starting fee) / (ending area − starting area). Average is $245 + (sqft − 2,000) × $0.0175, giving $256.90 at 2,680 sq ft and $266.70 at 3,240 sq ft. Small retains its $150 minimum. The quoted instructions repeat the $350 Large and $425 Luxury starting prices but ask for their endpoints; they do not supply a Large endpoint. This revision preserves the existing formulas, including the preceding Luxury recovery, and leaves Large explicitly unresolved.
+
+The property-size slider is absent from commercial only. Residential size/video sliders stay operational for individual services; its size controls remain disabled for fixed bundles. Commercial photo quantity is retained. The photo-count correction does not change commercial controls or fees.

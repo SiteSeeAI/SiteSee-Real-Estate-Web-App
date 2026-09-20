@@ -105,7 +105,34 @@
       "round_to_cents_after_calculation": true
     },
     "large_photography_status": "Starting price $350 recovered; complete formula not recovered; remains Custom Quote",
-    "temporary_repair_workflow": "Until pricing is fixed, start each new fix on a new branch and preserve earlier repair branches"
+    "temporary_repair_workflow": "Until pricing is fixed, start each new fix on a new branch and preserve earlier repair branches",
+    "residential_photo_counts": {
+      "small": "25\u201330",
+      "average": "30\u201350",
+      "large": "50\u201360",
+      "luxury": "50+"
+    },
+    "residential_photography_interpolation": {
+      "method": "starting fee + (actual square feet - category starting square feet) * ((ending fee - starting fee) / (ending square feet - starting square feet))",
+      "average": {
+        "starting_sqft": 2000,
+        "ending_sqft": 4000,
+        "starting_fee": 245,
+        "ending_fee": 280,
+        "per_additional_sqft": 0.0175,
+        "examples": {
+          "2680": 256.9,
+          "3240": 266.7
+        }
+      },
+      "small_minimum": 150,
+      "large_starting_fee": 350,
+      "large_ending_fee": "Not supplied in the quoted instructions; remains unresolved",
+      "luxury_starting_fee": 425,
+      "actual_whole_square_feet_supported": true
+    },
+    "commercial_property_size_slider": false,
+    "photo_count_display": "Residential category choices, selected photography service, quote summary and email; bundle-specific photo counts remain their included amounts"
   },
   "contact": {
     "preferred_communication": {

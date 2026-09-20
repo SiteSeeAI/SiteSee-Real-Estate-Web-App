@@ -7,10 +7,10 @@
   'use strict';
   const subject = 'Residential SiteSee Real Estate Quote';
   const categories = {
-    small: { label: 'Small Home / Condo', min: 1, max: 1999 },
-    average: { label: 'Average Home', min: 2000, max: 4000 },
-    large: { label: 'Large Home', min: 4000, max: 5000 },
-    luxury: { label: 'Luxury Home', min: 5000, max: 10000 }
+    small: { label: 'Small Home / Condo', min: 1, max: 1999, photos: '25–30 photos' },
+    average: { label: 'Average Home', min: 2000, max: 4000, photos: '30–50 photos' },
+    large: { label: 'Large Home', min: 4000, max: 5000, photos: '50–60 photos' },
+    luxury: { label: 'Luxury Home', min: 5000, max: 10000, photos: '50+ photos' }
   };
   const packages = {
     custom: { label: 'Individual Services', cents: 0, includes: [] },
@@ -55,7 +55,7 @@
       let label = services[key].label;
       if (key === 'video') label += ' · ' + videoDuration(included ? pack.minutes * 60 : videoSeconds);
       if (key === 'twilight') label += ' · ' + images + (images === 1 ? ' image' : ' images');
-      if (key === 'photo' && included) label += ' · ' + pack.photos;
+      if (key === 'photo') label += ' · ' + (included ? pack.photos : cat.photos);
       return { key, label, included, cents };
     });
     const photographyMinutes = chosen.has('photo') ? sqft * 35 / 1000 : 0;

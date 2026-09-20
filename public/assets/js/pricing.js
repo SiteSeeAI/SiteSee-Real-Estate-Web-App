@@ -77,7 +77,7 @@
       const included = pack.includes.includes(key), check = get('service-' + key), price = get('price-' + key);
       check.disabled = key === 'photo' || included; check.checked = key === 'photo' || included || selected.has(key);
       price.classList.toggle('quote-included', included);
-      get('detail-' + key).textContent = included ? (key === 'video' ? pack.minutes + '-minute video · ' : key === 'photo' ? pack.photos + ' · ' : '') + 'Included in ' + pack.label : service.detail;
+      get('detail-' + key).textContent = included ? (key === 'video' ? pack.minutes + '-minute video · ' : key === 'photo' ? pack.photos + ' · ' : '') + 'Included in ' + pack.label : (key === 'photo' ? Q.categories[state.category].photos + ' · ' : '') + service.detail;
       if (included) price.textContent = 'Included';
       else if (service.cents) price.textContent = Q.money(service.cents);
       else {
