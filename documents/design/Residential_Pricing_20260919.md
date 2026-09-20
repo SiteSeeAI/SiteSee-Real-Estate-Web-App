@@ -7,16 +7,16 @@ The page uses the existing SiteSee logo, Poppins and Inter, yellow accents and s
 ## Form flow
 
 1. Street address, city, state and ZIP are required. An explicit Continue button opens the estimator. This avoids showing dimmed, unusable controls and keeps the initial task short. Erasing or invalidating the address hides the estimator, summary and request form again. This is a UI progression, not an authentication or rate-sheet security boundary.
-2. The agent selects one category and a package or individual services. Numeric inputs and sliders stay in sync. Included services are checked and disabled; stored individual selections are restored when switching away from a package. Totals include each service once. A selected service is required; unused add-on inputs are disabled.
+2. The agent selects one category and a package or individual services. Photography is mandatory, checked and disabled in the form, and enforced in the engine even for add-on-only input. Included services are checked and disabled; stored individual selections are restored when switching away from a package. Totals include each service once. Residential property-size and video-duration sliders remain available and synchronized with their number inputs. With Silver, Gold or Platinum, the property category is disabled and gray, and the property-size slider and number field are disabled at zero. Returning to Individual Services restores the previous category and exact size. Selecting Matterport with a package reveals an independent coverage input and slider; unused add-on inputs are disabled.
 3. First name, last name, company, email, phone and mailing-list preference are all required before creating an email draft. The original optional opt-out checkbox becomes an explicit required Yes/No choice so all request fields are complete without forcing either marketing preference. A quote copy can be prepared without selecting a shoot date. Both date and time are required for an appointment request. Dates and times are validated against Central Time. The request does not reserve or confirm availability.
 
 ## Prices
 
-Small photography retains the approved calculator: max($150, area × $0.0952), below 2,000 sq ft. Average photography is $245 + (area − 2,000) × $0.0175 across 2,000–4,000 sq ft. Exact shared category boundaries remain selectable in the adjacent category, as in the approved preview; this can create price steps. Large and Luxury standalone photography remains a custom quote because their endpoint prices have not been finalized. No missing rates are invented.
+Small photography retains the approved calculator: max($150, area × $0.0952), below 2,000 sq ft. Average photography is $245 + (area − 2,000) × $0.0175 across 2,000–4,000 sq ft. Exact shared category boundaries remain selectable in the adjacent category, as in the approved preview; this can create price steps. Luxury photography is $425 + (area − 5,000) × $0.1176 across 5,000–10,000 sq ft, using the recovered starting fee and per-foot rate. The rate applies above 5,000 so the starting price remains $425. Large Home now uses the proposed formula $350 + (area − 4,000) × $0.075 across 4,000–5,000 sq ft. The $425 upper endpoint follows the next category’s starting price; it is an explicit proposal, not a recovered approved endpoint.
 
-Matterport is max($69, area × $0.06). Website $65, drone $120, Zillow $95, 2D floor plan $50, virtual twilight $35 per image. Video is $225 + (seconds − 60) × $125 / 120 from 60 to 180 seconds. The slider advances one second; paired minutes/seconds inputs accept exact durations. Displayed prices round to cents only after calculation. The $225/$350 endpoints differ by $125, not $75. Examples: 1:01 = $226.04; 2:00 = $287.50; 2:59 = $348.96. Twilight quantities are whole images (1–100).
+Matterport is max($69, area × $0.06). Website $65, drone $120, Zillow $95, 2D floor plan $50, virtual twilight $35 per image. Video is $225 + (seconds − 60) × $125 / 120 from 60 to 180 seconds. The video slider advances one second; paired minutes/seconds inputs accept exact durations and stay synchronized with it. Displayed prices round to cents only after calculation. The $225/$350 endpoints differ by $125, not $75. Examples: 1:01 = $226.04; 2:00 = $287.50; 2:59 = $348.96. Twilight quantities are whole images (1–100).
 
-Silver $220, Gold $499 and Platinum $995 keep the supplied rate-sheet inclusions and prices. Package charges replace included à-la-carte charges. Gold includes one minute of video; Platinum includes two. Video duration is locked while included, since a package-upgrade price has not been authorized.
+Silver $220, Gold $499 and Platinum $995 retain their prices. Matterport is optional and separately charged for every package, including Platinum. Package charges replace included à-la-carte charges. Gold includes one minute of video; Platinum includes two. Video duration is locked while included, since a package-upgrade price has not been authorized.
 
 All quoted amounts use integer cents. Unfinalized photography is displayed as Custom Quote, with any priced-service subtotal explicitly separated. The quote can still be sent as a custom pricing request.
 
@@ -24,7 +24,7 @@ All quoted amounts use integer cents. Unfinalized photography is displayed as Cu
 
 Photography: area × 35 / 1,000 minutes. Matterport: area × 9 / 1,000 minutes, equivalent to 150 scans × 30 seconds plus 15 minutes at 10,000 sq ft. The combined known on-site estimate is rounded up to five minutes. Thus 1,000 sq ft photography = 35 minutes; 10,000 sq ft Matterport = 90 minutes. Package inclusions are counted once.
 
-The linear photography assumption yields 350 minutes at 10,000 sq ft. It is intentionally not capped. Drone, video, Zillow and floor-plan capture times have not been supplied, so the page identifies additional capture time to be confirmed instead of fabricating a complete appointment duration. Website and virtual-twilight editing do not add on-site time. Digital-only selections change the preferred date/time labels to completion date and contact time.
+The linear photography assumption yields 350 minutes at 10,000 sq ft. It is intentionally not capped. Video adds 15 minutes per finished minute, calculated from exact seconds before rounding the total. Gold includes 15 minutes of video capture; Platinum includes 30 minutes. Drone capture adds a single 20-minute allowance when selected or included, regardless of media quantity. Included services are counted once. Commercial photography uses a separate rate of 1.5 minutes per 1,000 sq ft; residential photography retains 35 minutes per 1,000 sq ft. Both markets use the same scan, video and drone timing formulas; commercial video quantity multiplies the video time, while the drone allowance remains one 20-minute window. Zillow and floor-plan capture times have not been supplied and remain to be confirmed. Website and virtual-twilight editing do not add on-site time. Photography is mandatory, so all residential selections include an on-site visit.
 
 ## Email delivery boundary
 
@@ -34,7 +34,7 @@ Automatic email delivery remains a launch dependency: connect a server-side mail
 
 ## Validation
 
-- `node --test tests/quote-engine.test.cjs`: eight tests pass, covering price boundaries, per-foot rates, packages and duplication, video duration, quantities, invalid inputs, capture times and email content.
+- `node --test tests/quote-engine.test.cjs`: eleven tests pass, covering price boundaries, per-foot rates, packages and duplication, video duration, quantities, invalid inputs, capture times, package video duration, fixed drone allowance and email content.
 - DOM interaction checks using Linkedom pass for the address gate/re-lock, package locks, live estimates, video changes, required agent fields, exact-subject email drafts, and date/time requirements. Browser validation primitives were simulated; this is not a rendered-browser test.
 - JavaScript syntax, CSS parsing, required field attributes, duplicate IDs, and local link/asset checks pass.
 - Visual desktop/mobile browser review remains outstanding. Local Chromium installation timed out, and the cloud browser rejected the local preview with `net::ERR_BLOCKED_BY_CLIENT`. No claim of browser visual verification is made.
@@ -49,4 +49,60 @@ Try a complete address; Average / 2,680 sq ft; add Matterport; switch to Gold an
 
 The desktop hero now uses the existing image across the full section behind a broad, continuous gradient: fully opaque at the left, 10% opacity (90% transparency) at the section midpoint, and transparent by 65%. The copy remains above the overlay. The stacked mobile layout retains its solid text area, with the image transition expanded from 30% to 37.5% (25% wider).
 
-Standalone video supports every second from 1:00 through 3:00. Gold/Platinum inclusions remain locked to their included durations, without a duplicate standalone charge. Timing copy explicitly names services whose time is not included; Matterport is already included when selected.
+Standalone video supports every second from 1:00 through 3:00 through the slider and minutes/seconds number fields. Gold/Platinum inclusions remain locked to their included durations, without a duplicate standalone charge. Timing copy explicitly names services whose time is not included; Matterport is already included when selected.
+
+## Category and control correction — 2026 09 20
+
+The Small/Average photography formulas and Silver/Gold/Platinum prices are unchanged. Service-row prices now read the individual line fee, avoiding duplicate photography when showing an add-on price. The saved preview and original residential code used a null photography rate for Large and Luxury before the slider removal. A subsequent thread search recovered Luxury’s $425 starting fee and $0.1176 per-square-foot instruction, implemented in the recovery below. Large’s complete formula remains unresolved.
+
+## Residential slider restoration — 2026 09 20
+
+Slider removal applies to commercial pricing only. Residential property-size and video-duration sliders are restored from the prior implementation. The property-size slider stays disabled and gray with Silver, Gold or Platinum and active for Individual Services. Photography stays mandatory. Pricing formulas, capture-time calculations, and commercial behavior are unchanged by this restoration.
+
+## Luxury rate recovery — 2026 09 20
+
+Branch: `fix/residential-pricing-recovery-20260920`, based on the restored residential slider commit `e98bd5d5ff79ccfd213004fb8aec16e762372792`. Each subsequent repair must start on a new branch while this pricing repair is ongoing, as requested by the user. Preserve prior repair branches for comparison and recovery.
+
+The recovered thread specifies Luxury at 5,000–10,000 sq ft, starting at $425, with a rate of $0.1176 per square foot. Applying the rate to area above the starting point gives $425 at 5,000; $719 at 7,500; and $1,013 at 10,000. Prices round to cents after calculation. This implements the recovered numbers; the saved older code did not contain a working Luxury formula.
+
+Large’s $350 starting price was recovered, but no additional-foot rate or upper price was recovered. The next category’s $425 starting fee has not been assumed to be Large’s endpoint. Large remains the only residential photography category requiring a custom quote.
+
+The Small/Average formulas, all bundle fees, service rates, timing calculations, mandatory photography, restored residential sliders, bundle size locks, and commercial code are unchanged.
+
+## Photo counts and interpolation — 2026 09 20
+
+Branch: `fix/residential-photo-counts-20260920`, based on the preceding Luxury recovery branch. Residential category choices, selected photography details, quote summaries and emails now include these ranges:
+
+| Category | Photos |
+| --- | --- |
+| Small Home / Condo | 25–30 |
+| Average Home | 30–50 |
+| Large Home | 50–60 |
+| Luxury Home | 50+ |
+
+Silver, Gold and Platinum retain their respective 25 HDR / 35 HDR / 50+ HDR photo inclusions. Category ranges describe individual photography coverage; they do not introduce a residential per-photo charge or replace the existing area-based pricing.
+
+The user reconfirmed the interpolation method: starting fee plus actual area above the category start multiplied by (ending fee − starting fee) / (ending area − starting area). Average is $245 + (sqft − 2,000) × $0.0175, giving $256.90 at 2,680 sq ft and $266.70 at 3,240 sq ft. Small retains its $150 minimum. The quoted instructions repeat the $350 Large and $425 Luxury starting prices but ask for their endpoints; they do not supply a Large endpoint. This revision preserves the existing formulas, including the preceding Luxury recovery, and leaves Large explicitly unresolved.
+
+The property-size slider is absent from commercial only. Residential size/video sliders stay operational for individual services; its size controls remain disabled for fixed bundles. Commercial photo quantity is retained. The photo-count correction does not change commercial controls or fees.
+
+## Large Home only — 2026 09 20
+
+Branch: `fix/residential-large-home-20260920`, based on the complete commercial-field removal. This correction adds only the missing Large Home price branch: $350 + (sqft − 4,000) × $0.075, with cents rounded after calculation. At 4,000 / 4,500 / 5,000 sq ft the fee is $350 / $387.50 / $425. The proposed $425 endpoint meets Luxury’s starting fee; the user had not explicitly supplied a Large endpoint in the recovered instructions. Keep this distinction visible in review.
+
+The result is numeric instead of Custom Quote. Large retains 50–60 photos, its existing area slider, capture-time calculation, add-ons and package inclusions. Small, Average, Luxury, commercial, all other controls and layout are unchanged. Earlier notes above document the former unresolved state.
+
+
+## Package property controls and optional Matterport — 2026 09 20
+
+Branch: `fix/residential-package-matterport-20260920`, based on `fix/residential-large-home-20260920` at `31ecf7fc9739a68ae8af2d66bddcd29557c6908a`.
+
+Silver, Gold and Platinum disable and gray the property categories and set both disabled main property-size controls to zero. Switching back to Individual Services restores the prior category, bounds and exact area. Category events during package selection cannot modify that saved state. The engine ignores package property size and category.
+
+When Matterport is selected with any package, its own square-foot input and slider appear immediately beneath the checkbox. Coverage starts empty, independently of any previous property size, and requires a whole-number area from 1 to 10,000 sq ft before producing a quote. It remains independent when switching packages. The fee remains max($69, scanned area × $0.06); capture time uses scanned area × 9 / 1,000 minutes. Individual Services keeps its existing property-area calculation for Matterport.
+
+Platinum no longer includes Matterport. Its $995 price, other inclusions and photo count remain intact. Adding a 2,000 sq ft scan costs $120, yielding $1,115; removing the add-on restores $995. Package quote summaries and emails identify the scan coverage and omit the inactive property size/category.
+
+With package property area disabled at zero, photography time cannot be estimated from a confirmed area. It is explicitly listed as time to confirm; the old property area and the Matterport subset are not used to invent a photography duration. Known scan, video and drone time are still added once, using their existing rates. Individual photography prices and time estimates, including Large and Luxury, are unchanged. Commercial markup, scripts and behavior are unchanged.
+
+Validation: all 27 engine tests pass. Linkedom interaction checks pass for package transitions, category locks, zeroed size controls, empty/invalid scan coverage, independent scan prices, Platinum inclusion removal, restoration to Individual Services, generated email drafts, existing residential prices/photo counts and commercial interactions. Browser validation primitives are simulated; this is not rendered-browser visual verification.

@@ -10,15 +10,21 @@
   const agentFields = [...get('agent-fields').querySelectorAll('input,select')];
   const selected = new Set(['photo']);
   let unlocked = false, reviewed = false, current = null;
+  let packageMode = false, individualProperty = null;
   // Build each service once; package switches update state without removing controls.
   Object.entries(Q.services).forEach(([key, service]) => {
     const row = document.createElement('div'); row.className = 'quote-service';
     const top = document.createElement('div'); top.className = 'quote-row-top';
     const label = document.createElement('label');
-    const check = document.createElement('input'); check.type = 'checkbox'; check.id = 'service-' + key; check.name = 'service-' + key; check.checked = selected.has(key);
+    const check = document.createElement('input'); check.type = 'checkbox'; check.id = 'service-' + key; check.name = 'service-' + key; check.checked = selected.has(key); check.disabled = key === 'photo';
     const text = document.createElement('span'); text.textContent = service.label;
     const detail = document.createElement('small'); detail.id = 'detail-' + key; detail.textContent = service.detail; text.append(detail); label.append(check, text);
     const price = document.createElement('span'); price.className = 'quote-price'; price.id = 'price-' + key; top.append(label, price); row.append(top);
+    if (key === 'mp') {
+      const controls = document.createElement('div'); controls.className = 'quote-extra'; controls.id = 'matterport-controls'; controls.hidden = true;
+      controls.innerHTML = '<div class="quote-size"><label for="matterport-sqft">Matterport Coverage · Square Feet</label><input id="matterport-sqft" name="matterportSqft" type="number" min="1" max="10000" step="1" placeholder="Enter area" required disabled></div><input id="matterport-slider" type="range" min="0" max="10000" step="1" value="0" aria-label="Matterport coverage in square feet" disabled><div class="quote-range-labels"><span>Enter the area to scan</span><span>10,000 sq ft maximum</span></div>';
+      row.append(controls);
+    }
     if (key === 'video') {
       const controls = document.createElement('div'); controls.className = 'quote-extra'; controls.id = 'video-controls'; controls.hidden = true;
       controls.innerHTML = '<div class="quote-video-length"><span>Video Length</span><div class="quote-video-fields"><label for="video-minutes">Minutes<input id="video-minutes" name="videoMinutes" type="number" min="1" max="3" step="1" value="1" required disabled></label><span aria-hidden="true">:</span><label for="video-seconds">Seconds<input id="video-seconds" name="videoSecondsPart" type="number" min="0" max="59" step="1" value="0" required disabled></label></div></div><input id="video-slider" type="range" min="60" max="180" step="1" value="60" aria-label="Video length in seconds" aria-valuetext="1 minute 0 seconds"><div class="quote-range-labels"><span>1 minute · $225</span><span>3 minutes · $350</span></div>';
@@ -30,7 +36,7 @@
       row.append(controls);
     }
     get('quote-services').append(row);
-    check.addEventListener('change', () => { if (check.checked) selected.add(key); else selected.delete(key); update(); });
+    check.addEventListener('change', () => { if (key === 'photo' || check.checked) selected.add(key); else selected.delete(key); update(); });
   });
   function validateField(field) {
     field.setCustomValidity('');
@@ -64,30 +70,54 @@
     return Number(minutes.value) * 60 + Number(seconds.value);
   }
   function inputState() {
-    return { category: value('category'), package: value('package'), sqft: value('sqft'), selected: [...selected], videoSeconds: videoSeconds(), images: get('twilight-images').value };
+    return { category: value('category'), package: value('package'), sqft: value('sqft'), matterportSqft: get('matterport-sqft').value, selected: [...selected], videoSeconds: videoSeconds(), images: get('twilight-images').value };
+  }
+  function syncPropertyMode() {
+    const bundled = value('package') !== 'custom', size = get('property-sqft'), slider = get('property-slider');
+    const categories = [...form.querySelectorAll('[name=category]')];
+    if (bundled && !packageMode) individualProperty = { category: value('category'), sqft: size.value };
+    if (bundled || packageMode) {
+      categories.forEach(radio => { radio.checked = radio.value === individualProperty.category; });
+      const cat = Q.categories[individualProperty.category];
+      size.min = slider.min = bundled ? 0 : cat.min;
+      size.max = slider.max = bundled ? 0 : cat.max;
+      size.value = slider.value = bundled ? 0 : individualProperty.sqft;
+      get('range-min').textContent = cat.min.toLocaleString() + ' sq ft';
+      get('range-max').textContent = cat.max.toLocaleString() + ' sq ft';
+    }
+    size.disabled = slider.disabled = bundled;
+    categories.forEach(radio => { radio.disabled = bundled; });
+    get('category-options').classList.toggle('quote-categories-locked', bundled);
+    get('category-options').setAttribute('aria-disabled', String(bundled));
+    get('range-min').parentElement.hidden = bundled;
+    packageMode = bundled;
   }
   function update() {
+    syncPropertyMode();
     const state = inputState(), pack = Q.packages[state.package];
+    const matterportActive = state.package !== 'custom' && selected.has('mp');
+    get('matterport-controls').hidden = !matterportActive;
+    get('matterport-sqft').disabled = get('matterport-slider').disabled = !matterportActive;
     const videoActive = selected.has('video') && !pack.includes.includes('video');
     get('video-controls').hidden = !videoActive; get('video-minutes').disabled = !videoActive; get('video-seconds').disabled = !videoActive; get('video-slider').disabled = !videoActive;
     get('twilight-controls').hidden = !selected.has('twilight'); get('twilight-images').disabled = !selected.has('twilight');
     get('request-status').hidden = true;
     Object.entries(Q.services).forEach(([key, service]) => {
       const included = pack.includes.includes(key), check = get('service-' + key), price = get('price-' + key);
-      check.disabled = included; check.checked = included || selected.has(key);
+      check.disabled = key === 'photo' || included; check.checked = key === 'photo' || included || selected.has(key);
       price.classList.toggle('quote-included', included);
-      get('detail-' + key).textContent = included ? (key === 'video' ? pack.minutes + '-minute video · ' : key === 'photo' ? pack.photos + ' · ' : '') + 'Included in ' + pack.label : service.detail;
+      get('detail-' + key).textContent = included ? (key === 'video' ? pack.minutes + '-minute video · ' : key === 'photo' ? pack.photos + ' · ' : '') + 'Included in ' + pack.label : (key === 'photo' ? Q.categories[state.category].photos + ' · ' : '') + service.detail;
       if (included) price.textContent = 'Included';
       else if (service.cents) price.textContent = Q.money(service.cents);
       else {
-        try { const alone = Q.calculate({ ...state, package: 'custom', selected: [key] }); price.textContent = alone.pending ? 'Custom Quote' : Q.money(alone.totalCents); }
-        catch (_) { price.textContent = '—'; }
+        try { const alone = Q.calculate({ ...state, selected: [key] }); const line = alone.lines.find(item => item.key === key); price.textContent = line.cents === null ? 'Custom Quote' : Q.money(line.cents); }
+        catch (_) { price.textContent = key === 'mp' && state.package !== 'custom' ? (matterportActive ? 'Enter area' : 'From $69.00') : '—'; }
       }
     });
     get('quote-address').textContent = addressText();
-    get('summary-property').textContent = addressText() + ' · ' + Number(state.sqft).toLocaleString() + ' sq ft';
+    get('summary-property').textContent = addressText() + ' · ' + (state.package === 'custom' ? Number(state.sqft).toLocaleString() + ' sq ft' : pack.label + ' Package');
     try {
-      if (!get('property-sqft').validity.valid) throw new Error('Enter a whole-number property size within the selected category.');
+      if (state.package === 'custom' && !get('property-sqft').validity.valid) throw new Error('Enter a whole-number property size within the selected category.');
       if (videoActive && (!Number.isInteger(state.videoSeconds) || state.videoSeconds < 60 || state.videoSeconds > 180)) throw new Error('Enter a video length from 1:00 to 3:00 in whole seconds.');
       current = Q.calculate(state);
       get('estimate-error').hidden = true;
@@ -101,10 +131,12 @@
       const appendLine = (label, cost) => { const li = document.createElement('li'), a = document.createElement('span'), b = document.createElement('span'); a.textContent = label; b.textContent = cost; li.append(a,b); get('summary-lines').append(li); };
       if (current.packageCents) appendLine(current.package + ' Package', Q.money(current.packageCents));
       current.lines.forEach(line => appendLine(line.label, line.included ? 'Included' : line.cents === null ? 'To Confirm' : Q.money(line.cents)));
-      get('summary-duration').textContent = current.knownMinutes ? 'About ' + Q.duration(current.knownMinutes) + (current.additionalCapture.length ? ' for photography / Matterport' : '') : current.additionalCapture.length ? 'Confirmed With Your Appointment' : 'No On-Site Visit Required';
+      get('summary-duration').textContent = current.knownMinutes ? 'About ' + Q.duration(current.knownMinutes) : current.additionalCapture.length ? 'Confirmed With Your Appointment' : 'No On-Site Visit Required';
       const parts = [];
       if (current.photographyMinutes) parts.push('Photography: ' + Q.duration(current.photographyMinutes));
       if (current.matterportMinutes) parts.push('Matterport: ' + Q.duration(current.matterportMinutes));
+      if (current.videoMinutes) parts.push('Video: ' + Q.duration(current.videoMinutes));
+      if (current.droneMinutes) parts.push('Drone / Aerial: ' + Q.duration(current.droneMinutes));
       get('summary-breakdown').textContent = parts.join(' · ');
       get('estimate-inline-time').textContent = 'Time on site: ' + get('summary-duration').textContent;
       get('summary-time-note').textContent = current.additionalCapture.length ? 'Time for ' + current.additionalCapture.map(k => Q.services[k].label).join(', ') + ' is not included above and will be confirmed with your appointment. Layout and access can affect time on site.' : 'Allow for property layout, access and readiness. Times are approximate and rounded up to five minutes.';
@@ -126,6 +158,7 @@
   addressFields.forEach(field => { field.addEventListener('input', syncAddress); field.addEventListener('change', syncAddress); });
   agentFields.forEach(field => field.addEventListener('input', () => { validateField(field); get('request-status').hidden = true; }));
   form.querySelectorAll('[name=category]').forEach(radio => radio.addEventListener('change', () => {
+    if (value('package') !== 'custom') { update(); return; }
     const cat = Q.categories[value('category')], size = get('property-sqft'), slider = get('property-slider');
     size.min = slider.min = cat.min; size.max = slider.max = cat.max;
     size.value = slider.value = Math.min(cat.max, Math.max(cat.min, Number(size.value) || cat.min));
@@ -134,6 +167,12 @@
   form.querySelectorAll('[name=package]').forEach(radio => radio.addEventListener('change', update));
   get('property-sqft').addEventListener('input', () => { if (get('property-sqft').validity.valid) get('property-slider').value = get('property-sqft').value; update(); });
   get('property-slider').addEventListener('input', () => { get('property-sqft').value = get('property-slider').value; update(); });
+  get('matterport-sqft').addEventListener('input', () => {
+    if (get('matterport-sqft').validity.valid) get('matterport-slider').value = get('matterport-sqft').value;
+    else if (!get('matterport-sqft').value) get('matterport-slider').value = 0;
+    update();
+  });
+  get('matterport-slider').addEventListener('input', () => { get('matterport-sqft').value = Number(get('matterport-slider').value) ? get('matterport-slider').value : ''; update(); });
   const syncVideoSlider = () => {
     const seconds = videoSeconds();
     if (Number.isInteger(seconds) && seconds >= 60 && seconds <= 180) {
@@ -161,25 +200,22 @@
   }
   get('shoot-date').min = centralNow().date;
   const details = () => Object.fromEntries(['first','last','company','email','phone','street','city','state','zip','optOut'].map(key => [key,value(key)]));
-  function prepare(appointmentRequired) {
+  function prepare() {
     if (!unlocked || !validateFields(addressFields, true)) { syncAddress(); return null; }
     update(); if (!current) { get('estimate-title').focus(); return null; }
     if (!reviewed || !validateFields(agentFields, true)) return null;
-    let appointment;
-    if (appointmentRequired) {
-      const date = get('shoot-date'), time = get('shoot-time'), now = centralNow(); date.min = now.date;
-      date.setCustomValidity(''); time.setCustomValidity('');
-      if (!date.checkValidity()) { date.reportValidity(); return null; }
-      if (!time.checkValidity()) { time.reportValidity(); return null; }
-      if (date.value === now.date && time.value <= now.time) { time.setCustomValidity('Choose a future time in Central Time.'); time.reportValidity(); return null; }
-      appointment = { date: date.value, time: time.value };
-    }
+    const date = get('shoot-date'), time = get('shoot-time'), now = centralNow(); date.min = now.date;
+    date.setCustomValidity(''); time.setCustomValidity('');
+    if (!date.checkValidity()) { date.reportValidity(); return null; }
+    if (!time.checkValidity()) { time.reportValidity(); return null; }
+    if (date.value === now.date && time.value <= now.time) { time.setCustomValidity('Choose a future time in Central Time.'); time.reportValidity(); return null; }
+    const appointment = { date: date.value, time: time.value };
     return { quote: current, details: details(), appointment };
   }
   ['shoot-date','shoot-time'].forEach(id => get(id).addEventListener('input', () => { get(id).setCustomValidity(''); get('request-status').hidden = true; }));
   function showStatus(message) { get('request-status').textContent = message; get('request-status').hidden = false; }
   function openEmail(self) {
-    const prepared = prepare(!self); if (!prepared) return;
+    const prepared = prepare(); if (!prepared) return;
     const body = Q.emailBody(prepared.quote, prepared.details, prepared.appointment);
     const recipient = self ? prepared.details.email : 'sales@sitesee.ai';
     const uri = 'mailto:' + encodeURIComponent(recipient) + '?subject=' + encodeURIComponent(Q.subject) + '&body=' + encodeURIComponent(body);
@@ -188,9 +224,7 @@
   }
   get('email-self').addEventListener('click', () => openEmail(true));
   get('copy-quote').addEventListener('click', async () => {
-    const prepared = prepare(false); if (!prepared) return;
-    const date = get('shoot-date'), time = get('shoot-time');
-    if (date.value && time.value && date.validity.valid && time.validity.valid) prepared.appointment = { date:date.value, time:time.value };
+    const prepared = prepare(); if (!prepared) return;
     const text = Q.emailBody(prepared.quote, prepared.details, prepared.appointment);
     try { await navigator.clipboard.writeText(text); showStatus('Quote copied. Paste it into your email app when you are ready.'); }
     catch (_) {
