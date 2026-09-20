@@ -15,7 +15,7 @@ test('Matterport minimum and per-foot prices', () => {
   for(const sqft of [1000,1150]) assert.equal(fee(quote({category:'small',sqft,selected:['mp']}),'mp'),6900);
   assert.equal(fee(quote({category:'small',sqft:1151,selected:['mp']}),'mp'),6906);
   assert.equal(fee(quote({selected:['mp']}),'mp'),16080);
-  assert.equal(fee(quote({category:'luxury',sqft:10000,selected:['mp']}),'mp'),60000);
+  assert.equal(fee(quote({category:'luxury',sqft:10000,selected:['mp']}),'mp'),49900);
 });
 test('video endpoints, midpoint and quantity-based twilight', () => {
   for (const [videoSeconds,total] of [[60,22500],[61,22604],[90,25625],[120,28750],[179,34896],[180,35000]]) assert.equal(fee(quote({selected:['video'],videoSeconds}),'video'),total);
@@ -42,8 +42,8 @@ test('Large photography scales from $350 to the proposed $425 upper endpoint', (
   for(const [name,pack] of Object.entries(Q.packages).filter(([name])=>name!=='custom'))
     assert.equal(quote({category:'large',sqft:4500,package:name,selected:['photo']}).totalCents,pack.cents);
 });
-test('Luxury starts at $425 and adds $0.1176 per square foot above 5000', () => {
-  for (const [sqft,cents] of [[5000,42500],[5001,42512],[6000,54260],[7500,71900],[9999,101288],[10000,101300]]) {
+test('Luxury starts at $425, scales per square foot, and caps at $795', () => {
+  for (const [sqft,cents] of [[5000,42500],[5001,42512],[6000,54260],[7500,71900],[8146,79497],[8147,79500],[9999,79500],[10000,79500]]) {
     const q=quote({category:'luxury',sqft});
     assert.equal(q.pending,false);assert.equal(fee(q,'photo'),cents);assert.equal(q.totalCents,cents);
   }
@@ -109,7 +109,7 @@ test('packages ignore main property size and category while keeping their fixed 
 
 test('every package prices optional Matterport using its own valid coverage only', () => {
   for (const packageName of ['silver','gold','platinum']) {
-    for (const [matterportSqft,cents] of [[1,6900],[1150,6900],[1151,6906],[2000,12000],[10000,60000]]) {
+    for (const [matterportSqft,cents] of [[1,6900],[1150,6900],[1151,6906],[2000,12000],[8316,49896],[8317,49900],[10000,49900]]) {
       const result=quote({package:packageName,category:'small',sqft:0,matterportSqft,selected:['mp']});
       assert.equal(fee(result,'mp'),cents);
       assert.equal(result.totalCents,Q.packages[packageName].cents+cents);
@@ -136,4 +136,17 @@ test('package emails use scanned coverage and never report the disabled property
   const silver=Q.emailBody(quote({package:'silver'}),details);
   assert.ok(silver.includes('Estimated Time On Site: Confirmed With Your Appointment'));
   assert.equal(silver.includes('No on-site capture'),false);
+});
+
+
+test('residential price caps retain actual area and uncapped on-site timing', () => {
+  for(const sqft of [8317,9000,10000]) {
+    const result=quote({category:'luxury',sqft,selected:['photo','mp']});
+    assert.equal(fee(result,'photo'),79500);assert.equal(fee(result,'mp'),49900);
+    assert.equal(result.totalCents,129400);assert.equal(result.sqft,sqft);
+    assert.equal(result.photographyMinutes,sqft*35/1000);assert.equal(result.matterportMinutes,sqft*9/1000);
+    assert.equal(result.knownMinutes,Math.ceil(sqft*44/1000/5)*5);
+  }
+  const packageScan=quote({package:'platinum',sqft:0,matterportSqft:10000,selected:['mp']});
+  assert.equal(packageScan.totalCents,149400);assert.equal(packageScan.matterportMinutes,90);
 });

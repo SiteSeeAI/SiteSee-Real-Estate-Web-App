@@ -26,7 +26,7 @@
     video: { label: 'Property Video', detail: 'Interior and exterior video, from one to three minutes.' },
     floor: { label: '2D Schematic Floor Plan', detail: 'Property layout with room measurements.', cents: 5000 },
     twilight: { label: 'Virtual Twilight', detail: 'Daylight-to-dusk image editing. $35 per image.' },
-    mp: { label: 'Matterport 3D Experience', detail: '$0.06 per sq ft, with a $69 minimum.*' }
+    mp: { label: 'Matterport 3D Experience', detail: '$0.06 per sq ft, with a $69 minimum. $499 max up to 10K sq ft' }
   };
   const money = cents => (cents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
   function calculate(input) {
@@ -48,9 +48,9 @@
     const photo = bundled ? 0 : input.category === 'small' ? Math.max(15000, Math.round(sqft * 9.52))
       : input.category === 'average' ? Math.round(24500 + (sqft - 2000) * 1.75)
       : input.category === 'large' ? Math.round(35000 + (sqft - 4000) * 7.5)
-      : input.category === 'luxury' ? Math.round(42500 + (sqft - 5000) * 11.76)
+      : input.category === 'luxury' ? Math.min(79500, Math.round(42500 + (sqft - 5000) * 11.76))
       : null;
-    const rates = { photo, website: 6500, drone: 12000, zillow: 9500, video: Math.round(22500 + (videoSeconds - 60) * 12500 / 120), floor: 5000, twilight: images * 3500, mp: Math.max(6900, matterportSqft * 6) };
+    const rates = { photo, website: 6500, drone: 12000, zillow: 9500, video: Math.round(22500 + (videoSeconds - 60) * 12500 / 120), floor: 5000, twilight: images * 3500, mp: Math.min(49900, Math.max(6900, matterportSqft * 6)) };
     let subtotal = pack.cents, pending = false;
     const lines = Array.from(chosen).map(key => {
       const included = pack.includes.includes(key);

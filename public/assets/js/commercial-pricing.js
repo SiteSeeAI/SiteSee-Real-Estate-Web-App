@@ -80,8 +80,10 @@
     get('website-note').textContent='$175 for a dedicated listing website. Also available with the SiteSee platform; charged once.';
     const cat=Q.categories[value('category')];
     get('photo-slider').min=cat.photoMin;
+    get('photo-slider').max=cat.photoMax;
     get('photo-range-min').textContent=cat.photoMin+' photos';
-    get('photo-inclusions').textContent=cat.photoMin+'–'+cat.photosIncluded+' photos included. Additional photos above '+cat.photosIncluded+' are '+Q.money(cat.extraPhotoCents)+' each. Maximum 100 total photos.';
+    get('photo-range-max').textContent=cat.photoMax+' photos maximum';
+    get('photo-inclusions').textContent=cat.photoMin+'–'+cat.photosIncluded+' photos included. Additional photos above '+cat.photosIncluded+' are '+Q.money(cat.extraPhotoCents)+' each. Maximum '+cat.photoMax+' total photos.';
     const scanLimit=Math.min(cat.max,20000);
     get('matterport-sqft').max=scanLimit;
     get('matterport-max').textContent=scanLimit.toLocaleString()+' sq ft';
@@ -137,6 +139,7 @@
   form.querySelectorAll('[name=category]').forEach(radio => radio.addEventListener('change', () => {
     const cat = Q.categories[value('category')];
     get('photo-slider').min=cat.photoMin;
+    get('photo-slider').max=cat.photoMax;
     get('photo-slider').value=cat.photosIncluded;
     if(Number(get('matterport-sqft').value)>Math.min(cat.max,20000))get('matterport-sqft').value=Math.min(cat.max,20000);
     update();
@@ -157,25 +160,22 @@
   }
   get('shoot-date').min = centralNow().date;
   const details = () => Object.fromEntries(['first','last','company','email','phone','street','city','state','zip','optOut'].map(key => [key,value(key)]));
-  function prepare(appointmentRequired) {
+  function prepare() {
     if (!unlocked || !validateFields(addressFields, true)) { syncAddress(); return null; }
     update(); if (!current) { get('estimate-title').focus(); return null; }
     if (!reviewed || !validateFields(agentFields, true)) return null;
-    let appointment;
-    if (appointmentRequired) {
-      const date = get('shoot-date'), time = get('shoot-time'), now = centralNow(); date.min = now.date;
-      date.setCustomValidity(''); time.setCustomValidity('');
-      if (!date.checkValidity()) { date.reportValidity(); return null; }
-      if (!time.checkValidity()) { time.reportValidity(); return null; }
-      if (date.value === now.date && time.value <= now.time) { time.setCustomValidity('Choose a future time in Central Time.'); time.reportValidity(); return null; }
-      appointment = { date: date.value, time: time.value };
-    }
+    const date = get('shoot-date'), time = get('shoot-time'), now = centralNow(); date.min = now.date;
+    date.setCustomValidity(''); time.setCustomValidity('');
+    if (!date.checkValidity()) { date.reportValidity(); return null; }
+    if (!time.checkValidity()) { time.reportValidity(); return null; }
+    if (date.value === now.date && time.value <= now.time) { time.setCustomValidity('Choose a future time in Central Time.'); time.reportValidity(); return null; }
+    const appointment = { date: date.value, time: time.value };
     return { quote: current, details: details(), appointment };
   }
   ['shoot-date','shoot-time'].forEach(id => get(id).addEventListener('input', () => { get(id).setCustomValidity(''); get('request-status').hidden = true; }));
   function showStatus(message) { get('request-status').textContent = message; get('request-status').hidden = false; }
   function openEmail(self) {
-    const prepared = prepare(!self); if (!prepared) return;
+    const prepared = prepare(); if (!prepared) return;
     const body = Q.emailBody(prepared.quote, prepared.details, prepared.appointment);
     const recipient = self ? prepared.details.email : 'sales@sitesee.ai';
     const uri = 'mailto:' + encodeURIComponent(recipient) + '?subject=' + encodeURIComponent(Q.subject) + '&body=' + encodeURIComponent(body);
@@ -184,9 +184,7 @@
   }
   get('email-self').addEventListener('click', () => openEmail(true));
   get('copy-quote').addEventListener('click', async () => {
-    const prepared = prepare(false); if (!prepared) return;
-    const date = get('shoot-date'), time = get('shoot-time');
-    if (date.value && time.value && date.validity.valid && time.validity.valid) prepared.appointment = { date:date.value, time:time.value };
+    const prepared = prepare(); if (!prepared) return;
     const text = Q.emailBody(prepared.quote, prepared.details, prepared.appointment);
     try { await navigator.clipboard.writeText(text); showStatus('Quote copied. Paste it into your email app when you are ready.'); }
     catch (_) {

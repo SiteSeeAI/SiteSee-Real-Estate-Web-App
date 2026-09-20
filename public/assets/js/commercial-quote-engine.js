@@ -7,9 +7,9 @@
   'use strict';
   const subject = 'Commercial SiteSee Real Estate Quote';
   const categories = {
-    small: { label: 'Small Commercial / Retail', min: 1, max: 10000, photoCents:75000, photoMin:25, photosIncluded:30, extraPhotoCents:3000 },
-    mid: { label: 'Warehouse / Office', min: 10000, max: 50000, photoCents:120000, photoMin:30, photosIncluded:45, extraPhotoCents:2670 },
-    large: { label: 'Factory / Industrial', min: 50000, max: 250000, photoCents:250000, photoMin:45, photosIncluded:55, extraPhotoCents:2500 }
+    small: { label: 'Small Commercial / Retail', min: 1, max: 10000, photoCents:75000, photoMin:25, photosIncluded:30, photoMax:35, extraPhotoCents:3000 },
+    mid: { label: 'Warehouse / Office', min: 10000, max: 50000, photoCents:120000, photoMin:30, photosIncluded:45, photoMax:55, extraPhotoCents:2670 },
+    large: { label: 'Factory / Industrial', min: 50000, max: 250000, photoCents:250000, photoMin:45, photosIncluded:55, photoMax:65, extraPhotoCents:2500 }
   };
   const services = {
     photo: { label: 'Property Photography', detail: 'Included category coverage, with additional photographs priced by quantity.' },
@@ -48,7 +48,7 @@
     if (!['files','website'].includes(requestedDelivery)) throw new Error('Choose media files or an independent property website.');
     if (requestedDelivery === 'website') chosen.add('website');
     const photoCount = Number(input.photoCount === undefined ? cat.photosIncluded : input.photoCount);
-    if (!Number.isInteger(photoCount) || photoCount < cat.photoMin || photoCount > 100) throw new Error('Choose '+cat.photoMin+'–100 total finished photographs for this category.');
+    if (!Number.isInteger(photoCount) || photoCount < cat.photoMin || photoCount > cat.photoMax) throw new Error('Choose '+cat.photoMin+'–'+cat.photoMax+' total finished photographs for this category.');
     const extraPhotos = Math.max(0,photoCount-cat.photosIncluded),extraPhotoCents=extraPhotos*cat.extraPhotoCents;
     const images = Number(input.aerialImages), videos = Number(input.videos), seconds = Number(input.videoSeconds), plans = Number(input.plans), views = Number(input.views360);
     const scanLimit = Math.min(20000,sqft === null ? cat.max : sqft);

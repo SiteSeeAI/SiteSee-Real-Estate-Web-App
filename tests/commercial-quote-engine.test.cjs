@@ -91,11 +91,11 @@ test('hosting includes six months and prices only the extension at the selected 
 });
 
 test('commercial photography allowances and additional-image prices apply by category',()=>{
- for(const [category,sqft,min,included,unit] of [['small',10000,25,30,3000],['mid',10000,30,45,2670],['large',50000,45,55,2500]]){
+ for(const [category,sqft,min,included,unit,max] of [['small',10000,25,30,3000,35],['mid',10000,30,45,2670,55],['large',50000,45,55,2500,65]]){
   const base=quote({category,sqft});assert.equal(base.photoCount,included);assert.equal(base.extraPhotos,0);
   for(const photoCount of [min,included])assert.equal(quote({category,sqft,photoCount}).totalCents,base.totalCents);
-  for(const photoCount of [included+1,100]){const q=quote({category,sqft,photoCount});const extra=(photoCount-included)*unit;assert.equal(q.extraPhotoCents,extra);assert.equal(q.photographyCents,base.photographyCents+extra);assert.equal(q.totalCents,base.totalCents+extra);assert.equal(q.licenseBaseCents,base.licenseBaseCents+extra);assert.equal(q.knownMinutes,base.knownMinutes);assert.equal(q.lines.filter(l=>l.key==='extraPhotos').length,1);}
-  for(const photoCount of [min-1,101,50.5,''])assert.throws(()=>quote({category,sqft,photoCount}));
+  for(const photoCount of [included+1,max]){const q=quote({category,sqft,photoCount});const extra=(photoCount-included)*unit;assert.equal(q.extraPhotoCents,extra);assert.equal(q.photographyCents,base.photographyCents+extra);assert.equal(q.totalCents,base.totalCents+extra);assert.equal(q.licenseBaseCents,base.licenseBaseCents+extra);assert.equal(q.knownMinutes,base.knownMinutes);assert.equal(q.lines.filter(l=>l.key==='extraPhotos').length,1);}
+  for(const photoCount of [min-1,max+1,100,50.5,''])assert.throws(()=>quote({category,sqft,photoCount}));
  }
  const q=quote({category:'mid',sqft:10000,photoCount:46,licenseType:'unlimited',selected:['website','platform']});assert.equal(q.extraPhotoCents,2670);assert.equal(q.licenseCents,61335);assert.equal(q.photographyCents,122670);
  assert.equal(quote({category:'large',sqft:250000}).basePhotographyCents,250000);assert.equal(Q.categories.large.max,250000);
@@ -104,7 +104,7 @@ test('commercial photography allowances and additional-image prices apply by cat
 test('commercial quotes work without a property-size field and give category-based photography time ranges',()=>{
  for(const [category,cents,minimum,maximum] of [['small',75000,5,15],['mid',120000,15,75],['large',250000,75,375]]){
   const q=quote({category,sqft:undefined});assert.equal(q.sqft,null);assert.equal(q.totalCents,cents);assert.equal(q.knownMinutes,minimum);assert.equal(q.knownMinutesMax,maximum);assert.equal(q.pending,false);
-  const extra=quote({category,sqft:undefined,photoCount:100});assert.equal(extra.totalCents,cents+(100-Q.categories[category].photosIncluded)*Q.categories[category].extraPhotoCents);
+  const extra=quote({category,sqft:undefined,photoCount:Q.categories[category].photoMax});assert.equal(extra.totalCents,cents+(Q.categories[category].photoMax-Q.categories[category].photosIncluded)*Q.categories[category].extraPhotoCents);
  }
  const q=quote({category:'mid',sqft:undefined,selected:['mp','video','drone'],matterportSqft:20000});
  assert.equal(fee(q,'mp'),200000);assert.equal(q.photographyMinutes,15);assert.equal(q.photographyMinutesMax,75);assert.equal(q.matterportMinutes,180);assert.equal(q.videoMinutes,15);assert.equal(q.droneMinutes,20);assert.equal(q.knownMinutes,230);assert.equal(q.knownMinutesMax,290);
