@@ -51,7 +51,7 @@
     if (!Number.isInteger(photoCount) || photoCount < cat.photoMin || photoCount > 100) throw new Error('Choose '+cat.photoMin+'–100 total finished photographs for this category.');
     const extraPhotos = Math.max(0,photoCount-cat.photosIncluded),extraPhotoCents=extraPhotos*cat.extraPhotoCents;
     const images = Number(input.aerialImages), videos = Number(input.videos), seconds = Number(input.videoSeconds), plans = Number(input.plans), views = Number(input.views360);
-    const scanLimit = sqft === null ? cat.max : sqft;
+    const scanLimit = Math.min(20000,sqft === null ? cat.max : sqft);
     const mpSqft = Number(input.matterportSqft === undefined ? (sqft === null ? Math.min(5000,scanLimit) : sqft) : input.matterportSqft);
     const platform = chosen.has('platform'), platformMonths = Number(input.platformMonths === undefined ? 6 : input.platformMonths);
     if (platform && (!Number.isInteger(platformMonths) || platformMonths < 6 || platformMonths > 18)) throw new Error('Choose a platform term from 6 to 18 months.');

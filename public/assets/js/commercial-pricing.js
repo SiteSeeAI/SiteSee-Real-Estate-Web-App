@@ -21,7 +21,7 @@
     const price=document.createElement('span');price.id='c-price-'+key;price.className='quote-price';top.append(label,price);row.append(top);
     let controls='';
     if(key==='platform')controls=quantity('platform-months','Platform Term · Months',6,18,1,6)+'<div class="quote-range-labels"><span>6 months</span><span>18 months</span></div><p class="quote-note">$49 per month. Your estimate includes the full selected term; six months is $294. Matterport capture and hosting remain separate. An independent property website is available separately for $175.</p>';
-    if(key==='mp')controls=quantity('matterport-sqft','Area To Scan · Square Feet',1,5000,1,5000)+'<div class="quote-range-labels"><span>1 sq ft</span><span id="c-matterport-max">5,000 sq ft</span></div><p class="quote-note">Scan only the areas you need. Photography coverage follows the category selected above. Add individual 360° views for other spaces with a SiteSee platform subscription.</p>';
+    if(key==='mp')controls='<div class="quote-size"><label for="c-matterport-sqft">Area To Scan · Square Feet</label><output id="c-matterport-area" for="c-matterport-sqft">5,000 sq ft</output></div><input id="c-matterport-sqft" name="matterport-sqft" type="range" min="1" max="10000" step="1" value="5000" disabled><div class="quote-range-labels"><span>1 sq ft</span><span id="c-matterport-max">10,000 sq ft</span></div><p class="quote-note">Scan only the areas you need. Photography coverage follows the category selected above. Add individual 360° views for other spaces with a SiteSee platform subscription.</p>';
     if(key==='views360')controls=quantity('views360-count','Individual 360° Photos',1,100,1,1);
     if(key==='drone')controls=quantity('aerial-images','Finished Aerial Images',1,100,1,1);
     if(key==='floor')controls=quantity('plan-sets','Property Layout Sets',1,20,1,1);
@@ -84,8 +84,11 @@
     get('photo-count').min=get('photo-slider').min=cat.photoMin;
     get('photo-range-min').textContent=cat.photoMin+' photos';
     get('photo-inclusions').textContent=cat.photoMin+'–'+cat.photosIncluded+' photos included. Additional photos above '+cat.photosIncluded+' are '+Q.money(cat.extraPhotoCents)+' each. Maximum 100 total photos.';
-    get('matterport-sqft').max=cat.max;
-    get('matterport-max').textContent=cat.max.toLocaleString()+' sq ft';
+    const scanLimit=Math.min(cat.max,20000);
+    get('matterport-sqft').max=scanLimit;
+    get('matterport-max').textContent=scanLimit.toLocaleString()+' sq ft';
+    get('matterport-area').textContent=Number(get('matterport-sqft').value).toLocaleString()+' sq ft';
+    get('matterport-sqft').setAttribute('aria-valuetext',get('matterport-area').textContent);
     ['platform','mp','views360','drone','video','floor'].forEach(key=>{
       const active=selected.has(key),controls=get(key+'-controls');controls.hidden=!active;controls.querySelectorAll('input').forEach(el=>{el.disabled=!active;});
     });
@@ -131,7 +134,7 @@
   form.querySelectorAll('[name=category]').forEach(radio => radio.addEventListener('change', () => {
     const cat = Q.categories[value('category')];
     get('photo-count').value=get('photo-slider').value=cat.photosIncluded;
-    if(Number(get('matterport-sqft').value)>cat.max)get('matterport-sqft').value=cat.max;
+    if(Number(get('matterport-sqft').value)>Math.min(cat.max,20000))get('matterport-sqft').value=Math.min(cat.max,20000);
     update();
   }));
 

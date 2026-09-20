@@ -115,5 +115,11 @@ test('independent scan area is bounded by category when property size is not ent
  const q=quote({category:'small',sqft:undefined,selected:['mp'],matterportSqft:10000});assert.equal(fee(q,'mp'),100000);
  assert.throws(()=>quote({category:'small',sqft:undefined,selected:['mp'],matterportSqft:10001}));
  assert.throws(()=>quote({category:'large',sqft:undefined,selected:['mp'],matterportSqft:250001}));
+ for(const [category,sqft] of [['mid',undefined],['large',undefined],['mid',50000],['large',250000]]){
+  const maximum=quote({category,sqft,selected:['mp'],matterportSqft:20000});
+  assert.equal(fee(maximum,'mp'),200000);assert.equal(maximum.matterportMinutes,180);
+  assert.throws(()=>quote({category,sqft,selected:['mp'],matterportSqft:20001}),/20,000/);
+  assert.throws(()=>quote({category,sqft,selected:['mp'],matterportSqft:50000}),/20,000/);
+ }
  const exact=quote({category:'mid',sqft:20000});assert.equal(exact.photographyMinutesMax,exact.photographyMinutes);assert.equal(exact.knownMinutesMax,exact.knownMinutes);assert.equal(Q.durationRange(exact.knownMinutes,exact.knownMinutesMax),'30 min');
 });
