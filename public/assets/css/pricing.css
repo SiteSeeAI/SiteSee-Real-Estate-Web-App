@@ -25,3 +25,7 @@
 
 .quote-market-select{max-width:900px;margin:0 auto 36px}.quote-market-select fieldset{margin-bottom:0}.quote-market-select .quote-choice{padding:22px}.quote-market-select .quote-choice>span{font-size:1.05rem}.quote-summary [id$="site-time-title"]{color:var(--yellow)}
 .quote-license-note{font-size:.78rem;color:var(--muted)}
+
+/* Required photography and fixed-package size controls remain visibly inactive. */
+.quote-panel input:disabled{opacity:.55;filter:grayscale(1)}
+.quote-service label:has(input:disabled){cursor:default}

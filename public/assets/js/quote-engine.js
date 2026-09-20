@@ -34,12 +34,11 @@
     if (!cat || !pack) throw new Error('Choose a property category and a package or individual services.');
     const sqft = Number(input.sqft);
     if (!Number.isInteger(sqft) || sqft < cat.min || sqft > cat.max) throw new Error('Enter a whole-number size between ' + cat.min.toLocaleString() + ' and ' + cat.max.toLocaleString() + ' sq ft.');
-    const chosen = new Set(pack.includes);
+    const chosen = new Set(['photo', ...pack.includes]);
     for (const key of input.selected || []) {
       if (!services[key]) throw new Error('Unknown service.');
       chosen.add(key);
     }
-    if (!chosen.size) throw new Error('Choose at least one service or a package.');
     const videoSeconds = Number(input.videoSeconds), images = Number(input.images);
     if (chosen.has('video') && !pack.includes.includes('video') && (!Number.isInteger(videoSeconds) || videoSeconds < 60 || videoSeconds > 180)) throw new Error('Choose a video length from 1:00 to 3:00 in whole seconds.');
     if (chosen.has('twilight') && (!Number.isSafeInteger(images) || images < 1 || images > 100)) throw new Error('Enter a whole number from 1 to 100 twilight images.');

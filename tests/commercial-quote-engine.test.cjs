@@ -1,26 +1,31 @@
 const test=require('node:test'),assert=require('node:assert/strict'),Q=require('../public/assets/js/commercial-quote-engine.js');
 const quote=overrides=>Q.calculate({category:'small',sqft:5000,selected:[],aerialImages:1,videos:1,videoSeconds:60,plans:1,views360:1,licenseType:'term',licenseMonths:6,delivery:'files',platformMonths:6,hostingMonths:6,hostingPrepaid:false,...overrides});
 const fee=(q,key)=>q.lines.find(line=>line.key===key)?.cents;
-test('category prices include photography and increase from 10,001 square feet',()=>{
- for(const sqft of [1,1000,4000])assert.equal(quote({sqft}).photographyCents,35000);
- assert.equal(quote().photographyCents,37500);
- assert.equal(quote({sqft:10000}).photographyCents,75000);
- for(const [sqft,cents] of [[10000,75000],[10001,75005],[20000,125000],[31250,181250],[50000,275000]])assert.equal(quote({category:'mid',sqft}).photographyCents,cents);
- // Category identity matters at 50,000; factory uses its own $2,500 starting fee.
- for(const [sqft,cents] of [[50000,250000],[50001,250005],[100000,500000]])assert.equal(quote({category:'large',sqft}).photographyCents,cents);
+test('commercial category fees are fixed and only extra photographs increase the shoot fee',()=>{
+ for(const [category,cents] of [['small',75000],['mid',120000],['large',250000]]){
+  const cat=Q.categories[category];
+  for(const sqft of [cat.min,cat.min+1,Math.floor((cat.min+cat.max)/2),cat.max]){
+   const q=quote({category,sqft});
+   assert.equal(q.basePhotographyCents,cents);
+   assert.equal(q.photographyCents,cents);
+   assert.equal(q.totalCents,cents);
+   const extra=quote({category,sqft,photoCount:cat.photosIncluded+1});
+   assert.equal(extra.photographyCents,cents+cat.extraPhotoCents);
+  }
+ }
  assert.equal(quote({selected:['photo','photo']}).lines.filter(x=>x.key==='photo').length,1);
  assert.equal(Q.services.hourly,undefined);
 });
 test('licensing includes video and charges only months beyond the included six',()=>{
  for(const licenseMonths of [6,12,18]){
-  const q=quote({selected:['drone','video'],aerialImages:4,licenseMonths});assert.equal(q.licenseBaseCents,104300); // $375 + $168 + $500
-  assert.equal(q.licenseCents,licenseMonths===6?0:Math.round(104300*(licenseMonths-6)/40));assert.equal(q.pending,false);
+  const q=quote({selected:['drone','video'],aerialImages:4,licenseMonths});assert.equal(q.licenseBaseCents,141800); // $750 + $168 + $500
+  assert.equal(q.licenseCents,licenseMonths===6?0:Math.round(141800*(licenseMonths-6)/40));assert.equal(q.pending,false);
  }
  const example=183400;assert.equal(Q.licenseFeeCents(example,'term',6),0);assert.equal(Q.licenseFeeCents(example,'term',12),27510);assert.equal(Q.licenseFeeCents(example,'term',18),55020);assert.equal(Q.licenseFeeCents(example,'unlimited',6),91700);
- const q=quote({selected:['drone','video','mp','floor','platform','views360'],licenseType:'unlimited'});assert.equal(q.licenseBaseCents,91700);assert.equal(q.licenseCents,45850);assert.equal(q.pending,false);
+ const q=quote({selected:['drone','video','mp','floor','platform','views360'],licenseType:'unlimited'});assert.equal(q.licenseBaseCents,129200);assert.equal(q.licenseCents,64600);assert.equal(q.pending,false);
 });
 test('independent Matterport coverage controls fee and time without changing photography',()=>{
- const q=quote({category:'mid',sqft:40000,selected:['mp'],matterportSqft:20000});assert.equal(q.photographyCents,225000);assert.equal(fee(q,'mp'),200000);assert.equal(q.matterportSqft,20000);assert.equal(q.matterportMinutes,180);assert.equal(q.matterportIncludedMonths,6);
+ const q=quote({category:'mid',sqft:40000,selected:['mp'],matterportSqft:20000});assert.equal(q.photographyCents,120000);assert.equal(fee(q,'mp'),200000);assert.equal(q.matterportSqft,20000);assert.equal(q.matterportMinutes,180);assert.equal(q.matterportIncludedMonths,6);
  const reduced=quote({category:'mid',sqft:40000,selected:['mp'],matterportSqft:5000});assert.equal(reduced.photographyCents,q.photographyCents);assert.equal(fee(reduced,'mp'),50000);assert.equal(reduced.matterportMinutes,45);
  for(const matterportSqft of [1,1000,1990])assert.equal(fee(quote({selected:['mp'],matterportSqft}),'mp'),19900);
  assert.equal(fee(quote({selected:['mp'],matterportSqft:1991}),'mp'),19910);
@@ -29,7 +34,7 @@ test('independent Matterport coverage controls fee and time without changing pho
 test('360 photos require both Matterport and platform and are excluded from license base',()=>{
  assert.throws(()=>quote({selected:['views360']}),/subscription/);
  assert.throws(()=>quote({selected:['platform','views360']}),/Matterport/);
- const q=quote({selected:['mp','platform','views360'],views360:4,licenseType:'unlimited'});assert.equal(fee(q,'views360'),10000);assert.equal(fee(q,'platform'),29400);assert.equal(q.licenseBaseCents,37500);assert.equal(q.matterportSqft,5000);assert.equal(q.totalCents,145650);
+ const q=quote({selected:['mp','platform','views360'],views360:4,licenseType:'unlimited'});assert.equal(fee(q,'views360'),10000);assert.equal(fee(q,'platform'),29400);assert.equal(q.licenseBaseCents,75000);assert.equal(q.matterportSqft,5000);assert.equal(q.totalCents,201900);
 });
 test('platform and independent website may be combined without charging the website twice',()=>{
  const base=quote().totalCents;
@@ -77,7 +82,7 @@ test('hosting includes six months and prices only the extension at the selected 
    const q=quote({selected:['mp'],hostingMonths,hostingPrepaid});assert.equal(q.hostingCents,expected);assert.equal(fee(q,'hosting'),expected);assert.equal(q.totalCents,baseline.totalCents+expected);assert.equal(q.licenseBaseCents,baseline.licenseBaseCents);assert.equal(q.knownMinutes,baseline.knownMinutes);assert.equal(q.hostingExtraMonths,hostingMonths-6);assert.equal(q.pending,false);
   }
  }
- const prepaid=quote({selected:['mp'],hostingMonths:18,hostingPrepaid:true,licenseType:'unlimited',platformMonths:12});assert.equal(prepaid.licenseCents,18750);assert.equal(prepaid.hostingCents,5988);
+ const prepaid=quote({selected:['mp'],hostingMonths:18,hostingPrepaid:true,licenseType:'unlimited',platformMonths:12});assert.equal(prepaid.licenseCents,37500);assert.equal(prepaid.hostingCents,5988);
  const off=quote({selected:[],hostingMonths:18,hostingPrepaid:true});assert.equal(off.hostingCents,0);assert.equal(off.hostingMonths,0);assert.equal(fee(off,'hosting'),undefined);
  for(const hostingMonths of [0,5,19,6.5,'',NaN])assert.throws(()=>quote({selected:['mp'],hostingMonths}));
  assert.throws(()=>quote({selected:['mp'],hostingPrepaid:'true'}));
@@ -92,6 +97,6 @@ test('commercial photography allowances and additional-image prices apply by cat
   for(const photoCount of [included+1,100]){const q=quote({category,sqft,photoCount});const extra=(photoCount-included)*unit;assert.equal(q.extraPhotoCents,extra);assert.equal(q.photographyCents,base.photographyCents+extra);assert.equal(q.totalCents,base.totalCents+extra);assert.equal(q.licenseBaseCents,base.licenseBaseCents+extra);assert.equal(q.knownMinutes,base.knownMinutes);assert.equal(q.lines.filter(l=>l.key==='extraPhotos').length,1);}
   for(const photoCount of [min-1,101,50.5,''])assert.throws(()=>quote({category,sqft,photoCount}));
  }
- const q=quote({category:'mid',sqft:10000,photoCount:46,licenseType:'unlimited',selected:['website','platform']});assert.equal(q.extraPhotoCents,2670);assert.equal(q.licenseCents,38835);assert.equal(q.photographyCents,77670);
- assert.equal(quote({category:'large',sqft:250000}).basePhotographyCents,1250000);assert.equal(Q.categories.large.max,250000);
+ const q=quote({category:'mid',sqft:10000,photoCount:46,licenseType:'unlimited',selected:['website','platform']});assert.equal(q.extraPhotoCents,2670);assert.equal(q.licenseCents,61335);assert.equal(q.photographyCents,122670);
+ assert.equal(quote({category:'large',sqft:250000}).basePhotographyCents,250000);assert.equal(Q.categories.large.max,250000);
 });

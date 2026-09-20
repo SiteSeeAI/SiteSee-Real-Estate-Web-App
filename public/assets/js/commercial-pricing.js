@@ -20,12 +20,12 @@
     const detail=document.createElement('small');detail.id='c-detail-'+key;detail.textContent=service.detail;text.append(detail);label.append(check,text);
     const price=document.createElement('span');price.id='c-price-'+key;price.className='quote-price';top.append(label,price);row.append(top);
     let controls='';
-    if(key==='platform')controls=quantity('platform-months','Platform Term · Months',6,18,1,6)+'<input id="c-platform-slider" type="range" min="6" max="18" step="1" value="6" aria-label="SiteSee platform term in months" disabled><div class="quote-range-labels"><span>6 months</span><span>18 months</span></div><p class="quote-note">$49 per month. Your estimate includes the full selected term; six months is $294. Matterport capture and hosting remain separate. An independent property website is available separately for $175.</p>';
-    if(key==='mp')controls=quantity('matterport-sqft','Area To Scan · Square Feet',1,5000,1,5000)+'<input id="c-matterport-slider" type="range" min="1" max="5000" step="1" value="5000" aria-label="Matterport area to scan in square feet" disabled><div class="quote-range-labels"><span>1 sq ft</span><span id="c-matterport-max">5,000 sq ft</span></div><p class="quote-note">Scan only the areas you need. Photography still covers the property size selected above. Add individual 360° views for other spaces with a SiteSee platform subscription.</p>';
+    if(key==='platform')controls=quantity('platform-months','Platform Term · Months',6,18,1,6)+'<div class="quote-range-labels"><span>6 months</span><span>18 months</span></div><p class="quote-note">$49 per month. Your estimate includes the full selected term; six months is $294. Matterport capture and hosting remain separate. An independent property website is available separately for $175.</p>';
+    if(key==='mp')controls=quantity('matterport-sqft','Area To Scan · Square Feet',1,5000,1,5000)+'<div class="quote-range-labels"><span>1 sq ft</span><span id="c-matterport-max">5,000 sq ft</span></div><p class="quote-note">Scan only the areas you need. Photography still covers the property size selected above. Add individual 360° views for other spaces with a SiteSee platform subscription.</p>';
     if(key==='views360')controls=quantity('views360-count','Individual 360° Photos',1,100,1,1);
     if(key==='drone')controls=quantity('aerial-images','Finished Aerial Images',1,100,1,1);
     if(key==='floor')controls=quantity('plan-sets','Property Layout Sets',1,20,1,1);
-    if(key==='video')controls=quantity('video-count','Number Of Finished Videos',1,20,1,1)+'<div class="quote-video-length"><span>Length Of Each Video</span><div class="quote-video-fields"><label for="c-video-minutes">Minutes<input id="c-video-minutes" type="number" min="1" max="3" step="1" value="1" required disabled></label><span aria-hidden="true">:</span><label for="c-video-seconds">Seconds<input id="c-video-seconds" type="number" min="0" max="59" step="1" value="0" required disabled></label></div></div><input id="c-video-slider" type="range" min="60" max="180" step="1" value="60" aria-label="Commercial video duration in seconds" aria-valuetext="1 minute 0 seconds"><p class="quote-note">Your price updates with the finished video length. One-minute minimum; $500 minimum per video.</p>';
+    if(key==='video')controls=quantity('video-count','Number Of Finished Videos',1,20,1,1)+'<div class="quote-video-length"><span>Length Of Each Video</span><div class="quote-video-fields"><label for="c-video-minutes">Minutes<input id="c-video-minutes" type="number" min="1" max="3" step="1" value="1" required disabled></label><span aria-hidden="true">:</span><label for="c-video-seconds">Seconds<input id="c-video-seconds" type="number" min="0" max="59" step="1" value="0" required disabled></label></div></div><p class="quote-note">Your price updates with the finished video length. One-minute minimum; $500 minimum per video.</p>';
     if(controls){const extra=document.createElement('div');extra.className='quote-extra';extra.id='c-'+key+'-controls';extra.hidden=true;extra.innerHTML=controls;row.append(extra);}
     get('quote-services').append(row);
     check.addEventListener('change',()=>{
@@ -85,9 +85,9 @@
     get('photo-range-min').textContent=cat.photoMin+' photos';
     get('photo-inclusions').textContent=cat.photoMin+'–'+cat.photosIncluded+' photos included. Additional photos above '+cat.photosIncluded+' are '+Q.money(cat.extraPhotoCents)+' each. Maximum 100 total photos.';
     if(Number.isInteger(propertySize)&&propertySize>=cat.min&&propertySize<=cat.max){
-      get('matterport-sqft').max=get('matterport-slider').max=propertySize;
+      get('matterport-sqft').max=propertySize;
       get('matterport-max').textContent=propertySize.toLocaleString()+' sq ft';
-      if(Number(get('matterport-sqft').value)>propertySize)get('matterport-sqft').value=get('matterport-slider').value=propertySize;
+      if(Number(get('matterport-sqft').value)>propertySize)get('matterport-sqft').value=propertySize;
     }
     ['platform','mp','views360','drone','video','floor'].forEach(key=>{
       const active=selected.has(key),controls=get(key+'-controls');controls.hidden=!active;controls.querySelectorAll('input').forEach(el=>{el.disabled=!active;});
@@ -95,7 +95,7 @@
     const licenseEligible=['photo','drone','video'].some(key=>selected.has(key));
     get('license-fields').hidden=!licenseEligible;
     get('license-fields').querySelectorAll('input').forEach(el=>{el.disabled=!licenseEligible;});
-    const term=licenseEligible&&value('licenseType')==='term';get('license-term-controls').hidden=!term;get('license-months').disabled=!term;get('license-slider').disabled=!term;
+    const term=licenseEligible&&value('licenseType')==='term';get('license-term-controls').hidden=!term;get('license-months').disabled=!term;
     get('hosting-controls').hidden=!selected.has('mp');get('hosting-controls').querySelectorAll('input').forEach(el=>{el.disabled=!selected.has('mp');});
     get('request-status').hidden=true;
     const state=inputState();
@@ -132,43 +132,18 @@
   addressFields.forEach(field => { field.addEventListener('input', syncAddress); field.addEventListener('change', syncAddress); });
   agentFields.forEach(field => field.addEventListener('input', () => { validateField(field); get('request-status').hidden = true; }));
   form.querySelectorAll('[name=category]').forEach(radio => radio.addEventListener('change', () => {
-    const cat = Q.categories[value('category')], size = get('property-sqft'), slider = get('property-slider');
-    size.min = slider.min = cat.min; size.max = slider.max = cat.max;
-    size.value = slider.value = Math.min(cat.max, Math.max(cat.min, Number(size.value) || cat.min));
+    const cat = Q.categories[value('category')], size = get('property-sqft');
+    size.min = cat.min; size.max = cat.max;
+    size.value = Math.min(cat.max, Math.max(cat.min, Number(size.value) || cat.min));
     get('photo-count').value=get('photo-slider').value=cat.photosIncluded;
     get('range-min').textContent = cat.min.toLocaleString() + ' sq ft'; get('range-max').textContent = cat.max.toLocaleString() + ' sq ft'; update();
   }));
 
-  get('property-sqft').addEventListener('input', () => { if (get('property-sqft').validity.valid) get('property-slider').value = get('property-sqft').value; update(); });
-  get('property-slider').addEventListener('input', () => { get('property-sqft').value = get('property-slider').value; update(); });
   get('photo-count').addEventListener('input',()=>{if(get('photo-count').validity.valid)get('photo-slider').value=get('photo-count').value;update();});
   get('photo-slider').addEventListener('input',()=>{get('photo-count').value=get('photo-slider').value;update();});
-  get('matterport-sqft').addEventListener('input',()=>{if(get('matterport-sqft').validity.valid)get('matterport-slider').value=get('matterport-sqft').value;update();});
-  get('matterport-slider').addEventListener('input',()=>{get('matterport-sqft').value=get('matterport-slider').value;update();});
-  const syncVideoSlider = () => {
-    const seconds = videoSeconds();
-    if (Number.isInteger(seconds) && seconds >= 60 && seconds <= 180) {
-      get('video-slider').value = seconds;
-      get('video-slider').setAttribute('aria-valuetext', Math.floor(seconds / 60) + ' minutes ' + (seconds % 60) + ' seconds');
-    }
-    update();
-  };
-  get('video-minutes').addEventListener('input', syncVideoSlider);
-  get('video-seconds').addEventListener('input', syncVideoSlider);
-  get('video-slider').addEventListener('input', () => {
-    const seconds = Number(get('video-slider').value);
-    get('video-minutes').value = Math.floor(seconds / 60); get('video-seconds').value = seconds % 60; syncVideoSlider();
-  });
-  ['aerial-images','plan-sets','video-count','views360-count'].forEach(id=>get(id).addEventListener('input',update));
-  form.querySelectorAll('[name=licenseType]').forEach(el=>el.addEventListener('change',update));
-  get('license-months').addEventListener('input',()=>{if(get('license-months').validity.valid)get('license-slider').value=get('license-months').value;update();});
-  get('license-slider').addEventListener('input',()=>{get('license-months').value=get('license-slider').value;update();});
-  form.querySelectorAll('[name=delivery]').forEach(el=>el.addEventListener('change',update));
-  get('platform-months').addEventListener('input',()=>{if(get('platform-months').validity.valid)get('platform-slider').value=get('platform-months').value;update();});
-  get('platform-slider').addEventListener('input',()=>{get('platform-months').value=get('platform-slider').value;update();});
+  ['property-sqft','matterport-sqft','video-minutes','video-seconds','aerial-images','plan-sets','video-count','views360-count','license-months','platform-months','hosting-months'].forEach(id=>get(id).addEventListener('input',update));
+  form.querySelectorAll('[name=licenseType],[name=delivery]').forEach(el=>el.addEventListener('change',update));
   get('hosting-prepaid').addEventListener('change',update);
-  get('hosting-months').addEventListener('input',()=>{if(get('hosting-months').validity.valid)get('hosting-slider').value=get('hosting-months').value;update();});
-  get('hosting-slider').addEventListener('input',()=>{get('hosting-months').value=get('hosting-slider').value;update();});
   get('review-estimate').addEventListener('click', () => {
     if (!unlocked || !validateFields(addressFields, true)) { syncAddress(); return; }
     update(); if (!current) return;

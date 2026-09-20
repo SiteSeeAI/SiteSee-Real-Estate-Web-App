@@ -7,12 +7,12 @@
   'use strict';
   const subject = 'Commercial SiteSee Real Estate Quote';
   const categories = {
-    small: { label: 'Small Commercial / Retail', min: 1, max: 10000, photoMin:25, photosIncluded:30, extraPhotoCents:3000 },
-    mid: { label: 'Warehouse / Office', min: 10000, max: 50000, photoMin:30, photosIncluded:45, extraPhotoCents:2670 },
-    large: { label: 'Factory / Industrial', min: 50000, max: 250000, photoMin:45, photosIncluded:55, extraPhotoCents:2500 }
+    small: { label: 'Small Commercial / Retail', min: 1, max: 10000, photoCents:75000, photoMin:25, photosIncluded:30, extraPhotoCents:3000 },
+    mid: { label: 'Warehouse / Office', min: 10000, max: 50000, photoCents:120000, photoMin:30, photosIncluded:45, extraPhotoCents:2670 },
+    large: { label: 'Factory / Industrial', min: 50000, max: 250000, photoCents:250000, photoMin:45, photosIncluded:55, extraPhotoCents:2500 }
   };
   const services = {
-    photo: { label: 'Property Photography', detail: 'Interior and exterior photography calculated from property size.' },
+    photo: { label: 'Property Photography', detail: 'Included category coverage, with additional photographs priced by quantity.' },
     platform: { label: 'SiteSee Platform', detail: '$49 per month per property. Present your media and individual 360° views in a SiteSee Experience.' },
     mp: { label: 'Matterport 3D Experience', detail: '$0.10 per scanned sq ft, $199 minimum. Choose the areas you want scanned. Six months of hosting included.*' },
     views360: { label: 'Single 360° Views', detail: '$25 per photo, added to your Matterport project as views within a SiteSee Experience. Requires Matterport and a SiteSee platform subscription.' },
@@ -27,11 +27,10 @@
     const n = Math.ceil(minutes / 5) * 5, h = Math.floor(n / 60), m = n % 60;
     return n ? (h ? h + ' hr' + (h > 1 ? 's' : '') : '') + (h && m ? ' ' : '') + (m ? m + ' min' : '') : 'Confirmed With Your Appointment';
   }
-  function photographyCents(sqft, category) {
-    if (category === 'small') return Math.round(Math.max(35000, sqft * 7.5));
-    if (category === 'mid') return 75000 + (sqft - 10000) * 5;
-    if (category === 'large') return 250000 + (sqft - 50000) * 5;
-    throw new Error('Choose a commercial property category.');
+  function photographyCents(category) {
+    const cat = categories[category];
+    if (!cat) throw new Error('Choose a commercial property category.');
+    return cat.photoCents;
   }
   function videoCents(seconds) { return Math.max(50000, Math.round(seconds * 833.3)); }
   function licenseFeeCents(base, type, months) { return Math.round(type === 'unlimited' ? base / 2 : base * Math.max(0, months - 6) / 40); }
@@ -64,7 +63,7 @@
     if (chosen.has('drone') && (!Number.isInteger(images) || images < 1 || images > 100)) throw new Error('Choose 1–100 aerial images.');
     if (chosen.has('video') && (!Number.isInteger(videos) || videos < 1 || videos > 20 || !Number.isInteger(seconds) || seconds < 60 || seconds > 180)) throw new Error('Choose 1–20 videos and a length from 1:00 to 3:00.');
     if (chosen.has('floor') && (!Number.isInteger(plans) || plans < 1 || plans > 20)) throw new Error('Choose 1–20 property layout sets.');
-    const fees = { photo:photographyCents(sqft,input.category), platform:platformMonths * 4900, drone:images * 4200, video:videos * videoCents(seconds), mp:Math.max(19900,mpSqft * 10), views360:views * 2500, floor:plans * 15000, website:17500 };
+    const fees = { photo:photographyCents(input.category), platform:platformMonths * 4900, drone:images * 4200, video:videos * videoCents(seconds), mp:Math.max(19900,mpSqft * 10), views360:views * 2500, floor:plans * 15000, website:17500 };
     const reasons = [];
     const lines = Object.keys(services).filter(key => chosen.has(key)).map(key => {
       let label = services[key].label;

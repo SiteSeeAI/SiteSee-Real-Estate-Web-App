@@ -88,7 +88,13 @@
         "floor",
         "views360"
       ]
-    }
+    },
+    "photography_required": true,
+    "photography_checkbox": "Always checked, disabled and gray; enforced by quote engine",
+    "property_size_input": "Numeric only; disabled for Silver, Gold and Platinum; enabled for Individual Services",
+    "range_sliders": [
+      "commercial total photo quantity only"
+    ]
   },
   "contact": {
     "preferred_communication": {
@@ -144,14 +150,14 @@
       "payment_collected": false
     },
     "automatic_delivery": false,
-    "photography": "Automatically included by selected category: small max(350, sqft * .075); mid 750 + (sqft - 10000) * .05; large 2500 + (sqft - 50000) * .05",
-    "factory_rate_status": "Approved starting fee $2500 at 50000 sq ft and $0.05 per additional sq ft",
+    "photography": "Automatically included by selected category: Small 750; Warehouse / Office 1200; Factory / Industrial 2500; extra photos charged above category allowance. No area-based photography pricing.",
+    "factory_rate_status": "Fixed $2500 category fee plus extra photographs; previous $0.05 per additional square foot is removed by latest correction",
     "aerial_default_images": 1,
     "delivery_options": [
       "files",
       "website"
     ],
-    "matterport_area": "Separate number input and slider, 1 sq ft through total property size; does not alter photography area",
+    "matterport_area": "Separate number input, 1 sq ft through total property size; does not alter photography fee",
     "single_360_photos": {
       "per_photo": 25,
       "requires": "Matterport and SiteSee platform selections",
@@ -204,6 +210,9 @@
       "category_change": "Reset to included maximum",
       "license_base_includes_extra_photography": true
     },
-    "independent_website_selection": "Services add-on checkbox synchronized with delivery radio; $175 charged once; available alongside platform"
+    "independent_website_selection": "Services add-on checkbox synchronized with delivery radio; $175 charged once; available alongside platform",
+    "range_sliders": [
+      "photo quantity"
+    ]
   }
 }
