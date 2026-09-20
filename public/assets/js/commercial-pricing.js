@@ -10,7 +10,7 @@
   const agentFields = [...get('agent-fields').querySelectorAll('input,select')];
   const selected = new Set(['photo']);
   let unlocked = false, reviewed = false, current = null;
-  const quantity = (id,label,min,max,step,initial) => '<div class="quote-size"><label for="c-'+id+'">'+label+'</label><input id="c-'+id+'" name="'+id+'" type="number" min="'+min+'" max="'+max+'" step="'+step+'" value="'+initial+'" required disabled></div>';
+  const quantity = (id,label,min,max,step,initial,format='number') => '<div class="quote-size"><label for="c-'+id+'">'+label+'</label><output for="c-'+id+'" data-range-value data-format="'+format+'">'+(format==='duration'?Q.videoDuration(initial):initial)+'</output></div><input id="c-'+id+'" name="'+id+'" type="range" min="'+min+'" max="'+max+'" step="'+step+'" value="'+initial+'" disabled>';
   Object.entries(Q.services).filter(([key])=>key!=='photo').forEach(([key,service]) => {
     const row = document.createElement('div'); row.className='quote-service';row.id='c-row-'+key;row.hidden=key==='views360';
     const top = document.createElement('div'); top.className='quote-row-top';
@@ -25,7 +25,7 @@
     if(key==='views360')controls=quantity('views360-count','Individual 360° Photos',1,100,1,1);
     if(key==='drone')controls=quantity('aerial-images','Finished Aerial Images',1,100,1,1);
     if(key==='floor')controls=quantity('plan-sets','Property Layout Sets',1,20,1,1);
-    if(key==='video')controls=quantity('video-count','Number Of Finished Videos',1,20,1,1)+'<div class="quote-video-length"><span>Length Of Each Video</span><div class="quote-video-fields"><label for="c-video-minutes">Minutes<input id="c-video-minutes" type="number" min="1" max="3" step="1" value="1" required disabled></label><span aria-hidden="true">:</span><label for="c-video-seconds">Seconds<input id="c-video-seconds" type="number" min="0" max="59" step="1" value="0" required disabled></label></div></div><p class="quote-note">Your price updates with the finished video length. One-minute minimum; $500 minimum per video.</p>';
+    if(key==='video')controls=quantity('video-count','Number Of Finished Videos',1,20,1,1)+quantity('video-duration','Length Of Each Video',60,180,1,60,'duration')+'<p class="quote-note">Your price updates with the finished video length. One-minute minimum; $500 minimum per video.</p>';
     if(controls){const extra=document.createElement('div');extra.className='quote-extra';extra.id='c-'+key+'-controls';extra.hidden=true;extra.innerHTML=controls;row.append(extra);}
     get('quote-services').append(row);
     check.addEventListener('change',()=>{
@@ -61,12 +61,10 @@
     if (unlocked) update();
   }
   function videoSeconds() {
-    const minutes = get('video-minutes'), seconds = get('video-seconds');
-    if (!minutes.value.trim() || !seconds.value.trim() || !minutes.validity.valid || !seconds.validity.valid) return NaN;
-    return Number(minutes.value) * 60 + Number(seconds.value);
+    return Number(get('video-duration').value);
   }
   function inputState() {
-    return {category:value('category'),photoCount:get('photo-count').value,matterportSqft:get('matterport-sqft').value,views360:get('views360-count').value,selected:[...selected],videoSeconds:videoSeconds(),videos:get('video-count').value,aerialImages:get('aerial-images').value,delivery:value('delivery'),platformMonths:get('platform-months').value,plans:get('plan-sets').value,licenseType:value('licenseType'),licenseMonths:get('license-months').value,hostingMonths:get('hosting-months').value,hostingPrepaid:get('hosting-prepaid').checked};
+    return {category:value('category'),photoCount:get('photo-slider').value,matterportSqft:get('matterport-sqft').value,views360:get('views360-count').value,selected:[...selected],videoSeconds:videoSeconds(),videos:get('video-count').value,aerialImages:get('aerial-images').value,delivery:value('delivery'),platformMonths:get('platform-months').value,plans:get('plan-sets').value,licenseType:value('licenseType'),licenseMonths:get('license-months').value,hostingMonths:get('hosting-months').value,hostingPrepaid:get('hosting-prepaid').checked};
   }
   function update() {
     const platform=selected.has('platform');
@@ -81,7 +79,7 @@
     if(website.checked)selected.add('website');else selected.delete('website');
     get('website-note').textContent='$175 for a dedicated listing website. Also available with the SiteSee platform; charged once.';
     const cat=Q.categories[value('category')];
-    get('photo-count').min=get('photo-slider').min=cat.photoMin;
+    get('photo-slider').min=cat.photoMin;
     get('photo-range-min').textContent=cat.photoMin+' photos';
     get('photo-inclusions').textContent=cat.photoMin+'–'+cat.photosIncluded+' photos included. Additional photos above '+cat.photosIncluded+' are '+Q.money(cat.extraPhotoCents)+' each. Maximum 100 total photos.';
     const scanLimit=Math.min(cat.max,20000);
@@ -89,6 +87,11 @@
     get('matterport-max').textContent=scanLimit.toLocaleString()+' sq ft';
     get('matterport-area').textContent=Number(get('matterport-sqft').value).toLocaleString()+' sq ft';
     get('matterport-sqft').setAttribute('aria-valuetext',get('matterport-area').textContent);
+    form.querySelectorAll('output[data-range-value]').forEach(output=>{
+      const slider=document.getElementById(output.getAttribute('for')),n=Number(slider.value);
+      output.textContent=output.getAttribute('data-format')==='duration'?Q.videoDuration(n):n.toLocaleString();
+      if(output.getAttribute('data-format')==='duration')slider.setAttribute('aria-valuetext',Math.floor(n/60)+' minutes '+n%60+' seconds');
+    });
     ['platform','mp','views360','drone','video','floor'].forEach(key=>{
       const active=selected.has(key),controls=get(key+'-controls');controls.hidden=!active;controls.querySelectorAll('input').forEach(el=>{el.disabled=!active;});
     });
@@ -133,14 +136,13 @@
   agentFields.forEach(field => field.addEventListener('input', () => { validateField(field); get('request-status').hidden = true; }));
   form.querySelectorAll('[name=category]').forEach(radio => radio.addEventListener('change', () => {
     const cat = Q.categories[value('category')];
-    get('photo-count').value=get('photo-slider').value=cat.photosIncluded;
+    get('photo-slider').min=cat.photoMin;
+    get('photo-slider').value=cat.photosIncluded;
     if(Number(get('matterport-sqft').value)>Math.min(cat.max,20000))get('matterport-sqft').value=Math.min(cat.max,20000);
     update();
   }));
 
-  get('photo-count').addEventListener('input',()=>{if(get('photo-count').validity.valid)get('photo-slider').value=get('photo-count').value;update();});
-  get('photo-slider').addEventListener('input',()=>{get('photo-count').value=get('photo-slider').value;update();});
-  ['matterport-sqft','video-minutes','video-seconds','aerial-images','plan-sets','video-count','views360-count','license-months','platform-months','hosting-months'].forEach(id=>get(id).addEventListener('input',update));
+  ['photo-slider','matterport-sqft','video-duration','aerial-images','plan-sets','video-count','views360-count','license-months','platform-months','hosting-months'].forEach(id=>get(id).addEventListener('input',update));
   form.querySelectorAll('[name=licenseType],[name=delivery]').forEach(el=>el.addEventListener('change',update));
   get('hosting-prepaid').addEventListener('change',update);
   get('review-estimate').addEventListener('click', () => {
