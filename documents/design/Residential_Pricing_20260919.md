@@ -7,7 +7,7 @@ The page uses the existing SiteSee logo, Poppins and Inter, yellow accents and s
 ## Form flow
 
 1. Street address, city, state and ZIP are required. An explicit Continue button opens the estimator. This avoids showing dimmed, unusable controls and keeps the initial task short. Erasing or invalidating the address hides the estimator, summary and request form again. This is a UI progression, not an authentication or rate-sheet security boundary.
-2. The agent selects one category and a package or individual services. Photography is mandatory, checked and disabled in the form, and enforced in the engine even for add-on-only input. Included services are checked and disabled; stored individual selections are restored when switching away from a package. Totals include each service once. Residential property-size and video-duration sliders remain available and synchronized with their number inputs. The property-size slider and number field are disabled and gray with Silver, Gold or Platinum and re-enabled for Individual Services; unused add-on inputs are disabled.
+2. The agent selects one category and a package or individual services. Photography is mandatory, checked and disabled in the form, and enforced in the engine even for add-on-only input. Included services are checked and disabled; stored individual selections are restored when switching away from a package. Totals include each service once. Residential property-size and video-duration sliders remain available and synchronized with their number inputs. With Silver, Gold or Platinum, the property category is disabled and gray, and the property-size slider and number field are disabled at zero. Returning to Individual Services restores the previous category and exact size. Selecting Matterport with a package reveals an independent coverage input and slider; unused add-on inputs are disabled.
 3. First name, last name, company, email, phone and mailing-list preference are all required before creating an email draft. The original optional opt-out checkbox becomes an explicit required Yes/No choice so all request fields are complete without forcing either marketing preference. A quote copy can be prepared without selecting a shoot date. Both date and time are required for an appointment request. Dates and times are validated against Central Time. The request does not reserve or confirm availability.
 
 ## Prices
@@ -16,7 +16,7 @@ Small photography retains the approved calculator: max($150, area × $0.0952), b
 
 Matterport is max($69, area × $0.06). Website $65, drone $120, Zillow $95, 2D floor plan $50, virtual twilight $35 per image. Video is $225 + (seconds − 60) × $125 / 120 from 60 to 180 seconds. The video slider advances one second; paired minutes/seconds inputs accept exact durations and stay synchronized with it. Displayed prices round to cents only after calculation. The $225/$350 endpoints differ by $125, not $75. Examples: 1:01 = $226.04; 2:00 = $287.50; 2:59 = $348.96. Twilight quantities are whole images (1–100).
 
-Silver $220, Gold $499 and Platinum $995 keep the supplied rate-sheet inclusions and prices. Package charges replace included à-la-carte charges. Gold includes one minute of video; Platinum includes two. Video duration is locked while included, since a package-upgrade price has not been authorized.
+Silver $220, Gold $499 and Platinum $995 retain their prices. Matterport is optional and separately charged for every package, including Platinum. Package charges replace included à-la-carte charges. Gold includes one minute of video; Platinum includes two. Video duration is locked while included, since a package-upgrade price has not been authorized.
 
 All quoted amounts use integer cents. Unfinalized photography is displayed as Custom Quote, with any priced-service subtotal explicitly separated. The quote can still be sent as a custom pricing request.
 
@@ -91,3 +91,18 @@ The property-size slider is absent from commercial only. Residential size/video 
 Branch: `fix/residential-large-home-20260920`, based on the complete commercial-field removal. This correction adds only the missing Large Home price branch: $350 + (sqft − 4,000) × $0.075, with cents rounded after calculation. At 4,000 / 4,500 / 5,000 sq ft the fee is $350 / $387.50 / $425. The proposed $425 endpoint meets Luxury’s starting fee; the user had not explicitly supplied a Large endpoint in the recovered instructions. Keep this distinction visible in review.
 
 The result is numeric instead of Custom Quote. Large retains 50–60 photos, its existing area slider, capture-time calculation, add-ons and package inclusions. Small, Average, Luxury, commercial, all other controls and layout are unchanged. Earlier notes above document the former unresolved state.
+
+
+## Package property controls and optional Matterport — 2026 09 20
+
+Branch: `fix/residential-package-matterport-20260920`, based on `fix/residential-large-home-20260920` at `31ecf7fc9739a68ae8af2d66bddcd29557c6908a`.
+
+Silver, Gold and Platinum disable and gray the property categories and set both disabled main property-size controls to zero. Switching back to Individual Services restores the prior category, bounds and exact area. Category events during package selection cannot modify that saved state. The engine ignores package property size and category.
+
+When Matterport is selected with any package, its own square-foot input and slider appear immediately beneath the checkbox. Coverage starts empty, independently of any previous property size, and requires a whole-number area from 1 to 10,000 sq ft before producing a quote. It remains independent when switching packages. The fee remains max($69, scanned area × $0.06); capture time uses scanned area × 9 / 1,000 minutes. Individual Services keeps its existing property-area calculation for Matterport.
+
+Platinum no longer includes Matterport. Its $995 price, other inclusions and photo count remain intact. Adding a 2,000 sq ft scan costs $120, yielding $1,115; removing the add-on restores $995. Package quote summaries and emails identify the scan coverage and omit the inactive property size/category.
+
+With package property area disabled at zero, photography time cannot be estimated from a confirmed area. It is explicitly listed as time to confirm; the old property area and the Matterport subset are not used to invent a photography duration. Known scan, video and drone time are still added once, using their existing rates. Individual photography prices and time estimates, including Large and Luxury, are unchanged. Commercial markup, scripts and behavior are unchanged.
+
+Validation: all 27 engine tests pass. Linkedom interaction checks pass for package transitions, category locks, zeroed size controls, empty/invalid scan coverage, independent scan prices, Platinum inclusion removal, restoration to Individual Services, generated email drafts, existing residential prices/photo counts and commercial interactions. Browser validation primitives are simulated; this is not rendered-browser visual verification.

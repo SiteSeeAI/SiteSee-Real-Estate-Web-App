@@ -29,3 +29,4 @@
 /* Required photography and fixed-package size controls remain visibly inactive. */
 .quote-panel input:disabled{opacity:.55;filter:grayscale(1)}
 .quote-service label:has(input:disabled){cursor:default}
+#residential-quote .quote-categories-locked .quote-choice{opacity:.55;filter:grayscale(1);cursor:default}

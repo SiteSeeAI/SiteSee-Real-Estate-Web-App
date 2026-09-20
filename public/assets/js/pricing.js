@@ -10,6 +10,7 @@
   const agentFields = [...get('agent-fields').querySelectorAll('input,select')];
   const selected = new Set(['photo']);
   let unlocked = false, reviewed = false, current = null;
+  let packageMode = false, individualProperty = null;
   // Build each service once; package switches update state without removing controls.
   Object.entries(Q.services).forEach(([key, service]) => {
     const row = document.createElement('div'); row.className = 'quote-service';
@@ -19,6 +20,11 @@
     const text = document.createElement('span'); text.textContent = service.label;
     const detail = document.createElement('small'); detail.id = 'detail-' + key; detail.textContent = service.detail; text.append(detail); label.append(check, text);
     const price = document.createElement('span'); price.className = 'quote-price'; price.id = 'price-' + key; top.append(label, price); row.append(top);
+    if (key === 'mp') {
+      const controls = document.createElement('div'); controls.className = 'quote-extra'; controls.id = 'matterport-controls'; controls.hidden = true;
+      controls.innerHTML = '<div class="quote-size"><label for="matterport-sqft">Matterport Coverage · Square Feet</label><input id="matterport-sqft" name="matterportSqft" type="number" min="1" max="10000" step="1" placeholder="Enter area" required disabled></div><input id="matterport-slider" type="range" min="0" max="10000" step="1" value="0" aria-label="Matterport coverage in square feet" disabled><div class="quote-range-labels"><span>Enter the area to scan</span><span>10,000 sq ft maximum</span></div>';
+      row.append(controls);
+    }
     if (key === 'video') {
       const controls = document.createElement('div'); controls.className = 'quote-extra'; controls.id = 'video-controls'; controls.hidden = true;
       controls.innerHTML = '<div class="quote-video-length"><span>Video Length</span><div class="quote-video-fields"><label for="video-minutes">Minutes<input id="video-minutes" name="videoMinutes" type="number" min="1" max="3" step="1" value="1" required disabled></label><span aria-hidden="true">:</span><label for="video-seconds">Seconds<input id="video-seconds" name="videoSecondsPart" type="number" min="0" max="59" step="1" value="0" required disabled></label></div></div><input id="video-slider" type="range" min="60" max="180" step="1" value="60" aria-label="Video length in seconds" aria-valuetext="1 minute 0 seconds"><div class="quote-range-labels"><span>1 minute · $225</span><span>3 minutes · $350</span></div>';
@@ -64,11 +70,34 @@
     return Number(minutes.value) * 60 + Number(seconds.value);
   }
   function inputState() {
-    return { category: value('category'), package: value('package'), sqft: value('sqft'), selected: [...selected], videoSeconds: videoSeconds(), images: get('twilight-images').value };
+    return { category: value('category'), package: value('package'), sqft: value('sqft'), matterportSqft: get('matterport-sqft').value, selected: [...selected], videoSeconds: videoSeconds(), images: get('twilight-images').value };
+  }
+  function syncPropertyMode() {
+    const bundled = value('package') !== 'custom', size = get('property-sqft'), slider = get('property-slider');
+    const categories = [...form.querySelectorAll('[name=category]')];
+    if (bundled && !packageMode) individualProperty = { category: value('category'), sqft: size.value };
+    if (bundled || packageMode) {
+      categories.forEach(radio => { radio.checked = radio.value === individualProperty.category; });
+      const cat = Q.categories[individualProperty.category];
+      size.min = slider.min = bundled ? 0 : cat.min;
+      size.max = slider.max = bundled ? 0 : cat.max;
+      size.value = slider.value = bundled ? 0 : individualProperty.sqft;
+      get('range-min').textContent = cat.min.toLocaleString() + ' sq ft';
+      get('range-max').textContent = cat.max.toLocaleString() + ' sq ft';
+    }
+    size.disabled = slider.disabled = bundled;
+    categories.forEach(radio => { radio.disabled = bundled; });
+    get('category-options').classList.toggle('quote-categories-locked', bundled);
+    get('category-options').setAttribute('aria-disabled', String(bundled));
+    get('range-min').parentElement.hidden = bundled;
+    packageMode = bundled;
   }
   function update() {
+    syncPropertyMode();
     const state = inputState(), pack = Q.packages[state.package];
-    get('property-sqft').disabled = get('property-slider').disabled = state.package !== 'custom';
+    const matterportActive = state.package !== 'custom' && selected.has('mp');
+    get('matterport-controls').hidden = !matterportActive;
+    get('matterport-sqft').disabled = get('matterport-slider').disabled = !matterportActive;
     const videoActive = selected.has('video') && !pack.includes.includes('video');
     get('video-controls').hidden = !videoActive; get('video-minutes').disabled = !videoActive; get('video-seconds').disabled = !videoActive; get('video-slider').disabled = !videoActive;
     get('twilight-controls').hidden = !selected.has('twilight'); get('twilight-images').disabled = !selected.has('twilight');
@@ -81,14 +110,14 @@
       if (included) price.textContent = 'Included';
       else if (service.cents) price.textContent = Q.money(service.cents);
       else {
-        try { const alone = Q.calculate({ ...state, package: 'custom', selected: [key] }); const line = alone.lines.find(item => item.key === key); price.textContent = line.cents === null ? 'Custom Quote' : Q.money(line.cents); }
-        catch (_) { price.textContent = '—'; }
+        try { const alone = Q.calculate({ ...state, selected: [key] }); const line = alone.lines.find(item => item.key === key); price.textContent = line.cents === null ? 'Custom Quote' : Q.money(line.cents); }
+        catch (_) { price.textContent = key === 'mp' && state.package !== 'custom' ? (matterportActive ? 'Enter area' : 'From $69.00') : '—'; }
       }
     });
     get('quote-address').textContent = addressText();
-    get('summary-property').textContent = addressText() + ' · ' + Number(state.sqft).toLocaleString() + ' sq ft';
+    get('summary-property').textContent = addressText() + ' · ' + (state.package === 'custom' ? Number(state.sqft).toLocaleString() + ' sq ft' : pack.label + ' Package');
     try {
-      if (!get('property-sqft').validity.valid) throw new Error('Enter a whole-number property size within the selected category.');
+      if (state.package === 'custom' && !get('property-sqft').validity.valid) throw new Error('Enter a whole-number property size within the selected category.');
       if (videoActive && (!Number.isInteger(state.videoSeconds) || state.videoSeconds < 60 || state.videoSeconds > 180)) throw new Error('Enter a video length from 1:00 to 3:00 in whole seconds.');
       current = Q.calculate(state);
       get('estimate-error').hidden = true;
@@ -129,6 +158,7 @@
   addressFields.forEach(field => { field.addEventListener('input', syncAddress); field.addEventListener('change', syncAddress); });
   agentFields.forEach(field => field.addEventListener('input', () => { validateField(field); get('request-status').hidden = true; }));
   form.querySelectorAll('[name=category]').forEach(radio => radio.addEventListener('change', () => {
+    if (value('package') !== 'custom') { update(); return; }
     const cat = Q.categories[value('category')], size = get('property-sqft'), slider = get('property-slider');
     size.min = slider.min = cat.min; size.max = slider.max = cat.max;
     size.value = slider.value = Math.min(cat.max, Math.max(cat.min, Number(size.value) || cat.min));
@@ -137,6 +167,12 @@
   form.querySelectorAll('[name=package]').forEach(radio => radio.addEventListener('change', update));
   get('property-sqft').addEventListener('input', () => { if (get('property-sqft').validity.valid) get('property-slider').value = get('property-sqft').value; update(); });
   get('property-slider').addEventListener('input', () => { get('property-sqft').value = get('property-slider').value; update(); });
+  get('matterport-sqft').addEventListener('input', () => {
+    if (get('matterport-sqft').validity.valid) get('matterport-slider').value = get('matterport-sqft').value;
+    else if (!get('matterport-sqft').value) get('matterport-slider').value = 0;
+    update();
+  });
+  get('matterport-slider').addEventListener('input', () => { get('matterport-sqft').value = Number(get('matterport-slider').value) ? get('matterport-slider').value : ''; update(); });
   const syncVideoSlider = () => {
     const seconds = videoSeconds();
     if (Number.isInteger(seconds) && seconds >= 60 && seconds <= 180) {

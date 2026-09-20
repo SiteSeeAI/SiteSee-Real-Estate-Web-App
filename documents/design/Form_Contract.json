@@ -91,10 +91,26 @@
     },
     "photography_required": true,
     "photography_checkbox": "Always checked, disabled and gray; enforced by quote engine",
-    "property_size_input": "Synchronized number input and slider; both disabled for Silver, Gold and Platinum; enabled for Individual Services",
+    "property_size_input": "Synchronized number input and slider; both disabled at zero for Silver, Gold and Platinum; restore previous category and exact size for Individual Services",
+    "property_category_input": "Disabled and gray for Silver, Gold and Platinum; enabled for Individual Services",
+    "package_matterport": {
+      "included_in_platinum": false,
+      "optional_for_all_packages": true,
+      "controls": "Independent number input and slider beneath Matterport; visible and enabled only when a package and Matterport are selected",
+      "initial_area": null,
+      "minimum_sqft": 1,
+      "maximum_sqft": 10000,
+      "whole_sqft_required_when_selected": true,
+      "minimum_fee": 69,
+      "rate_per_sqft": 0.06,
+      "individual_services": "Continue using the main property area",
+      "quote_email": "Include scanned area; omit disabled property size and category"
+    },
+    "package_photography_timing": "Time to confirm because the main property area is disabled at zero; do not derive it from the saved individual area or Matterport subset",
     "range_sliders": [
       "residential property size",
-      "residential video duration"
+      "residential video duration",
+      "residential package Matterport coverage"
     ],
     "luxury_photography": {
       "min_sqft": 5000,
