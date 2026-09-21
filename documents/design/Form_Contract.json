@@ -3,7 +3,6 @@
   "stage": "server_form_integration",
   "pricing": {
     "page": "public/pricing.html",
-    "legacy_page": "public/request-pricing-access.html",
     "address_gate": {
       "fields": [
         "street",
