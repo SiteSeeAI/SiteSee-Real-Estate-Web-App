@@ -17,7 +17,8 @@ const protectedAssets = read('public/pricing-asset.php');
 const gateConfig = read('_private/real-estate-form-config.php');
 const serverPricing = read('_private/real-estate-pricing.php');
 
-test('the public pricing-request route replaces pricing.html and does not expose calculators', () => {\n  assert.equal(fs.existsSync(path.join(root, 'public/pricing.html')), false);
+test('the public pricing-request route replaces pricing.html and does not expose calculators', () => {
+  assert.equal(fs.existsSync(path.join(root, 'public/pricing.html')), false);
   assert.match(accessHtml, /id="pricing-access-form"[^>]*action="pricing-request\.php"[^>]*method="post"/);
   for (const name of ['first_name', 'last_name', 'website', 'email', 'phone', 'company_fax']) {
     assert.match(accessHtml, new RegExp('name="' + name + '"'));
