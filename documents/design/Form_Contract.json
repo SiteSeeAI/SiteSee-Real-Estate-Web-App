@@ -1,6 +1,6 @@
 {
-  "date": "2026 09 19",
-  "stage": "pricing_page_review",
+  "date": "2026 09 21",
+  "stage": "server_form_integration",
   "pricing": {
     "page": "public/pricing.html",
     "legacy_page": "public/request-pricing-access.html",
@@ -61,8 +61,8 @@
     },
     "subject": "Residential SiteSee Real Estate Quote",
     "subject_user_editable": false,
-    "delivery": "mailto draft in visitor email app; self-copy or sales@sitesee.ai request",
-    "automatic_delivery": false,
+    "delivery": "server-validated email; self-copy or sales@sitesee.ai preferred-date request with requester confirmation copy",
+    "automatic_delivery": true,
     "on_site_timing": {
       "applies_to": [
         "residential",
@@ -177,7 +177,7 @@
     },
     "discovery_call_removed": true
   },
-  "submission_enabled": false,
+  "submission_enabled": true,
   "persistent_storage": false,
   "market_choice": {
     "name": "property-type",
@@ -215,7 +215,7 @@
       "requires_matterport": true,
       "payment_collected": false
     },
-    "automatic_delivery": false,
+    "automatic_delivery": true,
     "photography": "Automatically included by selected category: Small 750; Warehouse / Office 1200; Factory / Industrial 2500; extra photos charged above category allowance. No area-based photography pricing.",
     "factory_rate_status": "Fixed $2500 category fee plus extra photographs; previous $0.05 per additional square foot is removed by latest correction",
     "aerial_default_images": 1,

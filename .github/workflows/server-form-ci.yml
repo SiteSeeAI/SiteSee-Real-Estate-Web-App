@@ -1,0 +1,29 @@
+name: Server Form CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - feat/server-form-integration-20260921
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: Lint PHP
+        run: find public _private tests -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Test client calculators and form contract
+        run: node --test tests/*.test.cjs
+      - name: Test server validation and pricing parity
+        run: php tests/pricing-request.test.php
+
