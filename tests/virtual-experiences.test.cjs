@@ -32,3 +32,26 @@ test('experience embeds preserve responsive 16:9 presentation and fullscreen acc
   assert.match(css, /\.experience-embed\{[^}]*aspect-ratio:16\/9/);
   assert.match(css, /\.experience-embed iframe\{[^}]*width:100%[^}]*height:100%[^}]*border:0/);
 });
+test('each property category explains its purpose and specific platform features', () => {
+  assert.equal((page.match(/class="experience-group"/g) || []).length, 3);
+  assert.equal((page.match(/class="experience-feature-list"/g) || []).length, 3);
+  for (const heading of [
+    'Help Buyers Decide Before They Schedule A Showing.',
+    'Narrow The Field Before A Site Visit.',
+    'Make A Complex Facility Easier To Understand.',
+  ]) {
+    assert.ok(page.includes(heading), heading);
+  }
+  for (const feature of [
+    'Branded Property Hub',
+    'Floor Plans &amp; Preliminary Measurements',
+    'In-Platform Meetings &amp; Guided Review',
+    'Location-Based Notes &amp; Supporting Files',
+    'Controlled Access &amp; Sharing',
+  ]) {
+    assert.ok(page.includes(feature), feature);
+  }
+  assert.ok(page.includes('spend less time on showings with people who are still browsing'));
+  assert.match(css, /\.experience-group-header\{[^}]*grid-template-columns:/);
+  assert.match(css, /@media\(max-width:520px\)\{\.experience-feature-list\{grid-template-columns:1fr\}/);
+});
