@@ -6,16 +6,25 @@ const path = require('node:path');
 const root = path.join(__dirname, '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 const accessHtml = read('public/pricing-request.html');
-const html = read('public/pricing.php');
+const html = read('_private/views/pricing.php');
 const residential = read('_private/pricing-assets/pricing.js');
 const commercial = read('_private/pricing-assets/commercial-pricing.js');
-const handler = read('public/quote-submit.php');
-const accessHandler = read('public/pricing-request.php');
-const approvalHandler = read('public/pricing-approve.php');
-const confirmationHandler = read('public/pricing-confirm.php');
-const protectedAssets = read('public/pricing-asset.php');
+const handler = read('_private/server/quote-submit.php');
+const accessHandler = read('_private/server/pricing-request.php');
+const approvalHandler = read('_private/server/pricing-approve.php');
+const confirmationHandler = read('_private/server/pricing-confirm.php');
+const protectedAssets = read('_private/server/pricing-asset.php');
 const gateConfig = read('_private/real-estate-form-config.php');
 const serverPricing = read('_private/real-estate-pricing.php');
+const publicEntrypoints = {
+  'public/pricing-approve.php': '_private/server/pricing-approve.php',
+  'public/pricing-asset.php': '_private/server/pricing-asset.php',
+  'public/pricing-confirm.php': '_private/server/pricing-confirm.php',
+  'public/pricing-logout.php': '_private/server/pricing-logout.php',
+  'public/pricing-request.php': '_private/server/pricing-request.php',
+  'public/pricing.php': '_private/views/pricing.php',
+  'public/quote-submit.php': '_private/server/quote-submit.php',
+};
 
 test('the public pricing-request route replaces pricing.html and does not expose calculators', () => {
   assert.equal(fs.existsSync(path.join(root, 'public/pricing.html')), false);
@@ -25,6 +34,17 @@ test('the public pricing-request route replaces pricing.html and does not expose
   }
   assert.equal(accessHtml.includes('id="residential-quote"'), false);
   assert.equal(accessHtml.includes('id="commercial-quote"'), false);
+});
+
+test('public PHP routes are minimal entrypoints into private implementations', () => {
+  for (const [publicPath, privatePath] of Object.entries(publicEntrypoints)) {
+    const entrypoint = read(publicPath);
+    assert.equal(fs.existsSync(path.join(root, privatePath)), true, privatePath);
+    assert.ok(entrypoint.includes("require dirname(__DIR__) . '/" + privatePath + "';"), publicPath);
+    for (const privateMarker of ['real_estate_send_mail', 'real_estate_prepare_submission', 'readfile(', '<form']) {
+      assert.equal(entrypoint.includes(privateMarker), false, publicPath + ' exposes ' + privateMarker);
+    }
+  }
 });
 
 test('both calculators retain their layout and submit only after verified access', () => {

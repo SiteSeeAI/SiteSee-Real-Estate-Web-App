@@ -18,6 +18,20 @@ Then open `http://localhost:8765`. On Windows, `py -m http.server 8765 --directo
 
 Edit the HTML pages directly. Styling is in `public/assets/css/site.css`; menu, portfolio tabs and form preview behavior are in `public/assets/js/site.js`. The shared header and footer markup appears in each page so navigation remains available without JavaScript.
 
+## Server file hierarchy
+
+`public/` is the only web document root. Its PHP files are intentionally minimal route entrypoints so the browser can reach the pricing request, approval, confirmation, protected asset and quote-submission URLs. They immediately load their implementations from `_private/`.
+
+Server-side request handling is stored in `_private/server/`; the protected calculator template is stored in `_private/views/`; pricing calculator JavaScript is stored in `_private/pricing-assets/`; shared validation, pricing, session and mail functions remain in the two `_private/real-estate-*.php` files. Only `public/assets/js/site.js` and `public/assets/js/pricing-access.js` remain public because browsers must download them.
+
+For a conventional hosting account, deploy the contents of `public/` into `public_html/` and deploy `_private/` beside `public_html/`, never inside it:
+
+```text
+/home/account/
+├── _private/
+└── public_html/
+```
+
 ## Pages
 
 | Page | File |
@@ -62,7 +76,7 @@ Review [Commercial_Pricing_20260919.md](documents/design/Commercial_Pricing_2026
 
 The public `public/pricing-request.html` page is the pricing-access request form. It follows the corporate manual-review workflow: the requester supplies required business contact information, sales receives a signed review link, and no pricing is released until sales explicitly approves the request. Approval sends the requester a signed link that expires after 36 hours. Opening it creates a verified browser session lasting up to 12 hours and redirects to `public/pricing.php`.
 
-The protected calculator retains every approved layout, field and pricing rule. All address and agent-detail fields remain required. Its residential and commercial forms submit quote actions to `public/quote-submit.php`, which also requires the verified pricing session. The handler validates the complete address, agent details, mailing-list preference, requested date and time, and every market-specific pricing input before recalculating the estimate on the server. **Email My Quote To Me** delivers the validated quote to the agent. **Request My Preferred Date** delivers the request to `sales@sitesee.ai` and attempts a confirmation copy to the agent. The exact subjects remain `Residential SiteSee Real Estate Quote` and `Commercial SiteSee Real Estate Quote`. **Copy Quote** remains a local fallback. A preferred date is never presented as a confirmed appointment.
+The protected calculator retains every approved layout, field and pricing rule. All address and agent-detail fields remain required. Its residential and commercial forms submit quote actions to the minimal `public/quote-submit.php` entrypoint, which loads `_private/server/quote-submit.php` and also requires the verified pricing session. The private handler validates the complete address, agent details, mailing-list preference, requested date and time, and every market-specific pricing input before recalculating the estimate on the server. **Email My Quote To Me** delivers the validated quote to the agent. **Request My Preferred Date** delivers the request to `sales@sitesee.ai` and attempts a confirmation copy to the agent. The exact subjects remain `Residential SiteSee Real Estate Quote` and `Commercial SiteSee Real Estate Quote`. **Copy Quote** remains a local fallback. A preferred date is never presented as a confirmed appointment.
 
 Residential photography is always selected and disabled. The square-footage slider and number field are disabled for Silver, Gold and Platinum and enabled for Individual Services. Residential video retains its duration slider. Luxury photography uses $425 + (sqft − 5,000) × $0.1176. Read [Residential_Pricing_20260919.md](documents/design/Residential_Pricing_20260919.md) for formulas, required fields, email behavior, time estimates and validation. Large Home uses the proposed $350-to-$425 scale across 4,000–5,000 sq ft ($0.075 per additional sq ft); its upper endpoint still needs confirmation. Run `node --test tests/*.test.cjs` for the browser calculators and integration contract, and `php tests/pricing-request.test.php` for server parity.
 
@@ -76,7 +90,7 @@ The website root is **public/**. Documents are stored separately and are not lin
 
 This commit begins the design stage. It does not deploy the site, configure a subdomain, modify the corporate website or activate submission handling. `noindex` and `robots.txt` discourage indexing during design review; they are not access controls.
 
-Before launch, supply approved imagery and experience URLs; confirm the proposed Large Home upper endpoint; confirm the production host and subdomain; complete browser review at desktop and mobile widths; and run a production SMTP delivery test. Serve only `public/` while keeping `_private/` available to PHP outside the document root. The host must provide PHP 8.1 or later, writable rate-limit and pending-request storage, `SITESEE_REAL_ESTATE_SITE_URL`, a strong `SITESEE_REAL_ESTATE_PRICING_GATE_SECRET`, and either the existing SiteSee SMTP environment or a working PHP mail transport. See [Server_Form_Integration_20260921.md](documents/design/Server_Form_Integration_20260921.md) for the exact deployment contract. Deliberately remove design-preview messages and indexing restrictions only when the operational site is ready.
+Before launch, supply approved imagery and experience URLs; confirm the proposed Large Home upper endpoint; confirm the production host and subdomain; complete browser review at desktop and mobile widths; and run a production SMTP delivery test. Serve only `public/`. Keep `_private/` as its sibling outside the document root; never copy `_private/` into the publicly served directory. The host must provide PHP 8.1 or later, writable rate-limit and pending-request storage, `SITESEE_REAL_ESTATE_SITE_URL`, a strong `SITESEE_REAL_ESTATE_PRICING_GATE_SECRET`, and either the existing SiteSee SMTP environment or a working PHP mail transport. See [Server_Form_Integration_20260921.md](documents/design/Server_Form_Integration_20260921.md) for the exact deployment contract. Deliberately remove design-preview messages and indexing restrictions only when the operational site is ready.
 
 Validation and the remaining review limitation are recorded in [documents/design/Initial_Design_Record_20260913.md](documents/design/Initial_Design_Record_20260913.md).
 
