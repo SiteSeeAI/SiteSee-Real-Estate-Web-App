@@ -5,7 +5,7 @@ const path = require('node:path');
 
 const root = path.join(__dirname, '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
-const accessHtml = read('public/pricing.html');
+const accessHtml = read('public/pricing-request.html');
 const html = read('public/pricing.php');
 const residential = read('_private/pricing-assets/pricing.js');
 const commercial = read('_private/pricing-assets/commercial-pricing.js');
@@ -17,7 +17,7 @@ const protectedAssets = read('public/pricing-asset.php');
 const gateConfig = read('_private/real-estate-form-config.php');
 const serverPricing = read('_private/real-estate-pricing.php');
 
-test('the public pricing route requests access instead of exposing calculators', () => {
+test('the public pricing-request route replaces pricing.html and does not expose calculators', () => {\n  assert.equal(fs.existsSync(path.join(root, 'public/pricing.html')), false);
   assert.match(accessHtml, /id="pricing-access-form"[^>]*action="pricing-request\.php"[^>]*method="post"/);
   for (const name of ['first_name', 'last_name', 'website', 'email', 'phone', 'company_fax']) {
     assert.match(accessHtml, new RegExp('name="' + name + '"'));

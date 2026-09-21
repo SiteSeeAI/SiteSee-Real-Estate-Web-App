@@ -29,7 +29,7 @@ Edit the HTML pages directly. Styling is in `public/assets/css/site.css`; menu, 
 | Residential Photography | [public/residential-photography.html](public/residential-photography.html) |
 | Commercial Photography | [public/commercial-photography.html](public/commercial-photography.html) |
 | Contact | [public/contact.html](public/contact.html) |
-| Request Pricing Access | [public/pricing.html](public/pricing.html) |
+| Request Pricing Access | [public/pricing-request.html](public/pricing-request.html) |
 | Verified Residential & Commercial Pricing | [public/pricing.php](public/pricing.php) |
 
 ## Real estate platform features
@@ -60,7 +60,7 @@ Review [Commercial_Pricing_20260919.md](documents/design/Commercial_Pricing_2026
 
 ## Current behavior
 
-The public `public/pricing.html` page is the pricing-access request form. It follows the corporate manual-review workflow: the requester supplies required business contact information, sales receives a signed review link, and no pricing is released until sales explicitly approves the request. Approval sends the requester a signed link that expires after 36 hours. Opening it creates a verified browser session lasting up to 12 hours and redirects to `public/pricing.php`.
+The public `public/pricing-request.html` page is the pricing-access request form. It follows the corporate manual-review workflow: the requester supplies required business contact information, sales receives a signed review link, and no pricing is released until sales explicitly approves the request. Approval sends the requester a signed link that expires after 36 hours. Opening it creates a verified browser session lasting up to 12 hours and redirects to `public/pricing.php`.
 
 The protected calculator retains every approved layout, field and pricing rule. All address and agent-detail fields remain required. Its residential and commercial forms submit quote actions to `public/quote-submit.php`, which also requires the verified pricing session. The handler validates the complete address, agent details, mailing-list preference, requested date and time, and every market-specific pricing input before recalculating the estimate on the server. **Email My Quote To Me** delivers the validated quote to the agent. **Request My Preferred Date** delivers the request to `sales@sitesee.ai` and attempts a confirmation copy to the agent. The exact subjects remain `Residential SiteSee Real Estate Quote` and `Commercial SiteSee Real Estate Quote`. **Copy Quote** remains a local fallback. A preferred date is never presented as a confirmed appointment.
 
