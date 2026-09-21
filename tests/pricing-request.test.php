@@ -69,7 +69,7 @@ $same($luxury['knownMinutes'], 440, 'Luxury caps do not cap capture time.');
 
 $package = real_estate_residential_quote(array_replace($residentialState, ['package'=>'platinum','sqft'=>'0','matterportSqft'=>'10000','selected'=>['mp']]));
 $same($package['totalCents'], 149400, 'Platinum keeps Matterport separate and capped.');
-$same($package['matterportMinutes'], 90.0, 'Package Matterport uses the submitted scan area for time.');
+$same($package['matterportMinutes'], 90, 'Package Matterport uses the submitted scan area for time.');
 
 $commercialState = [
     'category'=>'mid',
