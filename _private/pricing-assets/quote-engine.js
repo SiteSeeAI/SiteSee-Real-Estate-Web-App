@@ -95,3 +95,4 @@
   }
   return { subject, categories, packages, services, money, calculate, duration, videoDuration, emailBody };
 });
+

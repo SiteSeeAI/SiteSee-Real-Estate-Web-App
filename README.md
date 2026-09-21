@@ -2,11 +2,11 @@
 
 Initial website design, 2026 09 13.
 
-Eight responsive HTML pages implement the approved SiteSee Real Estate structure, with the existing SiteSee logo, Poppins and Inter, yellow accents, a shared header and footer, alternating content sections, and property photography. Platform-specific graphics remain for a later pass.
+Responsive HTML and PHP pages implement the approved SiteSee Real Estate structure, with the existing SiteSee logo, Poppins and Inter, yellow accents, a shared header and footer, alternating content sections, and property photography. Platform-specific graphics remain for a later pass.
 
 ## View the design
 
-Open `public/index.html` in a browser or Dreamweaver. All website assets are local; there is no installation or build step.
+Open `public/index.html` in a browser or Dreamweaver for static-page review. The verified pricing workflow requires PHP and cannot be tested through a static file preview.
 
 For a local HTTP preview, from this repository run:
 
@@ -29,7 +29,8 @@ Edit the HTML pages directly. Styling is in `public/assets/css/site.css`; menu, 
 | Residential Photography | [public/residential-photography.html](public/residential-photography.html) |
 | Commercial Photography | [public/commercial-photography.html](public/commercial-photography.html) |
 | Contact | [public/contact.html](public/contact.html) |
-| Residential Pricing & Quote | [public/pricing.html](public/pricing.html) |
+| Request Pricing Access | [public/pricing.html](public/pricing.html) |
+| Verified Residential & Commercial Pricing | [public/pricing.php](public/pricing.php) |
 
 ## Real estate platform features
 
@@ -49,7 +50,7 @@ See [Real_Estate_Approved_Editorial_Revisions_20260917.md](documents/design/Real
 
 ## Commercial calculator and separate service pages — 2026 09 19
 
-`public/pricing.html` begins with Residential / Commercial selection and keeps separate calculators, address gates and request fields. Commercial photography is automatic: Small $750, Warehouse / Office $1,200, Factory / Industrial $2,500. Additional photographs are the only quantity adjustment to those photography fees; property area does not reprice photography. The commercial Property Size field is completely removed. Its only range slider is photo quantity; Matterport coverage, video and term controls retain their number fields. Residential keeps its property-size and video-duration sliders. Matterport has independent coverage at $0.10/sqft with a $199 minimum. SiteSee platform is $49/month; individual 360° photos are $25, appear only after Matterport is selected and require the platform subscription. Aerials are $42/image, video is $8.333/second with a $500 minimum, and an independent website is $175, selectable as an add-on or via the synchronized delivery radio even with a platform subscription. Media licensing includes the first six months, then charges (photography + aerial + video) × 30% ÷ 12 per additional month through 18 months total. Unlimited use adds 50% of that same media base. Matterport hosting includes six months; its independent 6–18 month total-term number input adds $6.99 per additional month or $4.99 with Pay In Advance selected. Commercial photography time is shown as the selected category’s size range at 1.5 minutes per 1,000 sq ft, because exact property size is no longer collected. Residential photography remains 35 minutes per 1,000 sq ft. Both markets estimate scanning at 9 minutes per 1,000 covered sq ft, video at 15 minutes per finished minute and one 20-minute drone allowance per visit.
+The protected `public/pricing.php` page begins with Residential / Commercial selection and keeps separate calculators, address gates and request fields. Commercial photography is automatic: Small $750, Warehouse / Office $1,200, Factory / Industrial $2,500. Additional photographs are the only quantity adjustment to those photography fees; property area does not reprice photography. The commercial Property Size field is completely removed. Its only range slider is photo quantity; Matterport coverage, video and term controls retain their number fields. Residential keeps its property-size and video-duration sliders. Matterport has independent coverage at $0.10/sqft with a $199 minimum. SiteSee platform is $49/month; individual 360° photos are $25, appear only after Matterport is selected and require the platform subscription. Aerials are $42/image, video is $8.333/second with a $500 minimum, and an independent website is $175, selectable as an add-on or via the synchronized delivery radio even with a platform subscription. Media licensing includes the first six months, then charges (photography + aerial + video) × 30% ÷ 12 per additional month through 18 months total. Unlimited use adds 50% of that same media base. Matterport hosting includes six months; its independent 6–18 month total-term number input adds $6.99 per additional month or $4.99 with Pay In Advance selected. Commercial photography time is shown as the selected category’s size range at 1.5 minutes per 1,000 sq ft, because exact property size is no longer collected. Residential photography remains 35 minutes per 1,000 sq ft. Both markets estimate scanning at 9 minutes per 1,000 covered sq ft, video at 15 minutes per finished minute and one 20-minute drone allowance per visit.
 
 Commercial photography includes 25–30 / 30–45 / 45–55 photos by category. The total-photo slider caps at 100 and adds $30 / $26.70 / $25 for each photograph beyond 30 / 45 / 55 respectively. These extra charges enter the media-license base. Factory / Industrial is limited to 250,000 sq ft.
 
@@ -59,23 +60,23 @@ Review [Commercial_Pricing_20260919.md](documents/design/Commercial_Pricing_2026
 
 ## Current behavior
 
-The shared pricing page is `public/pricing.html`. All address and agent-detail fields are required. The selected market’s estimator appears after a complete property address is entered and the agent selects Continue. The page supports live square-footage estimates, media bundles with duplicate-service locks, video-duration pricing, twilight quantities, estimated capture time and preferred appointment requests. Both date and time are required for appointment requests. The original pricing-access URL redirects to this page.
+The public `public/pricing.html` page is the pricing-access request form. It follows the corporate manual-review workflow: the requester supplies required business contact information, sales receives a signed review link, and no pricing is released until sales explicitly approves the request. Approval sends the requester a signed link that expires after 36 hours. Opening it creates a verified browser session lasting up to 12 hours and redirects to `public/pricing.php`.
 
-The page prepares email drafts to the agent or sales@sitesee.ai with subject `Residential SiteSee Real Estate Quote` or `Commercial SiteSee Real Estate Quote`, matching the selected market. The visitor must press Send in their own email app. Copy Quote provides a fallback. No automatic email delivery or booking confirmation is claimed. The separate Contact form remains a design preview.
+The protected calculator retains every approved layout, field and pricing rule. All address and agent-detail fields remain required. Its residential and commercial forms submit quote actions to `public/quote-submit.php`, which also requires the verified pricing session. The handler validates the complete address, agent details, mailing-list preference, requested date and time, and every market-specific pricing input before recalculating the estimate on the server. **Email My Quote To Me** delivers the validated quote to the agent. **Request My Preferred Date** delivers the request to `sales@sitesee.ai` and attempts a confirmation copy to the agent. The exact subjects remain `Residential SiteSee Real Estate Quote` and `Commercial SiteSee Real Estate Quote`. **Copy Quote** remains a local fallback. A preferred date is never presented as a confirmed appointment.
 
-Residential photography is always selected and disabled. The square-footage slider and number field are disabled for Silver, Gold and Platinum and enabled for Individual Services. Residential video retains its duration slider. Luxury photography uses $425 + (sqft − 5,000) × $0.1176. Read [Residential_Pricing_20260919.md](documents/design/Residential_Pricing_20260919.md) for formulas, required fields, email behavior, time estimates and validation. Large Home uses the proposed $350-to-$425 scale across 4,000–5,000 sq ft ($0.075 per additional sq ft); its upper endpoint still needs confirmation. Automatic email delivery remains an open launch item. Run `node --test tests/quote-engine.test.cjs` to verify calculator behavior.
+Residential photography is always selected and disabled. The square-footage slider and number field are disabled for Silver, Gold and Platinum and enabled for Individual Services. Residential video retains its duration slider. Luxury photography uses $425 + (sqft − 5,000) × $0.1176. Read [Residential_Pricing_20260919.md](documents/design/Residential_Pricing_20260919.md) for formulas, required fields, email behavior, time estimates and validation. Large Home uses the proposed $350-to-$425 scale across 4,000–5,000 sq ft ($0.075 per additional sq ft); its upper endpoint still needs confirmation. Run `node --test tests/*.test.cjs` for the browser calculators and integration contract, and `php tests/pricing-request.test.php` for server parity.
 
 ## Documents
 
 All recovered website documents are indexed in [documents/README.md](documents/README.md), including the current brief, updated Word hierarchy, customer rate sheet, supplied pricing sources and imagery guidance. The supplied source files are preserved, and the design brief tracks subsequent revisions. A checksum manifest records the six retained project/source documents.
 
-The website root is **public/**. Documents are stored separately and are not linked from public pages. The source rate sheet remains outside public/. The approved residential rates are now in the customer-facing calculator; the property-address step is a form workflow, not an access-control mechanism.
+The website root is **public/**. Documents are stored separately and are not linked from public pages. The source rate sheet and browser calculator scripts remain outside `public/`. The property-address step remains a calculator workflow inside the separately verified pricing session.
 
 ## Production status
 
 This commit begins the design stage. It does not deploy the site, configure a subdomain, modify the corporate website or activate submission handling. `noindex` and `robots.txt` discourage indexing during design review; they are not access controls.
 
-Before launch, supply approved imagery and experience URLs; implement and verify server-side submission handling, opt-out persistence and response delivery; confirm the proposed Large Home upper endpoint; confirm the production host and subdomain; and complete browser review at desktop and mobile widths. Serve only `public/`, then deliberately remove design-preview messages and indexing restrictions when the operational site is ready.
+Before launch, supply approved imagery and experience URLs; confirm the proposed Large Home upper endpoint; confirm the production host and subdomain; complete browser review at desktop and mobile widths; and run a production SMTP delivery test. Serve only `public/` while keeping `_private/` available to PHP outside the document root. The host must provide PHP 8.1 or later, writable rate-limit and pending-request storage, `SITESEE_REAL_ESTATE_SITE_URL`, a strong `SITESEE_REAL_ESTATE_PRICING_GATE_SECRET`, and either the existing SiteSee SMTP environment or a working PHP mail transport. See [Server_Form_Integration_20260921.md](documents/design/Server_Form_Integration_20260921.md) for the exact deployment contract. Deliberately remove design-preview messages and indexing restrictions only when the operational site is ready.
 
 Validation and the remaining review limitation are recorded in [documents/design/Initial_Design_Record_20260913.md](documents/design/Initial_Design_Record_20260913.md).
 

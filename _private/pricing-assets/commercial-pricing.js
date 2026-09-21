@@ -173,16 +173,45 @@
     return { quote: current, details: details(), appointment };
   }
   ['shoot-date','shoot-time'].forEach(id => get(id).addEventListener('input', () => { get(id).setCustomValidity(''); get('request-status').hidden = true; }));
-  function showStatus(message) { get('request-status').textContent = message; get('request-status').hidden = false; }
-  function openEmail(self) {
-    const prepared = prepare(); if (!prepared) return;
-    const body = Q.emailBody(prepared.quote, prepared.details, prepared.appointment);
-    const recipient = self ? prepared.details.email : 'sales@sitesee.ai';
-    const uri = 'mailto:' + encodeURIComponent(recipient) + '?subject=' + encodeURIComponent(Q.subject) + '&body=' + encodeURIComponent(body);
-    showStatus('Your email draft is ready. Complete sending in your email app. If it did not open, use Copy Quote and paste it into a message with the subject “' + Q.subject + '”. No message has been sent by this page.');
-    window.location.href = uri;
+  function showStatus(message, isError = false) {
+    const status = get('request-status');
+    status.textContent = message;
+    status.classList.toggle('quote-status-error', isError);
+    status.hidden = false;
   }
-  get('email-self').addEventListener('click', () => openEmail(true));
+  function setSending(sending) {
+    get('email-self').disabled = sending;
+    get('request-shoot').disabled = sending;
+  }
+  async function submitToServer(action) {
+    const prepared = prepare(); if (!prepared) return;
+    setSending(true);
+    showStatus(action === 'email_quote' ? 'Sending your quote…' : 'Sending your preferred-date request…');
+    try {
+      const response = await fetch(form.action, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          version: 1,
+          action,
+          market: 'commercial',
+          companyFax: form.elements.namedItem('company_fax').value,
+          details: prepared.details,
+          appointment: prepared.appointment,
+          state: inputState()
+        })
+      });
+      const data = await response.json().catch(() => ({ ok:false, message:'The server returned an unreadable response.' }));
+      if (!response.ok || !data.ok) throw new Error(data.message || 'We could not send your quote.');
+      showStatus(data.message + (data.reference ? ' Reference: ' + data.reference + '.' : ''));
+    } catch (error) {
+      showStatus(error.message || 'We could not send your quote. Please try again or email sales@sitesee.ai.', true);
+    } finally {
+      setSending(false);
+    }
+  }
+  get('email-self').addEventListener('click', () => submitToServer('email_quote'));
   get('copy-quote').addEventListener('click', async () => {
     const prepared = prepare(); if (!prepared) return;
     const text = Q.emailBody(prepared.quote, prepared.details, prepared.appointment);
@@ -192,7 +221,7 @@
       get('request-status').replaceChildren(document.createTextNode('Select and copy your quote below.'), textarea); get('request-status').hidden = false; textarea.focus(); textarea.select();
     }
   });
-  form.addEventListener('submit', event => { event.preventDefault(); openEmail(false); });
+  form.addEventListener('submit', event => { event.preventDefault(); submitToServer('request_appointment'); });
   get('open-estimate').disabled = false;
   // Back/forward restoration and autofill must be revalidated, never unlock by themselves.
   window.addEventListener('pageshow', syncAddress);

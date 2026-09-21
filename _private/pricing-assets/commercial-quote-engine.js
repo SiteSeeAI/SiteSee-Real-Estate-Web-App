@@ -131,3 +131,4 @@
   }
   return {subject,categories,services,money,videoDuration,duration,durationRange,photographyCents,videoCents,licenseFeeCents,calculate,emailBody};
 });
+

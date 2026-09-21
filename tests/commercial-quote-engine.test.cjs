@@ -1,4 +1,4 @@
-const test=require('node:test'),assert=require('node:assert/strict'),Q=require('../public/assets/js/commercial-quote-engine.js');
+const test=require('node:test'),assert=require('node:assert/strict'),Q=require('../_private/pricing-assets/commercial-quote-engine.js');
 const quote=overrides=>Q.calculate({category:'small',sqft:5000,selected:[],aerialImages:1,videos:1,videoSeconds:60,plans:1,views360:1,licenseType:'term',licenseMonths:6,delivery:'files',platformMonths:6,hostingMonths:6,hostingPrepaid:false,...overrides});
 const fee=(q,key)=>q.lines.find(line=>line.key===key)?.cents;
 test('commercial category fees are fixed and only extra photographs increase the shoot fee',()=>{
@@ -60,7 +60,7 @@ test('email identifies photography area, scanned area, platform term and view co
 });
 
 test('commercial photography uses 1.5 minutes per thousand while residential retains 35',()=>{
- const R=require('../public/assets/js/quote-engine.js');
+ const R=require('../_private/pricing-assets/quote-engine.js');
  for(const sqft of [1000,2680,10000]){
   const r=R.calculate({category:sqft<2000?'small':sqft<=4000?'average':'luxury',package:'custom',sqft,selected:['photo','mp','video','drone'],videoSeconds:90,images:1});
   const c=quote({sqft,selected:['mp','video','drone'],videoSeconds:90});

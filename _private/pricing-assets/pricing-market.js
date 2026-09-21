@@ -14,3 +14,4 @@
   const initial = new URLSearchParams(window.location.search).get('type');
   if (initial) selectMarket(initial);
 })();
+
