@@ -4,9 +4,9 @@
 
 The public `public/pricing-request.html` page now requests verified pricing access. It mirrors the corporate workflow: the prospect submits required business contact information; SiteSee sales receives a signed internal review link; and opening that link does not release pricing. An explicit approval action emails the prospect a signed access link. The link expires after 36 hours and creates a verified browser session lasting up to 12 hours.
 
-The unchanged residential and commercial calculator layout is now served by protected `public/pricing.php`. Its browser scripts are stored under `_private/pricing-assets/` and delivered only through the session-protected `public/pricing-asset.php` endpoint. Direct requests without a verified session return to the public access form.
+The unchanged residential and commercial calculator URL remains `public/pricing.php`, but that public file is now only an entrypoint for `_private/views/pricing.php`. Its calculator scripts are stored under `_private/pricing-assets/` and delivered only through the minimal `public/pricing-asset.php` entrypoint and its session-protected `_private/server/pricing-asset.php` implementation. Direct requests without a verified session return to the public access form.
 
-The protected forms submit to `public/quote-submit.php`. The server accepts the selected market and its raw pricing inputs, validates them, and independently recalculates every quoted amount. It does not accept a browser-supplied total, subject or email body.
+The protected forms submit to the public `public/quote-submit.php` route, which immediately loads `_private/server/quote-submit.php`. The private server implementation accepts the selected market and its raw pricing inputs, validates them, and independently recalculates every quoted amount. It does not accept a browser-supplied total, subject or email body.
 
 **Email My Quote To Me** sends the validated quote to the requester. **Request My Preferred Date** sends the validated request to the configured SiteSee Real Estate sales address and attempts a confirmation copy to the requester. **Copy Quote** remains local and does not contact the server. Neither action confirms appointment availability.
 
@@ -32,7 +32,7 @@ Commercial validation preserves fixed category photography fees, PR #13 photogra
 The application has not been deployed by this change. Production needs:
 
 1. A PHP 8.1-or-later origin with PHP sessions enabled. Static S3/CloudFront hosting alone cannot execute the access gate or quote handler; that environment needs a PHP-capable origin or an equivalent API/Lambda implementation.
-2. The web document root set to `public/`, with the sibling `_private/` directory deployed but not publicly addressable.
+2. The web document root set to `public/`, with `_private/` deployed as its sibling outside the document root. On a conventional account, upload the contents of `public/` into `public_html/` and place `_private/` beside `public_html/`. Public PHP files must remain as the small route entrypoints; do not move them, and never place `_private/` below the served directory.
 3. Writable `_private/real-estate-rate/` and `_private/real-estate-pricing-pending/` directories, plus write access for the pricing lead and mail logs. A multi-instance or read-only serverless deployment should replace these file stores with shared expiring storage before launch.
 4. Pricing-gate configuration:
    - `SITESEE_REAL_ESTATE_SITE_URL` — the exact HTTPS production origin used in approval emails, without a trailing slash.
