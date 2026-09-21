@@ -2,7 +2,7 @@
 
 ## Integration result
 
-The public `public/pricing.html` page now requests verified pricing access. It mirrors the corporate workflow: the prospect submits required business contact information; SiteSee sales receives a signed internal review link; and opening that link does not release pricing. An explicit approval action emails the prospect a signed access link. The link expires after 36 hours and creates a verified browser session lasting up to 12 hours.
+The public `public/pricing-request.html` page now requests verified pricing access. It mirrors the corporate workflow: the prospect submits required business contact information; SiteSee sales receives a signed internal review link; and opening that link does not release pricing. An explicit approval action emails the prospect a signed access link. The link expires after 36 hours and creates a verified browser session lasting up to 12 hours.
 
 The unchanged residential and commercial calculator layout is now served by protected `public/pricing.php`. Its browser scripts are stored under `_private/pricing-assets/` and delivered only through the session-protected `public/pricing-asset.php` endpoint. Direct requests without a verified session return to the public access form.
 

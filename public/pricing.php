@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/_private/real-estate-form-config.php';
 if (!real_estate_pricing_has_access()) {
-    header('Location: pricing.html?pricing_required=1#pricing-access');
+    header('Location: pricing-request.html?pricing_required=1#pricing-access');
     exit;
 }
 header('Cache-Control: no-store, private, max-age=0');

@@ -1,6 +1,6 @@
 # Residential pricing page — 2026 09 19
 
-Review `public/pricing.html`. The existing Request Pricing Access URL redirects to the new page. All navigation and pricing links now point to Pricing & Quote. No production deployment is included.
+Review `public/pricing-request.html`. The existing Request Pricing Access URL redirects to the new page. All navigation and pricing links now point to Pricing & Quote. No production deployment is included.
 
 The page uses the existing SiteSee logo, Poppins and Inter, yellow accents and shared header/footer. Residential gallery images 28 and 15 provide the twilight hero and kitchen sidebar photography; no new image assets are required.
 
@@ -41,7 +41,7 @@ Automatic email delivery remains a launch dependency: connect a server-side mail
 
 ## Review locally
 
-Open `public/pricing.html` directly in a browser or Dreamweaver. No build is required. Alternatively run `python3 -m http.server 8765 --directory public`, then open `http://localhost:8765/pricing.html`.
+Open `public/pricing-request.html` directly in a browser or Dreamweaver. No build is required. Alternatively run `python3 -m http.server 8765 --directory public`, then open `http://localhost:8765/pricing-request.html`.
 
 Try a complete address; Average / 2,680 sq ft; add Matterport; switch to Gold and Platinum; switch back to individual services; change the address to an invalid ZIP; and complete the required agent fields and preferred appointment. Email actions prepare drafts and require the reviewer to press Send; sending is unnecessary for layout and calculator review.
 

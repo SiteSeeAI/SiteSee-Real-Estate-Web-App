@@ -5,7 +5,7 @@
     "page": "public/pricing.php",
     "quote_submission": "public/quote-submit.php",
     "access_gate": {
-      "public_page": "public/pricing.html",
+      "public_page": "public/pricing-request.html",
       "request_handler": "public/pricing-request.php",
       "approval_handler": "public/pricing-approve.php",
       "confirmation_handler": "public/pricing-confirm.php",
