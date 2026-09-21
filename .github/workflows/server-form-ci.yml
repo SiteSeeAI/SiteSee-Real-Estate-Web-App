@@ -24,6 +24,5 @@ jobs:
         run: find public _private tests -name '*.php' -print0 | xargs -0 -n1 php -l
       - name: Test client calculators and form contract
         run: node --test tests/*.test.cjs
-      - name: Test server validation and pricing parity
-        run: php tests/pricing-request.test.php
-
+      - name: Test server validation, pricing parity and access gate
+        run: for test in tests/*.test.php; do php "$test"; done

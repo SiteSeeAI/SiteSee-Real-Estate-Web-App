@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const Q = require('../public/assets/js/quote-engine.js');
+const Q = require('../_private/pricing-assets/quote-engine.js');
 const fee = (quote, key) => quote.lines.find(line => line.key === key)?.cents;
 const quote = overrides => Q.calculate({category:'average',package:'custom',sqft:2680,selected:['photo'],videoSeconds:60,images:1,...overrides});
 test('photography interpolates within Average and respects the Small minimum', () => {

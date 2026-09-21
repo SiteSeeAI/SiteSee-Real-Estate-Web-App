@@ -2,7 +2,24 @@
   "date": "2026 09 21",
   "stage": "server_form_integration",
   "pricing": {
-    "page": "public/pricing.html",
+    "page": "public/pricing.php",
+    "quote_submission": "public/quote-submit.php",
+    "access_gate": {
+      "public_page": "public/pricing.html",
+      "request_handler": "public/pricing-request.php",
+      "approval_handler": "public/pricing-approve.php",
+      "confirmation_handler": "public/pricing-confirm.php",
+      "manual_approval_required": true,
+      "access_link_hours": 36,
+      "verified_session_hours": 12,
+      "fields": [
+        "first_name",
+        "last_name",
+        "website",
+        "email",
+        "phone"
+      ]
+    },
     "address_gate": {
       "fields": [
         "street",

@@ -16,6 +16,33 @@ define('SITESEE_SMTP_USERNAME', getenv('SITESEE_SMTP_USERNAME') ?: '');
 define('SITESEE_SMTP_PASSWORD', getenv('SITESEE_SMTP_PASSWORD') ?: '');
 define('SITESEE_SMTP_ENCRYPTION', strtolower(getenv('SITESEE_SMTP_ENCRYPTION') ?: 'tls'));
 define('SITESEE_REAL_ESTATE_RATE_DIR', __DIR__ . '/real-estate-rate');
+define('SITESEE_REAL_ESTATE_PRICING_ACCESS_HOURS', 36);
+define('SITESEE_REAL_ESTATE_PRICING_APPROVAL_HOURS', 168);
+define('SITESEE_REAL_ESTATE_PRICING_SESSION_HOURS', 12);
+define('SITESEE_REAL_ESTATE_PRICING_LEAD_LOG', __DIR__ . '/real-estate-pricing-leads.ndjson');
+define('SITESEE_REAL_ESTATE_PRICING_MAIL_LOG', __DIR__ . '/real-estate-pricing-mail.ndjson');
+
+$realEstateSiteUrl = rtrim((string)getenv('SITESEE_REAL_ESTATE_SITE_URL'), '/');
+if (!preg_match('~^https://[A-Za-z0-9.-]+(?::\d+)?$~', $realEstateSiteUrl)) {
+    error_log('SiteSee Real Estate pricing gate is unavailable: SITESEE_REAL_ESTATE_SITE_URL is not configured.');
+    http_response_code(503);
+    header('Cache-Control: no-store');
+    header('Content-Type: text/plain; charset=UTF-8');
+    exit('Pricing access is temporarily unavailable.');
+}
+define('SITESEE_REAL_ESTATE_SITE_URL', $realEstateSiteUrl);
+unset($realEstateSiteUrl);
+
+$realEstatePricingSecret = getenv('SITESEE_REAL_ESTATE_PRICING_GATE_SECRET');
+if (!is_string($realEstatePricingSecret) || strlen($realEstatePricingSecret) < 32) {
+    error_log('SiteSee Real Estate pricing gate is unavailable: SITESEE_REAL_ESTATE_PRICING_GATE_SECRET is not configured.');
+    http_response_code(503);
+    header('Cache-Control: no-store');
+    header('Content-Type: text/plain; charset=UTF-8');
+    exit('Pricing access is temporarily unavailable.');
+}
+define('SITESEE_REAL_ESTATE_PRICING_GATE_SECRET', $realEstatePricingSecret);
+unset($realEstatePricingSecret);
 
 function real_estate_same_origin(): bool
 {
@@ -60,6 +87,164 @@ function real_estate_rate_allowed(string $ip, string $email): bool
     }
     @chmod($file, 0600);
     return $rate['count'] <= 8;
+}
+
+function real_estate_pricing_start_session(): void
+{
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        return;
+    }
+    session_name('sitesee_real_estate_pricing');
+    session_set_cookie_params([
+        'lifetime' => SITESEE_REAL_ESTATE_PRICING_SESSION_HOURS * 3600,
+        'path' => '/',
+        'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    session_start();
+}
+
+function real_estate_pricing_has_access(): bool
+{
+    real_estate_pricing_start_session();
+    return !empty($_SESSION['real_estate_pricing_email'])
+        && !empty($_SESSION['real_estate_pricing_expires'])
+        && (int)$_SESSION['real_estate_pricing_expires'] >= time();
+}
+
+function real_estate_pricing_base64url_encode(string $value): string
+{
+    return rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
+}
+
+function real_estate_pricing_base64url_decode(string $value): string|false
+{
+    $padding = strlen($value) % 4;
+    if ($padding) {
+        $value .= str_repeat('=', 4 - $padding);
+    }
+    return base64_decode(strtr($value, '-_', '+/'), true);
+}
+
+function real_estate_pricing_signed_token(array $payload): string
+{
+    $encoded = real_estate_pricing_base64url_encode((string)json_encode($payload, JSON_UNESCAPED_SLASHES));
+    $signature = real_estate_pricing_base64url_encode(
+        hash_hmac('sha256', $encoded, SITESEE_REAL_ESTATE_PRICING_GATE_SECRET, true)
+    );
+    return $encoded . '.' . $signature;
+}
+
+function real_estate_pricing_validate_signed_token(string $token, string $purpose): array|false
+{
+    $parts = explode('.', $token, 2);
+    if (count($parts) !== 2) {
+        return false;
+    }
+    [$encoded, $signature] = $parts;
+    $expected = real_estate_pricing_base64url_encode(
+        hash_hmac('sha256', $encoded, SITESEE_REAL_ESTATE_PRICING_GATE_SECRET, true)
+    );
+    if (!hash_equals($expected, $signature)) {
+        return false;
+    }
+    $decoded = real_estate_pricing_base64url_decode($encoded);
+    if ($decoded === false) {
+        return false;
+    }
+    $payload = json_decode($decoded, true);
+    if (!is_array($payload) || ($payload['purpose'] ?? '') !== $purpose || empty($payload['exp'])) {
+        return false;
+    }
+    if ((int)$payload['exp'] < time()) {
+        return false;
+    }
+    return $payload;
+}
+
+function real_estate_pricing_create_access_token(string $email): string
+{
+    return real_estate_pricing_signed_token([
+        'purpose' => 'real_estate_pricing_access',
+        'email' => strtolower($email),
+        'exp' => time() + SITESEE_REAL_ESTATE_PRICING_ACCESS_HOURS * 3600,
+        'nonce' => bin2hex(random_bytes(12)),
+    ]);
+}
+
+function real_estate_pricing_validate_access_token(string $token): array|false
+{
+    $payload = real_estate_pricing_validate_signed_token($token, 'real_estate_pricing_access');
+    if (!$payload || !filter_var((string)($payload['email'] ?? ''), FILTER_VALIDATE_EMAIL)) {
+        return false;
+    }
+    return $payload;
+}
+
+function real_estate_pricing_create_approval_token(string $leadId): string
+{
+    return real_estate_pricing_signed_token([
+        'purpose' => 'real_estate_pricing_approval',
+        'lead_id' => $leadId,
+        'exp' => time() + SITESEE_REAL_ESTATE_PRICING_APPROVAL_HOURS * 3600,
+        'nonce' => bin2hex(random_bytes(12)),
+    ]);
+}
+
+function real_estate_pricing_validate_approval_token(string $token): array|false
+{
+    $payload = real_estate_pricing_validate_signed_token($token, 'real_estate_pricing_approval');
+    if (!$payload || !preg_match('/^[a-f0-9]{32}$/', (string)($payload['lead_id'] ?? ''))) {
+        return false;
+    }
+    return $payload;
+}
+
+function real_estate_pricing_pending_dir(): string
+{
+    $dir = __DIR__ . '/real-estate-pricing-pending';
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0700, true);
+    }
+    return $dir;
+}
+
+function real_estate_pricing_save_lead(string $leadId, array $lead): bool
+{
+    if (!preg_match('/^[a-f0-9]{32}$/', $leadId)) {
+        return false;
+    }
+    $file = real_estate_pricing_pending_dir() . '/' . $leadId . '.json';
+    $saved = @file_put_contents(
+        $file,
+        json_encode($lead, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT),
+        LOCK_EX
+    );
+    if ($saved === false) {
+        return false;
+    }
+    @chmod($file, 0600);
+    return true;
+}
+
+function real_estate_pricing_load_lead(string $leadId): array|false
+{
+    if (!preg_match('/^[a-f0-9]{32}$/', $leadId)) {
+        return false;
+    }
+    $file = real_estate_pricing_pending_dir() . '/' . $leadId . '.json';
+    if (!is_file($file)) {
+        return false;
+    }
+    $decoded = json_decode((string)file_get_contents($file), true);
+    return is_array($decoded) ? $decoded : false;
+}
+
+function real_estate_pricing_log(string $file, array $record): void
+{
+    $record['logged_at'] = gmdate('c');
+    @file_put_contents($file, json_encode($record, JSON_UNESCAPED_SLASHES) . PHP_EOL, FILE_APPEND | LOCK_EX);
 }
 
 function real_estate_smtp_read($socket): string
@@ -165,12 +350,27 @@ function real_estate_send_mail(string $to, string $replyTo, string $subject, str
 
     try {
         if (SITESEE_SMTP_HOST !== '') {
-            return real_estate_send_via_smtp($to, $subject, $headers, $body);
+            $sent = real_estate_send_via_smtp($to, $subject, $headers, $body);
+            $method = 'smtp';
+        } else {
+            $sent = @mail($to, $subject, $body, implode("\r\n", $headers));
+            $method = 'mail';
         }
-        return @mail($to, $subject, $body, implode("\r\n", $headers));
+        real_estate_pricing_log(SITESEE_REAL_ESTATE_PRICING_MAIL_LOG, [
+            'to' => $to,
+            'subject' => $subject,
+            'sent' => $sent,
+            'method' => $method,
+        ]);
+        return $sent;
     } catch (Throwable $error) {
-        error_log('SiteSee Real Estate quote mail failure: ' . $error->getMessage());
+        real_estate_pricing_log(SITESEE_REAL_ESTATE_PRICING_MAIL_LOG, [
+            'to' => $to,
+            'subject' => $subject,
+            'sent' => false,
+            'method' => SITESEE_SMTP_HOST !== '' ? 'smtp' : 'mail',
+            'error' => $error->getMessage(),
+        ]);
         return false;
     }
 }
-

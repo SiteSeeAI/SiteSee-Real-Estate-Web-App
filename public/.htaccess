@@ -1,7 +1,7 @@
 Options -Indexes
 DirectoryIndex index.html
 
-<FilesMatch "^(pricing-request\.php)$">
+<FilesMatch "^(pricing-request\.php|pricing-approve\.php|pricing-confirm\.php|pricing\.php|pricing-asset\.php|pricing-logout\.php|quote-submit\.php)$">
   <IfModule mod_headers.c>
     Header always set Cache-Control "no-store, private, max-age=0"
     Header always set X-Robots-Tag "noindex, nofollow, noarchive"
@@ -12,4 +12,3 @@ DirectoryIndex index.html
 <IfModule mod_deflate.c>
   AddOutputFilterByType DEFLATE text/html text/plain text/css text/javascript application/javascript application/json image/svg+xml
 </IfModule>
-
