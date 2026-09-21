@@ -107,7 +107,7 @@ $contains($commercial['plain'], '20,000 sq ft scanned', 'Commercial body include
 $contains($commercial['plain'], 'Exclude from mailing lists: Yes', 'Commercial body preserves the mailing-list choice.');
 
 $throws(static fn() => real_estate_prepare_submission([
-    'version'=>1,'action'=>'email_quote','market'=>'residential','details'=>$details - ['company'=>true],
+    'version'=>1,'action'=>'email_quote','market'=>'residential','details'=>array_diff_key($details, ['company'=>true]),
     'appointment'=>$appointment,'state'=>$residentialState,
 ], $now), 'Company remains required on the server.');
 $throws(static fn() => real_estate_prepare_submission([
