@@ -15,6 +15,9 @@ define('SITESEE_SMTP_PORT', (int)(getenv('SITESEE_SMTP_PORT') ?: 587));
 define('SITESEE_SMTP_USERNAME', getenv('SITESEE_SMTP_USERNAME') ?: '');
 define('SITESEE_SMTP_PASSWORD', getenv('SITESEE_SMTP_PASSWORD') ?: '');
 define('SITESEE_SMTP_ENCRYPTION', strtolower(getenv('SITESEE_SMTP_ENCRYPTION') ?: 'tls'));
+define('SITESEE_TURNSTILE_SITE_KEY', trim((string)(getenv('SITESEE_TURNSTILE_SITE_KEY') ?: '')));
+define('SITESEE_TURNSTILE_SECRET_KEY', trim((string)(getenv('SITESEE_TURNSTILE_SECRET_KEY') ?: '')));
+define('SITESEE_TURNSTILE_VERIFY_URL', 'https://challenges.cloudflare.com/turnstile/v0/siteverify');
 define('SITESEE_REAL_ESTATE_RATE_DIR', __DIR__ . '/real-estate-rate');
 define('SITESEE_REAL_ESTATE_PRICING_ACCESS_HOURS', 36);
 define('SITESEE_REAL_ESTATE_PRICING_APPROVAL_HOURS', 168);
@@ -59,6 +62,83 @@ function real_estate_same_origin(): bool
     $originHost = strtolower((string)parse_url($origin, PHP_URL_HOST));
     $requestHost = strtolower((string)preg_replace('/:\d+$/', '', (string)($_SERVER['HTTP_HOST'] ?? '')));
     return $originHost !== '' && $requestHost !== '' && hash_equals($requestHost, $originHost);
+}
+
+/**
+ * Validate one Cloudflare Turnstile token. The optional transport exists only
+ * so the verification contract can be tested without contacting production.
+ * Browser-supplied tokens are never trusted without this server-side check.
+ *
+ * @return array{ok:bool,code:string}
+ */
+function real_estate_verify_turnstile(
+    string $token,
+    string $ip,
+    string $expectedAction,
+    ?callable $transport = null
+): array {
+    $token = trim($token);
+    if ($token === '' || strlen($token) > 2048) {
+        return ['ok'=>false, 'code'=>'missing-or-invalid-token'];
+    }
+    if (SITESEE_TURNSTILE_SECRET_KEY === '') {
+        error_log('SiteSee form protection is unavailable: SITESEE_TURNSTILE_SECRET_KEY is not configured.');
+        return ['ok'=>false, 'code'=>'configuration-error'];
+    }
+
+    $fields = [
+        'secret' => SITESEE_TURNSTILE_SECRET_KEY,
+        'response' => $token,
+        'remoteip' => $ip,
+    ];
+
+    if ($transport !== null) {
+        $verification = $transport(SITESEE_TURNSTILE_VERIFY_URL, $fields);
+    } else {
+        $body = http_build_query($fields, '', '&', PHP_QUERY_RFC3986);
+        $raw = false;
+        if (function_exists('curl_init')) {
+            $curl = curl_init(SITESEE_TURNSTILE_VERIFY_URL);
+            if ($curl !== false) {
+                curl_setopt_array($curl, [
+                    CURLOPT_POST => true,
+                    CURLOPT_POSTFIELDS => $body,
+                    CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded'],
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_CONNECTTIMEOUT => 4,
+                    CURLOPT_TIMEOUT => 8,
+                    CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
+                ]);
+                $raw = curl_exec($curl);
+                curl_close($curl);
+            }
+        } else {
+            $context = stream_context_create(['http'=>[
+                'method' => 'POST',
+                'header' => "Content-Type: application/x-www-form-urlencoded\r\nAccept: application/json\r\n",
+                'content' => $body,
+                'timeout' => 8,
+                'ignore_errors' => true,
+            ]]);
+            $raw = @file_get_contents(SITESEE_TURNSTILE_VERIFY_URL, false, $context);
+        }
+        $verification = is_string($raw) ? json_decode($raw, true) : null;
+    }
+
+    if (!is_array($verification) || empty($verification['success'])) {
+        return ['ok'=>false, 'code'=>'challenge-failed'];
+    }
+    if (!hash_equals($expectedAction, (string)($verification['action'] ?? ''))) {
+        return ['ok'=>false, 'code'=>'action-mismatch'];
+    }
+
+    $expectedHost = strtolower((string)parse_url(SITESEE_REAL_ESTATE_SITE_URL, PHP_URL_HOST));
+    $verifiedHost = strtolower((string)($verification['hostname'] ?? ''));
+    if ($expectedHost === '' || $verifiedHost === '' || !hash_equals($expectedHost, $verifiedHost)) {
+        return ['ok'=>false, 'code'=>'hostname-mismatch'];
+    }
+
+    return ['ok'=>true, 'code'=>'verified'];
 }
 
 function real_estate_rate_allowed(string $ip, string $email): bool

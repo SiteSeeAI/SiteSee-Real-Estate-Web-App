@@ -55,25 +55,20 @@
     fromHash();
   }
 
-  const labels = {
-    'first-name': 'First Name', 'last-name': 'Last Name', 'company-name': 'Company Name',
-    email: 'Email Address', phone: 'Phone Number',
-    'preferred-communication': 'Preferred Communication', message: 'Project Details'
-  };
-  document.querySelectorAll('.inquiry-form').forEach(form => {
+  document.querySelectorAll('.inquiry-form[data-form-kind="contact"]').forEach(form => {
     const result = form.querySelector('.form-result');
-    const summary = form.querySelector('.request-summary');
+    const resultMessage = form.querySelector('.form-result-message');
     const submit = form.querySelector('[type="submit"]');
-    const company = form.querySelector('[name="company-name"]');
-    const addRow = (label, value) => {
-      const row = document.createElement('div');
-      const term = document.createElement('dt');
-      const detail = document.createElement('dd');
-      term.textContent = label;
-      detail.textContent = value;
-      row.append(term, detail);
-      summary.append(row);
-    };
+    const phone = form.querySelector('[name="phone"]');
+    let security;
+    const securityReady = window.SiteSeeTurnstile
+      ? window.SiteSeeTurnstile.protect(form).then(controller => { security = controller; return controller; })
+      : Promise.reject(new Error('Secure form protection did not load.'));
+    securityReady.catch(error => {
+      const status = form.querySelector('.form-security-status');
+      status.textContent = error.message || 'Secure form protection is unavailable.';
+    });
+
     const clearErrors = () => {
       form.querySelectorAll('.validation-message').forEach(item => item.remove());
       form.querySelectorAll('[aria-invalid]').forEach(item => {
@@ -82,16 +77,18 @@
       });
     };
     form.addEventListener('input', () => {
-      if (company) company.setCustomValidity('');
+      if (phone) phone.setCustomValidity('');
       clearErrors();
       result.hidden = true;
-      summary.replaceChildren();
     });
-    form.addEventListener('change', () => { result.hidden = true; summary.replaceChildren(); });
-    form.addEventListener('submit', event => {
+    form.addEventListener('change', () => { result.hidden = true; });
+    form.addEventListener('submit', async event => {
       event.preventDefault();
       clearErrors();
-      if (company && company.required) company.setCustomValidity(company.value.trim() ? '' : 'Enter your company name.');
+      const preference = form.querySelector('[name="preferred_communication"]:checked');
+      if (phone && preference && ['Call', 'Text'].includes(preference.value)) {
+        phone.setCustomValidity(phone.value.trim() ? '' : 'Enter a phone number for your selected communication preference.');
+      }
       const invalid = [...form.querySelectorAll('input,textarea')].find(field => !field.validity.valid);
       if (invalid) {
         invalid.setAttribute('aria-invalid', 'true');
@@ -104,24 +101,31 @@
         invalid.focus();
         return;
       }
-      summary.replaceChildren();
-      if (form.dataset.formKind === 'pricing') addRow('Subject', 'Real Estate Div. - Pricing request.');
-      const data = new FormData(form);
-      for (const [key, label] of Object.entries(labels)) {
-        const value = data.get(key);
-        if (typeof value === 'string' && value.trim()) addRow(label, value.trim());
+
+      try {
+        const guard = await securityReady;
+        if (!guard.isVerified()) throw new Error('Complete the secure form check to continue.');
+        submit.disabled = true;
+        submit.textContent = 'Sending…';
+        result.hidden = true;
+        const response = await fetch(form.action, {
+          method: 'POST',
+          credentials: 'same-origin',
+          body: new FormData(form),
+          headers: { Accept: 'application/json' }
+        });
+        const data = await response.json().catch(() => ({ ok: false, message: 'The server returned an unreadable response.' }));
+        if (!response.ok || !data.ok) throw new Error(data.message || 'We could not send your inquiry.');
+        const reference = data.reference ? `<p class="form-reference">Reference: ${data.reference}</p>` : '';
+        form.innerHTML = '<div class="form-heading"><p class="eyebrow dark">Inquiry Received</p><h2 tabindex="-1">Thank You For Contacting SiteSee.</h2><p>' + data.message + '</p>' + reference + '</div>';
+        form.querySelector('h2').focus();
+      } catch (error) {
+        resultMessage.textContent = (error.message || 'We could not send your inquiry.') + ' You may also email sales@sitesee.ai.';
+        result.hidden = false;
+        result.focus();
+        submit.innerHTML = 'Send Inquiry <span aria-hidden="true">↗</span>';
+        if (security) security.reset();
       }
-      if (form.dataset.formKind === 'pricing') addRow('Mailing-List Opt-Out', data.has('mailing-list-opt-out') ? 'Yes — exclude me from all mailing lists.' : 'Not selected');
-      result.hidden = false;
-      result.focus();
     });
-    form.querySelector('.edit-request').addEventListener('click', () => {
-      result.hidden = true;
-      summary.replaceChildren();
-      form.querySelector('input').focus();
-    });
-    // Enabling occurs only after the submit interception is in place.
-    submit.disabled = false;
   });
 })();
-

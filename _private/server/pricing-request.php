@@ -54,6 +54,14 @@ if (strlen($source) > 80) $errors[] = 'Refresh the page and try again.';
 if ($errors) pricing_access_respond(['ok'=>false,'message'=>implode(' ', $errors)], 422);
 
 $ip = (string)($_SERVER['REMOTE_ADDR'] ?? 'unknown');
+$turnstile = real_estate_verify_turnstile(
+    (string)($_POST['cf-turnstile-response'] ?? ''),
+    $ip,
+    'pricing_access'
+);
+if (!$turnstile['ok']) {
+    pricing_access_respond(['ok'=>false,'message'=>'The secure form check expired or could not be verified. Please complete it again.'], 422);
+}
 if (!real_estate_rate_allowed($ip, $email)) {
     pricing_access_respond(['ok'=>false,'message'=>'Too many access requests were received. Please wait and try again, or email sales@sitesee.ai.'], 429);
 }
