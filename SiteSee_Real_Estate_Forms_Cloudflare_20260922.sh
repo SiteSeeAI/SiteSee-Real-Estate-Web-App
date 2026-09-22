@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 umask 077
 
-DOMAIN="realestate.sitesee.ai"
+DOMAIN="re.sitesee.ai"
 CPUSER="sitesee"
 CORPORATE_CONFIG="/home/sitesee/.sitesee-audit-guard/config.json"
 CORPORATE_CONTACT_JS="/home/sitesee/public_html/assets/js/contact.js"
@@ -45,7 +45,7 @@ GRAPH_CONFIG_MODE="$(stat -c '%a' "$GRAPH_CONFIG")"
 (( (8#$GRAPH_CONFIG_MODE & 077) == 0 )) || fail "Corporate Graph configuration permissions are too broad: $GRAPH_CONFIG_MODE"
 
 note "Confirming deployed Real Estate protection markers"
-grep -q "realestate.sitesee.ai" "$PRIVATE_CONFIG" || fail "The private configuration does not target $DOMAIN."
+grep -q "re.sitesee.ai" "$PRIVATE_CONFIG" || fail "The private configuration does not target $DOMAIN."
 grep -q "/home/sitesee/.sitesee-audit-guard/config.json" "$PRIVATE_CONFIG" || fail "The Corporate SiteSee Audit configuration is not connected."
 [[ "$(grep -o '__SITESEE_AUDIT_SITEKEY__' "$PUBLIC_JS" | wc -l)" -eq 1 ]] || fail "The browser asset is already activated or has an unexpected structure."
 grep -q "real_estate_contact" "$PRIVATE_CONTACT" || fail "The Contact action is missing."
@@ -153,7 +153,7 @@ pattern=re.compile(r'^(?:'+'|'.join(map(re.escape,keys))+r'):\s*.*(?:\n|$)',re.M
 text=pattern.sub('',text).rstrip()+'\n'
 def quote(value): return "'"+str(value).replace("'","''")+"'"
 values={
- 'sitesee_env_SITESEE_REAL_ESTATE_SITE_URL':('env[SITESEE_REAL_ESTATE_SITE_URL]','https://realestate.sitesee.ai'),
+ 'sitesee_env_SITESEE_REAL_ESTATE_SITE_URL':('env[SITESEE_REAL_ESTATE_SITE_URL]','https://re.sitesee.ai'),
  'sitesee_env_SITESEE_REAL_ESTATE_PRICING_GATE_SECRET':('env[SITESEE_REAL_ESTATE_PRICING_GATE_SECRET]',os.environ['PRICING_SECRET']),
  'sitesee_env_SITESEE_REAL_ESTATE_SALES_EMAIL':('env[SITESEE_REAL_ESTATE_SALES_EMAIL]','sales@sitesee.ai'),
  'sitesee_env_SITESEE_FROM_EMAIL':('env[SITESEE_FROM_EMAIL]','sales@sitesee.ai'),
