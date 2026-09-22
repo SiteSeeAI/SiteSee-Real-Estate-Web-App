@@ -28,13 +28,18 @@ $assert = static function (bool $condition, string $message) use (&$checks): voi
     }
 };
 
-$pass = static fn(string $url, array $fields): array => [
-    'success' => true,
-    'hostname' => 'realestate.sitesee.ai',
-    'action' => 'real_estate_contact',
-];
+$verifiedFields = [];
+$pass = static function (string $url, array $fields) use (&$verifiedFields): array {
+    $verifiedFields = $fields;
+    return [
+        'success' => true,
+        'hostname' => 'realestate.sitesee.ai',
+        'action' => 'real_estate_contact',
+    ];
+};
 $result = real_estate_verify_turnstile('test-token', '127.0.0.1', 'real_estate_contact', $pass);
 $assert($result['ok'] === true, 'valid token response should pass');
+$assert(($verifiedFields['remoteip'] ?? '') === '127.0.0.1', 'validated client IP should be sent to Siteverify');
 
 $result = real_estate_verify_turnstile('', '127.0.0.1', 'real_estate_contact', $pass);
 $assert($result['ok'] === false && $result['code'] === 'missing-or-invalid-token', 'missing token should fail');

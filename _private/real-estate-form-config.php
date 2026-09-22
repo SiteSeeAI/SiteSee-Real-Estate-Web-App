@@ -196,7 +196,7 @@ function real_estate_verify_turnstile(
         ], time())) {
             return ['ok'=>false, 'code'=>'attempt-rate-limit'];
         }
-        $fields = ['secret'=>$config['secret'], 'response'=>$token];
+        $fields = ['secret'=>$config['secret'], 'response'=>$token, 'remoteip'=>$ip];
 
         if ($transport !== null) {
             $verification = $transport(SITESEE_TURNSTILE_VERIFY_URL, $fields);
@@ -212,9 +212,13 @@ function real_estate_verify_turnstile(
             curl_setopt_array($curl, [
                 CURLOPT_POST => true,
                 CURLOPT_POSTFIELDS => http_build_query($fields, '', '&', PHP_QUERY_RFC3986),
-                CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded'],
+                CURLOPT_HTTPHEADER => [
+                    'Content-Type: application/x-www-form-urlencoded',
+                    'Accept: application/json',
+                ],
                 CURLOPT_CONNECTTIMEOUT => 5,
                 CURLOPT_TIMEOUT => 10,
+                CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
                 CURLOPT_SSL_VERIFYPEER => true,
                 CURLOPT_SSL_VERIFYHOST => 2,
                 CURLOPT_FOLLOWLOCATION => false,
