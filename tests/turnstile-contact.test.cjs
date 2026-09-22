@@ -44,7 +44,7 @@ test('both submission endpoints enforce independent Turnstile actions', () => {
   assert.match(contactHandler, /real_estate_verify_turnstile\([\s\S]*'real_estate_contact'/);
   assert.match(config, /https:\/\/challenges\.cloudflare\.com\/turnstile\/v0\/siteverify/);
   assert.match(config, /\/home\/sitesee\/\.sitesee-audit-guard\/config\.json/);
-  assert.match(config, /realestate\.sitesee\.ai/);
+  assert.match(config, /re\.sitesee\.ai/);
   assert.match(config, /real_estate_form_delivery_allowed/);
   assert.match(config, /delivery-ip/);
   assert.match(config, /delivery-email/);
