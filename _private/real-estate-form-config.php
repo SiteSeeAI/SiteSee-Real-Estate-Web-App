@@ -16,7 +16,7 @@ define('SITESEE_SMTP_USERNAME', getenv('SITESEE_SMTP_USERNAME') ?: '');
 define('SITESEE_SMTP_PASSWORD', getenv('SITESEE_SMTP_PASSWORD') ?: '');
 define('SITESEE_SMTP_ENCRYPTION', strtolower(getenv('SITESEE_SMTP_ENCRYPTION') ?: 'tls'));
 define('SITESEE_TURNSTILE_VERIFY_URL', 'https://challenges.cloudflare.com/turnstile/v0/siteverify');
-define('SITESEE_REAL_ESTATE_TURNSTILE_HOSTNAME', 'realestate.sitesee.ai');
+define('SITESEE_REAL_ESTATE_TURNSTILE_HOSTNAME', 're.sitesee.ai');
 if (!defined('SITESEE_REAL_ESTATE_TURNSTILE_CONFIG_PATH')) {
     define('SITESEE_REAL_ESTATE_TURNSTILE_CONFIG_PATH', '/home/sitesee/.sitesee-audit-guard/config.json');
 }
