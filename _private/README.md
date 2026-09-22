@@ -16,11 +16,11 @@ This directory must be deployed outside the web document root. The `.htaccess` d
 - PHP `sendmail_path` — the installed Corporate Microsoft Graph bridge.
 - PHP 8.1 or later with cURL enabled.
 
-The production installer writes these values to the `realestate.sitesee.ai` PHP-FPM configuration, preserving an existing pricing-signing secret during later deployments. SMTP settings remain empty so PHP `mail()` uses the same Microsoft Graph bridge as the Corporate site.
+The production installer writes these values to the `re.sitesee.ai` PHP-FPM configuration, preserving an existing pricing-signing secret during later deployments. SMTP settings remain empty so PHP `mail()` uses the same Microsoft Graph bridge as the Corporate site.
 
 ## Corporate Cloudflare protection
 
-The Real Estate forms reuse the installed Corporate **SiteSee Audit** Turnstile configuration at `/home/sitesee/.sitesee-audit-guard/config.json`. No second production site key or secret is created. Add `realestate.sitesee.ai` to that managed widget's allowed hostnames before activation.
+The Real Estate forms reuse the installed Corporate **SiteSee Audit** Turnstile configuration at `/home/sitesee/.sitesee-audit-guard/config.json`. No second production site key or secret is created. Add `re.sitesee.ai` to that managed widget's allowed hostnames before activation.
 
 The server installer reads the working public site key from the Corporate contact script and embeds it in `public/assets/js/turnstile.js`; the secret and HMAC salt remain in the existing private Corporate configuration. The Pricing Request and Contact forms use isolated actions, `real_estate_pricing` and `real_estate_contact`, with shared attempt limits and independent per-action IP and email delivery limits.
 
