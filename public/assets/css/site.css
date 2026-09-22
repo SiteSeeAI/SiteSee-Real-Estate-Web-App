@@ -82,6 +82,7 @@
 
 /* Media showcases, platform comparisons and property templates · 2026 09 22 */
 .work-gallery{row-gap:52px}
+.home-work-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
 .experience-card{display:block;margin:0;overflow:hidden;background:var(--ink);border:1px solid #D5D8DC}
 .experience-card figcaption{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px;background:#fff;border-top:1px solid var(--line)}
 .experience-card figcaption strong{font-size:.75rem;line-height:1.5;font-weight:400}
@@ -128,6 +129,7 @@ button.media-slide{cursor:zoom-in}
 
 @media(max-width:740px){
   .work-gallery{row-gap:36px}
+  .home-work-grid{grid-template-columns:1fr}
   .experience-card figcaption{padding:14px 16px}
   .template-section{padding-block:55px}
   .template-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
