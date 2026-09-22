@@ -14,7 +14,7 @@ file_put_contents($configPath, json_encode([
 define('SITESEE_REAL_ESTATE_TURNSTILE_CONFIG_PATH', $configPath);
 define('SITESEE_REAL_ESTATE_TURNSTILE_RATE_FILE', $ratePath);
 
-putenv('SITESEE_REAL_ESTATE_SITE_URL=https://realestate.sitesee.ai');
+putenv('SITESEE_REAL_ESTATE_SITE_URL=https://re.sitesee.ai');
 putenv('SITESEE_REAL_ESTATE_PRICING_GATE_SECRET=0123456789abcdef0123456789abcdef');
 
 require dirname(__DIR__) . '/_private/real-estate-form-config.php';
@@ -33,7 +33,7 @@ $pass = static function (string $url, array $fields) use (&$verifiedFields): arr
     $verifiedFields = $fields;
     return [
         'success' => true,
-        'hostname' => 'realestate.sitesee.ai',
+        'hostname' => 're.sitesee.ai',
         'action' => 'real_estate_contact',
     ];
 };
