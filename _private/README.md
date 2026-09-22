@@ -8,15 +8,22 @@ This directory must be deployed outside the web document root. The `.htaccess` d
 - `real-estate-form-config.php` contains shared session, token, rate-limit and mail delivery functions.
 - `real-estate-pricing.php` contains authoritative server-side validation and pricing calculations.
 
-## Required production environment
+## Production environment
 
 - `SITESEE_REAL_ESTATE_SITE_URL` — canonical HTTPS origin for the real-estate site.
-- `SITESEE_REAL_ESTATE_PRICING_GATE_SECRET` — random value of at least 32 characters.
-- `SITESEE_TURNSTILE_SITE_KEY` — public Cloudflare Turnstile widget key authorized for the real-estate hostname.
-- `SITESEE_TURNSTILE_SECRET_KEY` — private Cloudflare Turnstile verification key; never expose it in HTML or JavaScript.
+- `SITESEE_REAL_ESTATE_PRICING_GATE_SECRET` — persistent random value of at least 32 characters.
 - `SITESEE_REAL_ESTATE_SALES_EMAIL` and `SITESEE_FROM_EMAIL` — delivery and sender addresses.
-- `SITESEE_SMTP_HOST`, `SITESEE_SMTP_PORT`, `SITESEE_SMTP_USERNAME`, `SITESEE_SMTP_PASSWORD`, and `SITESEE_SMTP_ENCRYPTION` — authenticated mail transport when PHP `mail()` is not used.
+- PHP `sendmail_path` — the installed Corporate Microsoft Graph bridge.
+- PHP 8.1 or later with cURL enabled.
 
-Both the Pricing Request and Contact endpoints fail closed when Turnstile cannot be verified. Create the widget in Cloudflare for the production hostname, then set both Turnstile variables on the server before testing live submissions.
+The production installer writes these values to the `realestate.sitesee.ai` PHP-FPM configuration, preserving an existing pricing-signing secret during later deployments. SMTP settings remain empty so PHP `mail()` uses the same Microsoft Graph bridge as the Corporate site.
 
-The corresponding PHP files under `public/` are intentionally minimal web entrypoints. Browser-facing `site.js` and `pricing-access.js` remain under `public/assets/js/` because they must be downloadable.
+## Corporate Cloudflare protection
+
+The Real Estate forms reuse the installed Corporate **SiteSee Audit** Turnstile configuration at `/home/sitesee/.sitesee-audit-guard/config.json`. No second production site key or secret is created. Add `realestate.sitesee.ai` to that managed widget's allowed hostnames before activation.
+
+The server installer reads the working public site key from the Corporate contact script and embeds it in `public/assets/js/turnstile.js`; the secret and HMAC salt remain in the existing private Corporate configuration. The Pricing Request and Contact forms use isolated actions, `real_estate_pricing` and `real_estate_contact`, with shared attempt limits and independent per-action IP and email delivery limits.
+
+Both endpoints fail closed when verification is missing, invalid, unavailable, issued for another action or issued for another hostname. Run `SiteSee_Real_Estate_Forms_Cloudflare_20260922.sh` after the public and private trees have been deployed. It performs source and server preflight, PHP syntax checks, staged configuration, backups, installation, live missing/invalid-token rejection tests, a Microsoft Graph delivery test and automatic rollback on failure.
+
+The corresponding PHP files under `public/` are intentionally minimal web entrypoints. Browser-facing `site.js`, `pricing-access.js` and `turnstile.js` remain under `public/assets/js/` because they must be downloadable.

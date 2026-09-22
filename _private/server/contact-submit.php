@@ -46,6 +46,27 @@ if (trim((string)($_POST['company_fax'] ?? '')) !== '') {
     contact_respond(['ok'=>true, 'message'=>'Thank you. Your inquiry has been received.']);
 }
 
+$ip = (string)($_SERVER['REMOTE_ADDR'] ?? 'unknown');
+$turnstile = real_estate_verify_turnstile(
+    (string)($_POST['cf-turnstile-response'] ?? ''),
+    $ip,
+    'real_estate_contact'
+);
+if (!$turnstile['ok']) {
+    $status = match ($turnstile['code']) {
+        'attempt-rate-limit' => 429,
+        'configuration-error', 'verification-unavailable' => 503,
+        default => 403,
+    };
+    if ($status === 429) header('Retry-After: 600');
+    $message = $status === 503
+        ? 'Verification is temporarily unavailable. Please try again shortly or email sales@sitesee.ai.'
+        : ($status === 429
+            ? 'Too many verification attempts. Please wait ten minutes before trying again.'
+            : 'The secure form check expired or could not be verified. Please complete it again.');
+    contact_respond(['ok'=>false, 'message'=>$message], $status);
+}
+
 $clean = static function (mixed $value): string {
     $value = trim((string)$value);
     return preg_replace('/[\x00-\x1F\x7F]/u', '', $value) ?? '';
@@ -71,16 +92,8 @@ if (strlen($message) < 10 || strlen($message) > 2000) $errors[] = 'Tell us about
 if (strlen($source) > 80) $errors[] = 'Refresh the page and try again.';
 if ($errors) contact_respond(['ok'=>false, 'message'=>implode(' ', $errors)], 422);
 
-$ip = (string)($_SERVER['REMOTE_ADDR'] ?? 'unknown');
-$turnstile = real_estate_verify_turnstile(
-    (string)($_POST['cf-turnstile-response'] ?? ''),
-    $ip,
-    'contact_inquiry'
-);
-if (!$turnstile['ok']) {
-    contact_respond(['ok'=>false, 'message'=>'The secure form check expired or could not be verified. Please complete it again.'], 422);
-}
-if (!real_estate_rate_allowed($ip, $email)) {
+if (!real_estate_form_delivery_allowed('real_estate_contact', $ip, $email)) {
+    header('Retry-After: 3600');
     contact_respond(['ok'=>false, 'message'=>'Too many inquiries were received. Please wait and try again, or email sales@sitesee.ai.'], 429);
 }
 

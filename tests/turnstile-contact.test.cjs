@@ -11,7 +11,6 @@ const pricingHtml = read('public/pricing-request.html');
 const siteJs = read('public/assets/js/site.js');
 const pricingJs = read('public/assets/js/pricing-access.js');
 const turnstileJs = read('public/assets/js/turnstile.js');
-const configEndpoint = read('public/turnstile-config.php');
 const config = read('_private/real-estate-form-config.php');
 const contactHandler = read('_private/server/contact-submit.php');
 const contactEntrypoint = read('public/contact-submit.php');
@@ -19,33 +18,39 @@ const pricingHandler = read('_private/server/pricing-request.php');
 
 test('contact and pricing access forms require Cloudflare Turnstile', () => {
   assert.match(contactHtml, /action="contact-submit\.php"[^>]*method="post"/);
-  assert.match(contactHtml, /data-turnstile data-action="contact_inquiry"/);
+  assert.match(contactHtml, /data-turnstile data-action="real_estate_contact"/);
   assert.match(contactHtml, /<button class="button primary" type="submit" disabled>/);
   assert.match(contactHtml, /assets\/js\/turnstile\.js/);
 
   assert.match(pricingHtml, /action="pricing-request\.php"[^>]*method="post"/);
-  assert.match(pricingHtml, /data-turnstile data-action="pricing_access"/);
+  assert.match(pricingHtml, /data-turnstile data-action="real_estate_pricing"/);
   assert.match(pricingHtml, /<button class="button primary" type="submit" disabled>/);
   assert.match(pricingHtml, /assets\/js\/turnstile\.js/);
 });
 
-test('Turnstile is explicitly rendered and server configuration exposes only the public site key', () => {
+test('Turnstile follows the Corporate explicit-rendering pattern', () => {
   assert.match(turnstileJs, /challenges\.cloudflare\.com\/turnstile\/v0\/api\.js\?render=explicit/);
-  assert.match(turnstileJs, /fetch\('turnstile-config\.php'/);
-  assert.match(turnstileJs, /window\.turnstile\.render|api\.render/);
+  assert.match(turnstileJs, /__SITESEE_AUDIT_SITEKEY__/);
+  assert.equal(turnstileJs.includes('turnstile-config.php'), false);
+  assert.match(turnstileJs, /api\.render/);
+  assert.match(turnstileJs, /'response-field': false/);
+  assert.match(turnstileJs, /token\.name = 'cf-turnstile-response'/);
   assert.match(turnstileJs, /'expired-callback'/);
-  assert.match(turnstileJs, /api\.reset\(widgetId\)/);
-  assert.match(configEndpoint, /SITESEE_TURNSTILE_SITE_KEY/);
-  assert.equal(configEndpoint.includes('SITESEE_TURNSTILE_SECRET_KEY'), false);
+  assert.match(turnstileJs, /state\.api\.reset\(state\.widgetId\)/);
 });
 
 test('both submission endpoints enforce independent Turnstile actions', () => {
-  assert.match(pricingHandler, /real_estate_verify_turnstile\([\s\S]*'pricing_access'/);
-  assert.match(contactHandler, /real_estate_verify_turnstile\([\s\S]*'contact_inquiry'/);
+  assert.match(pricingHandler, /real_estate_verify_turnstile\([\s\S]*'real_estate_pricing'/);
+  assert.match(contactHandler, /real_estate_verify_turnstile\([\s\S]*'real_estate_contact'/);
   assert.match(config, /https:\/\/challenges\.cloudflare\.com\/turnstile\/v0\/siteverify/);
-  assert.match(config, /SITESEE_TURNSTILE_SECRET_KEY/);
+  assert.match(config, /\/home\/sitesee\/\.sitesee-audit-guard\/config\.json/);
+  assert.match(config, /realestate\.sitesee\.ai/);
+  assert.match(config, /real_estate_form_delivery_allowed/);
+  assert.match(config, /delivery-ip/);
+  assert.match(config, /delivery-email/);
   assert.match(config, /hostname-mismatch/);
   assert.match(config, /action-mismatch/);
+  assert.equal(config.includes("getenv('SITESEE_TURNSTILE"), false);
 });
 
 test('contact form posts to the server instead of displaying a design preview', () => {
@@ -55,14 +60,14 @@ test('contact form posts to the server instead of displaying a design preview', 
   assert.equal(contactHtml.includes('Design preview'), false);
   assert.equal(contactHtml.includes('has not sent or stored'), false);
   assert.match(contactHandler, /real_estate_same_origin/);
-  assert.match(contactHandler, /real_estate_rate_allowed/);
+  assert.match(contactHandler, /real_estate_form_delivery_allowed/);
   assert.match(contactHandler, /real_estate_send_mail/);
   assert.match(contactHandler, /company_fax/);
 });
 
 test('public contact entrypoint does not expose delivery implementation', () => {
   assert.match(contactEntrypoint, /_private\/server\/contact-submit\.php/);
-  for (const marker of ['real_estate_send_mail', 'SITESEE_TURNSTILE_SECRET_KEY', 'salesHtml', '<form']) {
+  for (const marker of ['real_estate_send_mail', 'real_estate_turnstile_config', 'salesHtml', '<form']) {
     assert.equal(contactEntrypoint.includes(marker), false, marker);
   }
 });
@@ -71,4 +76,3 @@ test('client scripts reset single-use challenges after submission errors', () =>
   assert.match(siteJs, /if \(security\) security\.reset\(\)/);
   assert.match(pricingJs, /if \(security\) security\.reset\(\)/);
 });
-

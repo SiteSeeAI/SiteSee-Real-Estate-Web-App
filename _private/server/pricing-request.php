@@ -36,6 +36,27 @@ if (!empty($_POST['company_fax'] ?? '')) {
     pricing_access_respond(['ok'=>true,'message'=>'Thank you. Your request has been received for review.']);
 }
 
+$ip = (string)($_SERVER['REMOTE_ADDR'] ?? 'unknown');
+$turnstile = real_estate_verify_turnstile(
+    (string)($_POST['cf-turnstile-response'] ?? ''),
+    $ip,
+    'real_estate_pricing'
+);
+if (!$turnstile['ok']) {
+    $status = match ($turnstile['code']) {
+        'attempt-rate-limit' => 429,
+        'configuration-error', 'verification-unavailable' => 503,
+        default => 403,
+    };
+    if ($status === 429) header('Retry-After: 600');
+    $message = $status === 503
+        ? 'Verification is temporarily unavailable. Please try again shortly or email sales@sitesee.ai.'
+        : ($status === 429
+            ? 'Too many verification attempts. Please wait ten minutes before trying again.'
+            : 'The secure form check expired or could not be verified. Please complete it again.');
+    pricing_access_respond(['ok'=>false,'message'=>$message], $status);
+}
+
 $first = trim((string)($_POST['first_name'] ?? ''));
 $last = trim((string)($_POST['last_name'] ?? ''));
 $website = trim((string)($_POST['website'] ?? ''));
@@ -53,16 +74,8 @@ if (!filter_var($website, FILTER_VALIDATE_URL) || strlen($website) > 255) $error
 if (strlen($source) > 80) $errors[] = 'Refresh the page and try again.';
 if ($errors) pricing_access_respond(['ok'=>false,'message'=>implode(' ', $errors)], 422);
 
-$ip = (string)($_SERVER['REMOTE_ADDR'] ?? 'unknown');
-$turnstile = real_estate_verify_turnstile(
-    (string)($_POST['cf-turnstile-response'] ?? ''),
-    $ip,
-    'pricing_access'
-);
-if (!$turnstile['ok']) {
-    pricing_access_respond(['ok'=>false,'message'=>'The secure form check expired or could not be verified. Please complete it again.'], 422);
-}
-if (!real_estate_rate_allowed($ip, $email)) {
+if (!real_estate_form_delivery_allowed('real_estate_pricing', $ip, $email)) {
+    header('Retry-After: 3600');
     pricing_access_respond(['ok'=>false,'message'=>'Too many access requests were received. Please wait and try again, or email sales@sitesee.ai.'], 429);
 }
 
