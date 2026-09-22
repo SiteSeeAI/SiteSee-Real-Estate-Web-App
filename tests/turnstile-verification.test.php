@@ -77,7 +77,7 @@ for ($i = 0; $i < 3; $i++) {
 }
 $assert(!real_estate_turnstile_rate([
     [real_estate_turnstile_key('real_estate_pricing:delivery-ip', '192.0.2.20'), 6, 3600],
-    [real_estate_turnstile_key('real_estate_pricing:delivery-email', 'SHARED@example.com'), 3, 3600],
+    [real_estate_turnstile_key('real_estate_pricing:delivery-email', strtolower('SHARED@example.com')), 3, 3600],
 ], $now), 'changing IP must not reset the pricing email allowance');
 
 $assert(real_estate_turnstile_rate([
