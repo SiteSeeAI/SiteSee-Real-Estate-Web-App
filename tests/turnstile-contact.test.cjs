@@ -66,7 +66,7 @@ test('contact form posts to the server instead of displaying a design preview', 
 });
 
 test('public contact entrypoint does not expose delivery implementation', () => {
-  assert.match(contactEntrypoint, /_private\/server\/contact-submit\.php/);
+  assert.match(contactEntrypoint, /\/home\/sitesee\/\.sitesee-real-estate\/server\/contact-submit\.php/);
   for (const marker of ['real_estate_send_mail', 'real_estate_turnstile_config', 'salesHtml', '<form']) {
     assert.equal(contactEntrypoint.includes(marker), false, marker);
   }
