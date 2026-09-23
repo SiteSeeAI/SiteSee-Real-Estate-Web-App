@@ -23,7 +23,10 @@
         slide.setAttribute('aria-hidden', String(!active));
       });
       if (status) {
-        status.textContent = `Slide ${current + 1} of ${slides.length}`;
+        const label = slides[current].dataset.carouselLabel;
+        status.textContent = label
+          ? `${label} · ${current + 1} of ${slides.length}`
+          : `Slide ${current + 1} of ${slides.length}`;
         status.setAttribute('aria-live', announce ? 'polite' : 'off');
       }
     };
@@ -59,13 +62,13 @@
   const dialogCaption = dialog?.querySelector('[data-lightbox-caption]');
 
   document.querySelectorAll('[data-lightbox-src]').forEach(trigger => {
-    trigger.addEventListener('click', () => {
-      if (!dialog || !dialogImage) return;
+    trigger.addEventListener('click', event => {
+      if (!dialog || !dialogImage || typeof dialog.showModal !== 'function') return;
+      event.preventDefault();
       dialogImage.src = trigger.dataset.lightboxSrc;
       dialogImage.alt = trigger.dataset.lightboxAlt || '';
       if (dialogCaption) dialogCaption.textContent = trigger.dataset.lightboxCaption || '';
-      if (typeof dialog.showModal === 'function') dialog.showModal();
-      else dialog.setAttribute('open', '');
+      dialog.showModal();
     });
   });
 
