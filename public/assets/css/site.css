@@ -170,6 +170,11 @@ button.media-slide{cursor:zoom-in}
 .meeting-carousel .media-slide img{object-fit:contain}
 .meeting-carousel .media-slide figcaption{display:none}
 
+/* Keep the full platform screenshots visible on the dedicated Real Estate feature pages. */
+.platform-detail-page .site-photo.hero-media{aspect-ratio:16/9;background:#101C28}
+.platform-detail-page .site-photo.hero-media img,.platform-detail-page .site-photo.platform-shot img{object-fit:contain;background:#101C28}
+.platform-detail-page .feature-copy>.text-button{margin-right:20px}
+
 /* A highlighted handoff from media services to the platform. */
 .platform-highlight{background:var(--yellow);border:0}
 .platform-highlight .wrap{padding-block:32px}
