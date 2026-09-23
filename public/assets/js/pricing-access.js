@@ -5,6 +5,15 @@
   const message = document.getElementById('pricing-access-message');
   const button = form.querySelector('button[type="submit"]');
   const required = new URLSearchParams(window.location.search).has('pricing_required');
+  let security;
+  const securityReady = window.SiteSeeTurnstile
+    ? window.SiteSeeTurnstile.protect(form).then(controller => { security = controller; return controller; })
+    : Promise.reject(new Error('Secure form protection did not load.'));
+
+  securityReady.catch(error => {
+    const status = form.querySelector('.form-security-status');
+    status.textContent = error.message || 'Secure form protection is unavailable.';
+  });
 
   if (required) {
     message.textContent = 'Verified pricing access is required. Submit the form and SiteSee will review your request.';
@@ -17,10 +26,12 @@
       form.reportValidity();
       return;
     }
-    button.disabled = true;
-    button.textContent = 'Sending…';
-    message.hidden = true;
     try {
+      const guard = await securityReady;
+      if (!guard.isVerified()) throw new Error('Complete the secure form check to continue.');
+      button.disabled = true;
+      button.textContent = 'Sending…';
+      message.hidden = true;
       const response = await fetch(form.action, {
         method: 'POST',
         credentials: 'same-origin',
@@ -34,8 +45,8 @@
     } catch (error) {
       message.textContent = (error.message || 'We could not process your request.') + ' You may also email sales@sitesee.ai.';
       message.hidden = false;
-      button.disabled = false;
       button.innerHTML = 'Request Pricing Access <span aria-hidden="true">↗</span>';
+      if (security) security.reset();
     }
   });
 })();

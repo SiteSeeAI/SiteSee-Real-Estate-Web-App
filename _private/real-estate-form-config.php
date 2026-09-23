@@ -15,6 +15,14 @@ define('SITESEE_SMTP_PORT', (int)(getenv('SITESEE_SMTP_PORT') ?: 587));
 define('SITESEE_SMTP_USERNAME', getenv('SITESEE_SMTP_USERNAME') ?: '');
 define('SITESEE_SMTP_PASSWORD', getenv('SITESEE_SMTP_PASSWORD') ?: '');
 define('SITESEE_SMTP_ENCRYPTION', strtolower(getenv('SITESEE_SMTP_ENCRYPTION') ?: 'tls'));
+define('SITESEE_TURNSTILE_VERIFY_URL', 'https://challenges.cloudflare.com/turnstile/v0/siteverify');
+define('SITESEE_REAL_ESTATE_TURNSTILE_HOSTNAME', 're.sitesee.ai');
+if (!defined('SITESEE_REAL_ESTATE_TURNSTILE_CONFIG_PATH')) {
+    define('SITESEE_REAL_ESTATE_TURNSTILE_CONFIG_PATH', '/home/sitesee/.sitesee-audit-guard/config.json');
+}
+if (!defined('SITESEE_REAL_ESTATE_TURNSTILE_RATE_FILE')) {
+    define('SITESEE_REAL_ESTATE_TURNSTILE_RATE_FILE', __DIR__ . '/real-estate-turnstile-rate.json');
+}
 define('SITESEE_REAL_ESTATE_RATE_DIR', __DIR__ . '/real-estate-rate');
 define('SITESEE_REAL_ESTATE_PRICING_ACCESS_HOURS', 36);
 define('SITESEE_REAL_ESTATE_PRICING_APPROVAL_HOURS', 168);
@@ -59,6 +67,198 @@ function real_estate_same_origin(): bool
     $originHost = strtolower((string)parse_url($origin, PHP_URL_HOST));
     $requestHost = strtolower((string)preg_replace('/:\d+$/', '', (string)($_SERVER['HTTP_HOST'] ?? '')));
     return $originHost !== '' && $requestHost !== '' && hash_equals($requestHost, $originHost);
+}
+
+function real_estate_turnstile_config(): array
+{
+    static $config = null;
+    if ($config !== null) {
+        return $config;
+    }
+    $raw = @file_get_contents(SITESEE_REAL_ESTATE_TURNSTILE_CONFIG_PATH);
+    if (!is_string($raw) || $raw === '') {
+        throw new RuntimeException('SiteSee Audit configuration is unavailable.');
+    }
+    $decoded = json_decode($raw, true, 16, JSON_THROW_ON_ERROR);
+    if (!is_array($decoded)
+        || !is_string($decoded['secret'] ?? null)
+        || !is_string($decoded['salt'] ?? null)
+        || strlen($decoded['secret']) < 10
+        || strlen($decoded['salt']) < 16
+    ) {
+        throw new RuntimeException('SiteSee Audit configuration is invalid.');
+    }
+    $config = $decoded;
+    return $config;
+}
+
+function real_estate_turnstile_rate(array $limits, int $now): bool
+{
+    $handle = @fopen(SITESEE_REAL_ESTATE_TURNSTILE_RATE_FILE, 'c+');
+    if ($handle === false) {
+        throw new RuntimeException('Turnstile rate storage is unavailable.');
+    }
+    try {
+        if (!flock($handle, LOCK_EX)) {
+            throw new RuntimeException('Turnstile rate lock is unavailable.');
+        }
+        $raw = stream_get_contents($handle, 4194305);
+        if ($raw === false || strlen($raw) > 4194304) {
+            throw new RuntimeException('Turnstile rate storage is invalid.');
+        }
+        $state = $raw === '' ? [] : json_decode($raw, true, 16, JSON_THROW_ON_ERROR);
+        if (!is_array($state)) {
+            throw new RuntimeException('Turnstile rate state is invalid.');
+        }
+        foreach ($state as $key => $times) {
+            if (!is_array($times)) {
+                throw new RuntimeException('Turnstile rate record is invalid.');
+            }
+            $state[$key] = array_values(array_filter(
+                $times,
+                static fn(mixed $time): bool => is_int($time) && $time > $now - 3600
+            ));
+            if (!$state[$key]) {
+                unset($state[$key]);
+            }
+        }
+        $allowed = true;
+        foreach ($limits as [$key, $maximum, $window]) {
+            $recent = array_filter($state[$key] ?? [], static fn(int $time): bool => $time > $now - $window);
+            if (count($recent) >= $maximum) {
+                $allowed = false;
+            }
+        }
+        if ($allowed) {
+            foreach ($limits as [$key, $maximum, $window]) {
+                $state[$key][] = $now;
+            }
+        }
+        if (count($state) > 20000) {
+            throw new RuntimeException('Turnstile rate capacity was reached.');
+        }
+        $encoded = json_encode($state, JSON_THROW_ON_ERROR);
+        if (strlen($encoded) > 4194304) {
+            throw new RuntimeException('Turnstile rate capacity was reached.');
+        }
+        rewind($handle);
+        if (!ftruncate($handle, 0) || fwrite($handle, $encoded) !== strlen($encoded) || !fflush($handle)) {
+            throw new RuntimeException('Turnstile rate update failed.');
+        }
+        @chmod(SITESEE_REAL_ESTATE_TURNSTILE_RATE_FILE, 0600);
+        return $allowed;
+    } finally {
+        flock($handle, LOCK_UN);
+        fclose($handle);
+    }
+}
+
+function real_estate_turnstile_key(string $kind, string $value): string
+{
+    return hash_hmac('sha256', $kind . ':' . $value, real_estate_turnstile_config()['salt']);
+}
+
+function real_estate_form_delivery_allowed(string $action, string $ip, string $email): bool
+{
+    return real_estate_turnstile_rate([
+        [real_estate_turnstile_key($action . ':delivery-ip', $ip), 6, 3600],
+        [real_estate_turnstile_key($action . ':delivery-email', strtolower(trim($email))), 3, 3600],
+    ], time());
+}
+
+/**
+ * Validate one Cloudflare Turnstile token using the Corporate SiteSee Audit
+ * configuration stored outside every public document root.
+ *
+ * @return array{ok:bool,code:string}
+ */
+function real_estate_verify_turnstile(
+    string $token,
+    string $ip,
+    string $expectedAction,
+    ?callable $transport = null
+): array {
+    if (!in_array($expectedAction, ['real_estate_pricing', 'real_estate_contact'], true)) {
+        return ['ok'=>false, 'code'=>'configuration-error'];
+    }
+    $token = trim($token);
+    if ($token === '' || strlen($token) > 2048) {
+        return ['ok'=>false, 'code'=>'missing-or-invalid-token'];
+    }
+    if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+        return ['ok'=>false, 'code'=>'configuration-error'];
+    }
+
+    try {
+        $config = real_estate_turnstile_config();
+        if (!real_estate_turnstile_rate([
+            [real_estate_turnstile_key('real-estate:attempt-ip', $ip), 30, 600],
+        ], time())) {
+            return ['ok'=>false, 'code'=>'attempt-rate-limit'];
+        }
+        $fields = ['secret'=>$config['secret'], 'response'=>$token, 'remoteip'=>$ip];
+
+        if ($transport !== null) {
+            $verification = $transport(SITESEE_TURNSTILE_VERIFY_URL, $fields);
+        } else {
+            if (!function_exists('curl_init')) {
+                throw new RuntimeException('PHP cURL is unavailable.');
+            }
+            $curl = curl_init(SITESEE_TURNSTILE_VERIFY_URL);
+            if ($curl === false) {
+                throw new RuntimeException('Turnstile verification is unavailable.');
+            }
+            $body = '';
+            curl_setopt_array($curl, [
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => http_build_query($fields, '', '&', PHP_QUERY_RFC3986),
+                CURLOPT_HTTPHEADER => [
+                    'Content-Type: application/x-www-form-urlencoded',
+                    'Accept: application/json',
+                ],
+                CURLOPT_CONNECTTIMEOUT => 5,
+                CURLOPT_TIMEOUT => 10,
+                CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
+                CURLOPT_SSL_VERIFYPEER => true,
+                CURLOPT_SSL_VERIFYHOST => 2,
+                CURLOPT_FOLLOWLOCATION => false,
+                CURLOPT_WRITEFUNCTION => static function ($curl, string $chunk) use (&$body): int {
+                    if (strlen($body) + strlen($chunk) > 16384) {
+                        return 0;
+                    }
+                    $body .= $chunk;
+                    return strlen($chunk);
+                },
+            ]);
+            try {
+                $sent = curl_exec($curl);
+                $status = curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+            } finally {
+                curl_close($curl);
+            }
+            if ($sent === false || $status !== 200) {
+                throw new RuntimeException('Turnstile verification is unavailable.');
+            }
+            $verification = json_decode($body, true, 16, JSON_THROW_ON_ERROR);
+        }
+    } catch (Throwable $error) {
+        error_log('SiteSee Real Estate Turnstile verification unavailable.');
+        return ['ok'=>false, 'code'=>'verification-unavailable'];
+    }
+
+    if (!is_array($verification) || ($verification['success'] ?? false) !== true) {
+        return ['ok'=>false, 'code'=>'challenge-failed'];
+    }
+    if (!hash_equals($expectedAction, (string)($verification['action'] ?? ''))) {
+        return ['ok'=>false, 'code'=>'action-mismatch'];
+    }
+
+    $verifiedHost = strtolower((string)($verification['hostname'] ?? ''));
+    if ($verifiedHost === '' || !hash_equals(SITESEE_REAL_ESTATE_TURNSTILE_HOSTNAME, $verifiedHost)) {
+        return ['ok'=>false, 'code'=>'hostname-mismatch'];
+    }
+
+    return ['ok'=>true, 'code'=>'verified'];
 }
 
 function real_estate_rate_allowed(string $ip, string $email): bool

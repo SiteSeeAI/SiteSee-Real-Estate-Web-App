@@ -17,6 +17,7 @@ const protectedAssets = read('_private/server/pricing-asset.php');
 const gateConfig = read('_private/real-estate-form-config.php');
 const serverPricing = read('_private/real-estate-pricing.php');
 const publicEntrypoints = {
+  'public/contact-submit.php': '_private/server/contact-submit.php',
   'public/pricing-approve.php': '_private/server/pricing-approve.php',
   'public/pricing-asset.php': '_private/server/pricing-asset.php',
   'public/pricing-confirm.php': '_private/server/pricing-confirm.php',

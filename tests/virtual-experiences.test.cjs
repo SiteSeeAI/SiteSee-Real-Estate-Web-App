@@ -17,7 +17,8 @@ const experiences = [
 
 test('the gallery embeds all six supplied property experiences', () => {
   assert.equal((page.match(/<iframe\b/g) || []).length, 6);
-  assert.equal((page.match(/class="media-placeholder wide-media experience-card"/g) || []).length, 6);
+  assert.equal((page.match(/class="experience-card"/g) || []).length, 6);
+  assert.equal(page.includes('media-placeholder'), false);
   for (const [url, title, label] of experiences) {
     assert.ok(page.includes(`src="${url}"`), url);
     assert.ok(page.includes(`title="${title}"`), title);
@@ -52,6 +53,10 @@ test('each property category explains its purpose and specific platform features
     assert.ok(page.includes(feature), feature);
   }
   assert.ok(page.includes('spend less time on showings with people who are still browsing'));
+  assert.ok(page.includes('Live In-platform Meetings'));
+  assert.ok(page.includes('href="platform.html#online-meetings"'));
+  assert.ok(page.includes('href="platform.html#ai-visualization"'));
+  assert.ok(page.includes('href="platform.html#ai-redesign"'));
   assert.match(css, /\.experience-group-header\{[^}]*grid-template-columns:/);
   assert.match(css, /@media\(max-width:520px\)\{\.experience-feature-list\{grid-template-columns:1fr\}/);
 });
