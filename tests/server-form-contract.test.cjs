@@ -41,7 +41,8 @@ test('public PHP routes are minimal entrypoints into private implementations', (
   for (const [publicPath, privatePath] of Object.entries(publicEntrypoints)) {
     const entrypoint = read(publicPath);
     assert.equal(fs.existsSync(path.join(root, privatePath)), true, privatePath);
-    assert.ok(entrypoint.includes("require dirname(__DIR__) . '/" + privatePath + "';"), publicPath);
+    const productionPath = privatePath.replace(/^_private/, '/home/sitesee/.sitesee-real-estate');
+    assert.ok(entrypoint.includes("require '" + productionPath + "';"), publicPath);
     for (const privateMarker of ['real_estate_send_mail', 'real_estate_prepare_submission', 'readfile(', '<form']) {
       assert.equal(entrypoint.includes(privateMarker), false, publicPath + ' exposes ' + privateMarker);
     }

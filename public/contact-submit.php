@@ -1,5 +1,5 @@
 <?php
 declare(strict_types=1);
 
-require dirname(__DIR__) . '/_private/server/contact-submit.php';
+require '/home/sitesee/.sitesee-real-estate/server/contact-submit.php';
 
