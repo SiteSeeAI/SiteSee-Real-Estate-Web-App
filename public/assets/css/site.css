@@ -155,9 +155,9 @@ button.media-slide{cursor:zoom-in}
 @media(max-width:1240px){.site-header .header-phone{font-size:.77rem;padding-left:12px}.header-inner{gap:14px}}
 @media(max-width:420px){.site-header .header-phone{font-size:.72rem;padding-left:0;border-left:0}.site-header .brand img{width:105px}.header-inner{gap:9px}.menu-toggle{margin-left:auto}}
 
-/* A portrait showcase keeps every landscape slide visible within the frame. */
-.hero-platform-carousel{width:min(100%,350px,calc(78vh * 9 / 16));margin-inline:auto}
-.hero-platform-carousel .carousel-stage{aspect-ratio:9/16;border-color:#46515D;background:#101C28}
+/* A landscape showcase keeps every slide visible within the frame. */
+.hero-platform-carousel{width:100%;max-width:720px;margin-inline:auto}
+.hero-platform-carousel .carousel-stage{aspect-ratio:16/9;border-color:#46515D;background:#101C28}
 .hero-platform-carousel .media-slide{isolation:isolate;background:#101C28}
 .hero-platform-carousel .slide-backdrop{position:absolute;inset:0;z-index:0;width:100%;height:100%;object-fit:cover;filter:blur(24px) brightness(.43);transform:scale(1.12)}
 .hero-platform-carousel .slide-image{position:relative;z-index:1;width:100%;height:100%;object-fit:contain}
@@ -175,6 +175,7 @@ button.media-slide{cursor:zoom-in}
 .platform-highlight .wrap{padding-block:32px}
 .platform-highlight p{font-size:1.09rem;font-weight:600;max-width:740px;line-height:1.6}
 .platform-highlight .text-button{border-bottom-color:var(--ink)}
+.team-platform .feature-page-link{margin-right:24px}
 
 /* Platform introductions on the residential and commercial process pages. */
 .process-platform{background:var(--ink);color:#fff}
