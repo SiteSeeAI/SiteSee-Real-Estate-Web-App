@@ -17,7 +17,7 @@ header('X-Robots-Tag: noindex, nofollow, noarchive');
 <script src="assets/js/site.js" defer></script><script src="pricing-asset.php?asset=quote-engine" defer></script><script src="pricing-asset.php?asset=residential-form" defer></script><script src="pricing-asset.php?asset=commercial-quote-engine" defer></script><script src="pricing-asset.php?asset=commercial-form" defer></script><script src="pricing-asset.php?asset=market-selector" defer></script></head><body data-page="pricing.php">
 <a class="skip-link" href="#main-content">Skip To Content</a>
     <header class="site-header"><div class="wrap header-inner">
-    <a class="brand" href="index.html" aria-label="SiteSee Real Estate home"><img src="assets/images/sitesee-logo.png" width="180" height="60" alt="SiteSee"><span>Real Estate<br>Division</span></a><a class="header-phone" href="tel:+18002222053">(800) 222-2053</a>
+    <a class="brand" href="index.html" aria-label="SiteSee Real Estate home"><img src="assets/images/sitesee-logo.png" width="180" height="60" alt="SiteSee"></a><a class="header-phone" href="tel:+18002222053">(800) 222-2053</a>
     <button class="menu-toggle" type="button" aria-controls="primary-navigation" aria-expanded="false" hidden>Menu <span aria-hidden="true">☰</span></button>
     <nav id="primary-navigation" aria-label="Primary navigation"><a href="index.html">Home</a><a href="platform.html">Platform</a><a href="services-provided.html">Services Provided</a><a href="our-work.html">Our Work</a><a href="contact.html">Contact</a><a class="nav-cta" href="pricing.php" aria-current="page">Pricing &amp; Quote<span aria-hidden="true">↗</span></a></nav>
     </div></header><main id="main-content">
