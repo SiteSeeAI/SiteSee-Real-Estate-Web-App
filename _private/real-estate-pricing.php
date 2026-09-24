@@ -21,6 +21,39 @@ function real_estate_string(array $source, string $key, int $max, string $messag
     return $value;
 }
 
+function real_estate_optional_text(array $source, string $key, int $max, string $message, bool $required = false): string
+{
+    $raw = $source[$key] ?? '';
+    if (!is_string($raw)) {
+        real_estate_invalid($message);
+    }
+    $value = real_estate_clean($raw);
+    $length = preg_match_all('/./us', $value);
+    if ($length === false || $length > $max || ($required && $value === '')) {
+        real_estate_invalid($message);
+    }
+    return $value;
+}
+
+function real_estate_contact_email(array $source, string $key, bool $required): string
+{
+    $email = strtolower(real_estate_optional_text($source, $key, 180, 'Enter a valid contact email address.', $required));
+    if ($email !== '' && (!filter_var($email, FILTER_VALIDATE_EMAIL) || preg_match('/[\r\n]/', $email))) {
+        real_estate_invalid('Enter a valid contact email address.');
+    }
+    return $email;
+}
+
+function real_estate_contact_phone(array $source, string $key, bool $required): string
+{
+    $phone = real_estate_optional_text($source, $key, 35, 'Enter a valid contact phone number.', $required);
+    $digits = preg_replace('/\D+/', '', $phone) ?? '';
+    if ($phone !== '' && (strlen($digits) < 10 || strlen($digits) > 18)) {
+        real_estate_invalid('Enter a valid contact phone number.');
+    }
+    return $phone;
+}
+
 function real_estate_integer(mixed $value, int $min, int $max, string $message): int
 {
     if (is_int($value)) {
@@ -105,6 +138,8 @@ function real_estate_validate_details(array $details): array
         'email' => strtolower(trim((string)($details['email'] ?? ''))),
         'phone' => real_estate_string($details, 'phone', 35, 'Enter your phone number.'),
         'street' => real_estate_string($details, 'street', 180, 'Enter the property street address.'),
+        'unit' => real_estate_optional_text($details, 'unit', 100, 'Enter a valid unit or suite.'),
+        'propertyId' => real_estate_optional_text($details, 'propertyId', 80, 'Enter a valid MLS or property ID.'),
         'city' => real_estate_string($details, 'city', 100, 'Enter the property city.'),
         'state' => strtoupper(trim((string)($details['state'] ?? ''))),
         'zip' => trim((string)($details['zip'] ?? '')),
@@ -152,6 +187,57 @@ function real_estate_validate_appointment(array $appointment, ?DateTimeImmutable
         real_estate_invalid('Choose a future date and time in Central Time.');
     }
     return ['date' => $date, 'time' => $time];
+}
+
+function real_estate_validate_schedule(array $source): array
+{
+    $meet = $source['meetPhotographer'] ?? null;
+    if (!in_array($meet, ['Yes', 'No'], true)) {
+        real_estate_invalid('Select whether the agent will meet the photographer.');
+    }
+    $access = '';
+    $code = '';
+    $keyLocation = '';
+    if ($meet === 'No') {
+        $access = $source['accessType'] ?? null;
+        if (!in_array($access, ['Lockbox', 'Key'], true)) {
+            real_estate_invalid('Select lockbox or key access.');
+        }
+        if ($access === 'Lockbox') {
+            $code = real_estate_optional_text($source, 'lockboxCode', 10, 'Enter a 10-digit lockbox code.', true);
+            if (!preg_match('/^[0-9]{10}$/D', $code)) {
+                real_estate_invalid('Enter a 10-digit lockbox code.');
+            }
+        } else {
+            $keyLocation = real_estate_optional_text($source, 'keyLocation', 150, 'Describe the key location in 150 characters or fewer.', true);
+        }
+    }
+    if (!in_array($source['onsiteDifferent'] ?? false, [true, false], true) ||
+        !in_array($source['additionalDifferent'] ?? false, [true, false], true)) {
+        real_estate_invalid('Choose valid scheduling contacts.');
+    }
+    $onsite = ($source['onsiteDifferent'] ?? false) === true;
+    $additional = ($source['additionalDifferent'] ?? false) === true;
+    if (($source['cancellationAccepted'] ?? null) !== true) {
+        real_estate_invalid('Please agree to the 24-hour cancellation policy.');
+    }
+    return [
+        'meetPhotographer'=>$meet,
+        'accessType'=>$access,
+        'lockboxCode'=>$code,
+        'keyLocation'=>$keyLocation,
+        'specialRequests'=>real_estate_optional_text($source, 'specialRequests', 250, 'Keep special requests within 250 characters.'),
+        'mustHaveShots'=>real_estate_optional_text($source, 'mustHaveShots', 250, 'Keep must-have shots within 250 characters.'),
+        'onsiteDifferent'=>$onsite,
+        'onsiteName'=>$onsite ? real_estate_optional_text($source, 'onsiteName', 100, 'Enter the on-site contact name.', true) : '',
+        'onsiteEmail'=>$onsite ? real_estate_contact_email($source, 'onsiteEmail', true) : '',
+        'onsitePhone'=>$onsite ? real_estate_contact_phone($source, 'onsitePhone', true) : '',
+        'additionalDifferent'=>$additional,
+        'additionalName'=>$additional ? real_estate_optional_text($source, 'additionalName', 100, 'Enter the additional contact name.', true) : '',
+        'additionalEmail'=>$additional ? real_estate_contact_email($source, 'additionalEmail', true) : '',
+        'additionalPhone'=>$additional ? real_estate_contact_phone($source, 'additionalPhone', false) : '',
+        'cancellationAccepted'=>true,
+    ];
 }
 
 function real_estate_residential_quote(array $state): array
@@ -479,7 +565,7 @@ function real_estate_commercial_quote(array $state): array
     ];
 }
 
-function real_estate_quote_body(array $quote, array $details, array $appointment): string
+function real_estate_quote_body(array $quote, array $details, array $appointment, bool $includeAccessCode = false): string
 {
     $lines = [
         $quote['subject'],
@@ -490,6 +576,12 @@ function real_estate_quote_body(array $quote, array $details, array $appointment
         'Phone: ' . $details['phone'],
         'Property: ' . $details['street'] . ', ' . $details['city'] . ', ' . $details['state'] . ' ' . $details['zip'],
     ];
+    if (!empty($details['unit'])) {
+        $lines[] = 'Unit / Suite: ' . $details['unit'];
+    }
+    if (!empty($details['propertyId'])) {
+        $lines[] = 'MLS / Property ID: ' . $details['propertyId'];
+    }
     if ($quote['market'] === 'residential') {
         if ($quote['packageCents'] === 0) {
             $lines[] = 'Property size: ' . number_format($quote['sqft']) . ' sq ft';
@@ -547,6 +639,30 @@ function real_estate_quote_body(array $quote, array $details, array $appointment
     $lines[] = 'Preferred date: ' . $appointment['date'];
     $lines[] = 'Preferred time: ' . $appointment['time'] . ' Central Time';
     $lines[] = 'Appointment is requested, not confirmed.';
+    if (isset($appointment['meetPhotographer'])) {
+        $lines[] = 'Agent meets photographer: ' . $appointment['meetPhotographer'];
+        if ($appointment['meetPhotographer'] === 'No') {
+            $lines[] = 'Access type: ' . $appointment['accessType'];
+            if ($appointment['accessType'] === 'Lockbox') {
+                $lines[] = 'Lockbox code: ' . ($includeAccessCode ? $appointment['lockboxCode'] : 'Provided to SiteSee separately');
+            } else {
+                $lines[] = 'Key location: ' . $appointment['keyLocation'];
+            }
+        }
+        if ($appointment['specialRequests'] !== '') {
+            $lines[] = 'Special requests: ' . $appointment['specialRequests'];
+        }
+        if ($appointment['mustHaveShots'] !== '') {
+            $lines[] = 'Must-have shots: ' . $appointment['mustHaveShots'];
+        }
+        if ($appointment['onsiteDifferent']) {
+            $lines[] = 'On-site contact: ' . $appointment['onsiteName'] . ' · ' . $appointment['onsiteEmail'] . ' · ' . $appointment['onsitePhone'];
+        }
+        if ($appointment['additionalDifferent']) {
+            $lines[] = 'Additional scheduling contact: ' . $appointment['additionalName'] . ' · ' . $appointment['additionalEmail'] . ($appointment['additionalPhone'] ? ' · ' . $appointment['additionalPhone'] : '');
+        }
+        $lines[] = '24-hour cancellation policy accepted. Cancel at least 24 hours before the confirmed appointment for a refund of any deposit paid. Within 24 hours, the deposit is a credit toward one rescheduled shoot.';
+    }
     $lines[] = 'Exclude from mailing lists: ' . $details['optOut'];
     $lines[] = '';
     $lines[] = $quote['market'] === 'commercial'
@@ -576,6 +692,9 @@ function real_estate_prepare_submission(array $payload, ?DateTimeImmutable $now 
     }
     $details = real_estate_validate_details($detailsSource);
     $appointment = real_estate_validate_appointment($appointmentSource, $now);
+    if ($action === 'request_appointment') {
+        $appointment = array_merge($appointment, real_estate_validate_schedule($appointmentSource));
+    }
     $quote = $market === 'residential' ? real_estate_residential_quote($state) : real_estate_commercial_quote($state);
     return [
         'action'=>$action,
@@ -585,5 +704,8 @@ function real_estate_prepare_submission(array $payload, ?DateTimeImmutable $now 
         'quote'=>$quote,
         'subject'=>$quote['subject'],
         'plain'=>real_estate_quote_body($quote, $details, $appointment),
+        'salesPlain'=>$action === 'request_appointment'
+            ? real_estate_quote_body($quote, $details, $appointment, true)
+            : null,
     ];
 }

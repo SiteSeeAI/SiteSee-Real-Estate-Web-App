@@ -33,6 +33,8 @@ $details = [
     'email'=>'agent@example.com',
     'phone'=>'555-555-0100',
     'street'=>'123 Example Street',
+    'unit'=>'Suite 2',
+    'propertyId'=>'MLS-009',
     'city'=>'Two Rivers',
     'state'=>'WI',
     'zip'=>'54241',
@@ -62,6 +64,8 @@ $same($residential['quote']['totalCents'], 25690, 'Average-home interpolation ma
 $same($residential['subject'], 'Residential SiteSee Real Estate Quote', 'Residential subject is exact.');
 $contains($residential['plain'], 'Estimated one-time job total: $256.90', 'Residential body contains the server total.');
 $contains($residential['plain'], 'Preferred time: 10:00 Central Time', 'Residential body contains the required appointment.');
+$contains($residential['plain'], 'Unit / Suite: Suite 2', 'Optional unit reaches the server quote.');
+$contains($residential['plain'], 'MLS / Property ID: MLS-009', 'Optional property ID reaches the server quote.');
 
 $luxury = real_estate_residential_quote(array_replace($residentialState, ['category'=>'luxury','sqft'=>'10000','selected'=>['photo','mp']]));
 $same($luxury['totalCents'], 129400, 'Luxury photography and Matterport retain approved caps.');
@@ -88,12 +92,13 @@ $commercialState = [
     'hostingMonths'=>'18',
     'hostingPrepaid'=>true,
 ];
+$requestAppointment = array_replace($appointment, ['meetPhotographer'=>'Yes','cancellationAccepted'=>true]);
 $commercial = real_estate_prepare_submission([
     'version'=>1,
     'action'=>'request_appointment',
     'market'=>'commercial',
     'details'=>$details,
-    'appointment'=>$appointment,
+    'appointment'=>$requestAppointment,
     'state'=>$commercialState,
 ], $now);
 $same($commercial['quote']['totalCents'], 778881, 'Commercial server total matches fixed photography, add-ons, license and hosting.');
@@ -105,6 +110,47 @@ $same($commercial['subject'], 'Commercial SiteSee Real Estate Quote', 'Commercia
 $contains($commercial['plain'], 'Additional Photography · 1 Photos at $26.70 Each', 'Commercial body includes added photographs.');
 $contains($commercial['plain'], '20,000 sq ft scanned', 'Commercial body includes independent Matterport coverage.');
 $contains($commercial['plain'], 'Exclude from mailing lists: Yes', 'Commercial body preserves the mailing-list choice.');
+$contains($commercial['plain'], 'Agent meets photographer: Yes', 'Commercial request records the meeting choice.');
+$contains($commercial['plain'], '24-hour cancellation policy accepted.', 'Commercial request records policy acceptance.');
+
+$residentialRequest = ['version'=>1,'action'=>'request_appointment','market'=>'residential',
+    'details'=>$details,'appointment'=>$requestAppointment,'state'=>$residentialState];
+$accessAppointment = array_replace($requestAppointment, [
+    'meetPhotographer'=>'No','accessType'=>'Lockbox','lockboxCode'=>'0123456789',
+    'specialRequests'=>'Please keep the dog indoors.','mustHaveShots'=>'Back patio and kitchen.',
+    'onsiteDifferent'=>true,'onsiteName'=>'Property Manager','onsiteEmail'=>'manager@example.com','onsitePhone'=>'555-555-0123',
+    'additionalDifferent'=>true,'additionalName'=>'Listing Assistant','additionalEmail'=>'assistant@example.com',
+]);
+$accessRequest = array_replace($residentialRequest, ['appointment'=>$accessAppointment]);
+$withAccess = real_estate_prepare_submission($accessRequest, $now);
+$same($withAccess['appointment']['lockboxCode'], '0123456789', 'Leading zeros in the ten-digit access code are preserved.');
+$contains($withAccess['plain'], 'Lockbox code: Provided to SiteSee separately', 'Agent copy masks the access code.');
+$contains($withAccess['salesPlain'], 'Lockbox code: 0123456789', 'SiteSee receives the access code.');
+if (str_contains($withAccess['plain'], '0123456789')) {
+    throw new RuntimeException('Customer copy disclosed the lockbox code.');
+}
+$contains($withAccess['plain'], 'On-site contact: Property Manager', 'On-site contact reaches the request.');
+$contains($withAccess['plain'], 'Additional scheduling contact: Listing Assistant', 'Additional contact reaches the request.');
+$contains($withAccess['plain'], 'Must-have shots: Back patio and kitchen.', 'Shot list is separate from special requests.');
+$keyRequest = array_replace($residentialRequest, ['appointment'=>array_replace($accessAppointment, [
+    'accessType'=>'Key','lockboxCode'=>'stale-code','keyLocation'=>"Under the front desk\nAsk for the building manager.",
+])]);
+$withKey = real_estate_prepare_submission($keyRequest, $now);
+$same($withKey['appointment']['lockboxCode'], '', 'A stale lockbox value is discarded for key access.');
+$contains($withKey['plain'], "Key location: Under the front desk\nAsk for the building manager.", 'Multiline key location is retained.');
+$meetingRequest = array_replace($residentialRequest, ['appointment'=>array_replace($accessAppointment, [
+    'meetPhotographer'=>'Yes','accessType'=>'Lockbox','lockboxCode'=>'0123456789',
+])]);
+$meeting = real_estate_prepare_submission($meetingRequest, $now);
+$same($meeting['appointment']['accessType'], '', 'Meeting on site discards access details.');
+$throws(static fn() => real_estate_prepare_submission(array_replace($residentialRequest,
+    ['appointment'=>array_replace($requestAppointment, ['cancellationAccepted'=>false])]), $now), 'Policy acceptance is required for requests.');
+$throws(static fn() => real_estate_prepare_submission(array_replace($residentialRequest,
+    ['appointment'=>array_replace($accessAppointment, ['lockboxCode'=>'123456789'])]), $now), 'Lockbox code must contain ten digits.');
+$throws(static fn() => real_estate_prepare_submission(array_replace($residentialRequest,
+    ['appointment'=>array_replace($keyRequest['appointment'], ['keyLocation'=>str_repeat('k', 151)])]), $now), 'Key location is limited to 150 characters.');
+$throws(static fn() => real_estate_prepare_submission(array_replace($residentialRequest,
+    ['appointment'=>array_replace($requestAppointment, ['specialRequests'=>str_repeat('s', 251)])]), $now), 'Special requests are limited to 250 characters.');
 
 $throws(static fn() => real_estate_prepare_submission([
     'version'=>1,'action'=>'email_quote','market'=>'residential','details'=>array_diff_key($details, ['company'=>true]),

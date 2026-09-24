@@ -16,6 +16,7 @@ if (!real_estate_pricing_has_access()) {
 
 $assets = [
     'quote-engine' => 'pricing-assets/quote-engine.js',
+    'scheduling' => 'pricing-assets/scheduling.js',
     'residential-form' => 'pricing-assets/pricing.js',
     'commercial-quote-engine' => 'pricing-assets/commercial-quote-engine.js',
     'commercial-form' => 'pricing-assets/commercial-pricing.js',

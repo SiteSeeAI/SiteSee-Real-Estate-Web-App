@@ -65,9 +65,9 @@ if (!real_estate_rate_allowed($ip, $submission['details']['email'])) {
 }
 
 $reference = strtoupper(bin2hex(random_bytes(5)));
-$escapedBody = nl2br(htmlspecialchars($submission['plain'], ENT_QUOTES, 'UTF-8'));
 $marketLabel = $submission['market'] === 'residential' ? 'Residential' : 'Commercial';
-$emailShell = static function (string $heading, string $intro) use ($escapedBody, $reference): string {
+$emailShell = static function (string $heading, string $intro, string $plain) use ($reference): string {
+    $escapedBody = nl2br(htmlspecialchars($plain, ENT_QUOTES, 'UTF-8'));
     return '<div style="font-family:Arial,sans-serif;color:#01111e;max-width:760px;margin:auto">'
         . '<div style="background:#01111e;padding:24px"><strong style="color:#fff;font-size:24px">SiteSee Real Estate</strong></div>'
         . '<div style="padding:34px;border:1px solid #d9dadb;border-top:0"><h1 style="font-size:30px">' . htmlspecialchars($heading, ENT_QUOTES, 'UTF-8') . '</h1>'
@@ -85,7 +85,7 @@ if ($submission['action'] === 'email_quote') {
         $details['email'],
         SITESEE_REAL_ESTATE_SALES_EMAIL,
         $submission['subject'],
-        $emailShell('Your ' . $marketLabel . ' SiteSee Real Estate Quote', 'Here is the quote you asked us to email to you.'),
+        $emailShell('Your ' . $marketLabel . ' SiteSee Real Estate Quote', 'Here is the quote you asked us to email to you.', $submission['plain']),
         "Reference: {$reference}\n\n" . $submission['plain']
     );
     if (!$copySent) {
@@ -99,12 +99,12 @@ if ($submission['action'] === 'email_quote') {
     ]);
 }
 
-$salesPlain = "NEW PREFERRED-DATE REQUEST\nReference: {$reference}\n\n" . $submission['plain'];
+$salesPlain = "NEW PREFERRED-DATE REQUEST\nReference: {$reference}\n\n" . $submission['salesPlain'];
 $salesSent = real_estate_send_mail(
     SITESEE_REAL_ESTATE_SALES_EMAIL,
     $details['email'],
     $submission['subject'],
-    $emailShell('New ' . $marketLabel . ' Preferred-Date Request', 'Reply to this message to contact ' . $details['first'] . ' ' . $details['last'] . '.'),
+    $emailShell('New ' . $marketLabel . ' Preferred-Date Request', 'Reply to this message to contact ' . $details['first'] . ' ' . $details['last'] . '.', $submission['salesPlain']),
     $salesPlain
 );
 if (!$salesSent) {
@@ -115,7 +115,7 @@ $copySent = real_estate_send_mail(
     $details['email'],
     SITESEE_REAL_ESTATE_SALES_EMAIL,
     $submission['subject'],
-    $emailShell('We Received Your Preferred-Date Request', 'Your request has been delivered to SiteSee. We will confirm availability with you.'),
+    $emailShell('We Received Your Preferred-Date Request', 'Your request has been delivered to SiteSee. We will confirm availability with you.', $submission['plain']),
     "Reference: {$reference}\n\n" . $submission['plain']
 );
 

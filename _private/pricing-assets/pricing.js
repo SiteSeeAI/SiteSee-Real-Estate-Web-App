@@ -8,6 +8,7 @@
   const value = name => form.elements.namedItem(name).value.trim();
   const addressFields = [...get('address-fields').querySelectorAll('input,select')];
   const agentFields = [...get('agent-fields').querySelectorAll('input,select')];
+  const scheduling = window.SiteSeeScheduling.attach(form, '');
   const selected = new Set(['photo']);
   let unlocked = false, reviewed = false, current = null;
   let packageMode = false, individualProperty = null;
@@ -49,7 +50,7 @@
     if (report && invalid.length) { invalid[0].reportValidity(); invalid[0].focus(); }
     return !invalid.length;
   }
-  function addressText() { return value('street') + ', ' + value('city') + ', ' + value('state') + ' ' + value('zip'); }
+  function addressText() { return value('street') + (value('unit') ? ', ' + value('unit') : '') + ', ' + value('city') + ', ' + value('state') + ' ' + value('zip'); }
   function syncAddress() {
     const valid = validateFields(addressFields);
     if (!valid) { unlocked = false; reviewed = false; current = null; }
@@ -200,8 +201,8 @@
     return { date: p.year + '-' + p.month + '-' + p.day, time: p.hour + ':' + p.minute };
   }
   get('shoot-date').min = centralNow().date;
-  const details = () => Object.fromEntries(['first','last','company','email','phone','street','city','state','zip','optOut'].map(key => [key,value(key)]));
-  function prepare() {
+  const details = () => Object.fromEntries(['first','last','company','email','phone','street','unit','propertyId','city','state','zip','optOut'].map(key => [key,value(key)]));
+  function prepare(action = 'email_quote') {
     if (!unlocked || !validateFields(addressFields, true)) { syncAddress(); return null; }
     update(); if (!current) { get('estimate-title').focus(); return null; }
     if (!reviewed || !validateFields(agentFields, true)) return null;
@@ -210,7 +211,8 @@
     if (!date.checkValidity()) { date.reportValidity(); return null; }
     if (!time.checkValidity()) { time.reportValidity(); return null; }
     if (date.value === now.date && time.value <= now.time) { time.setCustomValidity('Choose a future time in Central Time.'); time.reportValidity(); return null; }
-    const appointment = { date: date.value, time: time.value };
+    if (action === 'request_appointment' && !scheduling.validate()) return null;
+    const appointment = { date: date.value, time: time.value, ...(action === 'request_appointment' ? scheduling.data() : {}) };
     return { quote: current, details: details(), appointment };
   }
   ['shoot-date','shoot-time'].forEach(id => get(id).addEventListener('input', () => { get(id).setCustomValidity(''); get('request-status').hidden = true; }));
@@ -225,7 +227,7 @@
     get('request-shoot').disabled = sending;
   }
   async function submitToServer(action) {
-    const prepared = prepare(); if (!prepared) return;
+    const prepared = prepare(action); if (!prepared) return;
     setSending(true);
     showStatus(action === 'email_quote' ? 'Sending your quote…' : 'Sending your preferred-date request…');
     try {

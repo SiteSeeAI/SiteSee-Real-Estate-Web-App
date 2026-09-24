@@ -31,3 +31,19 @@
 .quote-panel input:disabled{opacity:.55;filter:grayscale(1)}
 .quote-service label:has(input:disabled){cursor:default}
 #residential-quote .quote-categories-locked .quote-choice{opacity:.55;filter:grayscale(1);cursor:default}
+
+/* Shared appointment questions for both property markets. */
+.quote-scheduling{margin-top:26px;border-top:1px solid #e0e2e3;padding-top:6px}
+.quote-scheduling fieldset{margin:22px 0}
+.quote-scheduling .quote-grid{max-width:460px}
+.quote-scheduling .field{margin:16px 0}
+.quote-panel textarea{font:inherit;width:100%;min-width:0;border:1px solid #c5c9cc;border-radius:3px;padding:12px;background:#fff;color:var(--ink);resize:vertical}
+.quote-scheduling .field>label{display:block;margin-bottom:7px}
+.quote-scheduling .field small{display:block;margin-top:5px;color:var(--muted);font-size:.75rem}
+.quote-scheduling .quote-check{display:flex;align-items:flex-start;gap:11px;cursor:pointer}
+.quote-scheduling .quote-check input{margin-top:2px}
+.quote-scheduling .quote-contact-fields{margin-top:12px}
+.quote-scheduling .quote-scheduling-notes{margin-top:12px}
+.quote-policy{background:#f9f9f7;border:1px solid #e3e4df;padding:20px;margin:26px 0 20px}
+.quote-policy h3{font-size:1rem;margin:0 0 9px}
+.quote-policy p{font-size:.82rem;color:#555d65;line-height:1.6;margin:0 0 17px}
