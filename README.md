@@ -100,3 +100,7 @@ Validation and the remaining review limitation are recorded in [documents/design
 Our Work links to separate Residential Photography and Commercial Photography pages, containing all 50 residential and 35 commercial images. Galleries display images only, without captions, lightboxes or image click actions, with a contained hover zoom. Selected photography now appears on Home, Platform, Services Provided and Our Work. See [the photography record](documents/design/Photography_Galleries_20260919.md) for placements, deferred graphics and validation.
 
 Review `public/our-work.html`, follow both gallery links, then review Home, Platform and Services Provided on desktop and mobile. This change does not deploy the website.
+
+## Booking integration — test phase
+
+The PR #28 residential and commercial scheduling forms can now feed a private staff review ledger when `SITESEE_REAL_ESTATE_BOOKING_TEST_ENABLED=1`. Staff can lock the one-time price, review photographer availability and issue a test-only Stripe deposit link. Signed, idempotent test webhooks record the deposit without confirming an appointment or sending an invitation. The switch defaults to off; live Stripe charges and CRM/Zoho invitations are not implemented. See [the test-phase setup and remaining work](documents/design/Booking_Stripe_Test_Phase_20260924.md).

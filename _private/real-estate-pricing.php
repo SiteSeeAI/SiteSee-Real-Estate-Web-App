@@ -182,6 +182,18 @@ function real_estate_validate_appointment(array $appointment, ?DateTimeImmutable
     ) {
         real_estate_invalid('Choose a valid date and a time in 15-minute increments.');
     }
+    // A fall-back hour has two possible UTC instants. Do not silently select one.
+    $wall = DateTimeImmutable::createFromFormat('!Y-m-d H:i', $date . ' ' . $time, new DateTimeZone('UTC'));
+    $matches = 0;
+    foreach ($zone->getTransitions($wall->getTimestamp() - 172800, $wall->getTimestamp() + 172800) as $transition) {
+        $candidate = (new DateTimeImmutable('@' . ($wall->getTimestamp() - $transition['offset'])))->setTimezone($zone);
+        if ($candidate->format('Y-m-d H:i') === $date . ' ' . $time) {
+            $matches++;
+        }
+    }
+    if ($matches !== 1) {
+        real_estate_invalid('This Central Time occurs twice during a clock change. Choose another time.');
+    }
     $now = ($now ?? new DateTimeImmutable('now', $zone))->setTimezone($zone);
     if ($selected <= $now) {
         real_estate_invalid('Choose a future date and time in Central Time.');
