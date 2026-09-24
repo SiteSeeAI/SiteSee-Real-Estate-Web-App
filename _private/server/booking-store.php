@@ -123,10 +123,10 @@ function booking_approve(PDO $db, string $reference, int $finalCents, int $durat
         if ($stmt->rowCount() !== 1) {
             throw new RuntimeException('The booking changed during review.');
         }
-        $db->commit();
+        $db->exec('COMMIT');
         return $token;
     } catch (Throwable $error) {
-        $db->rollBack();
+        $db->exec('ROLLBACK');
         throw $error;
     }
 }
@@ -153,10 +153,10 @@ function booking_rotate_test_link(PDO $db, string $reference): string
         $token = bin2hex(random_bytes(32));
         $db->prepare('UPDATE bookings SET agent_token_hash=?, agent_token_expires=? WHERE reference=?')
             ->execute([hash('sha256', $token), time() + 7 * 86400, $reference]);
-        $db->commit();
+        $db->exec('COMMIT');
         return $token;
     } catch (Throwable $error) {
-        $db->rollBack();
+        $db->exec('ROLLBACK');
         throw $error;
     }
 }
@@ -184,7 +184,7 @@ function booking_start_checkout(PDO $db, string $reference, string $token, strin
             throw new InvalidArgumentException('This test payment link is invalid or has already been used.');
         }
         if ($row['checkout_state'] === 'open' && $row['stripe_checkout_url']) {
-            $db->commit();
+            $db->exec('COMMIT');
             return $row['stripe_checkout_url'];
         }
         if ($row['checkout_state'] === 'creating' && time() - (int)$row['checkout_started'] < 120) {
@@ -194,9 +194,9 @@ function booking_start_checkout(PDO $db, string $reference, string $token, strin
         $stmt = $db->prepare('UPDATE bookings SET checkout_state=\'creating\', checkout_attempt=?, checkout_started=?,
             consent_at=?, consent_version=?, consent_ip_hash=? WHERE reference=?');
         $stmt->execute([$attempt, time(), gmdate('c'), 'test-card-reuse-v1', hash('sha256', $ip), $reference]);
-        $db->commit();
+        $db->exec('COMMIT');
     } catch (Throwable $error) {
-        $db->rollBack();
+        $db->exec('ROLLBACK');
         throw $error;
     }
 
@@ -321,7 +321,7 @@ function booking_process_stripe_event(PDO $db, array $event): string
         $stmt = $db->prepare('SELECT 1 FROM stripe_events WHERE event_id=?');
         $stmt->execute([$event['id']]);
         if ($stmt->fetch()) {
-            $db->commit();
+            $db->exec('COMMIT');
             return 'duplicate';
         }
         $row = booking_get($db, $reference);
@@ -332,7 +332,7 @@ function booking_process_stripe_event(PDO $db, array $event): string
             && !hash_equals((string)$row['stripe_session_id'], (string)$object['id'])) {
             $db->prepare('INSERT INTO stripe_events (event_id,event_type,reference,processed_at) VALUES (?,?,?,?)')
                 ->execute([$event['id'], $type, $reference, gmdate('c')]);
-            $db->commit();
+            $db->exec('COMMIT');
             return 'stale_expired';
         }
         if (!hash_equals((string)$row['stripe_session_id'], (string)$object['id'])) {
@@ -358,10 +358,10 @@ function booking_process_stripe_event(PDO $db, array $event): string
         }
         $db->prepare('INSERT INTO stripe_events (event_id,event_type,reference,processed_at) VALUES (?,?,?,?)')
             ->execute([$event['id'], $type, $reference, gmdate('c')]);
-        $db->commit();
+        $db->exec('COMMIT');
         return $type === 'checkout.session.completed' ? 'deposit_paid_test' : 'expired';
     } catch (Throwable $error) {
-        $db->rollBack();
+        $db->exec('ROLLBACK');
         throw $error;
     }
 }
