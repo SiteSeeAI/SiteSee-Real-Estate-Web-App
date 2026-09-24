@@ -78,6 +78,6 @@ $body .= '<p class="policy">Cancellation policy: cancel at least 24 hours before
 if ($error) $body .= '<p role="alert">' . pay_escape($error) . '</p>';
 $body .= '<form method="post"><input type="hidden" name="csrf" value="' . pay_escape($_SESSION['booking_csrf']) . '">'
     . '<input type="hidden" name="reference" value="' . pay_escape($reference) . '"><input type="hidden" name="token" value="' . pay_escape($token) . '">'
-    . '<label><input type="checkbox" name="card_consent" value="yes" required><span>I authorize SiteSee to save the card used for this test deposit for the remaining approved job balance and any on-site services I separately approve. If I selected the residential platform, I authorize its separate monthly billing only after publication until I notify SiteSee the property is sold. I understand later charges require their own approved scope and that a saved card may require further authentication.</span></label>'
+    . '<label><input type="checkbox" name="card_consent" value="yes" required><span>' . pay_escape(BOOKING_CONSENT_TEXT) . '</span></label>'
     . '<button>Continue To Stripe Test Checkout</button></form>';
 pay_page($body);

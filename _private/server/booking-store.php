@@ -5,6 +5,9 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/real-estate-form-config.php';
 require_once dirname(__DIR__) . '/real-estate-pricing.php';
 
+const BOOKING_CONSENT_VERSION = 'test-card-reuse-v1';
+const BOOKING_CONSENT_TEXT = 'I authorize SiteSee to save the card used for this test deposit for the remaining approved job balance and any on-site services I separately approve. If I selected the residential platform, I authorize its separate monthly billing only after publication until I notify SiteSee the property is sold. I understand later charges require their own approved scope and that a saved card may require further authentication.';
+
 function booking_test_enabled(): bool
 {
     return getenv('SITESEE_REAL_ESTATE_BOOKING_TEST_ENABLED') === '1';
@@ -193,7 +196,7 @@ function booking_start_checkout(PDO $db, string $reference, string $token, strin
         $attempt = $row['checkout_state'] === 'expired' ? (int)$row['checkout_attempt'] + 1 : max(1, (int)$row['checkout_attempt']);
         $stmt = $db->prepare('UPDATE bookings SET checkout_state=\'creating\', checkout_attempt=?, checkout_started=?,
             consent_at=?, consent_version=?, consent_ip_hash=? WHERE reference=?');
-        $stmt->execute([$attempt, time(), gmdate('c'), 'test-card-reuse-v1', hash('sha256', $ip), $reference]);
+        $stmt->execute([$attempt, time(), gmdate('c'), BOOKING_CONSENT_VERSION, hash('sha256', $ip), $reference]);
         $db->exec('COMMIT');
     } catch (Throwable $error) {
         $db->exec('ROLLBACK');

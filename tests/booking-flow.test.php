@@ -65,6 +65,11 @@ $transport = static function (array $body, string $key, string $secret) use (&$c
     return ['id'=>'cs_test_first','url'=>'https://checkout.stripe.com/c/pay/first','livemode'=>false];
 };
 $reject(static function () use ($db, $reference, $token, $transport): void {
+    putenv('SITESEE_REAL_ESTATE_BOOKING_TEST_ENABLED=0');
+    try { booking_start_checkout($db, $reference, $token, '127.0.0.1', $transport); }
+    finally { putenv('SITESEE_REAL_ESTATE_BOOKING_TEST_ENABLED=1'); }
+}, 'Default-off test switch blocks Checkout before transport runs.');
+$reject(static function () use ($db, $reference, $token, $transport): void {
     putenv('SITESEE_REAL_ESTATE_STRIPE_TEST_SECRET=sk_live_forbidden');
     try { booking_start_checkout($db, $reference, $token, '127.0.0.1', $transport); }
     finally { putenv('SITESEE_REAL_ESTATE_STRIPE_TEST_SECRET=sk_test_' . str_repeat('a', 24)); }
@@ -91,6 +96,9 @@ $sign = static function (array $value, int $timestamp): array {
 [$raw, $sig] = $sign($event, time());
 $reject(static fn() => booking_verify_stripe_event($raw, $sig . 'deadbeef', time() + 301), 'Stale webhook rejected.');
 $reject(static fn() => booking_verify_stripe_event($raw, 't=' . time() . ',v1=' . str_repeat('0', 64)), 'Bad signature rejected.');
+$liveEvent = $event; $liveEvent['livemode'] = true;
+[$liveRaw, $liveSig] = $sign($liveEvent, time());
+$reject(static fn() => booking_verify_stripe_event($liveRaw, $liveSig), 'Even a correctly signed live event is rejected.');
 $assert(booking_verify_stripe_event($raw, $sig)['id'] === 'evt_first', 'Signed test event accepted.');
 $wrong = $event;
 $wrong['data']['object']['amount_total'] = 1;
