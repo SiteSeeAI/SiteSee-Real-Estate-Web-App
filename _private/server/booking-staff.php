@@ -24,7 +24,7 @@ function staff_csrf(): string
 }
 function staff_money(int $cents): string { return '$' . number_format($cents / 100, 2); }
 
-$hash = (string)getenv('SITESEE_REAL_ESTATE_STAFF_PASSWORD_HASH');
+$hash = booking_staff_password_hash();
 if (!booking_test_enabled() || $hash === '' || !str_starts_with(SITESEE_REAL_ESTATE_SITE_URL, 'https://')) {
     staff_page('<p>Staff review is not configured.</p>', 503);
 }

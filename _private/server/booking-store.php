@@ -13,6 +13,17 @@ function booking_test_enabled(): bool
     return getenv('SITESEE_REAL_ESTATE_BOOKING_TEST_ENABLED') === '1';
 }
 
+/** Decode the transport prefix so PHP-FPM never receives a leading dollar sign. */
+function booking_staff_password_hash(): string
+{
+    $value = (string)getenv('SITESEE_REAL_ESTATE_STAFF_PASSWORD_HASH');
+    if (str_starts_with($value, 'base64:')) {
+        $decoded = base64_decode(substr($value, 7), true);
+        return $decoded === false ? '' : $decoded;
+    }
+    return $value;
+}
+
 function booking_db(): PDO
 {
     $path = getenv('SITESEE_REAL_ESTATE_BOOKING_DB') ?: dirname(__DIR__) . '/data/bookings.sqlite';

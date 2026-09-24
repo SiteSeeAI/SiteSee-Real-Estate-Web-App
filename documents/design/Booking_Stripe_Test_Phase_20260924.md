@@ -11,7 +11,7 @@ Upload the new public PHP entrypoints into the Real Estate document root and the
 Set these values through the private PHP-FPM configuration or secret manager, never in Git or a public PHP file:
 
 - SITESEE_REAL_ESTATE_BOOKING_TEST_ENABLED=1
-- SITESEE_REAL_ESTATE_STAFF_PASSWORD_HASH: a PHP password_hash(..., PASSWORD_DEFAULT) output for a dedicated staff password. Use php -r to generate a hash on a trusted machine; enter the password interactively so it does not enter shell history.
+- SITESEE_REAL_ESTATE_STAFF_PASSWORD_HASH: for PHP-FPM, use `base64:` followed by `base64_encode(password_hash(..., PASSWORD_DEFAULT))`. PHP-FPM treats a raw hash beginning with `$` as an environment-variable reference and resolves it to an empty value. The application decodes the prefix before verifying the password. Existing raw hashes remain supported outside PHP-FPM. Encoding is not encryption; keep the configuration private. Generate the hash on a trusted machine with interactive hidden password entry, never a plaintext password in shell history.
 - SITESEE_REAL_ESTATE_STRIPE_TEST_SECRET: an sk_test_ key only. sk_live_ keys fail closed.
 - SITESEE_REAL_ESTATE_STRIPE_TEST_WEBHOOK_SECRET: the whsec_ signing secret for the dedicated Stripe test webhook.
 - SITESEE_REAL_ESTATE_BOOKING_DB: optional absolute SQLite path in the private application; omit to use the default data/bookings.sqlite.

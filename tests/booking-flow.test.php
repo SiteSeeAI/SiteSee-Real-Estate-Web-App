@@ -21,6 +21,23 @@ $reject = static function (callable $callback, string $why) use (&$checks): void
     try { $callback(); } catch (InvalidArgumentException | RuntimeException $error) { return; }
     throw new RuntimeException($why);
 };
+$staffPassword = 'test-only-staff-password-2026';
+$staffHash = password_hash($staffPassword, PASSWORD_DEFAULT);
+putenv('SITESEE_REAL_ESTATE_STAFF_PASSWORD_HASH=' . $staffHash);
+$assert(booking_staff_password_hash() === $staffHash, 'Raw hashes remain supported outside PHP-FPM.');
+$encodedStaffHash = 'base64:' . base64_encode($staffHash);
+$assert($encodedStaffHash[0] !== '$', 'Encoded hash avoids PHP-FPM environment reference expansion.');
+putenv('SITESEE_REAL_ESTATE_STAFF_PASSWORD_HASH=' . $encodedStaffHash);
+$assert(booking_staff_password_hash() === $staffHash, 'Encoded hash restores the exact original hash.');
+$assert(password_verify($staffPassword, booking_staff_password_hash()), 'Existing staff password verifies with encoded configuration.');
+$assert(!password_verify('wrong-password', booking_staff_password_hash()), 'Incorrect password remains rejected.');
+putenv('SITESEE_REAL_ESTATE_STAFF_PASSWORD_HASH=base64:***invalid***');
+$assert(booking_staff_password_hash() === '', 'Malformed encoded configuration fails closed.');
+putenv('SITESEE_REAL_ESTATE_STAFF_PASSWORD_HASH=base64:');
+$assert(booking_staff_password_hash() === '', 'Empty encoded configuration fails closed.');
+putenv('SITESEE_REAL_ESTATE_STAFF_PASSWORD_HASH');
+$assert(booking_staff_password_hash() === '', 'Missing configuration remains disabled.');
+
 $now = new DateTimeImmutable('2026-09-24 10:00', new DateTimeZone('America/Chicago'));
 $details = [
     'first'=>'Ava','last'=>'Agent','company'=>'Example Realty','email'=>'ava@example.com',
