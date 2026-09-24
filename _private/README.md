@@ -9,6 +9,7 @@ In production, upload the **contents** of this repository directory to `/home/si
 - `pricing-assets/` contains calculator JavaScript released only through the verified-session asset endpoint.
 - `real-estate-form-config.php` contains shared session, token, rate-limit and mail delivery functions.
 - `real-estate-pricing.php` contains authoritative server-side validation and pricing calculations.
+- `server/booking-*.php` implements the disabled-by-default staff review and Stripe **test-only** deposit phase. Its SQLite ledger belongs in the private `data/` directory. See [the test-phase runbook](../documents/design/Booking_Stripe_Test_Phase_20260924.md) before enabling it.
 
 ## Production environment
 
@@ -17,6 +18,7 @@ In production, upload the **contents** of this repository directory to `/home/si
 - `SITESEE_REAL_ESTATE_SALES_EMAIL` and `SITESEE_FROM_EMAIL` — delivery and sender addresses.
 - PHP `sendmail_path` — the installed Corporate Microsoft Graph bridge.
 - PHP 8.1 or later with cURL enabled.
+- For the separate booking test phase, PDO SQLite and persistent sessions, plus the dedicated staff password hash and Stripe test secrets listed in the runbook.
 
 The production installer writes these values to the `re.sitesee.ai` PHP-FPM configuration, preserving an existing pricing-signing secret during later deployments. SMTP settings remain empty so PHP `mail()` uses the same Microsoft Graph bridge as the Corporate site.
 

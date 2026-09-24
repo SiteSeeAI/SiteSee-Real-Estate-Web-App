@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/real-estate-form-config.php';
 require_once dirname(__DIR__) . '/real-estate-pricing.php';
+require_once __DIR__ . '/booking-store.php';
 
 header('X-Robots-Tag: noindex, nofollow, noarchive');
 header('Cache-Control: no-store, private, max-age=0');
@@ -65,6 +66,16 @@ if (!real_estate_rate_allowed($ip, $submission['details']['email'])) {
 }
 
 $reference = strtoupper(bin2hex(random_bytes(5)));
+$bookingDb = null;
+if ($submission['action'] === 'request_appointment' && booking_test_enabled()) {
+    try {
+        $bookingDb = booking_db();
+        booking_capture($bookingDb, $submission, $reference);
+    } catch (Throwable $error) {
+        error_log('SiteSee booking request could not be stored: ' . $error->getMessage());
+        real_estate_respond(['ok'=>false,'message'=>'We could not safely save your preferred-date request. Please try again later or email sales@sitesee.ai.'], 503);
+    }
+}
 $marketLabel = $submission['market'] === 'residential' ? 'Residential' : 'Commercial';
 $emailShell = static function (string $heading, string $intro, string $plain) use ($reference): string {
     $escapedBody = nl2br(htmlspecialchars($plain, ENT_QUOTES, 'UTF-8'));
@@ -108,7 +119,7 @@ $salesSent = real_estate_send_mail(
     $salesPlain
 );
 if (!$salesSent) {
-    real_estate_respond(['ok'=>false,'message'=>'We could not deliver your preferred-date request. Please try again or email sales@sitesee.ai.'], 503);
+    real_estate_respond(['ok'=>false,'reference'=>$reference,'message'=>'Your request was saved as ' . $reference . ', but the sales email was not delivered. Please contact sales@sitesee.ai with that reference.'], 503);
 }
 
 $copySent = real_estate_send_mail(

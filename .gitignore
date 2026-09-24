@@ -6,3 +6,12 @@ __pycache__/
 .env.*
 node_modules/
 *.log
+_private/data/
+_private/real-estate-pricing-pending/
+_private/real-estate-rate/
+_private/*.ndjson
+_private/real-estate-turnstile-rate.json
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
