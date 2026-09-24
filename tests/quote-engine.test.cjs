@@ -150,3 +150,18 @@ test('residential price caps retain actual area and uncapped on-site timing', ()
   const packageScan=quote({package:'platinum',sqft:0,matterportSqft:10000,selected:['mp']});
   assert.equal(packageScan.totalCents,149400);assert.equal(packageScan.matterportMinutes,90);
 });
+
+test('residential platform has a separate term, remains optional for every package, and rejects invalid terms', () => {
+  const base=quote({selected:['photo']});
+  const six=quote({selected:['platform'],platformMonths:6});
+  assert.equal(six.platformCents,29400);
+  assert.equal(six.jobCents,base.totalCents);
+  assert.equal(six.totalCents,base.totalCents+29400);
+  assert.equal(fee(six,'platform'),29400);
+  assert.equal(six.lines.find(line=>line.key==='platform').label,'SiteSee Experience Platform · 6 Months at $49 / Month');
+  const long=quote({package:'platinum',selected:['platform'],platformMonths:18});
+  assert.equal(long.platformCents,88200);assert.equal(long.jobCents,99500);
+  const body=Q.emailBody(long,{first:'A',last:'Agent',company:'Broker',email:'agent@example.com',phone:'5555550100',street:'1 Main',city:'Town',state:'WI',zip:'54241',optOut:'Yes'});
+  assert.match(body,/subscription payments are separate from the job/);
+  for(const months of [0,5,19,6.5,'invalid']) assert.throws(()=>quote({selected:['platform'],platformMonths:months}),/platform term/);
+});

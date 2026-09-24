@@ -170,6 +170,7 @@ function real_estate_residential_quote(array $state): array
     ];
     $services = [
         'photo' => 'Property Photography',
+        'platform' => 'SiteSee Experience Platform',
         'website' => 'Property Website',
         'drone' => 'Drone / Aerial Photos',
         'zillow' => 'Zillow 3D Home',
@@ -205,6 +206,9 @@ function real_estate_residential_quote(array $state): array
     $videoSeconds = in_array('video', $chosen, true) && !in_array('video', $package['includes'], true)
         ? real_estate_integer($state['videoSeconds'] ?? null, 60, 180, 'Choose a video length from 1:00 to 3:00.')
         : ($package['minutes'] * 60);
+    $platformMonths = in_array('platform', $chosen, true)
+        ? real_estate_integer($state['platformMonths'] ?? 6, 6, 18, 'Choose a platform term from 6 to 18 months.')
+        : 0;
     $images = in_array('twilight', $chosen, true)
         ? real_estate_integer($state['images'] ?? null, 1, 100, 'Choose 1–100 twilight images.')
         : 0;
@@ -223,6 +227,7 @@ function real_estate_residential_quote(array $state): array
     }
     $rates = [
         'photo' => $photoCents,
+        'platform' => $platformMonths * 4900,
         'website' => 6500,
         'drone' => 12000,
         'zillow' => 9500,
@@ -242,7 +247,9 @@ function real_estate_residential_quote(array $state): array
         $cents = $included ? 0 : $rates[$key];
         $subtotal += $cents;
         $label = $services[$key];
-        if ($key === 'video') {
+        if ($key === 'platform') {
+            $label .= ' · ' . $platformMonths . ' Months at $49 / Month';
+        } elseif ($key === 'video') {
             $label .= ' · ' . real_estate_video_duration($included ? $package['minutes'] * 60 : $videoSeconds);
         } elseif ($key === 'twilight') {
             $label .= ' · ' . $images . ($images === 1 ? ' image' : ' images');
@@ -271,6 +278,9 @@ function real_estate_residential_quote(array $state): array
         'category' => $bundled ? null : $category['label'],
         'package' => $package['label'],
         'packageCents' => $package['cents'],
+        'platformMonths' => $platformMonths,
+        'platformCents' => $platformMonths * 4900,
+        'jobCents' => $subtotal - $platformMonths * 4900,
         'matterportSqft' => in_array('mp', $chosen, true) ? $matterportSqft : 0,
         'lines' => $lines,
         'subtotalCents' => $subtotal,
@@ -488,6 +498,9 @@ function real_estate_quote_body(array $quote, array $details, array $appointment
         $lines[] = 'Selection: ' . $quote['package'];
         if ($quote['packageCents']) {
             $lines[] = 'Package: ' . real_estate_money($quote['packageCents']);
+        }
+        if ($quote['platformMonths']) {
+            $lines[] = 'SiteSee Experience Platform: $49 per month; the full selected term is included in this estimate. Subscription payments are separate from the job.';
         }
     } else {
         $lines[] = 'Category: ' . $quote['category'];
