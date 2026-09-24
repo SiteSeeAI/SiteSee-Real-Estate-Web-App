@@ -130,7 +130,7 @@ test('package emails use scanned coverage and never report the disabled property
   const details={first:'Test',last:'Agent',company:'Example',email:'test@example.com',phone:'5555550100',street:'123 Example St',city:'Two Rivers',state:'WI',zip:'54241',optOut:'Yes'};
   const text=Q.emailBody(quote({package:'platinum',matterportSqft:2000,selected:['mp']}),details);
   assert.ok(text.includes('Matterport 3D Experience · 2,000 sq ft scanned: $120.00'));
-  assert.ok(text.includes('Estimated total: $1,115.00'));
+  assert.ok(text.includes('Estimated one-time job total: $1,115.00'));
   assert.equal(text.includes('Property size:'),false);assert.equal(text.includes('Category:'),false);
   assert.ok(text.includes('Time to be confirmed for: Property Photography, 2D Schematic Floor Plan'));
   const silver=Q.emailBody(quote({package:'silver'}),details);
@@ -151,17 +151,18 @@ test('residential price caps retain actual area and uncapped on-site timing', ()
   assert.equal(packageScan.totalCents,149400);assert.equal(packageScan.matterportMinutes,90);
 });
 
-test('residential platform has a separate term, remains optional for every package, and rejects invalid terms', () => {
+test('residential platform is a separate $49 monthly charge until sale and never raises the job total', () => {
   const base=quote({selected:['photo']});
-  const six=quote({selected:['platform'],platformMonths:6});
-  assert.equal(six.platformCents,29400);
-  assert.equal(six.jobCents,base.totalCents);
-  assert.equal(six.totalCents,base.totalCents+29400);
-  assert.equal(fee(six,'platform'),29400);
-  assert.equal(six.lines.find(line=>line.key==='platform').label,'SiteSee Experience Platform · 6 Months at $49 / Month');
-  const long=quote({package:'platinum',selected:['platform'],platformMonths:18});
-  assert.equal(long.platformCents,88200);assert.equal(long.jobCents,99500);
-  const body=Q.emailBody(long,{first:'A',last:'Agent',company:'Broker',email:'agent@example.com',phone:'5555550100',street:'1 Main',city:'Town',state:'WI',zip:'54241',optOut:'Yes'});
-  assert.match(body,/subscription payments are separate from the job/);
-  for(const months of [0,5,19,6.5,'invalid']) assert.throws(()=>quote({selected:['platform'],platformMonths:months}),/platform term/);
+  const monthly=quote({selected:['platform']});
+  assert.equal(monthly.platformCents,4900);assert.equal(monthly.platformMonthlyCents,4900);
+  assert.equal(monthly.jobCents,base.totalCents);
+  assert.equal(monthly.totalCents,base.totalCents);
+  assert.equal(fee(monthly,'platform'),4900);
+  assert.equal(monthly.lines.find(line=>line.key==='platform').label,'SiteSee Experience Platform · Monthly Until Sold');
+  const platinum=quote({package:'platinum',selected:['platform']});
+  assert.equal(platinum.platformCents,4900);assert.equal(platinum.jobCents,99500);
+  const body=Q.emailBody(platinum,{first:'A',last:'Agent',company:'Broker',email:'agent@example.com',phone:'5555550100',street:'1 Main',city:'Town',state:'WI',zip:'54241',optOut:'Yes'});
+  assert.match(body,/Estimated one-time job total: \$995\.00/);
+  assert.match(body,/tell SiteSee when the property sells/);
+  assert.match(body,/\$49\.00 per month/);
 });

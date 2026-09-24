@@ -206,9 +206,7 @@ function real_estate_residential_quote(array $state): array
     $videoSeconds = in_array('video', $chosen, true) && !in_array('video', $package['includes'], true)
         ? real_estate_integer($state['videoSeconds'] ?? null, 60, 180, 'Choose a video length from 1:00 to 3:00.')
         : ($package['minutes'] * 60);
-    $platformMonths = in_array('platform', $chosen, true)
-        ? real_estate_integer($state['platformMonths'] ?? 6, 6, 18, 'Choose a platform term from 6 to 18 months.')
-        : 0;
+    $platformMonthlyCents = in_array('platform', $chosen, true) ? 4900 : 0;
     $images = in_array('twilight', $chosen, true)
         ? real_estate_integer($state['images'] ?? null, 1, 100, 'Choose 1–100 twilight images.')
         : 0;
@@ -227,7 +225,7 @@ function real_estate_residential_quote(array $state): array
     }
     $rates = [
         'photo' => $photoCents,
-        'platform' => $platformMonths * 4900,
+        'platform' => $platformMonthlyCents,
         'website' => 6500,
         'drone' => 12000,
         'zillow' => 9500,
@@ -245,10 +243,12 @@ function real_estate_residential_quote(array $state): array
         }
         $included = in_array($key, $package['includes'], true);
         $cents = $included ? 0 : $rates[$key];
-        $subtotal += $cents;
+        if ($key !== 'platform') {
+            $subtotal += $cents;
+        }
         $label = $services[$key];
         if ($key === 'platform') {
-            $label .= ' · ' . $platformMonths . ' Months at $49 / Month';
+            $label .= ' · Monthly Until Sold';
         } elseif ($key === 'video') {
             $label .= ' · ' . real_estate_video_duration($included ? $package['minutes'] * 60 : $videoSeconds);
         } elseif ($key === 'twilight') {
@@ -278,9 +278,9 @@ function real_estate_residential_quote(array $state): array
         'category' => $bundled ? null : $category['label'],
         'package' => $package['label'],
         'packageCents' => $package['cents'],
-        'platformMonths' => $platformMonths,
-        'platformCents' => $platformMonths * 4900,
-        'jobCents' => $subtotal - $platformMonths * 4900,
+        'platformCents' => $platformMonthlyCents,
+        'platformMonthlyCents' => $platformMonthlyCents,
+        'jobCents' => $subtotal,
         'matterportSqft' => in_array('mp', $chosen, true) ? $matterportSqft : 0,
         'lines' => $lines,
         'subtotalCents' => $subtotal,
@@ -499,8 +499,8 @@ function real_estate_quote_body(array $quote, array $details, array $appointment
         if ($quote['packageCents']) {
             $lines[] = 'Package: ' . real_estate_money($quote['packageCents']);
         }
-        if ($quote['platformMonths']) {
-            $lines[] = 'SiteSee Experience Platform: $49 per month; the full selected term is included in this estimate. Subscription payments are separate from the job.';
+        if ($quote['platformMonthlyCents']) {
+            $lines[] = 'SiteSee Experience Platform: $49 per month, billed separately from the job while the listing is active. Please tell SiteSee when the property sells so we can remove the experience and stop future billing.';
         }
     } else {
         $lines[] = 'Category: ' . $quote['category'];
@@ -508,7 +508,7 @@ function real_estate_quote_body(array $quote, array $details, array $appointment
     }
 
     foreach ($quote['lines'] as $line) {
-        $lines[] = $line['label'] . ': ' . ($line['included'] ? 'Included' : real_estate_money($line['cents']));
+        $lines[] = $line['label'] . ': ' . ($line['included'] ? 'Included' : real_estate_money($line['cents']) . ($quote['market'] === 'residential' && $line['key'] === 'platform' ? ' per month' : ''));
     }
     if ($quote['market'] === 'commercial') {
         $deliveryLabels = ['files'=>'Media Files Only','website'=>'Independent Property Website','platform'=>'SiteSee Platform'];
@@ -523,7 +523,7 @@ function real_estate_quote_body(array $quote, array $details, array $appointment
     }
 
     $lines[] = '';
-    $lines[] = 'Estimated total: ' . real_estate_money($quote['totalCents']);
+    $lines[] = ($quote['market'] === 'residential' ? 'Estimated one-time job total: ' : 'Estimated total: ') . real_estate_money($quote['totalCents']);
     if ($quote['market'] === 'commercial' && $quote['matterportIncludedMonths']) {
         $lines[] = 'Matterport hosting: six months included. Selected term: ' . $quote['hostingMonths'] . ' months total; ' . $quote['hostingExtraMonths'] . ' additional months at ' . real_estate_money($quote['hostingMonthlyCents']) . '/month ' . ($quote['hostingPrepaid'] ? 'paid in advance' : 'billed monthly') . '. Hosting term cost: ' . real_estate_money($quote['hostingCents']) . '. This quote does not collect payment.';
     }

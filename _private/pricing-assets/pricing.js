@@ -20,11 +20,6 @@
     const text = document.createElement('span'); text.textContent = service.label;
     const detail = document.createElement('small'); detail.id = 'detail-' + key; detail.textContent = service.detail; text.append(detail); label.append(check, text);
     const price = document.createElement('span'); price.className = 'quote-price'; price.id = 'price-' + key; top.append(label, price); row.append(top);
-    if (key === 'platform') {
-      const controls = document.createElement('div'); controls.className = 'quote-extra'; controls.id = 'platform-controls'; controls.hidden = true;
-      controls.innerHTML = '<div class="quote-size"><label for="platform-months">Platform Term · Months</label><output id="platform-term" for="platform-months">6 months</output></div><input id="platform-months" name="platformMonths" type="range" min="6" max="18" step="1" value="6" disabled><div class="quote-range-labels"><span>6 months</span><span>18 months</span></div><p class="quote-note">$49 per month. The full selected term appears in your estimate; subscription payments are separate from the job. Six months is $294.</p>';
-      row.append(controls);
-    }
     if (key === 'mp') {
       const controls = document.createElement('div'); controls.className = 'quote-extra'; controls.id = 'matterport-controls'; controls.hidden = true;
       controls.innerHTML = '<div class="quote-size"><label for="matterport-sqft">Matterport Coverage · Square Feet</label><input id="matterport-sqft" name="matterportSqft" type="number" min="1" max="10000" step="1" placeholder="Enter area" required disabled></div><input id="matterport-slider" type="range" min="0" max="10000" step="1" value="0" aria-label="Matterport coverage in square feet" disabled><div class="quote-range-labels"><span>Enter the area to scan</span><span>10,000 sq ft maximum</span></div>';
@@ -75,7 +70,7 @@
     return Number(minutes.value) * 60 + Number(seconds.value);
   }
   function inputState() {
-    return { category: value('category'), package: value('package'), sqft: value('sqft'), matterportSqft: get('matterport-sqft').value, platformMonths: get('platform-months').value, selected: [...selected], videoSeconds: videoSeconds(), images: get('twilight-images').value };
+    return { category: value('category'), package: value('package'), sqft: value('sqft'), matterportSqft: get('matterport-sqft').value, selected: [...selected], videoSeconds: videoSeconds(), images: get('twilight-images').value };
   }
   function syncPropertyMode() {
     const bundled = value('package') !== 'custom', size = get('property-sqft'), slider = get('property-slider');
@@ -100,10 +95,6 @@
   function update() {
     syncPropertyMode();
     const state = inputState(), pack = Q.packages[state.package];
-    const platformActive = selected.has('platform');
-    get('platform-controls').hidden = !platformActive;
-    get('platform-months').disabled = !platformActive;
-    get('platform-term').textContent = state.platformMonths + ' months';
     const matterportActive = state.package !== 'custom' && selected.has('mp');
     get('matterport-controls').hidden = !matterportActive;
     get('matterport-sqft').disabled = get('matterport-slider').disabled = !matterportActive;
@@ -140,7 +131,7 @@
       get('summary-lines').replaceChildren();
       const appendLine = (label, cost) => { const li = document.createElement('li'), a = document.createElement('span'), b = document.createElement('span'); a.textContent = label; b.textContent = cost; li.append(a,b); get('summary-lines').append(li); };
       if (current.packageCents) appendLine(current.package + ' Package', Q.money(current.packageCents));
-      current.lines.forEach(line => appendLine(line.label, line.included ? 'Included' : line.cents === null ? 'To Confirm' : Q.money(line.cents)));
+      current.lines.forEach(line => appendLine(line.label, line.included ? 'Included' : line.cents === null ? 'To Confirm' : Q.money(line.cents) + (line.key === 'platform' ? ' / month' : '')));
       get('summary-duration').textContent = current.knownMinutes ? 'About ' + Q.duration(current.knownMinutes) : current.additionalCapture.length ? 'Confirmed With Your Appointment' : 'No On-Site Visit Required';
       const parts = [];
       if (current.photographyMinutes) parts.push('Photography: ' + Q.duration(current.photographyMinutes));
@@ -198,7 +189,6 @@
     get('video-minutes').value = Math.floor(seconds / 60); get('video-seconds').value = seconds % 60; syncVideoSlider();
   });
   get('twilight-images').addEventListener('input', update);
-  get('platform-months').addEventListener('input', update);
   get('review-estimate').addEventListener('click', () => {
     if (!unlocked || !validateFields(addressFields, true)) { syncAddress(); return; }
     update(); if (!current) return;

@@ -60,7 +60,7 @@ $residential = real_estate_prepare_submission([
 ], $now);
 $same($residential['quote']['totalCents'], 25690, 'Average-home interpolation matches the browser engine.');
 $same($residential['subject'], 'Residential SiteSee Real Estate Quote', 'Residential subject is exact.');
-$contains($residential['plain'], 'Estimated total: $256.90', 'Residential body contains the server total.');
+$contains($residential['plain'], 'Estimated one-time job total: $256.90', 'Residential body contains the server total.');
 $contains($residential['plain'], 'Preferred time: 10:00 Central Time', 'Residential body contains the required appointment.');
 
 $luxury = real_estate_residential_quote(array_replace($residentialState, ['category'=>'luxury','sqft'=>'10000','selected'=>['photo','mp']]));
