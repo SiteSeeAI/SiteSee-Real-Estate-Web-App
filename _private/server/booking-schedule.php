@@ -4,6 +4,14 @@ declare(strict_types=1);
 /** Additive scheduling ledger; existing bookings need no column migration. */
 function booking_schedule_schema(PDO $db): void
 {
+    $db->exec("CREATE TABLE IF NOT EXISTS booking_confirmations (
+        reference TEXT PRIMARY KEY, state TEXT NOT NULL CHECK(state IN ('creating','uncertain','confirmed')),
+        calendar_uid TEXT NOT NULL, event_uid TEXT, planned_start INTEGER NOT NULL, planned_end INTEGER NOT NULL,
+        event_json TEXT NOT NULL, created_at TEXT NOT NULL, confirmed_at TEXT,
+        invitation_state TEXT NOT NULL DEFAULT 'none' CHECK(invitation_state IN ('none','sending','sent','uncertain')),
+        invitation_attempted_at TEXT, invitation_sent_at TEXT, invitation_recipient TEXT,
+        CHECK(planned_end > planned_start)
+    )");
     $db->exec("CREATE TABLE IF NOT EXISTS booking_scheduling (
         reference TEXT PRIMARY KEY,
         rush_status TEXT NOT NULL DEFAULT 'not_requested' CHECK(rush_status IN ('not_requested','pending','approved','declined')),

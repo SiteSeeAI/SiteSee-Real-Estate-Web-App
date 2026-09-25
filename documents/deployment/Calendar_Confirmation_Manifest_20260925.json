@@ -1,0 +1,14 @@
+{
+  "release": "sitesee-calendar-confirmation-test-v1",
+  "files": {
+    "server/booking-confirmation.php": "cb46cad2e7abf8857c341eee35506952a87cafa30c06a914ceea4ece615ddefa",
+    "server/booking-invitation.php": "c5a8ea5cf53c4dce57c6f165a9b11fee38593df7d60ef2a1ccf39b0962c8a0ef",
+    "server/booking-schedule.php": "99de974d2b45de2b75003a6e4a93ca0e71019cdb632cc52defc34aeb09727cb8",
+    "server/booking-store.php": "842176a35abcdd7477f6e50ac322a33c971705482db2c94e65668aae0ebe81e4",
+    "server/booking-pay.php": "845ba608002c03e761ed5296b2301f5f32dd4891705a84c718aadc14c1ede120",
+    "server/booking-staff.php": "3f8535f8afa3b227f1edc892143b55d96d4a700d78d9d56b80169535e8039564",
+    "tools/setup-zoho-calendar.py": "cc971758309a58123827c1b3fa3d9b5f3eb842e4f09996bf9da715ff963fe98f",
+    "tools/setup-zoho-confirmation.py": "3446a5269c3d765574f353d4de54eba65d3a07a5d755cd782232c3dff810890b",
+    "tools/check-calendar-confirmation.php": "bcb0bc733d1e85a4118ab67c1589376fb31538420a6e70bffcea990bd6944c1f"
+  }
+}

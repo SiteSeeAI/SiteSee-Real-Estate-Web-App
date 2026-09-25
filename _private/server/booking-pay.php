@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-require_once __DIR__ . '/booking-store.php';
+require_once __DIR__ . '/booking-confirmation.php';
 if (!booking_test_enabled()) {
     http_response_code(503);
     exit('Test payments are disabled.');
@@ -72,7 +72,14 @@ if ($row['status'] === 'deposit_paid_test') {
         $body .= '<p>Requested: ' . pay_escape($request['appointment']['date'] . ' ' . $request['appointment']['time'] . (isset($request['appointment']['windowEnd']) ? '–' . $request['appointment']['windowEnd'] : '')) . ' Central Time.</p>';
         if ($row['rush_status'] === 'pending') $body .= '<p>Rush service is awaiting approval. No rush fee has been charged. If approved, $59 will be added to your remaining balance.</p>';
         if ($row['rush_status'] === 'approved') $body .= '<p>Rush service approved: $59 added to the remaining balance. This approval has not charged your card.</p>';
-        $body .= '<p>Remaining job balance: <strong>$' . number_format(booking_remaining_cents($row) / 100, 2) . '</strong>.</p><p>We’ll be in contact in less than two hours. Your appointment is not yet confirmed. No invitation has been sent.</p>';
+        $body .= '<p>Remaining job balance: <strong>$' . number_format(booking_remaining_cents($row) / 100, 2) . '</strong>.</p>';
+        $confirmation = booking_confirmation_get($db, $reference);
+        if ($confirmation && $confirmation['state'] === 'confirmed') {
+            $body .= '<p class="notice"><strong>Test Appointment Confirmed</strong><br>SiteSee has confirmed the arrival window shown above. This remains an integration test; no live charge has been collected.</p>';
+            if ($confirmation['invitation_state'] === 'sent') $body .= '<p>Your test calendar invitation was accepted by our mail server. Please check your inbox.</p>';
+            elseif ($confirmation['invitation_state'] === 'none') $body .= '<p>Your calendar invitation has not yet been sent.</p>';
+            else $body .= '<p>Your window is confirmed. Invitation delivery needs a staff check; please contact SiteSee if it has not arrived.</p>';
+        } else $body .= '<p>We’ll be in contact in less than two hours. Your appointment is not yet confirmed. No invitation has been sent.</p>';
     }
     pay_page($body);
 }

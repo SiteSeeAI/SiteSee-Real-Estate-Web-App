@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/booking-store.php';
+require_once __DIR__ . '/booking-invitation.php';
 header('Cache-Control: no-store, private, max-age=0');
 header('X-Robots-Tag: noindex, nofollow, noarchive');
 header('X-Frame-Options: DENY');
@@ -34,6 +34,7 @@ session_start();
 $db = booking_db();
 $error = '';
 $issuedLink = '';
+$notice = '';
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 if ($method === 'POST') {
     if (!real_estate_same_origin() || !hash_equals(staff_csrf(), (string)($_POST['csrf'] ?? ''))) {
@@ -64,6 +65,25 @@ if ($method === 'POST') {
         exit;
     } elseif (empty($_SESSION['staff_until']) || (int)$_SESSION['staff_until'] < time()) {
         staff_page('<p>Your staff session has expired. Reload and sign in again.</p>', 403);
+    } elseif (in_array($action, ['confirm_calendar', 'reconcile_calendar', 'send_invitation'], true)) {
+        try {
+            $reference = (string)($_POST['reference'] ?? '');
+            if ($action === 'confirm_calendar') {
+                if (($_POST['confirm_window'] ?? '') !== 'yes') throw new InvalidArgumentException('Confirm the customer-agreed window and reviewed duration.');
+                booking_confirm_appointment($db, $reference);
+                $notice = 'Test appointment confirmed on SiteSee Photography. No invitation was sent and no payment was collected.';
+            } elseif ($action === 'reconcile_calendar') {
+                booking_reconcile_confirmation($db, $reference);
+                $notice = 'Existing calendar event verified. No new event or invitation was created.';
+            } else {
+                if (($_POST['verify_recipient'] ?? '') !== 'yes') throw new InvalidArgumentException('Verify the displayed test recipient before sending.');
+                booking_send_invitation($db, $reference);
+                $notice = 'Test invitation accepted by the mail server. Check the recipient mailbox to verify receipt.';
+            }
+        } catch (Throwable $exception) {
+            $error = $exception instanceof InvalidArgumentException || $exception instanceof BookingCalendarUnavailable
+                ? $exception->getMessage() : 'Confirmation could not be completed. Reload this booking to inspect its status before retrying.';
+        }
     } elseif ($action === 'rotate') {
         try {
             $reference = (string)($_POST['reference'] ?? '');
@@ -123,8 +143,9 @@ if (empty($_SESSION['staff_until']) || (int)$_SESSION['staff_until'] < time()) {
     staff_page($body, $error ? 401 : 200);
 }
 $csrf = staff_escape(staff_csrf());
-$body = '<p class="note">TEST PHASE: new requests collect a test deposit before staff schedule review. Payment and review do not confirm an appointment. No live charge, CRM event or invitation is created. Older unpaid requests retain their original approval flow.</p>'
+$body = '<p class="note">TEST PHASE: new requests collect a test deposit before staff schedule review. Payment and review do not confirm an appointment. Final calendar confirmation and invitations require separate staff actions and enabled test controls. No live charges or CRM events are created. Older unpaid requests retain their original approval flow.</p>'
     . '<form method="post"><input type="hidden" name="csrf" value="' . $csrf . '"><input type="hidden" name="action" value="logout"><button>Sign Out</button></form>';
+if ($notice) $body .= '<p class="note" role="status">' . staff_escape($notice) . '</p>';
 if ($error) $body .= '<p class="error">' . staff_escape($error) . '</p>';
 if ($issuedLink) {
     $body .= '<h2>Private Booking Link</h2><p>Copy this link to an authorized test payer. It appears only once; save it before leaving this page.</p><p><input type="text" readonly aria-label="Test payment link" value="' . staff_escape($issuedLink) . '" style="width:100%"></p><p><a href="' . staff_escape($issuedLink) . '" target="_blank" rel="noopener noreferrer">Open Booking Page ↗</a></p>';
@@ -164,7 +185,35 @@ if ($row) {
             $body .= '<h3>Decline Rush Service</h3><form method="post"><input type="hidden" name="csrf" value="' . $csrf . '"><input type="hidden" name="action" value="decline_rush"><input type="hidden" name="reference" value="' . staff_escape($reference) . '"><label>Reason <input name="reason" maxlength="500" required></label><button>Decline Rush — Request Another Window</button></form>';
         }
     } elseif ($row['status'] === 'deposit_paid_test' && $row['approved_at']) {
-        $body .= '<p class="note">Staff review recorded. Appointment confirmation and invitations remain disabled.</p>';
+        $body .= '<p class="note">Staff review recorded. Use the calendar confirmation section below when test confirmation is enabled.</p>';
+    }
+    if ($row['status'] === 'deposit_paid_test' && $row['approved_at']) {
+        $confirmation = booking_confirmation_get($db, $reference);
+        try { $confirmationConfig = booking_confirmation_config(); } catch (Throwable) { $confirmationConfig = null; }
+        $canConfirm = $confirmationConfig && $confirmationConfig['confirmation_enabled'];
+        $body .= '<h2>Calendar Confirmation</h2><p>Photographer: ' . staff_escape((string)$row['photographer']) . '; reviewed shoot duration: ' . (int)$row['duration_minutes'] . ' minutes.</p>';
+        if (!$confirmation) {
+            $body .= '<p>Final confirmation checks the calendar again and blocks the full shoot duration inside the customer-agreed arrival window. It does not send an invitation.</p>';
+            if ($canConfirm) {
+                $body .= '<form method="post"><input type="hidden" name="csrf" value="' . $csrf . '"><input type="hidden" name="action" value="confirm_calendar"><input type="hidden" name="reference" value="' . staff_escape($reference) . '">'
+                    . '<label><input type="checkbox" name="confirm_window" value="yes" required> I approve this customer-agreed arrival window, David as photographer and the reviewed shoot duration.</label><button>Confirm Test Appointment</button></form>';
+            } else $body .= '<p class="note">Calendar confirmation is disabled pending connection verification.</p>';
+        } elseif ($confirmation['state'] !== 'confirmed') {
+            $body .= '<p class="note">Calendar creation result is uncertain. Do not create another appointment. Recheck the existing result first; if it cannot be verified, inspect Zoho manually.</p>'
+                . '<form method="post"><input type="hidden" name="csrf" value="' . $csrf . '"><input type="hidden" name="action" value="reconcile_calendar"><input type="hidden" name="reference" value="' . staff_escape($reference) . '"><button>Recheck Calendar Result</button></form>';
+        } else {
+            $plannedStart = (new DateTimeImmutable('@' . $confirmation['planned_start']))->setTimezone(new DateTimeZone('America/Chicago'));
+            $plannedEnd = (new DateTimeImmutable('@' . $confirmation['planned_end']))->setTimezone(new DateTimeZone('America/Chicago'));
+            $body .= '<p class="note"><strong>Test Appointment Confirmed</strong><br>Internal planned shoot: ' . staff_escape($plannedStart->format('Y-m-d g:i A') . '–' . $plannedEnd->format('g:i A')) . ' Central Time.<br>The customer invitation retains the agreed two-hour arrival window.</p>';
+            if ($confirmation['invitation_state'] === 'sent') {
+                $body .= '<p>Invitation accepted by the mail server for ' . staff_escape((string)$confirmation['invitation_recipient']) . '. Mailbox receipt and calendar acceptance must be checked separately.</p>';
+            } elseif ($confirmation['invitation_state'] !== 'none') {
+                $body .= '<p class="note">Invitation delivery is uncertain. Check the recipient mailbox before any manual resend. Automatic retries are blocked.</p>';
+            } elseif ($canConfirm && $confirmationConfig['invitations_enabled']) {
+                $body .= '<h2>Send Test Invitation</h2><p>Recipient: <strong>' . staff_escape($row['email']) . '</strong>. The invitation includes the property address and arrival window. Property access codes remain private.</p>'
+                    . '<form method="post"><input type="hidden" name="csrf" value="' . $csrf . '"><input type="hidden" name="action" value="send_invitation"><input type="hidden" name="reference" value="' . staff_escape($reference) . '"><label><input type="checkbox" name="verify_recipient" value="yes" required> I verified this test recipient and want to send the calendar invitation.</label><button>Send Test Calendar Invitation</button></form>';
+            } else $body .= '<p>Invitation delivery remains disabled. No invitation has been sent.</p>';
+        }
     }
     if ($row['status'] === 'pending_review') {
         $duration = max(15, (int)($quote['knownMinutesMax'] ?? $quote['knownMinutes'] ?? 60));
@@ -193,7 +242,7 @@ if ($row) {
     foreach (booking_recent($db) as $item) {
         $body .= '<tr><td><a href="staff-bookings.php?reference=' . rawurlencode($item['reference']) . '">' . staff_escape($item['reference'])
             . '</a></td><td>' . staff_escape($item['created_at']) . '</td><td>' . staff_escape($item['market'])
-            . '</td><td>' . staff_escape($item['email']) . '</td><td>' . staff_escape($item['status']) . '</td></tr>';
+            . '</td><td>' . staff_escape($item['email']) . '</td><td>' . staff_escape($item['status'] . ($item['calendar_status'] ? ' · calendar ' . $item['calendar_status'] : '')) . '</td></tr>';
     }
     $body .= '</table>';
 }

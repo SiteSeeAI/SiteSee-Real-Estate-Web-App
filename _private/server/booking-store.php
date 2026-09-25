@@ -125,8 +125,8 @@ function booking_get(PDO $db, string $reference): array|false
 
 function booking_recent(PDO $db): array
 {
-    return $db->query('SELECT reference,created_at,status,market,email,quote_cents,approved_cents,deposit_paid_at
-        FROM bookings ORDER BY created_at DESC LIMIT 100')->fetchAll();
+    return $db->query('SELECT b.reference,b.created_at,b.status,b.market,b.email,b.quote_cents,b.approved_cents,b.deposit_paid_at,c.state AS calendar_status
+        FROM bookings b LEFT JOIN booking_confirmations c ON c.reference=b.reference ORDER BY b.created_at DESC LIMIT 100')->fetchAll();
 }
 
 function booking_approve(PDO $db, string $reference, int $finalCents, int $duration, string $photographer, bool $available, string $reason = '', string $contactId = ''): string

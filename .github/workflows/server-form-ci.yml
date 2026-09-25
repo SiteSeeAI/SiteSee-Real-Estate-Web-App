@@ -26,4 +26,6 @@ jobs:
       - name: Test client calculators and form contract
         run: node --test tests/*.test.cjs
       - name: Test server validation, pricing parity and access gate
-        run: for test in tests/*.test.php; do php "$test"; done
+        run: set -e; for test in tests/*.test.php; do php "$test"; done
+      - name: Test calendar connection setup and credential preservation
+        run: python3 -m unittest discover -s tests -p '*_test.py'
