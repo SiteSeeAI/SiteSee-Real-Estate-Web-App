@@ -201,6 +201,17 @@ function real_estate_validate_appointment(array $appointment, ?DateTimeImmutable
     return ['date' => $date, 'time' => $time];
 }
 
+/** Derive the end on the server; client-supplied window ends are never trusted. */
+function real_estate_arrival_window(array $appointment): array
+{
+    $start = new DateTimeImmutable($appointment['date'] . ' ' . $appointment['time'], new DateTimeZone('America/Chicago'));
+    $end = $start->setTimestamp($start->getTimestamp() + 7200);
+    if ($start->format('Y-m-d') !== $end->format('Y-m-d') || $start->getOffset() !== $end->getOffset()) {
+        real_estate_invalid('Choose a two-hour arrival window within one day and outside a clock change.');
+    }
+    return $appointment + ['windowMinutes'=>120, 'windowEnd'=>$end->format('H:i')];
+}
+
 function real_estate_validate_schedule(array $source): array
 {
     $meet = $source['meetPhotographer'] ?? null;
@@ -648,8 +659,11 @@ function real_estate_quote_body(array $quote, array $details, array $appointment
         $names = array_map(static fn(string $key): string => $quote['services'][$key], $quote['additionalCapture']);
         $lines[] = 'Time to be confirmed for: ' . implode(', ', $names);
     }
+    if (isset($appointment['windowEnd'])) $lines[] = 'The 50% deposit precedes schedule review. If no mutually acceptable date is available, the deposit is refundable. No date is confirmed by payment.';
     $lines[] = 'Preferred date: ' . $appointment['date'];
-    $lines[] = 'Preferred time: ' . $appointment['time'] . ' Central Time';
+    $lines[] = isset($appointment['windowEnd'])
+        ? 'Preferred arrival window: ' . $appointment['time'] . '–' . $appointment['windowEnd'] . ' Central Time (arrival window, not shoot duration)'
+        : 'Preferred time: ' . $appointment['time'] . ' Central Time';
     $lines[] = 'Appointment is requested, not confirmed.';
     if (isset($appointment['meetPhotographer'])) {
         $lines[] = 'Agent meets photographer: ' . $appointment['meetPhotographer'];
@@ -685,7 +699,7 @@ function real_estate_quote_body(array $quote, array $details, array $appointment
 
 function real_estate_prepare_submission(array $payload, ?DateTimeImmutable $now = null): array
 {
-    if (($payload['version'] ?? null) !== 1) {
+    if (!in_array($payload['version'] ?? null, [1, 2], true)) {
         real_estate_invalid('Refresh the pricing page and try again.');
     }
     $action = (string)($payload['action'] ?? '');
@@ -704,6 +718,9 @@ function real_estate_prepare_submission(array $payload, ?DateTimeImmutable $now 
     }
     $details = real_estate_validate_details($detailsSource);
     $appointment = real_estate_validate_appointment($appointmentSource, $now);
+    if ($payload['version'] === 2) {
+        $appointment = real_estate_arrival_window($appointment);
+    }
     if ($action === 'request_appointment') {
         $appointment = array_merge($appointment, real_estate_validate_schedule($appointmentSource));
     }
@@ -721,3 +738,4 @@ function real_estate_prepare_submission(array $payload, ?DateTimeImmutable $now 
             : null,
     ];
 }
+

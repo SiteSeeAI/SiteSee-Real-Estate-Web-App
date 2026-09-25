@@ -69,7 +69,7 @@ function booking_db(): PDO
     return $db;
 }
 
-function booking_capture(PDO $db, array $submission, string $reference): void
+function booking_capture(PDO $db, array $submission, string $reference, bool $depositFirst = false): ?string
 {
     if ($submission['action'] !== 'request_appointment' || !preg_match('/^[A-F0-9]{10,32}$/D', $reference)) {
         throw new InvalidArgumentException('Invalid booking request.');
@@ -82,13 +82,21 @@ function booking_capture(PDO $db, array $submission, string $reference): void
     if (!is_int($cents) || $cents < 50 || $cents > 100000000) {
         throw new InvalidArgumentException('This quote requires manual review before booking.');
     }
-    $stmt = $db->prepare('INSERT INTO bookings (reference,created_at,status,market,email,request_json,requested_utc,quote_cents,platform_monthly_cents)
-        VALUES (?,?,?,?,?,?,?,?,?)');
+    if ($depositFirst && (!booking_test_enabled() || ($submission['appointment']['windowMinutes'] ?? 0) !== 120)) {
+        throw new InvalidArgumentException('A two-hour window and test mode are required.');
+    }
+    $token = $depositFirst ? bin2hex(random_bytes(32)) : null;
+    $stmt = $db->prepare('INSERT INTO bookings (reference,created_at,status,market,email,request_json,requested_utc,quote_cents,platform_monthly_cents,
+        approved_cents,deposit_cents,agent_token_hash,agent_token_expires)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)');
     $stmt->execute([
-        $reference, gmdate('c'), 'pending_review', $submission['market'], $submission['details']['email'],
+        $reference, gmdate('c'), $depositFirst ? 'awaiting_deposit_test' : 'pending_review', $submission['market'], $submission['details']['email'],
         json_encode($submission, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES),
         $utc, $cents, (int)($submission['quote']['platformMonthlyCents'] ?? 0),
+        $depositFirst ? $cents : null, $depositFirst ? intdiv($cents + 1, 2) : null,
+        $token === null ? null : hash('sha256', $token), $token === null ? null : time() + 7 * 86400,
     ]);
+    return $token;
 }
 
 function booking_get(PDO $db, string $reference): array|false
@@ -145,10 +153,22 @@ function booking_approve(PDO $db, string $reference, int $finalCents, int $durat
     }
 }
 
+function booking_review_paid(PDO $db, string $reference, int $duration, string $photographer, bool $available): void
+{
+    $photographer = trim($photographer);
+    if (!$available || $photographer === '' || strlen($photographer) > 120 || $duration < 15 || $duration > 1440) {
+        throw new InvalidArgumentException('Review the photographer, duration and availability.');
+    }
+    $stmt = $db->prepare('UPDATE bookings SET approved_at=?, photographer=?, duration_minutes=?, availability_checked_at=?
+        WHERE reference=? AND status=\'deposit_paid_test\' AND approved_at IS NULL');
+    $stmt->execute([gmdate('c'), $photographer, $duration, gmdate('c'), $reference]);
+    if ($stmt->rowCount() !== 1) throw new InvalidArgumentException('Only an unreviewed, paid test request can be reviewed.');
+}
+
 function booking_agent_record(PDO $db, string $reference, string $token): array|false
 {
     $row = booking_get($db, $reference);
-    if (!$row || !in_array($row['status'], ['approved_test', 'deposit_paid_test'], true)
+    if (!$row || !in_array($row['status'], ['awaiting_deposit_test', 'approved_test', 'deposit_paid_test'], true)
         || (int)$row['agent_token_expires'] < time() || strlen($token) !== 64
         || !hash_equals((string)$row['agent_token_hash'], hash('sha256', $token))) {
         return false;
@@ -161,7 +181,7 @@ function booking_rotate_test_link(PDO $db, string $reference): string
     $db->exec('BEGIN IMMEDIATE');
     try {
         $row = booking_get($db, $reference);
-        if (!$row || $row['status'] !== 'approved_test' || !in_array($row['checkout_state'], ['ready', 'expired'], true)) {
+        if (!$row || !in_array($row['status'], ['awaiting_deposit_test', 'approved_test'], true) || !in_array($row['checkout_state'], ['ready', 'expired'], true)) {
             throw new InvalidArgumentException('A test link cannot be replaced while Checkout is active or after payment.');
         }
         $token = bin2hex(random_bytes(32));
@@ -194,7 +214,7 @@ function booking_start_checkout(PDO $db, string $reference, string $token, strin
     $db->exec('BEGIN IMMEDIATE');
     try {
         $row = booking_agent_record($db, $reference, $token);
-        if (!$row || $row['status'] !== 'approved_test') {
+        if (!$row || !in_array($row['status'], ['awaiting_deposit_test', 'approved_test'], true)) {
             throw new InvalidArgumentException('This test payment link is invalid or has already been used.');
         }
         if ($row['checkout_state'] === 'open' && $row['stripe_checkout_url']) {
@@ -227,8 +247,8 @@ function booking_start_checkout(PDO $db, string $reference, string $token, strin
         'payment_intent_data[setup_future_usage]' => 'off_session',
         'payment_intent_data[metadata][booking_reference]' => $reference,
         'metadata[booking_reference]' => $reference,
-        'success_url' => SITESEE_REAL_ESTATE_SITE_URL . '/booking-pay.php?result=success',
-        'cancel_url' => SITESEE_REAL_ESTATE_SITE_URL . '/booking-pay.php?result=canceled',
+        'success_url' => SITESEE_REAL_ESTATE_SITE_URL . '/booking-pay.php?result=success&reference=' . rawurlencode($reference),
+        'cancel_url' => SITESEE_REAL_ESTATE_SITE_URL . '/booking-pay.php?result=canceled&reference=' . rawurlencode($reference),
     ];
     try {
         $session = $transport ? $transport($body, 'sitesee-deposit-test-' . $reference . '-' . $attempt, $key)
@@ -359,14 +379,14 @@ function booking_process_stripe_event(PDO $db, array $event): string
                 || !preg_match('/^cus_[A-Za-z0-9_]+$/D', (string)($object['customer'] ?? ''))) {
                 throw new InvalidArgumentException('Stripe paid amount or payment identifiers do not match.');
             }
-            if ($row['status'] === 'approved_test') {
+            if (in_array($row['status'], ['awaiting_deposit_test', 'approved_test'], true)) {
                 $stmt = $db->prepare('UPDATE bookings SET status=\'deposit_paid_test\', checkout_state=\'paid\',
-                    stripe_customer_id=?, stripe_payment_intent_id=?, deposit_paid_at=? WHERE reference=? AND status=\'approved_test\'');
+                    stripe_customer_id=?, stripe_payment_intent_id=?, deposit_paid_at=? WHERE reference=? AND status IN (\'awaiting_deposit_test\', \'approved_test\')');
                 $stmt->execute([$object['customer'], $object['payment_intent'], gmdate('c'), $reference]);
             } elseif ($row['status'] !== 'deposit_paid_test' || $row['stripe_payment_intent_id'] !== $object['payment_intent']) {
                 throw new InvalidArgumentException('Conflicting Stripe payment for booking.');
             }
-        } elseif ($row['status'] === 'approved_test') {
+        } elseif (in_array($row['status'], ['awaiting_deposit_test', 'approved_test'], true)) {
             $db->prepare('UPDATE bookings SET checkout_state=\'expired\', stripe_checkout_url=NULL
                 WHERE reference=? AND checkout_state=\'open\'')->execute([$reference]);
         }
@@ -379,3 +399,4 @@ function booking_process_stripe_event(PDO $db, array $event): string
         throw $error;
     }
 }
+

@@ -37,7 +37,7 @@ file_put_contents($temp . '/server/booking-store.php', <<<'PHP'
 <?php
 function booking_test_enabled(): bool { return true; }
 function booking_db() { return null; }
-function booking_capture($db, array $submission, string $reference): void { fixture_event('booking'); }
+function booking_capture($db, array $submission, string $reference, bool $depositFirst = false): ?string { fixture_event('booking'); return $depositFirst ? str_repeat('a', 64) : null; }
 PHP
 );
 
@@ -150,6 +150,16 @@ try {
         $recoverCopy = $post($payload, $market . 'nocopy');
         $assert($recoverCopy['status'] === 200 && $events()['mail'] === $before['mail'] + 3, $market . ': separate email action remains available when request copy failed.');
     }
+    $depositRequest = $request;
+    $depositRequest['version'] = 2;
+    $before = $events();
+    $firstDeposit = $post($depositRequest, 'depositmailfailure', ['X-Test-Fail-Mail: 1']);
+    $secondDeposit = $post($depositRequest, 'depositmailfailure');
+    $assert($firstDeposit['status'] === 200 && $firstDeposit['data']['copy_sent'] === false, 'Saved deposit request survives all mail failures honestly.');
+    $assert(str_starts_with($firstDeposit['data']['payment_url'], '/booking-pay.php?reference='), 'New flow returns payment link before staff approval.');
+    $assert($secondDeposit['data']['payment_url'] === $firstDeposit['data']['payment_url'], 'Retry after mail failure preserves same payment link.');
+    $assert($events()['booking'] === $before['booking'] + 1, 'Mail failure does not create duplicate booking.');
+    $assert($events()['mail'] === $before['mail'] + 2, 'Replay does not repeat failed request emails.');
     echo "Quote receipt handler: $count assertions passed.\n";
 } finally {
     proc_terminate($process);
@@ -160,3 +170,4 @@ try {
     }
     rmdir($temp);
 }
+
