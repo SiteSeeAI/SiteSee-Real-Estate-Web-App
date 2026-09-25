@@ -26,7 +26,7 @@ function fixture(file, response, options = {}) {
   result.details = {email:'agent@example.com', street:'123 Example Street'};
   const context = {
     URL, JSON, get,
-    window: { location: { href: 'https://re.sitesee.ai/pricing.php', replace: url => result.navigation.push(url) } },
+    window: { SiteSeeValidation: {validate: () => !options.invalid}, location: { href: 'https://re.sitesee.ai/pricing.php', replace: url => result.navigation.push(url) } },
     form: { action: 'https://re.sitesee.ai/quote-submit.php', elements: { namedItem: () => ({ value: '' }) } },
     prepare: () => {
       if (options.prepareError) throw new Error('Quote preparation failed');

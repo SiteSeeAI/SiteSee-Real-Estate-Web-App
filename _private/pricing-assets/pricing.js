@@ -47,7 +47,7 @@
   }
   function validateFields(fields, report = false) {
     const invalid = fields.filter(field => !validateField(field));
-    if (report && invalid.length) { invalid[0].reportValidity(); invalid[0].focus(); }
+    if (report && invalid.length) { window.SiteSeeValidation.show(invalid[0]); }
     return !invalid.length;
   }
   function addressText() { return value('street') + (value('unit') ? ', ' + value('unit') : '') + ', ' + value('city') + ', ' + value('state') + ' ' + value('zip'); }
@@ -208,9 +208,9 @@
     if (!reviewed || !validateFields(agentFields, true)) return null;
     const date = get('shoot-date'), time = get('shoot-time'), now = centralNow(); date.min = now.date;
     date.setCustomValidity(''); time.setCustomValidity('');
-    if (!date.checkValidity()) { date.reportValidity(); return null; }
-    if (!time.checkValidity()) { time.reportValidity(); return null; }
-    if (date.value === now.date && time.value <= now.time) { time.setCustomValidity('Choose a future time in Central Time.'); time.reportValidity(); return null; }
+    if (!date.checkValidity()) { window.SiteSeeValidation.show(date); return null; }
+    if (!time.checkValidity()) { window.SiteSeeValidation.show(time); return null; }
+    if (date.value === now.date && time.value <= now.time) { time.setCustomValidity('Choose a future time in Central Time.'); window.SiteSeeValidation.show(time); return null; }
     if (action === 'request_appointment' && !scheduling.validate()) return null;
     const appointment = { date: date.value, time: time.value, ...(action === 'request_appointment' ? scheduling.data() : {}) };
     return { quote: current, details: details(), appointment };
@@ -266,6 +266,7 @@
         else showStatus('This quote has already been emailed. Reference: ' + previous.reference + '.');
         return;
       }
+      if (action === 'request_appointment' && !window.SiteSeeValidation.validate(form)) return;
       const prepared = prepare(action); if (!prepared) return;
       const sentKey = actionKey(action), emailKey = actionKey('email_quote');
       setSending(true, action);

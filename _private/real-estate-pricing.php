@@ -143,7 +143,7 @@ function real_estate_validate_details(array $details): array
         'city' => real_estate_string($details, 'city', 100, 'Enter the property city.'),
         'state' => strtoupper(trim((string)($details['state'] ?? ''))),
         'zip' => trim((string)($details['zip'] ?? '')),
-        'optOut' => (string)($details['optOut'] ?? ''),
+        'optOut' => trim((string)($details['optOut'] ?? '')) === '' ? 'No' : trim((string)$details['optOut']),
     ];
     if (!filter_var($validated['email'], FILTER_VALIDATE_EMAIL) || strlen($validated['email']) > 180 || preg_match('/[\r\n]/', $validated['email'])) {
         real_estate_invalid('Enter a valid email address.');
