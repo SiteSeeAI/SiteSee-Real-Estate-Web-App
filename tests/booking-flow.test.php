@@ -218,8 +218,81 @@ foreach (['07:00'=>'09:00', '09:00'=>'11:00', '11:00'=>'13:00', '13:00'=>'15:00'
 foreach (['06:00', '08:00', '09:15', '10:00', '18:00', '19:00'] as $start) {
     $reject(static fn() => real_estate_arrival_window(['date'=>'2027-04-01', 'time'=>$start]), 'Unlisted exact times are rejected.');
 }
+// Rolling notice uses the server instant and is unaffected by default PHP timezone.
+$serverNow = new DateTimeImmutable('2026-09-25T09:00:00-05:00');
+$at72 = ['date'=>'2026-09-28', 'time'=>'09:00'];
+$assert(real_estate_validate_lead_time($at72, [], $serverNow)['leadHours'] === 72, 'Exactly 72 hours is accepted.');
+$reject(static fn() => real_estate_validate_lead_time($at72, [], $serverNow->modify('+1 second')), 'One second under 72 hours is rejected.');
+$at12 = ['date'=>'2026-09-26', 'time'=>'07:00'];
+$rushNow = new DateTimeImmutable('2026-09-25T19:00:00-05:00');
+$assert(real_estate_validate_lead_time($at12, ['rushRequested'=>true], $rushNow)['leadHours'] === 12, 'Exactly 12 hours is accepted for rush.');
+$reject(static fn() => real_estate_validate_lead_time($at12, ['rushRequested'=>true], $rushNow->modify('+1 second')), 'One second under 12 hours is rejected.');
+$reject(static fn() => real_estate_validate_lead_time($at12, [], $rushNow), 'Rush notice is not available without explicit opt-in.');
+$reject(static fn() => real_estate_validate_lead_time($at12, ['rushRequested'=>'yes'], $rushNow), 'Rush flag type is enforced.');
+$previousTimezone = date_default_timezone_get(); date_default_timezone_set('Asia/Tokyo');
+$assert(real_estate_validate_lead_time($at72, [], $serverNow)['leadHours'] === 72, 'Server-local timezone does not alter elapsed notice.');
+date_default_timezone_set($previousTimezone);
+$springNow = new DateTimeImmutable('2027-03-11T09:00:00-06:00');
+$reject(static fn() => real_estate_validate_lead_time(['date'=>'2027-03-14','time'=>'09:00'], [], $springNow), 'Spring clock change is not rounded to three calendar days.');
+$assert(real_estate_validate_lead_time(['date'=>'2027-03-14','time'=>'11:00'], [], $springNow)['leadHours'] === 72, 'First eligible listed spring window passes.');
+$fallNow = new DateTimeImmutable('2027-11-04T09:00:00-05:00');
+$assert(real_estate_validate_lead_time(['date'=>'2027-11-07','time'=>'09:00'], [], $fallNow)['leadHours'] === 72, 'Fall window has at least 72 actual hours.');
+
+foreach (['approve', 'decline'] as $decision) {
+    $payload['appointment']['rushRequested'] = true;
+    $rushSubmission = real_estate_prepare_submission($payload, $now);
+    $ref = $decision === 'approve' ? 'ABCDEF1250' : 'ABCDEF1251';
+    $rushToken = booking_capture($db, $rushSubmission, $ref, true);
+    $initial = booking_get($db, $ref);
+    $assert($initial['rush_status'] === 'pending' && (int)$initial['rush_fee_cents'] === 0, 'Rush opt-in does not approve or collect a fee.');
+    $deposit = intdiv($rushSubmission['quote']['totalCents'] + 1, 2);
+    $assert((int)$initial['deposit_cents'] === $deposit, 'Initial deposit excludes rush fee.');
+    $reject(static fn() => booking_decline_rush($db, $ref, 'Unavailable'), 'Cannot decide before deposit is recorded.');
+    $transport = static function ($body) use ($assert, $deposit, $decision) {
+        $assert((int)$body['line_items[0][price_data][unit_amount]'] === $deposit, 'Stripe receives no pending rush surcharge.');
+        return ['id'=>'cs_test_rush_' . $decision, 'url'=>'https://checkout.stripe.com/c/pay/rush', 'livemode'=>false];
+    };
+    booking_start_checkout($db, $ref, $rushToken, '127.0.0.1', $transport);
+    $paid = ['id'=>'evt_rush_' . $decision, 'type'=>'checkout.session.completed', 'data'=>['object'=>[
+        'id'=>'cs_test_rush_' . $decision, 'livemode'=>false, 'mode'=>'payment', 'client_reference_id'=>$ref,
+        'metadata'=>['booking_reference'=>$ref], 'payment_status'=>'paid', 'currency'=>'usd',
+        'amount_total'=>$deposit, 'payment_intent'=>'pi_rush_' . $decision, 'customer'=>'cus_rush_' . $decision,
+    ]]];
+    booking_process_stripe_event($db, $paid);
+    $reject(static fn() => booking_review_paid($db, $ref, 90, 'David', true), 'Rush cannot pass normal review without explicit approval.');
+    if ($decision === 'approve') {
+        booking_review_paid($db, $ref, 90, 'David', true, 'approve');
+        $approved = booking_get($db, $ref);
+        $assert($approved['rush_status'] === 'approved' && (int)$approved['rush_fee_cents'] === 5900, 'Explicit approval records exactly $59.');
+        $assert(booking_remaining_cents($approved) === $rushSubmission['quote']['totalCents'] - $deposit + 5900, 'Only approved rush adds to remaining balance.');
+        $reject(static fn() => booking_review_paid($db, $ref, 90, 'David', true, 'approve'), 'Repeat approval cannot add fee twice.');
+        $reject(static fn() => booking_decline_rush($db, $ref, 'Unavailable'), 'Stale decline cannot overwrite approval.');
+    } else {
+        booking_decline_rush($db, $ref, 'Requested rush window is unavailable.');
+        $declined = booking_get($db, $ref);
+        $assert($declined['reschedule_required'] == 1 && (int)$declined['rush_fee_cents'] === 0, 'Declined rush requires new window with zero fee.');
+        $reject(static fn() => booking_review_paid($db, $ref, 90, 'David', true, 'approve'), 'Declined window cannot be approved by a stale form.');
+        $reject(static fn() => booking_request_new_window($db, $ref, str_repeat('0',64), $at72, $serverNow), 'Rescheduling requires bearer authorization.');
+        $reject(static fn() => booking_request_new_window($db, $ref, $rushToken, $at12, $rushNow), 'Replacement standard window must meet 72 hours.');
+        $replacementToken = booking_reschedule_link($db, $ref);
+        $assert(booking_agent_record($db, $ref, $rushToken) === false, 'Replacement link revokes lost bearer token.');
+        booking_request_new_window($db, $ref, $replacementToken, $at72 + ['rushRequested'=>true], $serverNow);
+        $rescheduled = booking_get($db, $ref);
+        $assert($rescheduled['status'] === 'deposit_paid_test' && (int)$rescheduled['deposit_cents'] === $deposit, 'Replacement keeps the original paid deposit.');
+        $assert($rescheduled['request_json'] === $initial['request_json'], 'Original submitted request remains immutable.');
+        $effective = booking_request($rescheduled);
+        $assert($effective['appointment']['date'] === '2026-09-28' && !$effective['appointment']['rushRequested'], 'Replacement is a standard request even with a tampered rush flag.');
+        $assert(str_contains($effective['salesPlain'], '2026-09-28'), 'Staff summary uses replacement window.');
+        $reject(static fn() => booking_request_new_window($db, $ref, $replacementToken, $at72, $serverNow), 'Repeated replacement cannot overwrite the pending request.');
+        booking_review_paid($db, $ref, 90, 'David', true);
+        $assert((int)booking_get($db, $ref)['rush_fee_cents'] === 0, 'Standard review after declined rush still has no fee.');
+    }
+    $assert(booking_process_stripe_event($db, $paid) === 'duplicate', 'Repeat webhook preserves rush decision.');
+}
+
 unset($db);
 foreach (glob($temp . '/*') ?: [] as $file) unlink($file);
 rmdir($temp);
 echo "Booking flow: $checks assertions passed.\n";
+
 

@@ -195,27 +195,21 @@
     update(); if (!current) return;
     reviewed = true; get('request-section').hidden = false; get('review-estimate').setAttribute('aria-expanded','true'); get('request-title').focus();
   });
-  function centralNow() {
-    const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hourCycle:'h23' }).formatToParts(new Date());
-    const p = Object.fromEntries(parts.map(x => [x.type,x.value]));
-    return { date: p.year + '-' + p.month + '-' + p.day, time: p.hour + ':' + p.minute };
-  }
-  get('shoot-date').min = centralNow().date;
   const details = () => Object.fromEntries(['first','last','company','email','phone','street','unit','propertyId','city','state','zip','optOut'].map(key => [key,value(key)]));
   function prepare(action = 'email_quote') {
     if (!unlocked || !validateFields(addressFields, true)) { syncAddress(); return null; }
     update(); if (!current) { get('estimate-title').focus(); return null; }
     if (!reviewed || !validateFields(agentFields, true)) return null;
-    const date = get('shoot-date'), time = get('shoot-time'), now = centralNow(); date.min = now.date;
+    const date = get('shoot-date'), time = get('shoot-time');
     date.setCustomValidity(''); time.setCustomValidity('');
     if (!date.checkValidity()) { window.SiteSeeValidation.show(date); return null; }
     if (!time.checkValidity()) { window.SiteSeeValidation.show(time); return null; }
-    if (date.value === now.date && time.value <= now.time) { time.setCustomValidity('Choose a window that has not started in Central Time.'); window.SiteSeeValidation.show(time); return null; }
+    if (!scheduling.validateWindow()) return null;
     if (action === 'request_appointment' && !scheduling.validate()) return null;
     const minutes = Number(time.value.slice(0, 2)) * 60 + Number(time.value.slice(3)) + 120;
     if (minutes >= 1440) { time.setCustomValidity('Choose a two-hour window within one day.'); window.SiteSeeValidation.show(time); return null; }
     const windowEnd = String(Math.floor(minutes / 60)).padStart(2, '0') + ':' + String(minutes % 60).padStart(2, '0');
-    const appointment = { date: date.value, time: time.value, windowMinutes: 120, windowEnd, ...(action === 'request_appointment' ? scheduling.data() : {}) };
+    const appointment = { date: date.value, time: time.value, windowMinutes: 120, windowEnd, rushRequested: get('rush-requested').checked, ...(action === 'request_appointment' ? scheduling.data() : {}) };
     return { quote: current, details: details(), appointment };
   }
   ['shoot-date','shoot-time'].forEach(id => get(id).addEventListener('input', () => { get(id).setCustomValidity(''); get('request-status').hidden = true; }));
@@ -229,7 +223,7 @@
   const completedActions = new Map();
   let busyAction = '';
   function actionKey(action) {
-    const snapshot = { state: inputState(), details: details(), date: get('shoot-date').value, time: get('shoot-time').value };
+    const snapshot = { state: inputState(), details: details(), date: get('shoot-date').value, time: get('shoot-time').value, rushRequested: get('rush-requested').checked };
     if (action === 'request_appointment') snapshot.scheduling = scheduling.data();
     return action + ':' + JSON.stringify(snapshot);
   }
@@ -346,4 +340,5 @@
   syncAddress();
   refreshActionButtons();
 })();
+
 

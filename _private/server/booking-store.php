@@ -4,6 +4,7 @@ declare(strict_types=1);
 /** Private, test-only booking ledger. Never serve this file or its SQLite database. */
 require_once dirname(__DIR__) . '/real-estate-form-config.php';
 require_once dirname(__DIR__) . '/real-estate-pricing.php';
+require_once __DIR__ . '/booking-schedule.php';
 
 const BOOKING_CONSENT_VERSION = 'test-card-reuse-v1';
 const BOOKING_CONSENT_TEXT = 'I authorize SiteSee to save the card used for this test deposit for the remaining approved job balance and any on-site services I separately approve. If I selected the residential platform, I authorize its separate monthly billing only after publication until I notify SiteSee the property is sold. I understand later charges require their own approved scope and that a saved card may require further authentication.';
@@ -65,6 +66,7 @@ function booking_db(): PDO
     $db->exec('CREATE TABLE IF NOT EXISTS stripe_events (event_id TEXT PRIMARY KEY, event_type TEXT NOT NULL, reference TEXT NOT NULL, processed_at TEXT NOT NULL)');
     $db->exec('CREATE TABLE IF NOT EXISTS staff_login_attempts (ip_hash TEXT NOT NULL, at INTEGER NOT NULL)');
     $db->exec('CREATE INDEX IF NOT EXISTS staff_login_ip_time ON staff_login_attempts(ip_hash, at)');
+    booking_schedule_schema($db);
     @chmod($path, 0600);
     return $db;
 }
@@ -86,6 +88,8 @@ function booking_capture(PDO $db, array $submission, string $reference, bool $de
         throw new InvalidArgumentException('A two-hour window and test mode are required.');
     }
     $token = $depositFirst ? bin2hex(random_bytes(32)) : null;
+    $db->exec('BEGIN IMMEDIATE');
+    try {
     $stmt = $db->prepare('INSERT INTO bookings (reference,created_at,status,market,email,request_json,requested_utc,quote_cents,platform_monthly_cents,
         approved_cents,deposit_cents,agent_token_hash,agent_token_expires)
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)');
@@ -96,7 +100,14 @@ function booking_capture(PDO $db, array $submission, string $reference, bool $de
         $depositFirst ? $cents : null, $depositFirst ? intdiv($cents + 1, 2) : null,
         $token === null ? null : hash('sha256', $token), $token === null ? null : time() + 7 * 86400,
     ]);
+    $db->prepare('INSERT INTO booking_scheduling (reference,rush_status) VALUES (?,?)')
+        ->execute([$reference, ($submission['appointment']['rushRequested'] ?? false) ? 'pending' : 'not_requested']);
+    $db->exec('COMMIT');
     return $token;
+    } catch (Throwable $error) {
+        $db->exec('ROLLBACK');
+        throw $error;
+    }
 }
 
 function booking_get(PDO $db, string $reference): array|false
@@ -104,7 +115,10 @@ function booking_get(PDO $db, string $reference): array|false
     if (!preg_match('/^[A-F0-9]{10,32}$/D', $reference)) {
         return false;
     }
-    $stmt = $db->prepare('SELECT * FROM bookings WHERE reference=?');
+    $stmt = $db->prepare("SELECT b.*, COALESCE(s.rush_status, 'not_requested') AS rush_status,
+        COALESCE(s.rush_fee_cents, 0) AS rush_fee_cents, COALESCE(s.reschedule_required, 0) AS reschedule_required,
+        s.appointment_json AS schedule_appointment_json, s.decision_reason AS rush_decision_reason
+        FROM bookings b LEFT JOIN booking_scheduling s ON b.reference=s.reference WHERE b.reference=?");
     $stmt->execute([$reference]);
     return $stmt->fetch();
 }
@@ -151,18 +165,6 @@ function booking_approve(PDO $db, string $reference, int $finalCents, int $durat
         $db->exec('ROLLBACK');
         throw $error;
     }
-}
-
-function booking_review_paid(PDO $db, string $reference, int $duration, string $photographer, bool $available): void
-{
-    $photographer = trim($photographer);
-    if (!$available || $photographer === '' || strlen($photographer) > 120 || $duration < 15 || $duration > 1440) {
-        throw new InvalidArgumentException('Review the photographer, duration and availability.');
-    }
-    $stmt = $db->prepare('UPDATE bookings SET approved_at=?, photographer=?, duration_minutes=?, availability_checked_at=?
-        WHERE reference=? AND status=\'deposit_paid_test\' AND approved_at IS NULL');
-    $stmt->execute([gmdate('c'), $photographer, $duration, gmdate('c'), $reference]);
-    if ($stmt->rowCount() !== 1) throw new InvalidArgumentException('Only an unreviewed, paid test request can be reviewed.');
 }
 
 function booking_agent_record(PDO $db, string $reference, string $token): array|false
@@ -399,4 +401,5 @@ function booking_process_stripe_event(PDO $db, array $event): string
         throw $error;
     }
 }
+
 

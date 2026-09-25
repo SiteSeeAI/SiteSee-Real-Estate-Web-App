@@ -215,6 +215,20 @@ function real_estate_arrival_window(array $appointment): array
     return $appointment + ['windowMinutes'=>120, 'windowEnd'=>$end->format('H:i')];
 }
 
+/** Use elapsed hours from the server clock, independently of PHP/browser timezone. */
+function real_estate_validate_lead_time(array $appointment, array $source, ?DateTimeImmutable $now = null): array
+{
+    $rush = $source['rushRequested'] ?? false;
+    if (!is_bool($rush)) real_estate_invalid('Choose a valid rush-service option.');
+    $hours = $rush ? 12 : 72;
+    $now = $now ?? new DateTimeImmutable('now');
+    $start = new DateTimeImmutable($appointment['date'] . ' ' . $appointment['time'], new DateTimeZone('America/Chicago'));
+    if ($start->getTimestamp() < $now->getTimestamp() + $hours * 3600) {
+        real_estate_invalid(($rush ? 'Rush requests require at least 12 hours' : 'Standard requests require at least 72 hours') . ' of notice from the current server time. Choose a later arrival window.');
+    }
+    return $appointment + ['rushRequested'=>$rush, 'leadHours'=>$hours];
+}
+
 function real_estate_validate_schedule(array $source): array
 {
     $meet = $source['meetPhotographer'] ?? null;
@@ -663,6 +677,11 @@ function real_estate_quote_body(array $quote, array $details, array $appointment
         $lines[] = 'Time to be confirmed for: ' . implode(', ', $names);
     }
     if (isset($appointment['windowEnd'])) $lines[] = 'The 50% deposit precedes schedule review. If no mutually acceptable date is available, the deposit is refundable. No date is confirmed by payment.';
+    if (isset($appointment['rushRequested'])) {
+        $lines[] = $appointment['rushRequested']
+            ? 'Rush service requested: at least 12 hours of notice. $59 is added to the remaining balance only if SiteSee approves the rush request; it is not included in the deposit. If declined, no rush fee is charged and a new window is required.'
+            : 'Standard scheduling: at least 72 hours of notice.';
+    }
     $lines[] = 'Preferred date: ' . $appointment['date'];
     $lines[] = isset($appointment['windowEnd'])
         ? 'Preferred arrival window: ' . $appointment['time'] . '–' . $appointment['windowEnd'] . ' Central Time (arrival window, not shoot duration)'
@@ -721,6 +740,8 @@ function real_estate_prepare_submission(array $payload, ?DateTimeImmutable $now 
     }
     $details = real_estate_validate_details($detailsSource);
     $appointment = real_estate_validate_appointment($appointmentSource, $now);
+    $appointment = real_estate_validate_lead_time($appointment, $appointmentSource, $now);
+    if ($appointment['rushRequested'] && $payload['version'] !== 2) real_estate_invalid('Refresh the pricing page to request rush service.');
     if ($payload['version'] === 2) {
         $appointment = real_estate_arrival_window($appointment);
     }
@@ -741,4 +762,5 @@ function real_estate_prepare_submission(array $payload, ?DateTimeImmutable $now 
             : null,
     ];
 }
+
 
