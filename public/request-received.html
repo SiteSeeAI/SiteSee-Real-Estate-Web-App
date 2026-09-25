@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Request Status | SiteSee Real Estate</title>
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" href="assets/images/favicon.png" type="image/png">
+<link rel="stylesheet" href="assets/css/site.css">
+<script src="assets/js/site.js" defer></script>
+<script src="assets/js/request-received.js" defer></script>
+<style>
+.request-receipt{padding-block:clamp(36px,6vw,88px);background:var(--paper);min-height:65vh}
+.request-receipt .wrap{max-width:1060px}
+.receipt-card{background:#fff;border-top:8px solid var(--yellow);padding:clamp(24px,5vw,64px)}
+.receipt-mark{display:grid;place-items:center;width:64px;height:64px;background:var(--yellow);margin-bottom:24px}
+.receipt-mark svg{width:36px;height:36px}
+.receipt-card h1{font-size:clamp(2.25rem,6vw,4rem);max-width:760px}
+.receipt-card .receipt-intro{font-size:clamp(1.125rem,2.5vw,1.375rem);margin-top:24px;max-width:720px}
+.receipt-response{margin-top:28px;padding:24px;background:var(--ink);color:#fff;font-family:Poppins,Arial,sans-serif;font-size:clamp(1.4rem,3vw,2rem);line-height:1.4}
+.receipt-reference{margin-top:28px;padding-block:20px;border-block:1px solid var(--line)}
+.receipt-reference dt{font-size:1rem}
+.receipt-reference dd{margin:6px 0 0;font-family:Poppins,Arial,sans-serif;font-size:clamp(1.5rem,5vw,2rem);font-weight:600;letter-spacing:.06em;overflow-wrap:anywhere}
+.receipt-card .receipt-note{font-size:1.0625rem;margin-top:20px}
+.receipt-card .actions{margin-top:30px}
+.receipt-card .receipt-contact{font-size:1rem;margin-top:26px}
+.receipt-contact a{text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere}
+@media(max-width:520px){.receipt-card .actions{align-items:stretch;flex-direction:column}.receipt-card .button{width:100%}.receipt-response{padding:20px}}
+</style>
+</head>
+<body data-page="request-received.html">
+<a class="skip-link" href="#main-content">Skip To Content</a>
+<header class="site-header"><div class="wrap header-inner">
+    <a class="brand" href="index.html" aria-label="SiteSee Real Estate home"><img src="assets/images/sitesee-logo.png" width="180" height="60" alt="SiteSee"></a><a class="header-phone" href="tel:+18002222053">(800) 222-2053</a>
+    <button class="menu-toggle" type="button" aria-controls="primary-navigation" aria-expanded="false" hidden>Menu <span aria-hidden="true">☰</span></button>
+    <nav id="primary-navigation" aria-label="Primary navigation"><a href="index.html">Home</a><a href="platform.html">Platform</a><a href="services-provided.html">Services Provided</a><a href="our-work.html">Our Work</a><a href="contact.html">Contact</a><a class="nav-cta" href="pricing.php">Pricing &amp; Quote<span aria-hidden="true">↗</span></a></nav>
+    </div></header>
+<main id="main-content" class="request-receipt">
+<div class="wrap"><section class="receipt-card" aria-labelledby="receipt-title">
+<div class="receipt-mark" id="receipt-mark" hidden aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m7 16 6 6L25 10"/></svg></div>
+<p class="eyebrow dark">SiteSee Real Estate</p>
+<h1 id="receipt-title">Your Request Status.</h1>
+<p class="receipt-intro" id="receipt-intro">Please contact us if you need help checking a request you have already submitted.</p>
+<div id="receipt-details" hidden>
+<p class="receipt-response">We’ll be in contact in less than two hours.</p>
+<dl class="receipt-reference"><dt>Your Request Reference</dt><dd id="receipt-reference"></dd></dl>
+<p class="receipt-note">We’ll review your property details and preferred date, then contact you to confirm availability. Your appointment is awaiting confirmation.</p>
+<p class="receipt-note" id="receipt-email" hidden></p>
+<p class="receipt-note">You can close this page. Keep your reference handy if you need to contact us.</p>
+</div>
+<noscript><p class="receipt-note">Enable JavaScript to display your request reference.</p></noscript>
+<div class="actions"><a class="button primary" href="index.html">Return To Home <span aria-hidden="true">↗</span></a><a class="button outline-dark" href="our-work.html">Explore Our Work <span aria-hidden="true">↗</span></a></div>
+<p class="receipt-contact">Need to speak with us? Call <a href="tel:+18002222053">(800) 222-2053</a> or email <a href="mailto:sales@sitesee.ai">sales@sitesee.ai</a>.</p>
+</section></div>
+</main>
+<footer class="site-footer"><div class="wrap footer-grid">
+    <div class="footer-brand"><a href="index.html"><img src="assets/images/sitesee-logo.png" width="180" height="60" alt="SiteSee"></a><a class="footer-phone" href="tel:+18002222053">(800) 222-2053</a><p>Property media and a connected platform for the way people choose their next space.</p><strong>Show More. Decide Faster.</strong></div>
+    <div class="footer-column"><h2>Real Estate</h2><a href="index.html">Home</a><a href="platform.html">Platform</a><a href="platform.html#ai-visualization">AI Decluttering &amp; Redesign</a><a href="platform.html#online-meetings">In-Platform Meetings</a><a href="platform.html#property-notes">Property Notes &amp; Collaboration</a><a href="platform.html#agents-teams-brokerages">For Agents, Teams &amp; Brokerages</a><a href="services-provided.html">Services Provided</a><a href="our-work.html">Our Work</a><a href="contact.html">Contact</a><a href="pricing.php">Pricing &amp; Quote</a></div>
+    <div class="footer-column"><h2>Services</h2><a href="residential-services.html">Residential Media Process</a><a href="commercial-services.html">Commercial Media Process</a><a href="services-provided.html#photography">Property Photography</a><a href="services-provided.html#virtual-experiences">Virtual Experiences</a><a href="services-provided.html#drone-aerial">Drone & Aerial Photography</a><a href="services-provided.html#property-video">Property Video</a><a href="services-provided.html#floor-plans">Floor Plans</a><a href="services-provided.html#property-websites">Property Websites</a><a href="services-provided.html#virtual-twilight">Virtual Twilight Photography</a><a href="services-provided.html#media-packages">Media Packages & Custom Coverage</a></div>
+    <div class="footer-column"><h2>SiteSee Corporate</h2><a href="https://sitesee.ai/" target="_blank" rel="noopener noreferrer">Corporate Website<span class="sr-only"> (opens in a new tab)</span></a><a href="https://sitesee.ai/company.html" target="_blank" rel="noopener noreferrer">About SiteSee<span class="sr-only"> (opens in a new tab)</span></a><a href="https://sitesee.ai/platform.html" target="_blank" rel="noopener noreferrer">Operating System<span class="sr-only"> (opens in a new tab)</span></a><a href="https://sitesee.ai/resources.html" target="_blank" rel="noopener noreferrer">Resources<span class="sr-only"> (opens in a new tab)</span></a></div>
+    </div><div class="wrap footer-legal"><p>© <a href="https://sitesee.ai/copyright.html" target="_blank" rel="noopener noreferrer">2026<span class="sr-only"> (opens in a new tab)</span></a> SiteSee. All rights reserved.</p><div><a href="https://sitesee.ai/privacy.html" target="_blank" rel="noopener noreferrer">Privacy<span class="sr-only"> (opens in a new tab)</span></a><a href="https://sitesee.ai/terms.html" target="_blank" rel="noopener noreferrer">Terms<span class="sr-only"> (opens in a new tab)</span></a><a href="https://sitesee.ai/marks-trademarks.html" target="_blank" rel="noopener noreferrer">Marks & Trademarks<span class="sr-only"> (opens in a new tab)</span></a><a href="https://sitesee.ai/accessibility.html" target="_blank" rel="noopener noreferrer">Accessibility<span class="sr-only"> (opens in a new tab)</span></a><a href="https://sitesee.ai/cookies.html" target="_blank" rel="noopener noreferrer">Cookies<span class="sr-only"> (opens in a new tab)</span></a><a href="https://sitesee.ai/sitemap.html" target="_blank" rel="noopener noreferrer">Sitemap<span class="sr-only"> (opens in a new tab)</span></a></div></div></footer>
+</body>
+</html>
