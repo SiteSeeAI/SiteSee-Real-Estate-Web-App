@@ -178,10 +178,11 @@ foreach (['residential', 'commercial'] as $market) {
         'videos'=>'1', 'aerialImages'=>'1', 'delivery'=>'files', 'platformMonths'=>'6',
         'plans'=>'1', 'licenseType'=>'term', 'licenseMonths'=>'6', 'hostingMonths'=>'6', 'hostingPrepaid'=>false,
     ];
+    $payload['appointment']['time'] = '09:00';
     $payload['appointment']['windowEnd'] = '23:59'; // tampered end is ignored
     $new = real_estate_prepare_submission($payload, $now);
-    $assert($new['appointment']['windowEnd'] === '12:00', 'Server derives a two-hour window.');
-    $assert(str_contains($new['plain'], '10:00–12:00'), 'Email includes the window.');
+    $assert($new['appointment']['windowEnd'] === '11:00', 'Server derives a two-hour window.');
+    $assert(str_contains($new['plain'], '09:00–11:00'), 'Email includes the window.');
     $ref = $market === 'residential' ? 'ABCDEF1240' : 'ABCDEF1241';
     $token = booking_capture($db, $new, $ref, true);
     $row = booking_get($db, $ref);
@@ -211,6 +212,12 @@ $reject(static fn() => real_estate_arrival_window(['date'=>'2027-11-07','time'=>
 $reject(static fn() => real_estate_arrival_window(['date'=>'2027-03-15','time'=>'23:00']), 'Window crossing midnight rejected.');
 $assert(real_estate_arrival_window(['date'=>'2027-03-14','time'=>'09:00'])['windowEnd'] === '11:00', 'Daytime DST date preserves two-hour local window.');
 
+foreach (['07:00'=>'09:00', '09:00'=>'11:00', '11:00'=>'13:00', '13:00'=>'15:00', '15:00'=>'17:00', '17:00'=>'19:00'] as $start => $end) {
+    $assert(real_estate_arrival_window(['date'=>'2027-04-01', 'time'=>$start])['windowEnd'] === $end, 'Every approved block derives its correct end.');
+}
+foreach (['06:00', '08:00', '09:15', '10:00', '18:00', '19:00'] as $start) {
+    $reject(static fn() => real_estate_arrival_window(['date'=>'2027-04-01', 'time'=>$start]), 'Unlisted exact times are rejected.');
+}
 unset($db);
 foreach (glob($temp . '/*') ?: [] as $file) unlink($file);
 rmdir($temp);

@@ -63,7 +63,7 @@
         const end = hours * 60 + minutes + 120;
         summary.textContent = time.value && end < 1440
           ? 'Arrival between ' + time.value + ' and ' + String(Math.floor(end / 60)).padStart(2, '0') + ':' + String(end % 60).padStart(2, '0') + ' Central Time. Shoot duration is separate.'
-          : 'Select the beginning of a two-hour arrival window.';
+          : 'Select a two-hour arrival window.';
       };
       time.addEventListener('input', showWindow);
       time.addEventListener('change', showWindow);

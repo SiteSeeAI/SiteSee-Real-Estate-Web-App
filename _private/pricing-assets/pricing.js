@@ -143,7 +143,7 @@
       get('estimate-inline-time').textContent = 'Time on site: ' + get('summary-duration').textContent;
       get('summary-time-note').textContent = current.additionalCapture.length ? 'Time for ' + current.additionalCapture.map(k => Q.services[k].label).join(', ') + ' is not included above and will be confirmed with your appointment. Layout and access can affect time on site.' : 'Allow for property layout, access and readiness. Times are approximate and rounded up to five minutes.';
       get('date-label').textContent = current.hasOnSite ? 'Preferred Shoot Date (Required For A Request)' : 'Preferred Completion Date (Required For A Request)';
-      get('time-label').textContent = current.hasOnSite ? 'Arrival Window Begins · Central Time' : 'Contact Window Begins · Central Time';
+      get('time-label').textContent = current.hasOnSite ? 'Preferred Arrival Window · Central Time' : 'Preferred Contact Window · Central Time';
     } catch (error) {
       current = null;
       get('estimate-error').textContent = error.message; get('estimate-error').hidden = false;
@@ -210,7 +210,7 @@
     date.setCustomValidity(''); time.setCustomValidity('');
     if (!date.checkValidity()) { window.SiteSeeValidation.show(date); return null; }
     if (!time.checkValidity()) { window.SiteSeeValidation.show(time); return null; }
-    if (date.value === now.date && time.value <= now.time) { time.setCustomValidity('Choose a future time in Central Time.'); window.SiteSeeValidation.show(time); return null; }
+    if (date.value === now.date && time.value <= now.time) { time.setCustomValidity('Choose a window that has not started in Central Time.'); window.SiteSeeValidation.show(time); return null; }
     if (action === 'request_appointment' && !scheduling.validate()) return null;
     const minutes = Number(time.value.slice(0, 2)) * 60 + Number(time.value.slice(3)) + 120;
     if (minutes >= 1440) { time.setCustomValidity('Choose a two-hour window within one day.'); window.SiteSeeValidation.show(time); return null; }
