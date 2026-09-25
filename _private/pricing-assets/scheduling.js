@@ -71,8 +71,8 @@
       const syncLimits = () => {
         const limit = currentCutoff();
         date.min = limit.date;
-        for (const option of time.options) option.disabled = Boolean(option.value) && Boolean(date.value)
-          && (date.value < limit.date || (date.value === limit.date && option.value + ':00' < limit.time));
+        for (const option of time.options) option.disabled = option.dataset?.calendarBusy === 'true' || (Boolean(option.value) && Boolean(date.value)
+          && (date.value < limit.date || (date.value === limit.date && option.value + ':00' < limit.time)));
         leadHelp.textContent = (rush.checked ? 'Rush: at least 12 hours’ notice, subject to approval.' : 'Standard: at least 72 hours’ notice.')
           + ' Earliest window must start on or after ' + limit.date + ' at ' + limit.time.slice(0, 5) + ' Central Time, using the server clock.';
       };
@@ -83,10 +83,13 @@
         const limit = currentCutoff();
         if (date.value < limit.date || (date.value === limit.date && time.value + ':00' < limit.time))
           time.setCustomValidity('Choose a window at least ' + (rush.checked ? '12' : '72') + ' hours after the current server time.');
+        if ([...time.options].some(option => option.value === time.value && option.dataset?.calendarBusy === 'true'))
+          time.setCustomValidity('This window is currently unavailable. Choose another arrival window.');
         if (!time.checkValidity()) { window.SiteSeeValidation.show(time); return false; }
         return true;
       };
       date.addEventListener('input', syncLimits);
+      form.addEventListener('sitesee:availability', syncLimits);
       date.addEventListener('change', syncLimits);
       rush.addEventListener('change', () => { date.setCustomValidity(''); time.setCustomValidity(''); syncLimits(); });
       window.addEventListener('pageshow', syncLimits);
@@ -174,5 +177,4 @@
     }
   };
 })();
-
 

@@ -298,6 +298,7 @@
   window.addEventListener('pageshow', () => { syncAddress(); refreshActionButtons(); });
   syncAddress();
   refreshActionButtons();
+  window.SiteSeeAvailability?.attach(form, 'c-', 'commercial', inputState);
 })();
 
 

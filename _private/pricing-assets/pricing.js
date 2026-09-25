@@ -339,6 +339,7 @@
   window.addEventListener('pageshow', () => { syncAddress(); refreshActionButtons(); });
   syncAddress();
   refreshActionButtons();
+  window.SiteSeeAvailability?.attach(form, '', 'residential', inputState);
 })();
 
 
