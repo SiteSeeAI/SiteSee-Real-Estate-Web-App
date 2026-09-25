@@ -93,11 +93,13 @@
     lines.push('Estimated Time On Site: ' + (!quote.knownMinutes && quote.additionalCapture.length ? 'Confirmed With Your Appointment' : duration(quote.knownMinutes)));
     for (const [key,label] of [['photographyMinutes','Photography'],['matterportMinutes','Matterport'],['videoMinutes','Video'],['droneMinutes','Drone / Aerial']]) if (quote[key]) lines.push(label + ': ' + duration(quote[key]));
     if (quote.additionalCapture.length) lines.push('Time to be confirmed for: ' + quote.additionalCapture.map(key => services[key].label).join(', '));
+    if (appointment) lines.push(appointment.rushRequested ? 'Rush requested: $59 only if approved, added to the remaining balance; not collected with the deposit. Minimum 12 hours of notice.' : 'Standard scheduling: minimum 72 hours of notice.');
     if (appointment) lines.push('Preferred date: ' + appointment.date, (appointment.windowEnd ? 'Preferred arrival window: ' + appointment.time + '–' + appointment.windowEnd : 'Preferred time: ' + appointment.time) + ' Central Time', 'Appointment is requested, not confirmed.');
     lines.push('Exclude from mailing lists: ' + details.optOut, '', 'Final property scope and appointment availability are confirmed by SiteSee.');
     return lines.join('\n');
   }
   return { subject, categories, packages, services, money, calculate, duration, videoDuration, emailBody };
 });
+
 
 

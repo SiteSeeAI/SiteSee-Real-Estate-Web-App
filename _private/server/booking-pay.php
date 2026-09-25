@@ -38,7 +38,44 @@ try {
     pay_page('<p>Test payment is temporarily unavailable.</p>', 503);
 }
 if (!$row) pay_page('<p>This test payment link is invalid or expired. Contact SiteSee for assistance.</p>', 404);
-if ($row['status'] === 'deposit_paid_test') pay_page('<p class="notice"><strong>Test Deposit Recorded</strong></p><p>Reference: <strong>' . pay_escape($reference) . '</strong></p><p>We’ll be in contact in less than two hours to review your preferred date and arrival window. Your appointment is not yet confirmed. No invitation has been sent.</p>');
+if ($row['status'] === 'deposit_paid_test') {
+    $paidError = '';
+    if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+        if (!real_estate_same_origin() || !hash_equals($_SESSION['booking_csrf'], (string)($_POST['csrf'] ?? ''))) {
+            pay_page('<p>Reload this booking page and try again.</p>', 403);
+        }
+        if (($_POST['action'] ?? '') === 'request_new_window') {
+            try {
+                booking_request_new_window($db, $reference, $token, ['date'=>(string)($_POST['date'] ?? ''), 'time'=>(string)($_POST['time'] ?? '')]);
+                $row = booking_agent_record($db, $reference, $token);
+            } catch (Throwable $exception) {
+                $paidError = $exception instanceof InvalidArgumentException ? $exception->getMessage() : 'The replacement window could not be saved. Please try again.';
+            }
+        }
+    }
+    $request = booking_request($row);
+    $body = '<p class="notice"><strong>Test Deposit Recorded</strong></p><p>Reference: <strong>' . pay_escape($reference) . '</strong></p>';
+    if ($paidError) $body .= '<p role="alert">' . pay_escape($paidError) . '</p>';
+    if ($row['reschedule_required']) {
+        $earliest = (new DateTimeImmutable('@' . (time() + 72 * 3600)))->setTimezone(new DateTimeZone('America/Chicago'));
+        $body .= '<h2>Please Choose Another Arrival Window</h2><p>Your rush request was declined. No rush fee is charged. Your existing deposit will apply to the replacement appointment.</p>'
+            . '<p>' . pay_escape((string)$row['rush_decision_reason']) . '</p>'
+            . '<p>Choose a standard window starting on or after ' . pay_escape($earliest->format('Y-m-d g:i:s A')) . ' Central Time (72 hours after the current server time). The server checks this again when you submit.</p>'
+            . '<form method="post"><input type="hidden" name="csrf" value="' . pay_escape($_SESSION['booking_csrf']) . '"><input type="hidden" name="action" value="request_new_window"><input type="hidden" name="reference" value="' . pay_escape($reference) . '"><input type="hidden" name="token" value="' . pay_escape($token) . '">'
+            . '<label>Preferred date <input type="date" name="date" min="' . $earliest->format('Y-m-d') . '" required></label>'
+            . '<label>Arrival window · Central Time <select name="time" required><option value="">Select A Window</option>';
+        foreach (['07:00'=>'7–9 AM', '09:00'=>'9–11 AM', '11:00'=>'11 AM–1 PM', '13:00'=>'1–3 PM', '15:00'=>'3–5 PM', '17:00'=>'5–7 PM'] as $start => $label) {
+            $body .= '<option value="' . $start . '">' . $label . '</option>';
+        }
+        $body .= '</select></label><button>Request New Window — No Additional Deposit</button></form>';
+    } else {
+        $body .= '<p>Requested: ' . pay_escape($request['appointment']['date'] . ' ' . $request['appointment']['time'] . (isset($request['appointment']['windowEnd']) ? '–' . $request['appointment']['windowEnd'] : '')) . ' Central Time.</p>';
+        if ($row['rush_status'] === 'pending') $body .= '<p>Rush service is awaiting approval. No rush fee has been charged. If approved, $59 will be added to your remaining balance.</p>';
+        if ($row['rush_status'] === 'approved') $body .= '<p>Rush service approved: $59 added to the remaining balance. This approval has not charged your card.</p>';
+        $body .= '<p>Remaining job balance: <strong>$' . number_format(booking_remaining_cents($row) / 100, 2) . '</strong>.</p><p>We’ll be in contact in less than two hours. Your appointment is not yet confirmed. No invitation has been sent.</p>';
+    }
+    pay_page($body);
+}
 if (($_GET['result'] ?? '') === 'success') {
     pay_page('<p class="notice">Stripe returned successfully. We are waiting for the verified payment notification.</p><p>Reference: <strong>' . pay_escape($reference) . '</strong></p><p>Your appointment is not yet confirmed.</p><p><a href="booking-pay.php?result=success&amp;reference=' . rawurlencode($reference) . '">Check Payment Status</a></p>');
 }
@@ -64,9 +101,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         }
     }
 }
-$request = json_decode($row['request_json'], true);
+$request = booking_request($row);
 $details = $request['details'];
-$remaining = (int)$row['approved_cents'] - (int)$row['deposit_cents'];
+$remaining = booking_remaining_cents($row);
 $money = static fn(int $cents): string => '$' . number_format($cents / 100, 2);
 $body = '<p class="notice"><strong>Test mode:</strong> no live charge, confirmed appointment or invitation will be created.</p>'
     . '<p>Property: ' . pay_escape($details['street'] . ' ' . $details['unit'] . ', ' . $details['city'] . ', ' . $details['state']) . '<br>'
@@ -75,6 +112,7 @@ $body = '<p class="notice"><strong>Test mode:</strong> no live charge, confirmed
     . '<p>One-time price used for this deposit: <strong>' . $money((int)$row['approved_cents']) . '</strong><br>'
     . 'Test deposit due now: <strong>' . $money((int)$row['deposit_cents']) . '</strong><br>'
     . 'Remaining job balance after deposit: ' . $money($remaining) . '</p>';
+if ($row['rush_status'] === 'pending') $body .= '<p class="notice">Rush requested: $59 only if SiteSee approves it. The fee is excluded from this deposit and will be added to your remaining balance only after approval. If declined, no rush fee is charged and you can request another window using this booking link.</p>';
 if ($row['price_reason']) $body .= '<p>Price adjustment: ' . pay_escape((string)$row['price_reason']) . '</p>';
 if ((int)$row['platform_monthly_cents'] > 0 && $row['market'] === 'residential') {
     $body .= '<p>Selected residential platform: ' . $money((int)$row['platform_monthly_cents']) . '/month, billed separately only after publication. No subscription starts with this deposit.</p>';
@@ -86,4 +124,5 @@ $body .= '<form method="post"><input type="hidden" name="csrf" value="' . pay_es
     . '<label><input type="checkbox" name="card_consent" value="yes" required><span>' . pay_escape(BOOKING_CONSENT_TEXT) . '</span></label>'
     . '<button>Continue To Stripe Test Checkout</button></form>';
 pay_page($body);
+
 

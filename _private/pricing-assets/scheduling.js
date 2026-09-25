@@ -53,11 +53,44 @@
       form.addEventListener('change', clearCorrected);
     }
   };
+  const cutoff = (serverSeconds, rush) => {
+    const parts = new Intl.DateTimeFormat('en-US', {timeZone:'America/Chicago', year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit', hourCycle:'h23'})
+      .formatToParts(new Date((serverSeconds + (rush ? 12 : 72) * 3600) * 1000));
+    const p = Object.fromEntries(parts.map(x => [x.type, x.value]));
+    return {date:p.year + '-' + p.month + '-' + p.day, time:p.hour + ':' + p.minute + ':' + p.second};
+  };
   window.SiteSeeScheduling = {
+    cutoff,
     attach(form, prefix) {
       window.SiteSeeValidation.attach(form);
       const get = id => document.getElementById(prefix + id);
       const time = get('shoot-time'), summary = get('arrival-window');
+      const date = get('shoot-date'), rush = get('rush-requested'), leadHelp = get('lead-time-help');
+      const serverEpoch = Number(form.dataset.serverNow), loadedAt = performance.now();
+      const currentCutoff = () => cutoff(serverEpoch + Math.max(0, performance.now() - loadedAt) / 1000, rush.checked);
+      const syncLimits = () => {
+        const limit = currentCutoff();
+        date.min = limit.date;
+        for (const option of time.options) option.disabled = Boolean(option.value) && Boolean(date.value)
+          && (date.value < limit.date || (date.value === limit.date && option.value + ':00' < limit.time));
+        leadHelp.textContent = (rush.checked ? 'Rush: at least 12 hours’ notice, subject to approval.' : 'Standard: at least 72 hours’ notice.')
+          + ' Earliest window must start on or after ' + limit.date + ' at ' + limit.time.slice(0, 5) + ' Central Time, using the server clock.';
+      };
+      const validateWindow = () => {
+        syncLimits();
+        date.setCustomValidity(''); time.setCustomValidity('');
+        if (!date.checkValidity()) { window.SiteSeeValidation.show(date); return false; }
+        const limit = currentCutoff();
+        if (date.value < limit.date || (date.value === limit.date && time.value + ':00' < limit.time))
+          time.setCustomValidity('Choose a window at least ' + (rush.checked ? '12' : '72') + ' hours after the current server time.');
+        if (!time.checkValidity()) { window.SiteSeeValidation.show(time); return false; }
+        return true;
+      };
+      date.addEventListener('input', syncLimits);
+      date.addEventListener('change', syncLimits);
+      rush.addEventListener('change', () => { date.setCustomValidity(''); time.setCustomValidity(''); syncLimits(); });
+      window.addEventListener('pageshow', syncLimits);
+      syncLimits();
       const showWindow = () => {
         const [hours, minutes] = time.value.split(':').map(Number);
         const end = hours * 60 + minutes + 120;
@@ -102,6 +135,7 @@
       window.addEventListener('pageshow', sync);
       sync();
       return {
+        validateWindow,
         validate() {
           const fields = [...get('scheduling-fields').querySelectorAll('input,textarea')].filter(field => !field.disabled);
           for (const field of fields) {
@@ -140,4 +174,5 @@
     }
   };
 })();
+
 

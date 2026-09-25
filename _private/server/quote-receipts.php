@@ -10,7 +10,7 @@ function real_estate_quote_receipt_key(array $submission): string
 {
     $appointment = $submission['appointment'];
     if ($submission['action'] === 'email_quote') {
-        $appointment = array_intersect_key($appointment, array_flip(['date', 'time', 'windowMinutes', 'windowEnd']));
+        $appointment = array_intersect_key($appointment, array_flip(['date', 'time', 'windowMinutes', 'windowEnd', 'rushRequested', 'leadHours']));
     }
     $identity = [
         'action'=>$submission['action'], 'market'=>$submission['market'],
@@ -46,4 +46,5 @@ function real_estate_quote_save_receipt(string $key, array $response): void
     while (count($receipts) > 128) array_shift($receipts);
     $_SESSION['real_estate_quote_receipts'] = $receipts;
 }
+
 
