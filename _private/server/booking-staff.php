@@ -72,6 +72,13 @@ if ($method === 'POST') {
         } catch (Throwable $exception) {
             $error = $exception instanceof InvalidArgumentException ? $exception->getMessage() : 'The test link could not be replaced.';
         }
+    } elseif ($action === 'review_paid') {
+        try {
+            booking_review_paid($db, (string)($_POST['reference'] ?? ''), (int)($_POST['duration'] ?? 0),
+                (string)($_POST['photographer'] ?? ''), ($_POST['available'] ?? '') === 'yes');
+        } catch (Throwable $exception) {
+            $error = $exception instanceof InvalidArgumentException ? $exception->getMessage() : 'Review could not be saved.';
+        }
     } elseif ($action === 'approve') {
         $price = (string)($_POST['final_price'] ?? '');
         if (!preg_match('/^(?:0|[1-9][0-9]{0,6})(?:\.[0-9]{1,2})?$/D', $price)) {
@@ -102,11 +109,11 @@ if (empty($_SESSION['staff_until']) || (int)$_SESSION['staff_until'] < time()) {
     staff_page($body, $error ? 401 : 200);
 }
 $csrf = staff_escape(staff_csrf());
-$body = '<p class="note">TEST PHASE: approving a request locks its test price and creates a private test payment link. No customer email, live charge, CRM event or calendar invitation is sent.</p>'
+$body = '<p class="note">TEST PHASE: new requests collect a test deposit before staff schedule review. Payment and review do not confirm an appointment. No live charge, CRM event or invitation is created. Older unpaid requests retain their original approval flow.</p>'
     . '<form method="post"><input type="hidden" name="csrf" value="' . $csrf . '"><input type="hidden" name="action" value="logout"><button>Sign Out</button></form>';
 if ($error) $body .= '<p class="error">' . staff_escape($error) . '</p>';
 if ($issuedLink) {
-    $body .= '<h2>Test payment link</h2><p>Copy this link to an authorized test payer. It appears only once; save it before leaving this page.</p><p><input type="text" readonly aria-label="Test payment link" value="' . staff_escape($issuedLink) . '" style="width:100%"></p>';
+    $body .= '<h2>Test payment link</h2><p>Copy this link to an authorized test payer. It appears only once; save it before leaving this page.</p><p><input type="text" readonly aria-label="Test payment link" value="' . staff_escape($issuedLink) . '" style="width:100%"></p><p><a href="' . staff_escape($issuedLink) . '" target="_blank" rel="noopener noreferrer">Open Test Payment Page ↗</a></p>';
 }
 $reference = (string)($_POST['reference'] ?? $_GET['reference'] ?? '');
 $row = booking_get($db, $reference);
@@ -117,11 +124,25 @@ if ($row) {
     $body .= '<p><a href="staff-bookings.php">All requests</a></p><h2>Request ' . staff_escape($reference) . '</h2>'
         . '<p>Status: <strong>' . staff_escape($row['status']) . '</strong><br>Agent: ' . staff_escape($details['first'] . ' ' . $details['last'] . ' · ' . $row['email'])
         . '<br>Property: ' . staff_escape($details['street'] . ' ' . $details['unit'] . ', ' . $details['city'] . ', ' . $details['state'] . ' ' . $details['zip'])
-        . '<br>Requested: ' . staff_escape($request['appointment']['date'] . ' ' . $request['appointment']['time']) . ' America/Chicago (' . staff_escape($row['requested_utc']) . ' UTC)</p>'
+        . '<br>Requested: ' . staff_escape($request['appointment']['date'] . ' ' . $request['appointment']['time'] . (isset($request['appointment']['windowEnd']) ? '–' . $request['appointment']['windowEnd'] . ' arrival window' : '')) . ' America/Chicago (' . staff_escape($row['requested_utc']) . ' window start UTC)</p>'
         . '<p>Server quote: <strong>' . staff_money((int)$row['quote_cents']) . '</strong>'
         . ($row['platform_monthly_cents'] ? '; residential platform separately ' . staff_money((int)$row['platform_monthly_cents']) . '/month if selected and published' : '')
         . '<br>Estimated on site: ' . staff_escape((string)($quote['knownMinutes'] ?? 0)) . '–' . staff_escape((string)($quote['knownMinutesMax'] ?? $quote['knownMinutes'] ?? 0)) . ' minutes, plus any capture that requires confirmation.</p>'
         . '<details><summary>Full validated request (staff only, includes property access)</summary><pre>' . staff_escape($request['salesPlain']) . '</pre></details>';
+    if ($row['status'] === 'awaiting_deposit_test') {
+        $body .= '<p class="note">Waiting for the test deposit. Schedule review becomes available only after the verified payment notification.</p>';
+    }
+    if ($row['status'] === 'deposit_paid_test' && !$row['approved_at']) {
+        $duration = max(15, (int)($quote['knownMinutesMax'] ?? $quote['knownMinutes'] ?? 60));
+        $body .= '<h2>Review Paid Request</h2><p>Assign the photographer and check the requested arrival window. If another date is needed, agree it with the agent first. This test review records your assignment only; appointment confirmation and invitations are not enabled.</p>'
+            . '<form method="post"><input type="hidden" name="csrf" value="' . $csrf . '"><input type="hidden" name="action" value="review_paid"><input type="hidden" name="reference" value="' . staff_escape($reference) . '">'
+            . '<label>Photographer <input name="photographer" maxlength="120" value="David J Cro" required></label>'
+            . '<label>Planned shoot duration (minutes) <input name="duration" type="number" min="15" max="1440" value="' . $duration . '" required></label>'
+            . '<label><input type="checkbox" name="available" value="yes" required> I checked availability for the requested window and reviewed the scope.</label>'
+            . '<button>Save Test Review — No Invitation</button></form>';
+    } elseif ($row['status'] === 'deposit_paid_test' && $row['approved_at']) {
+        $body .= '<p class="note">Staff review recorded. Appointment confirmation and invitations remain disabled.</p>';
+    }
     if ($row['status'] === 'pending_review') {
         $duration = max(15, (int)($quote['knownMinutesMax'] ?? $quote['knownMinutes'] ?? 60));
         $body .= '<h2>Approve for test checkout</h2><p>Check the photographer and availability outside this screen. The requested slot remains unconfirmed after approval.</p>'
@@ -138,7 +159,7 @@ if ($row) {
             . '; test deposit: ' . staff_money((int)$row['deposit_cents'])
             . '; photographer: ' . staff_escape((string)$row['photographer'])
             . '; payment: ' . staff_escape($row['checkout_state']) . '.</p>';
-        if ($row['status'] === 'approved_test' && in_array($row['checkout_state'], ['ready', 'expired'], true)) {
+        if (in_array($row['status'], ['approved_test', 'awaiting_deposit_test'], true) && in_array($row['checkout_state'], ['ready', 'expired'], true)) {
             $body .= '<form method="post"><input type="hidden" name="csrf" value="' . $csrf
                 . '"><input type="hidden" name="action" value="rotate"><input type="hidden" name="reference" value="'
                 . staff_escape($reference) . '"><button>Replace Lost Test Link</button></form>';
@@ -154,3 +175,4 @@ if ($row) {
     $body .= '</table>';
 }
 staff_page($body);
+

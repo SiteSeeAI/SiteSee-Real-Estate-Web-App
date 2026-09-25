@@ -167,7 +167,52 @@ $assert(count($attemptKeys) === 2 && $attemptKeys[0] === $attemptKeys[1], 'Retry
 $reject(static fn() => real_estate_validate_appointment(['date'=>'2027-03-14','time'=>'02:30'], $now), 'Spring DST gap rejected.');
 $reject(static fn() => real_estate_validate_appointment(['date'=>'2027-11-07','time'=>'01:30'], $now), 'Ambiguous fall DST hour rejected.');
 
+// Version 2: deposit is available before any staff approval, for both markets.
+foreach (['residential', 'commercial'] as $market) {
+    $payload = [
+        'version'=>2, 'action'=>'request_appointment', 'market'=>$market,
+        'details'=>$details, 'state'=>$state, 'appointment'=>$appointment,
+    ];
+    if ($market === 'commercial') $payload['state'] = [
+        'category'=>'mid', 'photoCount'=>'45', 'selected'=>['photo'], 'videoSeconds'=>60,
+        'videos'=>'1', 'aerialImages'=>'1', 'delivery'=>'files', 'platformMonths'=>'6',
+        'plans'=>'1', 'licenseType'=>'term', 'licenseMonths'=>'6', 'hostingMonths'=>'6', 'hostingPrepaid'=>false,
+    ];
+    $payload['appointment']['windowEnd'] = '23:59'; // tampered end is ignored
+    $new = real_estate_prepare_submission($payload, $now);
+    $assert($new['appointment']['windowEnd'] === '12:00', 'Server derives a two-hour window.');
+    $assert(str_contains($new['plain'], '10:00–12:00'), 'Email includes the window.');
+    $ref = $market === 'residential' ? 'ABCDEF1240' : 'ABCDEF1241';
+    $token = booking_capture($db, $new, $ref, true);
+    $row = booking_get($db, $ref);
+    $deposit = intdiv($new['quote']['totalCents'] + 1, 2);
+    $assert($row['status'] === 'awaiting_deposit_test' && $row['approved_at'] === null, 'New booking awaits deposit before approval.');
+    $assert((int)$row['deposit_cents'] === $deposit, 'Deposit uses server one-time total.');
+    $reject(static fn() => booking_review_paid($db, $ref, 90, 'David', true), 'Cannot review unpaid request.');
+    $reject(static fn() => booking_approve($db, $ref, 25000, 90, 'David', true), 'Legacy approval cannot bypass deposit-first flow.');
+    $newTransport = static fn() => ['id'=>'cs_test_' . $market, 'url'=>'https://checkout.stripe.com/c/pay/test', 'livemode'=>false];
+    booking_start_checkout($db, $ref, $token, '127.0.0.1', $newTransport);
+    $paid = ['id'=>'evt_' . $market, 'type'=>'checkout.session.completed', 'data'=>['object'=>[
+        'id'=>'cs_test_' . $market, 'livemode'=>false, 'mode'=>'payment', 'client_reference_id'=>$ref,
+        'metadata'=>['booking_reference'=>$ref], 'payment_status'=>'paid', 'currency'=>'usd',
+        'amount_total'=>$deposit, 'payment_intent'=>'pi_' . $market, 'customer'=>'cus_' . $market,
+    ]]];
+    $assert(booking_process_stripe_event($db, $paid) === 'deposit_paid_test', 'Payment unlocks review.');
+    $reject(static fn() => booking_review_paid($db, $ref, 90, 'David', false), 'Availability check still required after payment.');
+    booking_review_paid($db, $ref, 90, 'David J Cro', true);
+    $assert(booking_get($db, $ref)['photographer'] === 'David J Cro', 'Paid review saves assigned photographer.');
+    $assert(booking_get($db, $ref)['status'] === 'deposit_paid_test', 'Review does not claim appointment confirmation.');
+    $reject(static fn() => booking_review_paid($db, $ref, 90, 'Someone else', true), 'Duplicate review cannot overwrite assignment.');
+    $assert(booking_process_stripe_event($db, $paid) === 'duplicate', 'Duplicate webhook after review stays idempotent.');
+    $reject(static fn() => booking_start_checkout($db, $ref, $token, '127.0.0.1', $newTransport), 'Reviewed paid request cannot be charged again.');
+}
+$reject(static fn() => real_estate_arrival_window(['date'=>'2027-03-14','time'=>'00:30']), 'Window spanning spring clock change rejected.');
+$reject(static fn() => real_estate_arrival_window(['date'=>'2027-11-07','time'=>'00:30']), 'Window spanning fall clock change rejected.');
+$reject(static fn() => real_estate_arrival_window(['date'=>'2027-03-15','time'=>'23:00']), 'Window crossing midnight rejected.');
+$assert(real_estate_arrival_window(['date'=>'2027-03-14','time'=>'09:00'])['windowEnd'] === '11:00', 'Daytime DST date preserves two-hour local window.');
+
 unset($db);
 foreach (glob($temp . '/*') ?: [] as $file) unlink($file);
 rmdir($temp);
 echo "Booking flow: $checks assertions passed.\n";
+

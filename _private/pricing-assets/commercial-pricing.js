@@ -128,7 +128,7 @@
       get('estimate-inline-time').textContent='Time on site: '+get('summary-duration').textContent;
       get('summary-time-note').textContent=current.additionalCapture.length?'Time for '+current.additionalCapture.map(key=>Q.services[key].label).join(', ')+' is not included above and will be confirmed with your appointment. Layout and access can affect time on site.':'Allow for property layout, access and readiness. Times are approximate and rounded up to five minutes.';
       get('summary-time-note').textContent+=' Photography time reflects the selected category’s size range.';
-      get('date-label').textContent=current.hasOnSite?'Preferred Shoot Date (Required For A Request)':'Preferred Completion Date (Required For A Request)';get('time-label').textContent=current.hasOnSite?'Preferred Start Time · Central Time':'Preferred Contact Time · Central Time';
+      get('date-label').textContent=current.hasOnSite?'Preferred Shoot Date (Required For A Request)':'Preferred Completion Date (Required For A Request)';get('time-label').textContent=current.hasOnSite?'Arrival Window Begins · Central Time':'Contact Window Begins · Central Time';
     }catch(error){current=null;get('photo-addition').textContent='';get('hosting-calculation').textContent='';get('photography-price').textContent='—';get('license-calculation').textContent='';get('estimate-error').hidden=false;get('estimate-error').textContent=error.message;get('summary-total').textContent='Complete Your Selection';get('estimate-inline-total').textContent='—';get('summary-subtotal').hidden=true;get('summary-lines').replaceChildren();get('summary-duration').textContent='—';get('summary-breakdown').textContent='';get('summary-time-note').textContent='';get('estimate-inline-time').textContent='';get('custom-quote-note').hidden=true;get('review-estimate').disabled=true;}
   }
   get('open-estimate').addEventListener('click', () => {
@@ -171,7 +171,10 @@
     if (!time.checkValidity()) { window.SiteSeeValidation.show(time); return null; }
     if (date.value === now.date && time.value <= now.time) { time.setCustomValidity('Choose a future time in Central Time.'); window.SiteSeeValidation.show(time); return null; }
     if (action === 'request_appointment' && !scheduling.validate()) return null;
-    const appointment = { date: date.value, time: time.value, ...(action === 'request_appointment' ? scheduling.data() : {}) };
+    const minutes = Number(time.value.slice(0, 2)) * 60 + Number(time.value.slice(3)) + 120;
+    if (minutes >= 1440) { time.setCustomValidity('Choose a two-hour window within one day.'); window.SiteSeeValidation.show(time); return null; }
+    const windowEnd = String(Math.floor(minutes / 60)).padStart(2, '0') + ':' + String(minutes % 60).padStart(2, '0');
+    const appointment = { date: date.value, time: time.value, windowMinutes: 120, windowEnd, ...(action === 'request_appointment' ? scheduling.data() : {}) };
     return { quote: current, details: details(), appointment };
   }
   ['shoot-date','shoot-time'].forEach(id => get(id).addEventListener('input', () => { get(id).setCustomValidity(''); get('request-status').hidden = true; }));
@@ -193,7 +196,7 @@
     const buttons = [
       ['email-self', 'email_quote', 'Email My Quote To Me', 'Sending Email…', 'Email Sent ✓'],
       ['copy-quote', 'copy_quote', 'Copy Quote', 'Copying…', 'Copied ✓'],
-      ['request-shoot', 'request_appointment', 'Request My Preferred Date', 'Sending Request…', 'Request Received ✓']
+      ['request-shoot', 'request_appointment', 'Continue To Test Deposit', 'Saving Request…', 'Continue To Deposit ✓']
     ];
     for (const [id, action, ready, working, complete] of buttons) {
       const button = get(id), done = completedActions.has(actionKey(action));
@@ -210,6 +213,14 @@
     refreshActionButtons();
   }
   function openReceipt(data) {
+    if (data.payment_url) {
+      const payment = new URL(data.payment_url, window.location.href);
+      if (payment.origin !== new URL(window.location.href).origin || payment.pathname !== '/booking-pay.php'
+          || payment.searchParams.get('reference') !== data.reference || !/^[a-f0-9]{64}$/.test(payment.searchParams.get('token') || ''))
+        throw new Error('The payment link could not be verified. Please contact SiteSee with reference ' + data.reference + '.');
+      window.location.replace(payment.href);
+      return;
+    }
     const receipt = new URL('request-received.html', window.location.href);
     receipt.searchParams.set('reference', data.reference);
     if (typeof data.copy_sent === 'boolean') receipt.searchParams.set('copy', data.copy_sent ? 'sent' : 'not-sent');
@@ -235,7 +246,7 @@
         credentials: 'same-origin',
         headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          version: 1,
+          version: 2,
           action,
           market: 'commercial',
           companyFax: form.elements.namedItem('company_fax').value,
@@ -294,3 +305,4 @@
   syncAddress();
   refreshActionButtons();
 })();
+

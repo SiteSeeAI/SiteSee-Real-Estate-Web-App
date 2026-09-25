@@ -57,6 +57,18 @@
     attach(form, prefix) {
       window.SiteSeeValidation.attach(form);
       const get = id => document.getElementById(prefix + id);
+      const time = get('shoot-time'), summary = get('arrival-window');
+      const showWindow = () => {
+        const [hours, minutes] = time.value.split(':').map(Number);
+        const end = hours * 60 + minutes + 120;
+        summary.textContent = time.value && end < 1440
+          ? 'Arrival between ' + time.value + ' and ' + String(Math.floor(end / 60)).padStart(2, '0') + ':' + String(end % 60).padStart(2, '0') + ' Central Time. Shoot duration is separate.'
+          : 'Select the beginning of a two-hour arrival window.';
+      };
+      time.addEventListener('input', showWindow);
+      time.addEventListener('change', showWindow);
+      window.addEventListener('pageshow', showWindow);
+      showWindow();
       const element = name => form.elements.namedItem(name);
       const value = name => element(name).value.trim();
       const toggle = (id, show, required = []) => {
@@ -128,3 +140,4 @@
     }
   };
 })();
+

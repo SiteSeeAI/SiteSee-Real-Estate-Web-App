@@ -72,12 +72,18 @@ if (!real_estate_rate_allowed($ip, $submission['details']['email'])) {
     real_estate_respond(['ok'=>false,'message'=>'Too many quote requests have been received. Please wait before trying again, or email sales@sitesee.ai.'], 429);
 }
 
+$depositFirst = $submission['action'] === 'request_appointment' && isset($submission['appointment']['windowEnd']);
+if ($depositFirst && !booking_test_enabled()) {
+    real_estate_respond(['ok'=>false,'message'=>'Test deposits are currently unavailable. Please contact sales@sitesee.ai.'], 503);
+}
+$paymentUrl = null;
 $reference = strtoupper(bin2hex(random_bytes(5)));
 $bookingDb = null;
 if ($submission['action'] === 'request_appointment' && booking_test_enabled()) {
     try {
         $bookingDb = booking_db();
-        booking_capture($bookingDb, $submission, $reference);
+        $token = booking_capture($bookingDb, $submission, $reference, $depositFirst);
+        if ($depositFirst) $paymentUrl = '/booking-pay.php?reference=' . rawurlencode($reference) . '&token=' . rawurlencode($token);
     } catch (Throwable $error) {
         error_log('SiteSee booking request could not be stored: ' . $error->getMessage());
         real_estate_respond(['ok'=>false,'message'=>'We could not safely save your preferred-date request. Please try again later or email sales@sitesee.ai.'], 503);
@@ -117,7 +123,13 @@ if ($submission['action'] === 'email_quote') {
     ], 200, $receiptKey);
 }
 
-$salesPlain = "NEW PREFERRED-DATE REQUEST\nReference: {$reference}\n\n" . $submission['salesPlain'];
+// Remember the durable booking before mail attempts, so a mail failure does not create a second deposit.
+if ($depositFirst) real_estate_quote_save_receipt($receiptKey, [
+    'ok'=>true, 'action'=>'request_appointment', 'reference'=>$reference,
+    'payment_url'=>$paymentUrl, 'copy_sent'=>false,
+    'message'=>'Your request is saved. Continue to the test deposit; the appointment is not confirmed.',
+]);
+$salesPlain = ($depositFirst ? "TEST DEPOSIT PENDING — NOT READY FOR SCHEDULE REVIEW\n" : '') . "NEW PREFERRED-DATE REQUEST\nReference: {$reference}\n\n" . $submission['salesPlain'];
 $salesSent = real_estate_send_mail(
     SITESEE_REAL_ESTATE_SALES_EMAIL,
     $details['email'],
@@ -125,7 +137,7 @@ $salesSent = real_estate_send_mail(
     $emailShell('New ' . $marketLabel . ' Preferred-Date Request', 'Reply to this message to contact ' . $details['first'] . ' ' . $details['last'] . '.', $submission['salesPlain']),
     $salesPlain
 );
-if (!$salesSent) {
+if (!$salesSent && !$depositFirst) {
     real_estate_respond(['ok'=>false,'reference'=>$reference,'message'=>'Your request was saved as ' . $reference . ', but the sales email was not delivered. Please contact sales@sitesee.ai with that reference.'], 503);
 }
 
@@ -133,7 +145,7 @@ $copySent = real_estate_send_mail(
     $details['email'],
     SITESEE_REAL_ESTATE_SALES_EMAIL,
     $submission['subject'],
-    $emailShell('We Received Your Preferred-Date Request', 'Your request has been delivered to SiteSee. We will confirm availability with you.', $submission['plain']),
+    $emailShell('We Received Your Preferred-Date Request', $depositFirst ? 'Your request is saved. Complete the test deposit in your browser before schedule review. The date and arrival window are not confirmed. If no mutually acceptable date is available, the deposit is refundable.' : 'Your request has been delivered to SiteSee. We will confirm availability with you.', $submission['plain']),
     "Reference: {$reference}\n\n" . $submission['plain']
 );
 
@@ -152,7 +164,9 @@ real_estate_respond([
     'action'=>'request_appointment',
     'reference'=>$reference,
     'copy_sent'=>$copySent,
-    'message'=>$copySent
+    'payment_url'=>$paymentUrl,
+    'message'=>$depositFirst ? 'Your request is saved. Continue to the test deposit; the appointment is not confirmed.' : ($copySent
         ? 'Your preferred-date request was delivered. We also emailed you a copy.'
-        : 'Your preferred-date request was delivered. We could not send the confirmation copy, but SiteSee received your request.',
+        : 'Your preferred-date request was delivered. We could not send the confirmation copy, but SiteSee received your request.'),
 ], 200, $receiptKey);
+

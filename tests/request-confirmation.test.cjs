@@ -218,7 +218,7 @@ for (const file of ['pricing.js', 'commercial-pricing.js']) {
   test(file + ': accepted appointment locks its request and any emailed quote copy', async () => {
     const result = fixture(file, {...receipt, action:'request_appointment', copy_sent:true});
     await result.context.submitToServer('request_appointment');
-    assert.equal(result.get('request-shoot').textContent, 'Request Received ✓');
+    assert.equal(result.get('request-shoot').textContent, 'Continue To Deposit ✓');
     assert.equal(result.get('request-shoot').disabled, true);
     assert.equal(result.get('email-self').textContent, 'Email Sent ✓');
     await result.context.submitToServer('request_appointment');
@@ -226,5 +226,24 @@ for (const file of ['pricing.js', 'commercial-pricing.js']) {
     assert.equal(result.requests.length, 1);
     assert.equal(result.navigation.length, 2);
     assert.equal(result.navigation[0], result.navigation[1]);
+  });
+}
+
+
+for (const file of ['pricing.js', 'commercial-pricing.js']) {
+  test(file + ': deposit-first receipt opens only its same-origin payment page', async () => {
+    const reference = 'ABCDEF1234';
+    const payment_url = '/booking-pay.php?reference=' + reference + '&token=' + 'a'.repeat(64);
+    const result = await submit(file, 'request_appointment', {ok:true, action:'request_appointment', reference, payment_url});
+    assert.equal(result.navigation.length, 1);
+    assert.equal(new URL(result.navigation[0]).pathname, '/booking-pay.php');
+    assert.equal(JSON.parse(result.requests[0].request.body).version, 2);
+    await result.context.submitToServer('request_appointment');
+    assert.equal(result.requests.length, 1, 'same request reuses its payment link');
+    for (const bad of ['https://example.com'+payment_url, '/other.php?reference='+reference+'&token='+'a'.repeat(64), '/booking-pay.php?reference=BAD&token='+'a'.repeat(64)]) {
+      const rejected = await submit(file, 'request_appointment', {ok:true, action:'request_appointment', reference, payment_url:bad});
+      assert.equal(rejected.navigation.length, 0);
+      assert.equal(rejected.messages.at(-1).isError, true);
+    }
   });
 }

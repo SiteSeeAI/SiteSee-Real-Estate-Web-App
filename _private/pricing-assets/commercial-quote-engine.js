@@ -125,10 +125,11 @@
     for (const [key,label] of [['photographyMinutes','Photography'],['matterportMinutes','Matterport'],['videoMinutes','Video'],['droneMinutes','Drone / Aerial']]) if (quote[key]) lines.push(label+': '+(key==='photographyMinutes'?durationRange(quote[key],quote.photographyMinutesMax):duration(quote[key])));
     if(quote.sqft===null)lines.push('Photography time reflects the selected category’s size range.');
     if(quote.additionalCapture.length)lines.push('Time to confirm for: '+quote.additionalCapture.map(key=>services[key].label).join(', '));
-    if(appointment)lines.push('Preferred date: '+appointment.date,'Preferred time: '+appointment.time+' Central Time','Appointment requested, not confirmed.');
+    if(appointment)lines.push('Preferred date: '+appointment.date,(appointment.windowEnd ? 'Preferred arrival window: '+appointment.time+'–'+appointment.windowEnd : 'Preferred time: '+appointment.time)+' Central Time','Appointment requested, not confirmed.');
     lines.push('Exclude from mailing lists: '+details.optOut,'','Final property scope, licensing and appointment availability are confirmed by SiteSee.');
     return lines.join('\n');
   }
   return {subject,categories,services,money,videoDuration,duration,durationRange,photographyCents,videoCents,licenseFeeCents,calculate,emailBody};
 });
+
 
