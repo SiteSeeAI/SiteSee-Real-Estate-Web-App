@@ -206,6 +206,13 @@
       });
       const data = await response.json().catch(() => ({ ok:false, message:'The server returned an unreadable response.' }));
       if (!response.ok || !data.ok) throw new Error(data.message || 'We could not send your quote.');
+      if (action === 'request_appointment' && data.action === action && /^[A-F0-9]{10}$/.test(data.reference || '')) {
+        const receipt = new URL('request-received.html', window.location.href);
+        receipt.searchParams.set('reference', data.reference);
+        if (typeof data.copy_sent === 'boolean') receipt.searchParams.set('copy', data.copy_sent ? 'sent' : 'not-sent');
+        window.location.assign(receipt.href);
+        return;
+      }
       showStatus(data.message + (data.reference ? ' Reference: ' + data.reference + '.' : ''));
     } catch (error) {
       showStatus(error.message || 'We could not send your quote. Please try again or email sales@sitesee.ai.', true);
