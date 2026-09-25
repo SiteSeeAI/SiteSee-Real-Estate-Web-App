@@ -47,3 +47,14 @@
 .quote-policy{background:#f9f9f7;border:1px solid #e3e4df;padding:20px;margin:26px 0 20px}
 .quote-policy h3{font-size:1rem;margin:0 0 9px}
 .quote-policy p{font-size:.82rem;color:#555d65;line-height:1.6;margin:0 0 17px}
+
+/* Clear progress and completion feedback for quote actions. */
+.quote-actions .button{font-size:1rem;min-height:56px;font-weight:600;border-width:2px}
+.quote-panel .quote-actions .secondary{border-color:var(--ink)}
+.quote-panel .quote-actions .secondary:hover:not(:disabled),.quote-panel .quote-actions .secondary:focus-visible{background:var(--yellow);color:var(--ink)}
+.quote-panel .quote-actions .button[data-action-state="working"]{background:var(--yellow);border-color:var(--ink);color:var(--ink);opacity:1;cursor:wait}
+.quote-panel .quote-actions .button[data-action-state="complete"]{background:var(--ink);border-color:var(--yellow);color:#fff;opacity:1;box-shadow:inset 0 0 0 1px var(--ink)}
+.quote-panel .quote-actions .secondary[data-action-state="complete"]:hover:not(:disabled){background:var(--ink);color:var(--yellow)}
+.quote-actions .button:disabled:not([data-action-state="working"]):not([data-action-state="complete"]){opacity:.6}
+.quote-status{font-size:1.0625rem;line-height:1.65;padding:20px;border-left:4px solid #376c53}
+.quote-status-error{border-left-color:#a02020}

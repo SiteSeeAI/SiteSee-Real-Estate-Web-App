@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/real-estate-form-config.php';
 require_once dirname(__DIR__) . '/real-estate-pricing.php';
 require_once __DIR__ . '/booking-store.php';
+require_once __DIR__ . '/quote-receipts.php';
 
 header('X-Robots-Tag: noindex, nofollow, noarchive');
 header('Cache-Control: no-store, private, max-age=0');
@@ -12,8 +13,9 @@ header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: strict-origin-when-cross-origin');
 header('Content-Type: application/json; charset=utf-8');
 
-function real_estate_respond(array $payload, int $status = 200): never
+function real_estate_respond(array $payload, int $status = 200, ?string $receiptKey = null): never
 {
+    if ($receiptKey !== null && $status === 200) real_estate_quote_save_receipt($receiptKey, $payload);
     http_response_code($status);
     echo json_encode($payload, JSON_UNESCAPED_SLASHES);
     exit;
@@ -59,6 +61,11 @@ try {
 } catch (InvalidArgumentException $error) {
     real_estate_respond(['ok'=>false,'message'=>$error->getMessage()], 422);
 }
+
+// The pricing session lock serializes repeated requests from this browser session.
+$receiptKey = real_estate_quote_receipt_key($submission);
+$cachedReceipt = real_estate_quote_cached_receipt($receiptKey);
+if ($cachedReceipt !== null) real_estate_respond($cachedReceipt);
 
 $ip = (string)($_SERVER['REMOTE_ADDR'] ?? 'unknown');
 if (!real_estate_rate_allowed($ip, $submission['details']['email'])) {
@@ -107,7 +114,7 @@ if ($submission['action'] === 'email_quote') {
         'action'=>'email_quote',
         'reference'=>$reference,
         'message'=>'Your quote was sent to ' . $details['email'] . '.',
-    ]);
+    ], 200, $receiptKey);
 }
 
 $salesPlain = "NEW PREFERRED-DATE REQUEST\nReference: {$reference}\n\n" . $submission['salesPlain'];
@@ -130,6 +137,16 @@ $copySent = real_estate_send_mail(
     "Reference: {$reference}\n\n" . $submission['plain']
 );
 
+if ($copySent) {
+    // The request copy already contains this quote. Do not email it again on Back/reload.
+    $emailSubmission = $submission;
+    $emailSubmission['action'] = 'email_quote';
+    real_estate_quote_save_receipt(real_estate_quote_receipt_key($emailSubmission), [
+        'ok'=>true, 'action'=>'email_quote', 'reference'=>$reference,
+        'message'=>'A copy of this quote was already emailed with your preferred-date request.',
+    ]);
+}
+
 real_estate_respond([
     'ok'=>true,
     'action'=>'request_appointment',
@@ -138,4 +155,4 @@ real_estate_respond([
     'message'=>$copySent
         ? 'Your preferred-date request was delivered. We also emailed you a copy.'
         : 'Your preferred-date request was delivered. We could not send the confirmation copy, but SiteSee received your request.',
-]);
+], 200, $receiptKey);

@@ -181,15 +181,54 @@
     status.classList.toggle('quote-status-error', isError);
     status.hidden = false;
   }
-  function setSending(sending) {
-    get('email-self').disabled = sending;
-    get('request-shoot').disabled = sending;
+  // Keep completed actions in memory across Back/Forward cache restoration.
+  const completedActions = new Map();
+  let busyAction = '';
+  function actionKey(action) {
+    const snapshot = { state: inputState(), details: details(), date: get('shoot-date').value, time: get('shoot-time').value };
+    if (action === 'request_appointment') snapshot.scheduling = scheduling.data();
+    return action + ':' + JSON.stringify(snapshot);
+  }
+  function refreshActionButtons() {
+    const buttons = [
+      ['email-self', 'email_quote', 'Email My Quote To Me', 'Sending Email…', 'Email Sent ✓'],
+      ['copy-quote', 'copy_quote', 'Copy Quote', 'Copying…', 'Copied ✓'],
+      ['request-shoot', 'request_appointment', 'Request My Preferred Date', 'Sending Request…', 'Request Received ✓']
+    ];
+    for (const [id, action, ready, working, complete] of buttons) {
+      const button = get(id), done = completedActions.has(actionKey(action));
+      const state = busyAction === action ? 'working' : done ? 'complete' : 'ready';
+      const label = state === 'working' ? working : state === 'complete' ? complete : ready;
+      if (button.textContent !== label) button.textContent = label;
+      button.dataset.actionState = state;
+      button.setAttribute('aria-busy', String(busyAction === action));
+      button.disabled = Boolean(busyAction) || (done && action !== 'copy_quote');
+    }
+  }
+  function setSending(sending, action = '') {
+    busyAction = sending ? action : '';
+    refreshActionButtons();
+  }
+  function openReceipt(data) {
+    const receipt = new URL('request-received.html', window.location.href);
+    receipt.searchParams.set('reference', data.reference);
+    if (typeof data.copy_sent === 'boolean') receipt.searchParams.set('copy', data.copy_sent ? 'sent' : 'not-sent');
+    // Remove the submitted form from this history entry.
+    window.location.replace(receipt.href);
   }
   async function submitToServer(action) {
-    const prepared = prepare(action); if (!prepared) return;
-    setSending(true);
-    showStatus(action === 'email_quote' ? 'Sending your quote…' : 'Sending your preferred-date request…');
+    if (busyAction) return;
     try {
+      const key = actionKey(action), previous = completedActions.get(key);
+      if (previous) {
+        if (action === 'request_appointment') openReceipt(previous);
+        else showStatus('This quote has already been emailed. Reference: ' + previous.reference + '.');
+        return;
+      }
+      const prepared = prepare(action); if (!prepared) return;
+      const sentKey = actionKey(action), emailKey = actionKey('email_quote');
+      setSending(true, action);
+      showStatus(action === 'email_quote' ? 'Sending your quote…' : 'Sending your preferred-date request…');
       const response = await fetch(form.action, {
         method: 'POST',
         credentials: 'same-origin',
@@ -206,12 +245,13 @@
       });
       const data = await response.json().catch(() => ({ ok:false, message:'The server returned an unreadable response.' }));
       if (!response.ok || !data.ok) throw new Error(data.message || 'We could not send your quote.');
-      if (action === 'request_appointment' && data.action === action && /^[A-F0-9]{10}$/.test(data.reference || '')) {
-        const receipt = new URL('request-received.html', window.location.href);
-        receipt.searchParams.set('reference', data.reference);
-        if (typeof data.copy_sent === 'boolean') receipt.searchParams.set('copy', data.copy_sent ? 'sent' : 'not-sent');
-        window.location.assign(receipt.href);
-        return;
+      if (data.action === action && /^[A-F0-9]{10}$/.test(data.reference || '')) {
+        completedActions.set(sentKey, data);
+        if (action === 'request_appointment') {
+          if (data.copy_sent === true) completedActions.set(emailKey, data);
+          openReceipt(data);
+          return;
+        }
       }
       showStatus(data.message + (data.reference ? ' Reference: ' + data.reference + '.' : ''));
     } catch (error) {
@@ -220,19 +260,36 @@
       setSending(false);
     }
   }
-  get('email-self').addEventListener('click', () => submitToServer('email_quote'));
-  get('copy-quote').addEventListener('click', async () => {
-    const prepared = prepare(); if (!prepared) return;
-    const text = Q.emailBody(prepared.quote, prepared.details, prepared.appointment);
-    try { await navigator.clipboard.writeText(text); showStatus('Quote copied. Paste it into your email app when you are ready.'); }
-    catch (_) {
-      const textarea = document.createElement('textarea'); textarea.readOnly = true; textarea.value = text; textarea.setAttribute('aria-label','Quote text to copy'); textarea.rows = 14; textarea.style.width = '100%';
-      get('request-status').replaceChildren(document.createTextNode('Select and copy your quote below.'), textarea); get('request-status').hidden = false; textarea.focus(); textarea.select();
+  async function copyQuote() {
+    if (busyAction) return;
+    try {
+      const prepared = prepare(); if (!prepared) return;
+      const key = actionKey('copy_quote');
+      const text = Q.emailBody(prepared.quote, prepared.details, prepared.appointment);
+      completedActions.delete(key);
+      setSending(true, 'copy_quote');
+      try {
+        await navigator.clipboard.writeText(text);
+        completedActions.set(key, true);
+        showStatus('Quote copied. Paste it into your email app when you are ready.');
+      } catch (_) {
+        const textarea = document.createElement('textarea'); textarea.readOnly = true; textarea.value = text; textarea.setAttribute('aria-label','Quote text to copy'); textarea.rows = 14; textarea.style.width = '100%';
+        get('request-status').replaceChildren(document.createTextNode('Select and copy your quote below.'), textarea); get('request-status').hidden = false; textarea.focus(); textarea.select();
+      }
+    } catch (error) {
+      showStatus(error.message || 'We could not prepare your quote. Please check your details and try again.', true);
+    } finally {
+      setSending(false);
     }
-  });
+  }
+  get('email-self').addEventListener('click', () => submitToServer('email_quote'));
+  get('copy-quote').addEventListener('click', copyQuote);
   form.addEventListener('submit', event => { event.preventDefault(); submitToServer('request_appointment'); });
   get('open-estimate').disabled = false;
   // Back/forward restoration and autofill must be revalidated, never unlock by themselves.
-  window.addEventListener('pageshow', syncAddress);
+  form.addEventListener('input', refreshActionButtons);
+  form.addEventListener('change', refreshActionButtons);
+  window.addEventListener('pageshow', () => { syncAddress(); refreshActionButtons(); });
   syncAddress();
+  refreshActionButtons();
 })();
