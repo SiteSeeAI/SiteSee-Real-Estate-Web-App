@@ -204,6 +204,9 @@ function real_estate_validate_appointment(array $appointment, ?DateTimeImmutable
 /** Derive the end on the server; client-supplied window ends are never trusted. */
 function real_estate_arrival_window(array $appointment): array
 {
+    if (!in_array($appointment['time'], ['07:00', '09:00', '11:00', '13:00', '15:00', '17:00'], true)) {
+        real_estate_invalid('Choose one of the listed two-hour arrival windows. Refresh the pricing page if you still see a time picker.');
+    }
     $start = new DateTimeImmutable($appointment['date'] . ' ' . $appointment['time'], new DateTimeZone('America/Chicago'));
     $end = $start->setTimestamp($start->getTimestamp() + 7200);
     if ($start->format('Y-m-d') !== $end->format('Y-m-d') || $start->getOffset() !== $end->getOffset()) {

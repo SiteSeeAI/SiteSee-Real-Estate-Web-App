@@ -152,6 +152,7 @@ try {
     }
     $depositRequest = $request;
     $depositRequest['version'] = 2;
+    $depositRequest['appointment']['time'] = '09:00';
     $before = $events();
     $firstDeposit = $post($depositRequest, 'depositmailfailure', ['X-Test-Fail-Mail: 1']);
     $secondDeposit = $post($depositRequest, 'depositmailfailure');

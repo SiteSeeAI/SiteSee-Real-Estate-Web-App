@@ -1,6 +1,6 @@
 # Deposit-first test bookings and two-hour arrival windows
 
-Issue #27 now collects the test deposit before staff schedule review for new version-2 requests. Both markets let the agent select the beginning of a two-hour arrival window, show its end immediately, and explain that this is not the shoot duration or a confirmed appointment. No operating-hour restrictions are assumed. Window starts retain 15-minute increments; windows cannot cross midnight or a daylight-saving transition.
+Issue #27 now collects the test deposit before staff schedule review for new version-2 requests. Both markets offer a required dropdown of six two-hour arrival windows in Central Time: 7–9 AM, 9–11 AM, 11 AM–1 PM, 1–3 PM, 3–5 PM, and 5–7 PM. No exact-time picker remains. The server accepts only these starts for version-2 submissions. These are preferred arrival windows, not guaranteed availability or shoot duration. Existing stored bookings are unchanged.
 
 The server derives the end, ignores any supplied end, calculates the one-time price and 50% deposit, and stores an awaiting_deposit_test record with an expiring payment token. The form navigates to the private payment page. Monthly residential platform charges remain separate. Only the signed webhook can record deposit_paid_test. Staff can then record a photographer assignment and duration after checking availability. This review does not create a confirmed appointment or send an invitation. Price changes and alternative-date acceptance are not automated in this phase.
 
