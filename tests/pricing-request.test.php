@@ -40,6 +40,16 @@ $details = [
     'zip'=>'54241',
     'optOut'=>'Yes',
 ];
+
+// Mailing preference is optional; default to updates welcome without overriding an opt-out.
+$withoutPreference = $details;
+unset($withoutPreference['optOut']);
+$same(real_estate_validate_details($withoutPreference)['optOut'], 'No', 'Missing mailing preference defaults to updates welcome.');
+$same(real_estate_validate_details(array_replace($details, ['optOut'=>'']))['optOut'], 'No', 'Blank mailing preference defaults to updates welcome.');
+$same(real_estate_validate_details(array_replace($details, ['optOut'=>'No']))['optOut'], 'No', 'Explicit updates-welcome preference is retained.');
+$same(real_estate_validate_details($details)['optOut'], 'Yes', 'An explicit mailing exclusion remains unchanged.');
+$throws(static fn() => real_estate_validate_details(array_replace($details, ['optOut'=>'unexpected'])), 'Unknown mailing preference is rejected.');
+
 $appointment = ['date'=>'2099-01-15','time'=>'10:00'];
 $now = new DateTimeImmutable('2026-09-21 12:00', new DateTimeZone('America/Chicago'));
 

@@ -58,3 +58,13 @@
 .quote-actions .button:disabled:not([data-action-state="working"]):not([data-action-state="complete"]){opacity:.6}
 .quote-status{font-size:1.0625rem;line-height:1.65;padding:20px;border-left:4px solid #376c53}
 .quote-status-error{border-left-color:#a02020}
+
+/* Required markers follow active required controls, including conditional access fields. */
+.quote-panel label:has(+ :is(input,select,textarea):required:not(:disabled))::after,
+.quote-panel fieldset:has(input[type="radio"]:required:not(:disabled)) > legend::after,
+.quote-panel label:has(> input[type="checkbox"]:required:not(:disabled)) > span::after,
+.quote-market-select h2::after{content:" *";color:#b42318;font-weight:700}
+.quote-panel label:has(> input[type="number"]:required:not(:disabled))::before{content:"* ";color:#b42318;font-weight:700}
+.quote-panel .quote-field-error{background:#fff0f0!important;border-radius:4px;outline:2px solid #b42318;outline-offset:5px;scroll-margin-block:130px}
+.quote-panel .quote-field-error :is(input,select,textarea):not([type="radio"]):not([type="checkbox"]){background:#fff0f0;border-color:#b42318}
+.quote-validation-message{display:block;color:#a02020;font-size:1rem;line-height:1.5;margin-top:10px;font-weight:600}

@@ -1,14 +1,71 @@
 /* Conditional scheduling fields shared by residential and commercial quote forms. */
 (() => {
   'use strict';
+  // Shared first-error navigation for both quote forms.
+  const errorRegion = field => field.type === 'radio'
+    ? field.closest('fieldset') || field.parentElement
+    : field.closest('.field, .quote-check, label, .quote-size') || field.parentElement;
+  const inspect = field => {
+    field.setCustomValidity('');
+    if (field.required && !['radio', 'checkbox'].includes(field.type) && !field.value.trim())
+      field.setCustomValidity('Please complete this field.');
+    if (['phone', 'onsitePhone', 'additionalPhone'].includes(field.name) && field.value.trim() && field.value.replace(/\D/g, '').length < 10)
+      field.setCustomValidity('Enter a phone number with at least 10 digits.');
+    return field.validity.valid;
+  };
+  const clearRegion = region => {
+    region.classList.remove('quote-field-error');
+    region.querySelectorAll('[aria-invalid="true"]').forEach(field => field.removeAttribute('aria-invalid'));
+    region.querySelectorAll('.quote-validation-message').forEach(message => message.remove());
+  };
+  window.SiteSeeValidation = {
+    show(field) {
+      const region = errorRegion(field);
+      field.form.querySelectorAll('.quote-field-error').forEach(clearRegion);
+      region.classList.add('quote-field-error');
+      field.setAttribute('aria-invalid', 'true');
+      const message = document.createElement('span');
+      message.className = 'quote-validation-message';
+      message.setAttribute('role', 'alert');
+      message.textContent = field.validationMessage || 'Please complete this field.';
+      region.append(message);
+      field.focus({ preventScroll: true });
+      region.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
+    },
+    validate(form) {
+      const fields = [...form.querySelectorAll('input,select,textarea')]
+        .filter(field => field.willValidate && !field.closest('[hidden]'));
+      fields.forEach(inspect);
+      const first = fields.find(field => !field.validity.valid);
+      if (first) { this.show(first); return false; }
+      return true;
+    },
+    attach(form) {
+      const clearCorrected = event => {
+        const field = event.target;
+        if (!field.matches('input,select,textarea')) return;
+        const region = field.closest('.quote-field-error');
+        if (!region) return;
+        const fields = [...region.querySelectorAll('input,select,textarea')].filter(item => item.willValidate);
+        if (fields.every(inspect)) clearRegion(region);
+      };
+      form.addEventListener('input', clearCorrected);
+      form.addEventListener('change', clearCorrected);
+    }
+  };
   window.SiteSeeScheduling = {
     attach(form, prefix) {
+      window.SiteSeeValidation.attach(form);
       const get = id => document.getElementById(prefix + id);
       const element = name => form.elements.namedItem(name);
       const value = name => element(name).value.trim();
       const toggle = (id, show, required = []) => {
         const section = get(id);
         section.hidden = !show;
+        if (!show) {
+          if (section.classList.contains('quote-field-error')) clearRegion(section);
+          section.querySelectorAll('.quote-field-error').forEach(clearRegion);
+        }
         section.querySelectorAll('input,textarea').forEach(field => {
           field.disabled = !show;
           field.required = show && required.includes(field.name);
@@ -42,8 +99,7 @@
             if (['onsitePhone','additionalPhone'].includes(field.name) && field.value.trim() && field.value.replace(/\D/g, '').length < 10)
               field.setCustomValidity('Enter a phone number with at least 10 digits.');
             if (!field.checkValidity()) {
-              field.reportValidity();
-              field.focus();
+              window.SiteSeeValidation.show(field);
               return false;
             }
           }
