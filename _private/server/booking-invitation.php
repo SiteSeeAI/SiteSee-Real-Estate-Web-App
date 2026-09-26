@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/booking-confirmation.php';
+require_once __DIR__ . '/booking-crm.php';
 
 function booking_ical_text(string $value): string
 {
@@ -24,7 +25,7 @@ function booking_ical_fold(string $line): string
 /** The customer sees only the agreed arrival window, never the private planned start. */
 function booking_invitation_message(array $row, array $confirmation): array
 {
-    foreach ([$row['email'], SITESEE_FROM_EMAIL] as $email) {
+    foreach ([$row['email'], BOOKING_MAIL_SENDER] as $email) {
         if (!filter_var($email, FILTER_VALIDATE_EMAIL) || preg_match('/[\r\n;:,]/', $email)) {
             throw new InvalidArgumentException('A valid invitation recipient and sender are required.');
         }
@@ -46,12 +47,12 @@ function booking_invitation_message(array $row, array $confirmation): array
         'DTSTAMP:' . gmdate('Ymd\THis\Z', strtotime($confirmation['confirmed_at'])), 'SEQUENCE:0',
         'DTSTART:' . gmdate('Ymd\THis\Z', $start->getTimestamp()), 'DTEND:' . gmdate('Ymd\THis\Z', $end->getTimestamp()),
         'SUMMARY:' . booking_ical_text($summary), 'LOCATION:' . booking_ical_text($property),
-        'DESCRIPTION:' . booking_ical_text($plain), 'ORGANIZER;CN=SiteSee:mailto:' . SITESEE_FROM_EMAIL,
+        'DESCRIPTION:' . booking_ical_text($plain), 'ORGANIZER;CN=SiteSee:mailto:' . BOOKING_MAIL_SENDER,
         'ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE:mailto:' . $row['email'],
         'STATUS:CONFIRMED', 'CLASS:PRIVATE', 'TRANSP:OPAQUE', 'END:VEVENT', 'END:VCALENDAR'];
     $ical = implode("\r\n", array_map('booking_ical_fold', $lines)) . "\r\n";
     $boundary = 'sitesee_invite_' . bin2hex(random_bytes(16));
-    $headers = ['From: SiteSee Real Estate <' . SITESEE_FROM_EMAIL . '>', 'Reply-To: ' . SITESEE_FROM_EMAIL,
+    $headers = ['From: SiteSee Real Estate <' . BOOKING_MAIL_SENDER . '>', 'Reply-To: ' . BOOKING_MAIL_SENDER,
         'MIME-Version: 1.0', 'Content-Type: multipart/alternative; boundary="' . $boundary . '"'];
     $html = '<p>' . nl2br(htmlspecialchars($plain, ENT_QUOTES, 'UTF-8')) . '</p>';
     $body = '';
@@ -63,19 +64,11 @@ function booking_invitation_message(array $row, array $confirmation): array
     }
     $body .= '--' . $boundary . "--\r\n";
     return ['to'=>$row['email'], 'subject'=>$summary . ' | ' . $row['reference'], 'headers'=>$headers,
-        'body'=>$body, 'ical'=>$ical, 'plain'=>$plain];
+        'body'=>$body, 'ical'=>$ical, 'plain'=>$plain, 'html'=>$html, 'from'=>BOOKING_MAIL_SENDER];
 }
 
-/** Reuse the installed SMTP/mail route; pricing-access mail code and settings are untouched. */
-function booking_invitation_mail(array $message): bool
-{
-    return SITESEE_SMTP_HOST !== ''
-        ? real_estate_send_via_smtp($message['to'], $message['subject'], $message['headers'], $message['body'])
-        : @mail($message['to'], $message['subject'], $message['body'], implode("\r\n", $message['headers']));
-}
-
-/** One attempted delivery. An uncertain SMTP result is never retried automatically. */
-function booking_send_invitation(PDO $db, string $reference, ?array $config = null, ?callable $send = null, ?callable $transport = null): void
+/** One attempted submission. Provider and CRM recovery are separate from sending. */
+function booking_send_invitation(PDO $db, string $reference, ?array $config = null, ?callable $send = null, ?callable $transport = null, ?array $mailDependencies = null): void
 {
     $config ??= booking_confirmation_config();
     if (($config['invitations_enabled'] ?? false) !== true) throw new InvalidArgumentException('Test invitation delivery is disabled.');
@@ -87,6 +80,18 @@ function booking_send_invitation(PDO $db, string $reference, ?array $config = nu
     if ($saved['invitation_state'] === 'sent') return;
     if ($saved['invitation_state'] !== 'none') throw new InvalidArgumentException('Invitation delivery was already attempted. Check the mailbox before any manual resend.');
     if ($saved['calendar_uid'] !== $config['calendar_uid']) throw new InvalidArgumentException('Calendar identity changed.');
+    booking_communication_schema($db);
+    $graph = null; $crm = null; $crmConfig = null;
+    if ($send === null) {
+        $mailConfig = $mailDependencies['config'] ?? booking_mail_config(true);
+        if (strcasecmp($before['email'],$mailConfig['test_recipient_email']) !== 0) throw new InvalidArgumentException('Dedicated mail test recipient mismatch.');
+        $crmConfig = $mailDependencies['crm_config'] ?? booking_crm_config(); $crm = $mailDependencies['crm'] ?? booking_crm_client($crmConfig);
+        booking_crm_verify_org($crmConfig,$crm);
+        $link = booking_crm_linked($db,$reference,$before['email'],$crmConfig);
+        booking_crm_verify_contact($link['contact_id'],$before['email'],$crm);
+        $graph = $mailDependencies['graph'] ?? booking_graph_client($mailConfig);
+    }
+
     // A deleted or manually moved event must not produce a stale confirmation invitation.
     $connection = booking_confirmation_connection($config, $transport);
     $uid = booking_confirmation_verify($connection('GET', booking_calendar_event_path($config['calendar_uid'], $saved['event_uid'])),
@@ -108,13 +113,15 @@ function booking_send_invitation(PDO $db, string $reference, ?array $config = nu
         $start = booking_calendar_date($request['appointment']['date'])->setTime((int)substr($request['appointment']['time'], 0, 2), 0);
         if ($start->getTimestamp() <= time()) throw new InvalidArgumentException('This arrival window has started. Do not send a late confirmation invitation.');
         $message = booking_invitation_message($row, $confirmation);
+        if ($send === null) $key = booking_communication_enqueue($db,$reference,'invitation',$message,$confirmation);
         $db->prepare("UPDATE booking_confirmations SET invitation_state='sending', invitation_attempted_at=?, invitation_recipient=? WHERE reference=?")
             ->execute([gmdate('c'), $row['email'], $reference]);
         booking_schedule_event($db, $reference, 'invitation_started', ['recipient'=>$row['email']]);
         $db->exec('COMMIT');
     } catch (Throwable $error) { $db->exec('ROLLBACK'); throw $error; }
     try {
-        $sent = ($send ?? 'booking_invitation_mail')($message);
+        if ($send === null) { booking_communication_submit($db,$key,$graph); $sent = true; }
+        else $sent = $send($message); // Test-only dependency injection; production has no legacy fallback.
         if ($sent !== true) throw new RuntimeException('Mail delivery was not acknowledged.');
         $db->prepare("UPDATE booking_confirmations SET invitation_state='sent', invitation_sent_at=? WHERE reference=? AND invitation_state='sending'")
             ->execute([gmdate('c'), $reference]);
@@ -122,5 +129,13 @@ function booking_send_invitation(PDO $db, string $reference, ?array $config = nu
     } catch (Throwable) {
         $db->prepare("UPDATE booking_confirmations SET invitation_state='uncertain' WHERE reference=? AND invitation_state='sending'")->execute([$reference]);
         throw new BookingCalendarUnavailable('The appointment is confirmed, but invitation delivery is uncertain. Check the mailbox; automatic resend is blocked.');
+    }
+    if ($send === null) {
+        try {
+            booking_communication_reconcile($db,$key,$graph);
+            booking_communication_crm($db,$key,$crmConfig,$crm);
+        } catch (Throwable) {
+            // Sent-copy lag and CRM failures are recovered separately. Never undo mail acceptance.
+        }
     }
 }

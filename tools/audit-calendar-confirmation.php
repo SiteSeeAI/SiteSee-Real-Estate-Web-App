@@ -6,7 +6,7 @@ require_once __DIR__ . '/diagnose-calendar-confirmation.php';
 const CA_REQUIRED_FILES = [
     'server/booking-calendar-client.php'=>'e6f80acb03a71a5fc4daf055015fc45b1af62bbdd2700fb080c880bad6e7e0aa',
     'server/booking-confirmation.php'=>'06e259fc9582208cf5ae384b671aba3510b4aae7e3e45bed14f996256194caf6',
-    'server/booking-invitation.php'=>'31c7ae062641fb3306dbd5fba3a4ca50f9fd0845bf38ae31c635dc8325f0899a',
+    'server/booking-invitation.php'=>'95d15de549108995a4fbbf54a93e9c7cb8d197bf98c2138ced24b8c1c9461fe4',
     'tools/diagnose-calendar-confirmation.php'=>'567c69df1df573342c4381dfe95987edc570b376012f94c90a0902806878d9e8',
 ];
 

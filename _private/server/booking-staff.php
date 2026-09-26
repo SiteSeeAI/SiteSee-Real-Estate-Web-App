@@ -32,6 +32,7 @@ session_name('sitesee_real_estate_staff');
 session_set_cookie_params(['lifetime'=>0,'path'=>'/','secure'=>true,'httponly'=>true,'samesite'=>'Strict']);
 session_start();
 $db = booking_db();
+booking_communication_schema($db);
 $error = '';
 $issuedLink = '';
 $notice = '';
@@ -65,10 +66,20 @@ if ($method === 'POST') {
         exit;
     } elseif (empty($_SESSION['staff_until']) || (int)$_SESSION['staff_until'] < time()) {
         staff_page('<p>Your staff session has expired. Reload and sign in again.</p>', 403);
-    } elseif (in_array($action, ['confirm_calendar', 'reconcile_calendar', 'send_invitation'], true)) {
+    } elseif (in_array($action, ['confirm_calendar', 'reconcile_calendar', 'send_invitation', 'recheck_mail', 'associate_crm'], true)) {
         try {
             $reference = (string)($_POST['reference'] ?? '');
-            if ($action === 'confirm_calendar') {
+            if ($action === 'recheck_mail' || $action === 'associate_crm') {
+                $key = 'invitation:' . $reference;
+                if ($action === 'recheck_mail') {
+                    booking_communication_reconcile($db,$key,booking_graph_client(booking_mail_config()));
+                    $notice = 'Saved Microsoft 365 sent copy verified. No invitation was resent.';
+                } else {
+                    $crmConfig = booking_crm_config();
+                    booking_communication_crm($db,$key,$crmConfig,booking_crm_client($crmConfig));
+                    $notice = 'CRM association checked. Review its separate status below. No invitation was resent.';
+                }
+            } elseif ($action === 'confirm_calendar') {
                 if (($_POST['confirm_window'] ?? '') !== 'yes') throw new InvalidArgumentException('Confirm the customer-agreed window and reviewed duration.');
                 booking_confirm_appointment($db, $reference);
                 $notice = 'Test appointment confirmed on SiteSee Photography. No invitation was sent and no payment was collected.';
@@ -143,7 +154,7 @@ if (empty($_SESSION['staff_until']) || (int)$_SESSION['staff_until'] < time()) {
     staff_page($body, $error ? 401 : 200);
 }
 $csrf = staff_escape(staff_csrf());
-$body = '<p class="note">TEST PHASE: new requests collect a test deposit before staff schedule review. Payment and review do not confirm an appointment. Final calendar confirmation and invitations require separate staff actions and enabled test controls. No live charges or CRM events are created. Older unpaid requests retain their original approval flow.</p>'
+$body = '<p class="note">TEST PHASE: new requests collect a test deposit before staff schedule review. Payment and review do not confirm an appointment. Final calendar confirmation and invitations require separate staff actions and enabled test controls. No live charges are collected. CRM email history is recorded separately when authorized. Older unpaid requests retain their original approval flow.</p>'
     . '<form method="post"><input type="hidden" name="csrf" value="' . $csrf . '"><input type="hidden" name="action" value="logout"><button>Sign Out</button></form>';
 if ($notice) $body .= '<p class="note" role="status">' . staff_escape($notice) . '</p>';
 if ($error) $body .= '<p class="error">' . staff_escape($error) . '</p>';
@@ -213,6 +224,20 @@ if ($row) {
                 $body .= '<h2>Send Test Invitation</h2><p>Recipient: <strong>' . staff_escape($row['email']) . '</strong>. The invitation includes the property address and arrival window. Property access codes remain private.</p>'
                     . '<form method="post"><input type="hidden" name="csrf" value="' . $csrf . '"><input type="hidden" name="action" value="send_invitation"><input type="hidden" name="reference" value="' . staff_escape($reference) . '"><label><input type="checkbox" name="verify_recipient" value="yes" required> I verified this test recipient and want to send the calendar invitation.</label><button>Send Test Calendar Invitation</button></form>';
             } else $body .= '<p>Invitation delivery remains disabled. No invitation has been sent.</p>';
+        }
+    }
+    $communications = $db->prepare('SELECT * FROM booking_communications WHERE reference=? ORDER BY created_at');
+    $communications->execute([$reference]);
+    foreach ($communications->fetchAll() as $communication) {
+        $body .= '<h2>Communication Status</h2><p>' . staff_escape($communication['kind'])
+            . ' — From: ' . staff_escape($communication['sender']) . '<br>Microsoft 365: ' . staff_escape($communication['submission_state'])
+            . '<br>Recipient mailbox evidence: ' . staff_escape($communication['delivery_state'])
+            . '<br>CRM: ' . staff_escape($communication['crm_state']) . '</p>';
+        if ($communication['kind'] === 'invitation') {
+            foreach (['recheck_mail'=>'Recheck Saved Message', 'associate_crm'=>'Recover CRM Association'] as $actionName=>$label) {
+                $body .= '<form method="post"><input type="hidden" name="csrf" value="' . $csrf . '"><input type="hidden" name="action" value="' . $actionName
+                    . '"><input type="hidden" name="reference" value="' . staff_escape($reference) . '"><button>' . $label . '</button></form>';
+            }
         }
     }
     if ($row['status'] === 'pending_review') {

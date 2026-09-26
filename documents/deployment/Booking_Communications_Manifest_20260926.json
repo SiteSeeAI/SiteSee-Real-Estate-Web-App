@@ -1,0 +1,54 @@
+{
+  "release": "sitesee-booking-communications-test-v1",
+  "base_commit": "136483e4f6c2f534bca034db330898db61e6ef17",
+  "files": {
+    "server/booking-mail-client.php": {
+      "source": "_private/server/booking-mail-client.php",
+      "sha256": "189e15f44c3c28856765527efdcf25b71f748add07d6e7d31c396d50d3ed5e5b",
+      "previous_sha256": null
+    },
+    "server/booking-communication.php": {
+      "source": "_private/server/booking-communication.php",
+      "sha256": "d2fb1b321f23b73e5c0e8db60426c36429a0ef7b4dd855098dfafaebbc91b254",
+      "previous_sha256": null
+    },
+    "server/booking-crm.php": {
+      "source": "_private/server/booking-crm.php",
+      "sha256": "42eb3369d40e1fc37712413cde685f76cdf72dac5329b199ac22c6ef42877c39",
+      "previous_sha256": null
+    },
+    "server/booking-invitation.php": {
+      "source": "_private/server/booking-invitation.php",
+      "sha256": "95d15de549108995a4fbbf54a93e9c7cb8d197bf98c2138ced24b8c1c9461fe4",
+      "previous_sha256": "31c7ae062641fb3306dbd5fba3a4ca50f9fd0845bf38ae31c635dc8325f0899a"
+    },
+    "server/booking-staff.php": {
+      "source": "_private/server/booking-staff.php",
+      "sha256": "31b4e32bc16e36c041f335c78e10a05e31df5e3695dee5e482999f9cd4065d45",
+      "previous_sha256": "3f8535f8afa3b227f1edc892143b55d96d4a700d78d9d56b80169535e8039564"
+    },
+    "tools/booking-communications.php": {
+      "source": "tools/booking-communications.php",
+      "sha256": "bf8173d38bfa7f980cf8a6d7e8e09ee07f0efabbdc3a466c87f08c2e1877ad5b",
+      "previous_sha256": null
+    },
+    "tools/setup-booking-communications.py": {
+      "source": "tools/setup-booking-communications.py",
+      "sha256": "d95ba9420300e3940b8ae09ee2773370306eab7aa0e4e43194eb5fe7f4bdddd5",
+      "previous_sha256": null
+    },
+    "tools/audit-calendar-confirmation.php": {
+      "source": "tools/audit-calendar-confirmation.php",
+      "sha256": "76791f58ffae361531c48384b891daff56f3da1c7dd7922e7eab598e48c1c007",
+      "previous_sha256": "6162516e2f70865e1e7454e754bd33d313c5b18dea8285e3f49aae2c6d03f209"
+    }
+  },
+  "preserve": {
+    "server/booking-confirmation.php": "06e259fc9582208cf5ae384b671aba3510b4aae7e3e45bed14f996256194caf6",
+    "server/booking-calendar-client.php": "e6f80acb03a71a5fc4daf055015fc45b1af62bbdd2700fb080c880bad6e7e0aa",
+    "server/booking-store.php": "842176a35abcdd7477f6e50ac322a33c971705482db2c94e65668aae0ebe81e4",
+    "server/booking-schedule.php": "99de974d2b45de2b75003a6e4a93ca0e71019cdb632cc52defc34aeb09727cb8",
+    "real-estate-form-config.php": "3539b5b9bf008e9f901c526eedb99299a45ca243f9bf42a5994040dc9688fe75",
+    "real-estate-pricing.php": "671848826aa1b4f53c8e15db516ff5aee1ba7d453feb20601bebab7a01779f73"
+  }
+}
