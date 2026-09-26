@@ -168,10 +168,12 @@ function cd_run(string $root, string $reference, bool $retry, ?callable $transpo
         foreach ($snapshot['busy'] as [$a,$b]) if ($a < $end && $b > $start) cd_stop('Zoho now blocks this shoot interval. No retry is allowed.');
         $q=$db->prepare('SELECT reference FROM booking_confirmations WHERE reference<>? AND planned_start<? AND planned_end>?');
         $q->execute([$reference,$end,$start]); if ($q->fetch()) cd_stop('Another local booking claims this interval.');
+        $checkedAt=time();
         echo "Booking: $reference\nPaid test booking and saved staff review: PASS\nSaved event privacy and interval: PASS\n";
         echo "Fresh Zoho read (36 hours either side): PASS\nMatching booking event in that range: NONE\nShoot interval conflicts: NONE\nInvitations: DISABLED\n";
         if (!$retry) { echo "READ-ONLY CHECK COMPLETE. No calendar creation or booking change was attempted.\n"; return; }
         if (!is_callable($acknowledge) || $acknowledge($reference) !== 'RETRY '.$reference) cd_stop('Retry was not acknowledged. Nothing was changed.');
+        if (time()-$checkedAt>60 || $window<=time()) cd_stop('Calendar check expired before acknowledgement. No retry was attempted.');
         if (!hash_equals($configHash, hash_file('sha256',$root.'/zoho-confirmation.json'))) cd_stop('Confirmation settings changed during the check.');
         $db->exec('BEGIN IMMEDIATE');
         try {
@@ -203,8 +205,9 @@ function cd_run(string $root, string $reference, bool $retry, ?callable $transpo
             $stage='save_confirmation'; $db->exec('BEGIN IMMEDIATE');
             try {
                 if(cd_booking($db,$reference)!==$row)cd_stop('Booking changed while the event was being verified.');
-                $db->prepare("UPDATE booking_confirmations SET state='confirmed',confirmed_at=? WHERE reference=? AND state='uncertain' AND event_uid=?")
-                    ->execute([gmdate('c'),$reference,$uid]);
+                $save=$db->prepare("UPDATE booking_confirmations SET state='confirmed',confirmed_at=? WHERE reference=? AND state='uncertain' AND event_uid=?");
+                $save->execute([gmdate('c'),$reference,$uid]);
+                if($save->rowCount()!==1)cd_stop('Confirmation changed while the event was being verified.');
                 cd_audit($db,$reference,'calendar_confirmed',['event_uid'=>$uid]);$db->exec('COMMIT');
             }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
             echo "Calendar event created and verified: PASS\nBooking marked confirmed. No invitation or payment was sent.\n";
@@ -220,7 +223,9 @@ if (PHP_SAPI === 'cli' && realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE
     try {
         if (!in_array(count($argv),[2,3],true) || (isset($argv[2]) && $argv[2] !== '--retry-once')) cd_stop('Usage: diagnose-calendar-confirmation.php REFERENCE [--retry-once]');
         $root=is_dir(dirname(__DIR__).'/_private/server') ? dirname(__DIR__).'/_private' : dirname(__DIR__);
-        if (!function_exists('posix_geteuid') || posix_geteuid() !== fileowner($root)) cd_stop('Run this tool as the sitesee account, not root.');
+        $effectiveUid=function_exists('posix_geteuid') ? posix_geteuid() : null;
+        if($effectiveUid===null && preg_match('/^Uid:\s+\d+\s+(\d+)/m',(string)@file_get_contents('/proc/self/status'),$uidMatch))$effectiveUid=(int)$uidMatch[1];
+        if ($effectiveUid !== fileowner($root)) cd_stop('Run this tool as the sitesee account, not root.');
         cd_run($root,$argv[1],isset($argv[2]),null,static function(string $ref):string{
             echo "This permits ONE calendar creation retry for the SAME saved test booking.\n";
             echo "Only proceed after manually checking SiteSee Photography and finding no matching event.\n";
