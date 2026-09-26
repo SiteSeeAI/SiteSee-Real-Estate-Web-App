@@ -7,6 +7,7 @@ $root=sys_get_temp_dir().'/sitesee-diagnostic-'.bin2hex(random_bytes(6));
 mkdir($root,0700);mkdir($root.'/data',0700);mkdir($root.'/server',0700);
 // The already loaded module remains the exact same realpath across fixtures.
 symlink($source.'/server/booking-calendar-client.php',$root.'/server/booking-calendar-client.php');
+symlink($source.'/server/booking-confirmation.php',$root.'/server/booking-confirmation.php');
 file_put_contents($root.'/booking-confirmation.lock','');chmod($root.'/booking-confirmation.lock',0600);
 $config=['schema_version'=>1,'setup'=>'sitesee-calendar-readonly','enabled'=>true,'timezone'=>'America/Chicago',
     'accounts_base'=>'https://accounts.zoho.com','calendar_base'=>'https://calendar.zoho.com','connection_verified_at'=>time(),
@@ -41,7 +42,9 @@ $transport=static function($method,$url,$form,$token)use(&$writes,&$calls,&$reco
     if($url==='https://accounts.zoho.com/oauth/v2/token')return ['status'=>200,'body'=>['access_token'=>'fixture-token']];
     check($token==='fixture-token','Token goes only to the calendar request.');
     if($method==='POST'){
-        ++$writes;$e=json_decode($form['eventdata'],true);check($e['attendees']===[]&&$e['notify_attendee']===0,'No invitation payload.');
+        ++$writes;$e=json_decode($form['eventdata'],true);
+        check(!array_key_exists('attendees',$e)&&!array_key_exists('group_attendees',$e)&&!array_key_exists('reminders',$e)
+            &&$e['notify_attendee']===0&&$e['calendar_alarm']===false,'No optional arrays, invitations or alarms in wire payload.');
         if($scenario==='timeout')throw new RuntimeException('fixture-secret must never escape');
         if($scenario==='rejected')return ['status'=>400,'body'=>['error'=>[['error_code'=>'EXTRA_KEY_FOUND','description'=>'isrep invalid fixture-secret fixture-token']]]];
         $e['uid']='fixture-event@zoho.com';$e['caluid']=$config['calendar_uid'];$created[$e['uid']]=$e;
@@ -58,9 +61,9 @@ $transport=static function($method,$url,$form,$token)use(&$writes,&$calls,&$reco
     if($scenario==='moved')$e['dateandtime']['end']=gmdate('Ymd\THis\Z',time()+1000000);
     return ['status'=>200,'body'=>['events'=>[$e]]];
 };
-function run_case(bool $retry,?callable $ack=null):array{
+function run_case(bool $retry,?callable $ack=null,bool $repair=false):array{
     global $root,$reference,$transport;$exception=null;ob_start();
-    try{cd_run($root,$reference,$retry,$transport,$ack??static fn($ref)=>'RETRY '.$ref);}catch(Throwable $e){$exception=$e;}
+    try{cd_run($root,$reference,$retry,$transport,$ack??static fn($ref)=>($repair?'REPAIR ':'RETRY ').$ref,$repair);}catch(Throwable $e){$exception=$e;}
     return [ob_get_clean(),$exception];
 }
 reset_fixture();$before=$db->query('SELECT * FROM bookings')->fetchAll();$hash=hash_file('sha256',$root.'/data/bookings.sqlite');
@@ -94,5 +97,62 @@ reset_fixture();[$out,$error]=run_case(true,static function($ref)use($root,$conf
 check($error!==null&&$writes===0,'Control change during acknowledgement blocks retry.');file_put_contents($root.'/zoho-confirmation.json',json_encode($config));
 reset_fixture();$modified=$config;$modified['invitations_enabled']=true;file_put_contents($root.'/zoho-confirmation.json',json_encode($modified));
 [$out,$error]=run_case(true);check($error!==null&&$writes===0,'Enabled invitations block diagnostic retry.');
-foreach(glob($root.'/data/*') as $p)unlink($p);unlink($root.'/server/booking-calendar-client.php');rmdir($root.'/server');rmdir($root.'/data');foreach(glob($root.'/*') as $p)unlink($p);rmdir($root);
+file_put_contents($root.'/zoho-confirmation.json',json_encode($config));
+
+function seed_rejection():void{
+    global $db,$reference;
+    reset_fixture();$claim=cd_claim($db,$reference);
+    cd_audit($db,$reference,'diagnostic_retry_started_v1',['event_payload_sha256'=>hash('sha256',$claim['event_json'])]);
+    cd_audit($db,$reference,'diagnostic_create_response_v1',['http_status'=>400,'curl_errno'=>0,'json_response'=>true,
+        'errors'=>[['error_code'=>'ARRAY_SIZE_OUT_OF_RANGE','message'=>'ARRAY_SIZE_OUT_OF_RANGE','description'=>'attendees array size out of range[1-50].']]]);
+    cd_audit($db,$reference,'diagnostic_retry_stopped_v1',['stage'=>'create']);
+}
+seed_rejection();$original=cd_claim($db,$reference);$payment=$db->query('SELECT * FROM bookings')->fetchAll();
+$hash=hash_file('sha256',$root.'/data/bookings.sqlite');[$out,$error]=run_case(false,null,true);
+check($error===null&&str_contains($out,'Recorded empty-attendees rejection: VERIFIED'),'Recorded rejection qualifies for read-only repair check.');
+check($writes===0&&$hash===hash_file('sha256',$root.'/data/bookings.sqlite'),'Repair check preserves database bytes.');
+[$out,$error]=run_case(true,static fn($ref)=>'RETRY '.$ref,true);check($error!==null&&$writes===0,'Repair requires its own exact acknowledgement.');
+[$out,$error]=run_case(true,null,true);check($error===null&&$writes===1,'Qualified acknowledged repair sends exactly one corrected request.');
+$claim=cd_claim($db,$reference);check($claim['state']==='confirmed'&&$claim['invitation_state']==='none','Verified repair confirms without invitations.');
+check($claim['event_json']===$original['event_json'],'Original payload and marker retained in durable claim.');
+check($payment===$db->query('SELECT * FROM bookings')->fetchAll(),'Repair preserves paid booking and review.');
+$wire=reset($created);$expected=json_decode($original['event_json'],true);unset($expected['attendees'],$expected['reminders']);
+unset($wire['uid'],$wire['caluid']);check($wire===$expected,'Only the two empty optional arrays differ from original saved payload.');
+run_case(true,null,true);check($writes===1,'Successful repair cannot repeat.');
+
+foreach(['http_status'=>500,'curl_errno'=>28,'json_response'=>false,'errors'=>[]] as $key=>$bad){
+    seed_rejection();$q=$db->query("SELECT detail_json FROM booking_schedule_events WHERE action='diagnostic_create_response_v1'");
+    $reply=json_decode($q->fetchColumn(),true);$q->closeCursor();$reply[$key]=$bad;
+    $db->prepare("UPDATE booking_schedule_events SET detail_json=? WHERE action='diagnostic_create_response_v1'")->execute([json_encode($reply)]);
+    [$out,$error]=run_case(true,null,true);check($error!==null&&$writes===0&&$calls===0,'Unknown/ambiguous response cannot authorize repair: '.$key);
+}
+foreach(['diagnostic_retry_started_v1','diagnostic_create_response_v1','diagnostic_retry_stopped_v1'] as $missing){
+    seed_rejection();$db->prepare('DELETE FROM booking_schedule_events WHERE action=?')->execute([$missing]);
+    [$out,$error]=run_case(true,null,true);check($error!==null&&$writes===0&&$calls===0,'Incomplete audit blocks repair: '.$missing);
+}
+seed_rejection();$db->exec("UPDATE booking_schedule_events SET detail_json='{}' WHERE action='diagnostic_retry_started_v1'");
+[$out,$error]=run_case(true,null,true);check($error!==null&&$writes===0,'Payload hash mismatch blocks repair.');
+seed_rejection();$db->exec("UPDATE booking_schedule_events SET detail_json='{\"stage\":\"verify_event\"}' WHERE action='diagnostic_retry_stopped_v1'");
+[$out,$error]=run_case(true,null,true);check($error!==null&&$writes===0,'Possible earlier successful creation blocks repair.');
+seed_rejection();cd_audit($db,$reference,'diagnostic_empty_arrays_started_v1');
+[$out,$error]=run_case(true,null,true);check($error!==null&&$writes===0,'Committed repair marker blocks repeats after process termination.');
+seed_rejection();[$out,$error]=run_case(true);check($error!==null&&$writes===0,'Original single-use retry remains blocked.');
+foreach(['timeout','rejected','moved','race'] as $bad){
+    seed_rejection();$scenario=$bad;[$out,$error]=run_case(true,null,true);
+    check($error!==null&&$writes===1&&cd_claim($db,$reference)['state']==='uncertain','Failed repair remains protected: '.$bad.' writes='.$writes.' error='.($error?->getMessage()??'none'));
+    run_case(true,null,true);check($writes===1,'Failed repair cannot repeat: '.$bad);
+    if(in_array($bad,['moved','race'],true))check(cd_claim($db,$reference)['event_uid']==='fixture-event@zoho.com','Post-create repair failure preserves known event ID.');
+}
+foreach(['pagination','malformed'] as $bad){seed_rejection();$scenario=$bad;[$out,$error]=run_case(true,null,true);check($error!==null&&$writes===0,'Incomplete calendar blocks repair: '.$bad);}
+seed_rejection();$records=[['title'=>'Moved '.$reference,'uid'=>'existing@zoho.com','isallday'=>false,'dateandtime'=>['start'=>gmdate('Ymd\THis\Z',$start-86400),'end'=>gmdate('Ymd\THis\Z',$start-82800),'timezone'=>'UTC']]];
+[$out,$error]=run_case(true,null,true);check($error!==null&&$writes===0,'Existing booking marker blocks corrected repair.');
+seed_rejection();[$out,$error]=run_case(true,static function($ref)use($db){$db->exec('UPDATE bookings SET duration_minutes=60');return 'REPAIR '.$ref;},true);
+check($error!==null&&$writes===0,'Booking change during acknowledgement blocks repair.');
+seed_rejection();[$out,$error]=run_case(true,static function($ref)use($db){cd_audit($db,$ref,'diagnostic_empty_arrays_started_v1');return 'REPAIR '.$ref;},true);
+check($error!==null&&$writes===0,'Audit rechecked in transaction before repair.');
+foreach(['attendees','group_attendees','reminders'] as $key)foreach([null,[['email'=>'unexpected@example.com']]] as $bad){
+    $e=json_decode($original['event_json'],true);$e[$key]=$bad;$caught=false;try{cd_creation_event($e);}catch(RuntimeException $error){$caught=true;}
+    check($caught,'Optional array normalization refuses recipients and invalid null: '.$key);
+}
+foreach(glob($root.'/data/*') as $p)unlink($p);unlink($root.'/server/booking-calendar-client.php');unlink($root.'/server/booking-confirmation.php');rmdir($root.'/server');rmdir($root.'/data');foreach(glob($root.'/*') as $p)unlink($p);rmdir($root);
 echo "PASS: $checks diagnostic safety checks (mocked Zoho; no real requests).\n";
