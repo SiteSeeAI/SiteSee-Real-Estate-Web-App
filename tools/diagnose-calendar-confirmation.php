@@ -4,6 +4,38 @@ declare(strict_types=1);
 
 function cd_stop(string $message): never { throw new RuntimeException($message); }
 
+/** Only remove absent/empty optional arrays; never silently strip an actual recipient. */
+function cd_creation_event(array $event): array
+{
+    foreach (['attendees','group_attendees','reminders'] as $key) {
+        if (array_key_exists($key,$event) && $event[$key] !== []) cd_stop('Nonempty or invalid optional event array refused.');
+        unset($event[$key]);
+    }
+    return $event;
+}
+
+/** A recorded, unambiguous validation rejection is the only repair admission. */
+function cd_empty_arrays_repair_gate(PDO $db, string $reference, array $claim): void
+{
+    $q=$db->prepare("SELECT action,detail_json FROM booking_schedule_events WHERE reference=? AND action LIKE 'diagnostic_%' ORDER BY id");
+    $q->execute([$reference]); $rows=$q->fetchAll();
+    if (array_column($rows,'action') !== ['diagnostic_retry_started_v1','diagnostic_create_response_v1','diagnostic_retry_stopped_v1']) {
+        cd_stop('Repair requires exactly one recorded rejected diagnostic attempt and no later diagnostic attempt.');
+    }
+    $started=json_decode($rows[0]['detail_json'],true,32,JSON_THROW_ON_ERROR);
+    $reply=json_decode($rows[1]['detail_json'],true,32,JSON_THROW_ON_ERROR);
+    $stopped=json_decode($rows[2]['detail_json'],true,32,JSON_THROW_ON_ERROR);
+    $expected=[['error_code'=>'ARRAY_SIZE_OUT_OF_RANGE','message'=>'ARRAY_SIZE_OUT_OF_RANGE',
+        'description'=>'attendees array size out of range[1-50].']];
+    if (($started['event_payload_sha256']??'') !== hash('sha256',$claim['event_json'])
+        || (isset($started['submitted_payload_sha256']) && $started['submitted_payload_sha256'] !== $started['event_payload_sha256'])
+        || ($reply['http_status']??null) !== 400 || ($reply['curl_errno']??null) !== 0
+        || ($reply['json_response']??null) !== true || ($reply['errors']??null) !== $expected
+        || ($stopped['stage']??'') !== 'create') cd_stop('The saved rejection does not qualify for the empty-array repair.');
+    $event=json_decode($claim['event_json'],true,32,JSON_THROW_ON_ERROR);
+    if (($event['attendees']??null) !== [] || ($event['reminders']??null) !== []) cd_stop('The rejected payload is not the expected original payload.');
+}
+
 /** No raw provider body, URL, request payload or credential is written to the ledger/output. */
 function cd_summary(array $reply, array $secrets): array
 {
@@ -40,8 +72,9 @@ function cd_http(string $method, string $url, ?array $form, ?string $token): arr
         if (!str_ends_with($url, '/events') || !is_array($form) || array_keys($form) !== ['eventdata']) cd_stop('Unexpected creation request.');
         $event = json_decode($form['eventdata'], true);
         if (!is_array($event) || ($event['isprivate'] ?? null) !== true || ($event['notify_attendee'] ?? null) !== 0
-            || ($event['calendar_alarm'] ?? null) !== false || ($event['attendees'] ?? null) !== []
-            || ($event['reminders'] ?? null) !== [] || ($event['conference'] ?? null) !== 'none') cd_stop('Unsafe event payload refused.');
+            || ($event['calendar_alarm'] ?? null) !== false || array_key_exists('attendees',$event)
+            || array_key_exists('group_attendees',$event) || array_key_exists('reminders',$event)
+            || ($event['conference'] ?? null) !== 'none') cd_stop('Unsafe event payload refused.');
     }
     $body = '';
     $curl = curl_init($url);
@@ -97,9 +130,14 @@ function cd_verify(array $reply, array $expected, string $calendar, string $uid)
         || ($attendee['email'] ?? null) !== $e['organizer']) cd_stop('Unexpected attendee on saved event.');
 }
 
-function cd_run(string $root, string $reference, bool $retry, ?callable $transport = null, ?callable $acknowledge = null): void
+function cd_run(string $root, string $reference, bool $retry, ?callable $transport = null, ?callable $acknowledge = null, bool $repair = false): void
 {
     if (!preg_match('/^[A-F0-9]{10,32}$/D', $reference)) cd_stop('Invalid booking reference.');
+    if ($repair) {
+        $release=@file_get_contents($root.'/server/booking-confirmation.php');
+        if (!is_string($release) || hash('sha256',str_replace("\r\n","\n",$release)) !== 'da47baeac10ac1414f336a5b6827578d68fbb3395a800a5a5efc17bdc054a2e8') cd_stop('Upload the corrected booking-confirmation.php before checking this repair.');
+        token_get_all($release,TOKEN_PARSE);
+    }
     require_once $root . '/server/booking-calendar-client.php';
     $reader = booking_calendar_config($root . '/zoho-calendar.json');
     $cfg = booking_calendar_config($root . '/zoho-confirmation.json');
@@ -142,12 +180,17 @@ function cd_run(string $root, string $reference, bool $retry, ?callable $transpo
             || ($event['dateandtime']['start'] ?? '') !== gmdate('Ymd\THis\Z', $start)
             || ($event['dateandtime']['end'] ?? '') !== gmdate('Ymd\THis\Z', $end)
             || ($event['isprivate'] ?? null) !== true || ($event['notify_attendee'] ?? null) !== 0
-            || ($event['calendar_alarm'] ?? null) !== false || ($event['attendees'] ?? null) !== []
-            || ($event['reminders'] ?? null) !== [] || ($event['conference'] ?? null) !== 'none'
+            || ($event['calendar_alarm'] ?? null) !== false || ($event['conference'] ?? null) !== 'none'
+            || ($event['isallday'] ?? null) !== false || ($event['isrep'] ?? null) !== false
+            || ($event['allowForwarding'] ?? null) !== false || ($event['transparency'] ?? null) !== 0
             || !str_contains($event['title'] ?? '', $reference)) cd_stop('Saved event, arrival window, duration or privacy controls do not match.');
+        $event=cd_creation_event($event);
+        $eventJson=json_encode($event,JSON_THROW_ON_ERROR);
+        if ($repair) cd_empty_arrays_repair_gate($db,$reference,$claim);
         $previous = $db->prepare("SELECT detail_json FROM booking_schedule_events WHERE reference=? AND action='diagnostic_retry_started_v1'");
         $previous->execute([$reference]);
-        if ($previous->fetch()) cd_stop('This single-use diagnostic retry was already attempted. Do not retry again.');
+        $alreadyAttempted=(bool)$previous->fetch(); $previous->closeCursor();
+        if (!$repair && $alreadyAttempted) cd_stop('This single-use diagnostic retry was already attempted. Do not retry again.');
         $transport ??= 'cd_http';
         $auth = $transport('POST', 'https://accounts.zoho.com/oauth/v2/token', [
             'grant_type'=>'refresh_token','client_id'=>$cfg['client_id'],'client_secret'=>$cfg['client_secret'],'refresh_token'=>$cfg['refresh_token']], null);
@@ -171,27 +214,31 @@ function cd_run(string $root, string $reference, bool $retry, ?callable $transpo
         $checkedAt=time();
         echo "Booking: $reference\nPaid test booking and saved staff review: PASS\nSaved event privacy and interval: PASS\n";
         echo "Fresh Zoho read (36 hours either side): PASS\nMatching booking event in that range: NONE\nShoot interval conflicts: NONE\nInvitations: DISABLED\n";
+        if ($repair) echo "Recorded empty-attendees rejection: VERIFIED\nCorrected request: optional empty arrays omitted; original booking marker retained.\n";
         if (!$retry) { echo "READ-ONLY CHECK COMPLETE. No calendar creation or booking change was attempted.\n"; return; }
-        if (!is_callable($acknowledge) || $acknowledge($reference) !== 'RETRY '.$reference) cd_stop('Retry was not acknowledged. Nothing was changed.');
+        if (!is_callable($acknowledge) || $acknowledge($reference) !== ($repair ? 'REPAIR ' : 'RETRY ').$reference) cd_stop('Retry was not acknowledged. Nothing was changed.');
         if (time()-$checkedAt>60 || $window<=time()) cd_stop('Calendar check expired before acknowledgement. No retry was attempted.');
         if (!hash_equals($configHash, hash_file('sha256',$root.'/zoho-confirmation.json'))) cd_stop('Confirmation settings changed during the check.');
         $db->exec('BEGIN IMMEDIATE');
         try {
             if (cd_booking($db,$reference) !== $row || cd_claim($db,$reference) !== $claim) cd_stop('Booking changed during the check.');
-            cd_audit($db,$reference,'diagnostic_retry_started_v1',['event_payload_sha256'=>hash('sha256',$claim['event_json'])]);
+            if ($repair) cd_empty_arrays_repair_gate($db,$reference,$claim);
+            cd_audit($db,$reference,$repair ? 'diagnostic_empty_arrays_started_v1' : 'diagnostic_retry_started_v1',[
+                'event_payload_sha256'=>hash('sha256',$claim['event_json']),
+                'submitted_payload_sha256'=>hash('sha256',$eventJson),'omitted_empty_arrays'=>['attendees','group_attendees','reminders']]);
             $db->exec('COMMIT');
         } catch (Throwable $e) { $db->exec('ROLLBACK'); throw $e; }
         $stage='create';
         try {
-            $reply=$call('POST',$path,['eventdata'=>$claim['event_json']]);
-            $safe=cd_summary($reply,$secrets); cd_audit($db,$reference,'diagnostic_create_response_v1',$safe);
+            $reply=$call('POST',$path,['eventdata'=>$eventJson]);
+            $safe=cd_summary($reply,$secrets); cd_audit($db,$reference,$repair ? 'diagnostic_empty_arrays_response_v1' : 'diagnostic_create_response_v1',$safe);
             echo 'Creation response: '.json_encode($safe,JSON_UNESCAPED_SLASHES)."\n";
             $uid=$reply['body']['events'][0]['uid'] ?? '';
             if (!in_array($reply['status'] ?? 0,[200,201],true) || !is_string($uid) || !preg_match('/^[A-Za-z0-9@._-]{1,256}$/D',$uid)
                 || isset($reply['body']['error']) || isset($reply['body']['errors'])) cd_stop('Creation did not return a verifiable event ID. Booking remains blocked.');
             $db->prepare('UPDATE booking_confirmations SET event_uid=? WHERE reference=?')->execute([$uid,$reference]);
             $stage='verify_event'; $detail=$call('GET',$path.'/'.rawurlencode($uid));
-            cd_audit($db,$reference,'diagnostic_detail_response_v1',cd_summary($detail,$secrets));
+            cd_audit($db,$reference,$repair ? 'diagnostic_empty_arrays_detail_v1' : 'diagnostic_detail_response_v1',cd_summary($detail,$secrets));
             cd_verify($detail,$event,$cfg['calendar_uid'],$uid);
             $stage='verify_conflicts'; $listed=[];
             booking_calendar_read_busy(static function($p,$q)use($call,&$listed):array{
@@ -212,7 +259,7 @@ function cd_run(string $root, string $reference, bool $retry, ?callable $transpo
             }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
             echo "Calendar event created and verified: PASS\nBooking marked confirmed. No invitation or payment was sent.\n";
         }catch(Throwable $e){
-            cd_audit($db,$reference,'diagnostic_retry_stopped_v1',['stage'=>$stage]);
+            cd_audit($db,$reference,$repair ? 'diagnostic_empty_arrays_stopped_v1' : 'diagnostic_retry_stopped_v1',['stage'=>$stage]);
             echo "STOP at stage: $stage. Booking remains protected; do not repeat the retry.\n";
             throw $e;
         }
@@ -221,17 +268,20 @@ function cd_run(string $root, string $reference, bool $retry, ?callable $transpo
 
 if (PHP_SAPI === 'cli' && realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) {
     try {
-        if (!in_array(count($argv),[2,3],true) || (isset($argv[2]) && $argv[2] !== '--retry-once')) cd_stop('Usage: diagnose-calendar-confirmation.php REFERENCE [--retry-once]');
+        $mode=$argv[2]??'';
+        if (!in_array(count($argv),[2,3],true) || !in_array($mode,['','--retry-once','--check-empty-arrays-repair','--repair-empty-arrays-once'],true)) cd_stop('Usage: diagnose-calendar-confirmation.php REFERENCE [--retry-once | --check-empty-arrays-repair | --repair-empty-arrays-once]');
+        $repair=in_array($mode,['--check-empty-arrays-repair','--repair-empty-arrays-once'],true);
+        $retry=in_array($mode,['--retry-once','--repair-empty-arrays-once'],true);
         $root=is_dir(dirname(__DIR__).'/_private/server') ? dirname(__DIR__).'/_private' : dirname(__DIR__);
         $effectiveUid=function_exists('posix_geteuid') ? posix_geteuid() : null;
         if($effectiveUid===null && preg_match('/^Uid:\s+\d+\s+(\d+)/m',(string)@file_get_contents('/proc/self/status'),$uidMatch))$effectiveUid=(int)$uidMatch[1];
         if ($effectiveUid !== fileowner($root)) cd_stop('Run this tool as the sitesee account, not root.');
-        cd_run($root,$argv[1],isset($argv[2]),null,static function(string $ref):string{
+        cd_run($root,$argv[1],$retry,null,static function(string $ref)use($repair):string{
             echo "This permits ONE calendar creation retry for the SAME saved test booking.\n";
             echo "Only proceed after manually checking SiteSee Photography and finding no matching event.\n";
-            echo "Type RETRY $ref to acknowledge that check and authorize the single retry: ";
+            echo 'Type '.($repair ? 'REPAIR ' : 'RETRY ').$ref.' to acknowledge that check and authorize the single retry: ';
             return trim((string)fgets(STDIN));
-        });
+        },$repair);
     }catch(Throwable $e){
         // Only fixed messages from this file are suitable for display.
         echo 'STOP: '.($e instanceof RuntimeException && $e->getFile()===__FILE__ ? $e->getMessage() : 'Diagnostic check stopped; no raw exception details displayed.')."\n";
