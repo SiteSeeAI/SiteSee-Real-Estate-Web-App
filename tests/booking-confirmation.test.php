@@ -37,7 +37,9 @@ $transport = static function ($method, $url, $form, $token) use (&$created,&$wri
     if ($method === 'POST') {
         ++$writes;
         $event = json_decode($form['eventdata'], true);
-        check($event['attendees'] === [] && $event['notify_attendee'] === 0, 'Calendar writes cannot send invitations.');
+        check(!array_key_exists('attendees', $event) && !array_key_exists('group_attendees', $event)
+            && !array_key_exists('reminders', $event) && $event['notify_attendee'] === 0
+            && $event['calendar_alarm'] === false, 'Calendar writes omit optional arrays and disable notifications/alarms.');
         check(!str_contains(json_encode($event), '0123456789'), 'Private property access code excluded from event.');
         $event['uid'] = 'event-' . $writes . '@zoho.com'; $event['caluid'] = $config['calendar_uid'];
         $created[$event['uid']] = $event;
