@@ -2,6 +2,18 @@
 declare(strict_types=1);
 require_once __DIR__ . '/booking-availability.php';
 
+/** Zoho's event route requires a literal @; encoded %40 returns a non-JSON 404. */
+function booking_calendar_event_path(string $calendarUid, string $eventUid): string
+{
+    if (!preg_match('/^[A-Za-z0-9=_-]{1,128}$/D', $calendarUid)
+        || !preg_match('/^[A-Za-z0-9@._-]{1,256}$/D', $eventUid)
+        || in_array($eventUid, ['.', '..'], true)) {
+        throw new BookingCalendarUnavailable('Calendar event identity is invalid.');
+    }
+    return '/api/v1/calendars/' . rawurlencode($calendarUid) . '/events/'
+        . str_replace('%40', '@', rawurlencode($eventUid));
+}
+
 /** Private read-only connection. No CRM writes, calendar writes or invitations. */
 function booking_calendar_config(?string $path = null): array
 {

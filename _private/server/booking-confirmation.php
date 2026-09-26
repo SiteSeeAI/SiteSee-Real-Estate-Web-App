@@ -259,7 +259,7 @@ function booking_confirm_appointment(PDO $db, string $reference, ?array $config 
                 throw new BookingCalendarUnavailable('Creation response could not be verified.');
             }
             $db->prepare('UPDATE booking_confirmations SET event_uid=? WHERE reference=?')->execute([$uid, $reference]);
-            $verified = booking_confirmation_verify($connection('GET', $path . '/' . rawurlencode($uid)), $event, $config['calendar_uid']);
+            $verified = booking_confirmation_verify($connection('GET', booking_calendar_event_path($config['calendar_uid'], $uid)), $event, $config['calendar_uid']);
             if ($uid !== $verified) throw new BookingCalendarUnavailable('Calendar identity mismatch.');
             booking_confirmation_verify_clear($connection, $event, $config['calendar_uid'], $uid);
             booking_confirmation_finish($db, $reference, $uid);
@@ -288,7 +288,7 @@ function booking_reconcile_confirmation(PDO $db, string $reference, ?array $conf
         $expected = json_decode($claim['event_json'], true, 32, JSON_THROW_ON_ERROR);
         $path = '/api/v1/calendars/' . rawurlencode($config['calendar_uid']) . '/events';
         if ($claim['event_uid']) {
-            $reply = $connection('GET', $path . '/' . rawurlencode($claim['event_uid']));
+            $reply = $connection('GET', booking_calendar_event_path($config['calendar_uid'], $claim['event_uid']));
         } else {
             $records = [];
             booking_calendar_read_busy(static function ($path, $query) use ($connection, &$records): array {
@@ -300,7 +300,7 @@ function booking_reconcile_confirmation(PDO $db, string $reference, ?array $conf
             if (count($matches) !== 1 || !is_string($matches[0]['uid'] ?? null)) {
                 throw new BookingCalendarUnavailable('No unique matching event was found. Inspect Zoho manually; this booking remains blocked against duplicate creation.');
             }
-            $reply = $connection('GET', $path . '/' . rawurlencode($matches[0]['uid']));
+            $reply = $connection('GET', booking_calendar_event_path($config['calendar_uid'], $matches[0]['uid']));
         }
         $uid = booking_confirmation_verify($reply, $expected, $config['calendar_uid']);
         if ($claim['event_uid'] && $uid !== $claim['event_uid']) throw new BookingCalendarUnavailable('Calendar identity mismatch.');

@@ -48,7 +48,9 @@ $transport = static function ($method, $url, $form, $token) use (&$created,&$wri
     }
     $path = parse_url($url, PHP_URL_PATH);
     if (!str_ends_with($path, '/events')) {
-        $uid = rawurldecode(basename($path));
+        // Reproduce the live provider contract instead of silently decoding an invalid route.
+        if (str_contains($path, '%40')) return ['status'=>404,'body'=>null];
+        $uid = basename($path);
         return ['status'=>200,'body'=>['events'=>[$created[$uid] ?? []]]];
     }
     if ($malformed) return ['status'=>200,'body'=>['events'=>[['message'=>'Unexpected data']]]];
@@ -60,6 +62,10 @@ $transport = static function ($method, $url, $form, $token) use (&$created,&$wri
     return ['status'=>200,'body'=>['events'=>$events]];
 };
 $run = static fn($ref,$cfg=null,$clock=null) => booking_confirm_appointment($db,$ref,$cfg ?? $config,$transport,$clock ?? $now,$lock);
+check(str_ends_with(booking_calendar_event_path($config['calendar_uid'],'event-1@zoho.com'),'/events/event-1@zoho.com'),'Zoho event route keeps literal @.');
+foreach(['../event','event?notify=1','event#x','event%40zoho.com','..',"event\n@zoho.com"] as $invalid) {
+    rejects(fn()=>booking_calendar_event_path($config['calendar_uid'],$invalid),'Event path rejects injected or pre-encoded identifiers.');
+}
 paid('AAA0000001');
 rejects(fn()=>$run('AAA0000001'), 'Unreviewed deposit cannot confirm.');
 booking_review_paid($db,'AAA0000001',150,'David',true);

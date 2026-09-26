@@ -135,7 +135,7 @@ function cd_run(string $root, string $reference, bool $retry, ?callable $transpo
     if (!preg_match('/^[A-F0-9]{10,32}$/D', $reference)) cd_stop('Invalid booking reference.');
     if ($repair) {
         $release=@file_get_contents($root.'/server/booking-confirmation.php');
-        if (!is_string($release) || hash('sha256',str_replace("\r\n","\n",$release)) !== 'da47baeac10ac1414f336a5b6827578d68fbb3395a800a5a5efc17bdc054a2e8') cd_stop('Upload the corrected booking-confirmation.php before checking this repair.');
+        if (!is_string($release) || hash('sha256',str_replace("\r\n","\n",$release)) !== '06e259fc9582208cf5ae384b671aba3510b4aae7e3e45bed14f996256194caf6') cd_stop('Upload the corrected booking-confirmation.php before checking this repair.');
         token_get_all($release,TOKEN_PARSE);
     }
     require_once $root . '/server/booking-calendar-client.php';
@@ -237,7 +237,7 @@ function cd_run(string $root, string $reference, bool $retry, ?callable $transpo
             if (!in_array($reply['status'] ?? 0,[200,201],true) || !is_string($uid) || !preg_match('/^[A-Za-z0-9@._-]{1,256}$/D',$uid)
                 || isset($reply['body']['error']) || isset($reply['body']['errors'])) cd_stop('Creation did not return a verifiable event ID. Booking remains blocked.');
             $db->prepare('UPDATE booking_confirmations SET event_uid=? WHERE reference=?')->execute([$uid,$reference]);
-            $stage='verify_event'; $detail=$call('GET',$path.'/'.rawurlencode($uid));
+            $stage='verify_event'; $detail=$call('GET',booking_calendar_event_path($cfg['calendar_uid'],$uid));
             cd_audit($db,$reference,$repair ? 'diagnostic_empty_arrays_detail_v1' : 'diagnostic_detail_response_v1',cd_summary($detail,$secrets));
             cd_verify($detail,$event,$cfg['calendar_uid'],$uid);
             $stage='verify_conflicts'; $listed=[];

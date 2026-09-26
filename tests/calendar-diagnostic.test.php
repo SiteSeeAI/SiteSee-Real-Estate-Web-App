@@ -57,7 +57,8 @@ $transport=static function($method,$url,$form,$token)use(&$writes,&$calls,&$reco
         if($scenario==='race'&&$created){$other=reset($created);$other['uid']='racing-event@zoho.com';$events[]=$other;}
         return ['status'=>200,'body'=>['events'=>$events ?: [['message'=>'No events found.']]]];
     }
-    $e=$created[rawurldecode(basename(parse_url($url,PHP_URL_PATH)))]??[];
+    if(str_contains(parse_url($url,PHP_URL_PATH),'%40'))return ['status'=>404,'body'=>null];
+    $e=$created[basename(parse_url($url,PHP_URL_PATH))]??[];
     if($scenario==='moved')$e['dateandtime']['end']=gmdate('Ymd\THis\Z',time()+1000000);
     return ['status'=>200,'body'=>['events'=>[$e]]];
 };

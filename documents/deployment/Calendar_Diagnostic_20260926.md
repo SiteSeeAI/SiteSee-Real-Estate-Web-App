@@ -1,49 +1,63 @@
-# Calendar validation repair — 2026 09 26
+# Calendar confirmation: complete lookup correction — 2026 09 26
 
-Booking E6E183EF8E is a paid, reviewed test booking for cro@sitesee.ai, with the arrival window 2026 09 30, 07:00–09:00 America/Chicago. Its original calendar attempt remains uncertain without an event UID. A separately authorized diagnostic retry returned HTTP 400, cURL error 0, and ARRAY_SIZE_OUT_OF_RANGE: attendees array size out of range[1-50]. That is evidence of rejection for this retry; the first attempt's discarded response remains unavailable.
+The paid and reviewed test booking E6E183EF8E, for cro@sitesee.ai, is scheduled for 2026 09 30, 07:00–09:00 America/Chicago. Its original confirmation claim must be retained.
 
-The creation request incorrectly included attendees as an empty array. The corrected request omits optional attendee and reminder arrays, while retaining isprivate=true, notify_attendee=0, calendar_alarm=false, conference=none and allowForwarding=false. No recipient is added. Zoho documents attendees/reminders as optional and notify_attendee=0 as no notifications: https://www.zoho.com/calendar/help/api/post-create-event.html
+## Established causes and current state
 
-## Upload these three files
+1. The original request included empty optional attendees/reminders arrays. The diagnostic retry returned HTTP 400 with ARRAY_SIZE_OUT_OF_RANGE for attendees. Omitting those arrays produced HTTP 200 and an event UID, which is now saved.
+2. Reading that event with an encoded %40 in its UID returned a non-JSON HTTP 404. The same request with a literal @ returned HTTP 200 and passed exact saved-event identity, privacy and interval verification.
+3. The booking is still uncertain because that detail lookup failed during automatic verification. Another event creation is neither needed nor permitted.
 
-Extract the updated SiteSee_Calendar_Diagnostic_20260926.zip. Replace the exact filenames below, keeping the sitesee owner. Do not allow cPanel to add numbered suffixes.
+The shared event path builder now validates IDs and preserves a literal @. Creation verification, staff Recheck Calendar Result, invitation pre-send verification, and the diagnostic helper all use it. Existing no-attendee/no-notification creation controls remain in place.
 
-| ZIP file | Server destination |
-| --- | --- |
-| booking-confirmation.php | /home/sitesee/.sitesee-real-estate/server/booking-confirmation.php |
-| diagnose-calendar-confirmation.php | /home/sitesee/.sitesee-real-estate/tools/diagnose-calendar-confirmation.php |
-| calendar-confirmation-release.json | /home/sitesee/.sitesee-real-estate/calendar-confirmation-release.json |
+## Deploy the package together
 
-The JSON file updates the existing release checksum for the corrected PHP file; it contains no credentials or settings. Existing payment, availability and mail configuration remain in place. Keep invitations disabled. This document is for deployment, not a public website page.
+Upload SiteSee_Calendar_Diagnostic_20260926.zip to:
 
-## First run: read-only repair check
+/home/sitesee/.sitesee-real-estate/
+
+Extract it there, replacing matching files and retaining sitesee ownership. This version has server/ and tools/ directories so that the files land in their correct locations:
+
+- server/booking-calendar-client.php
+- server/booking-confirmation.php
+- server/booking-invitation.php
+- tools/diagnose-calendar-confirmation.php
+- tools/audit-calendar-confirmation.php
+- calendar-confirmation-release.json
+
+The README is deployment guidance, not a public web page. The release JSON contains checksums, not credentials. No credential, pricing, payment, mail or invitation-enable setting is included.
+
+## One combined server command
+
+Run in WHM Terminal:
 
 ```bash
-runuser -u sitesee -- /opt/cpanel/ea-php82/root/usr/bin/php /home/sitesee/.sitesee-real-estate/tools/diagnose-calendar-confirmation.php E6E183EF8E --check-empty-arrays-repair
+runuser -u sitesee -- /opt/cpanel/ea-php82/root/usr/bin/php /home/sitesee/.sitesee-real-estate/tools/audit-calendar-confirmation.php E6E183EF8E --reconcile-existing
 ```
 
-This verifies the uploaded correction's checksum/syntax, the original payload hash, the exact saved HTTP 400 rejection and stopped-at-create audit sequence, and absence of any later diagnostic attempt. It checks paid test status, saved review, configured mailbox, future arrival window, reviewed duration, privacy and disabled invitations. It holds the existing confirmation lock and reads the calendar for 36 hours either side of the shoot, blocking booking markers, remote conflicts and other local claims. It opens the existing ledger read-only and does not create an event or change the booking. Share its output before the next step.
+The command collects independent results rather than stopping at the first failed check. It checks the entire 12-file release and PHP syntax; reader/writer configuration, calendar identity and requested scopes; disabled invitations; ledger permissions and the existing confirmation lock; paid test status and staff review; saved event UID and diagnostic history; arrival window and reviewed duration; original privacy controls; other local booking claims; fresh reader and writer authorization; direct event details through both identities; privacy, guests, reminders and conference settings; complete calendar lists across 36 hours either side of the shoot; uniqueness, duplicate booking references and remote conflicts.
 
-The existing --retry-once command remains consumed and blocked. Do not delete/reset the original claim or audit history, create another booking to bypass it, or repeat checkout.
+It reports sanitized HTTP status/errors and does not print credentials, property access codes, attendee email addresses or raw provider responses. Where one check has missing prerequisites, its dependent checks cannot run; other independent checks continue.
 
-## Separate one-time corrected creation
+Only when all required checks pass does it revalidate file/configuration hashes, unchanged booking/claim state, fresh calendar evidence and local conflicts in a database transaction. It then marks the ORIGINAL booking confirmed using the already saved event UID and records calendar_confirmed. It does not change the original event_json, deposit, review, amount, invitation state or credentials.
 
-After the read-only repair check passes and the owning SiteSee Photography calendar has been manually checked for a matching event:
+The command makes calendar GET requests only. OAuth token refresh is its only HTTP POST. It has no calendar creation, update/delete, mail or Stripe operation. It does not enable invitations. A repeated successful run is idempotent and does not repeat the confirmation audit.
 
-```bash
-runuser -u sitesee -- /opt/cpanel/ea-php82/root/usr/bin/php /home/sitesee/.sitesee-real-estate/tools/diagnose-calendar-confirmation.php E6E183EF8E --repair-empty-arrays-once
+Success ends with:
+
+```text
+RESULT: CONFIRMED. Existing event verified; booking confirmed.
+Calendar creations: 0. Invitations: 0. Payment calls: 0.
 ```
 
-The helper repeats the checks, then prompts for REPAIR E6E183EF8E within 60 seconds. This authorizes one corrected request for the same booking, title/marker and shoot interval. The wider scan supplements the manual check; it cannot rule out an event renamed and moved outside that range.
+If any required check fails, it prints the collected failures and leaves the booking unchanged. Share the complete report. Do not reset claims/audits, run the consumed creation retries, create another booking, or repeat checkout.
 
-Before posting, the helper rechecks booking/configuration/audit state and commits diagnostic_empty_arrays_started_v1. That durable marker blocks another repair even after a crash, lost response or further rejection. The original claim and its event_json remain intact. The audit stores hashes of both original and submitted payloads; the only changes to this booking's submitted event are omission of attendees=[] and reminders=[].
+Omit --reconcile-existing to collect the same checks with the ledger opened read-only.
 
-HTTP status and bounded, credential-redacted error fields are printed and recorded. A returned event UID is retained even if subsequent verification fails. Only exact identity/privacy/interval verification and a fresh conflict check allow the original confirmation to become confirmed. Any failure retains protection; share the output and do not repeat. When a UID or matching event is available, use the existing read-only Recheck Calendar Result workflow.
+## Validation and scope
 
-The helper never calls Stripe or mail and never enables invitations. Uploading the package does not create an event. Live Zoho acceptance of the corrected request still needs the controlled server step.
+The tests reproduce the observed provider behavior: encoded %40 detail routes return 404; literal @ routes return the event. They exercise new confirmation, reconciliation by saved UID and by marker, invitation verification with mocked mail, no-guest payloads, and path injection rejection. Combined-audit tests cover both reader/writer paths, read-only database preservation, successful existing-event reconciliation, idempotence, collecting multiple failures, credential redaction, missing/moved events, duplicate markers, conflicts, incomplete calendar lists, stale releases, changed booking/configuration, unpaid bookings, absent UID and lock contention.
 
-## Validation
+All requests in local tests are mocked. The live corrected detail probe already passed; the combined deployed check and local reconciliation still need the command above.
 
-Mocked tests cover wire payload omission and notification controls, read-only database byte preservation, strict rejection eligibility, missing/ambiguous audit records, payload hash mismatch, acknowledgement, successful single creation, repeat/crash protection, credential redaction, lost reply, existing event markers, conflicts, malformed/paginated reads, event movement, racing edits, booking/configuration changes, payment/test-recipient checks, existing UID and lock contention. No real API requests or messages are sent during tests.
-
-Source changes remain in draft PR #38, branch feat/calendar-confirmation-20260925; they have not been merged into main.
+Changes remain in draft PR #38 on feat/calendar-confirmation-20260925. Main has not been merged. Completing this command resolves the existing test calendar confirmation; invitation delivery/rendering and live payment activation are separate stages and remain disabled.

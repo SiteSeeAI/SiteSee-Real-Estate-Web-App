@@ -89,8 +89,8 @@ function booking_send_invitation(PDO $db, string $reference, ?array $config = nu
     if ($saved['calendar_uid'] !== $config['calendar_uid']) throw new InvalidArgumentException('Calendar identity changed.');
     // A deleted or manually moved event must not produce a stale confirmation invitation.
     $connection = booking_confirmation_connection($config, $transport);
-    $uid = booking_confirmation_verify($connection('GET', '/api/v1/calendars/' . rawurlencode($config['calendar_uid'])
-        . '/events/' . rawurlencode($saved['event_uid'])), json_decode($saved['event_json'], true, 32, JSON_THROW_ON_ERROR), $config['calendar_uid']);
+    $uid = booking_confirmation_verify($connection('GET', booking_calendar_event_path($config['calendar_uid'], $saved['event_uid'])),
+        json_decode($saved['event_json'], true, 32, JSON_THROW_ON_ERROR), $config['calendar_uid']);
     if ($uid !== $saved['event_uid']) throw new BookingCalendarUnavailable('Calendar identity changed.');
     booking_confirmation_verify_clear($connection, json_decode($saved['event_json'], true, 32, JSON_THROW_ON_ERROR), $config['calendar_uid'], $uid);
     $db->exec('BEGIN IMMEDIATE');
