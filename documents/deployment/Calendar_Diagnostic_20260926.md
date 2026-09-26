@@ -1,43 +1,49 @@
-# Calendar diagnostic and single-use recovery — 2026 09 26
+# Calendar validation repair — 2026 09 26
 
-The controlled booking E6E183EF8E reached an uncertain creation state without a saved event UID. Reconciliation and the user's manual check found no matching event. Original code replaced the underlying error without retaining a diagnostic. Invalid-date probes returned PATTERN_NOT_MATCHED for both POST-body and URL-parameter formats, so a body/query mismatch was not established and the production transport is not changed by this package.
+Booking E6E183EF8E is a paid, reviewed test booking for cro@sitesee.ai, with the arrival window 2026 09 30, 07:00–09:00 America/Chicago. Its original calendar attempt remains uncertain without an event UID. A separately authorized diagnostic retry returned HTTP 400, cURL error 0, and ARRAY_SIZE_OUT_OF_RANGE: attendees array size out of range[1-50]. That is evidence of rejection for this retry; the first attempt's discarded response remains unavailable.
 
-This package adds one standalone CLI helper. Existing application files, credentials, booking/payment amounts, staff review, email configuration and controls are not replaced. Do not delete the uncertain confirmation record or create another booking to get around it.
+The creation request incorrectly included attendees as an empty array. The corrected request omits optional attendee and reminder arrays, while retaining isprivate=true, notify_attendee=0, calendar_alarm=false, conference=none and allowForwarding=false. No recipient is added. Zoho documents attendees/reminders as optional and notify_attendee=0 as no notifications: https://www.zoho.com/calendar/help/api/post-create-event.html
 
-## First step: default read-only check
+## Upload these three files
 
-Upload `diagnose-calendar-confirmation.php` to:
+Extract the updated SiteSee_Calendar_Diagnostic_20260926.zip. Replace the exact filenames below, keeping the sitesee owner. Do not allow cPanel to add numbered suffixes.
 
-`/home/sitesee/.sitesee-real-estate/tools/diagnose-calendar-confirmation.php`
+| ZIP file | Server destination |
+| --- | --- |
+| booking-confirmation.php | /home/sitesee/.sitesee-real-estate/server/booking-confirmation.php |
+| diagnose-calendar-confirmation.php | /home/sitesee/.sitesee-real-estate/tools/diagnose-calendar-confirmation.php |
+| calendar-confirmation-release.json | /home/sitesee/.sitesee-real-estate/calendar-confirmation-release.json |
 
-Keep ownership as sitesee. Run in WHM Terminal:
+The JSON file updates the existing release checksum for the corrected PHP file; it contains no credentials or settings. Existing payment, availability and mail configuration remain in place. Keep invitations disabled. This document is for deployment, not a public website page.
 
-```bash
-runuser -u sitesee -- /opt/cpanel/ea-php82/root/usr/bin/php /home/sitesee/.sitesee-real-estate/tools/diagnose-calendar-confirmation.php E6E183EF8E
-```
-
-The default mode opens the existing database read-only, takes the existing confirmation lock, verifies the saved paid test booking and recipient, validates privacy and the exact saved shoot interval, obtains a temporary writer access token, and reads the configured calendar across the shoot plus 36 hours on either side. It checks event markers, calendar conflicts, and other local reservations. It does not create an event, change a booking, call Stripe or send mail. Send the complete output back before continuing.
-
-The broad scan is evidence for operator review, not a guarantee that a remotely moved/renamed event cannot exist. The owning SiteSee Photography calendar must also have been manually checked. Do not authorize a retry if any matching event is found or the original result remains unresolved for another reason.
-
-## Separate, explicit recovery step
-
-Only after the default check and manual calendar inspection support absence, the operator may run:
+## First run: read-only repair check
 
 ```bash
-runuser -u sitesee -- /opt/cpanel/ea-php82/root/usr/bin/php /home/sitesee/.sitesee-real-estate/tools/diagnose-calendar-confirmation.php E6E183EF8E --retry-once
+runuser -u sitesee -- /opt/cpanel/ea-php82/root/usr/bin/php /home/sitesee/.sitesee-real-estate/tools/diagnose-calendar-confirmation.php E6E183EF8E --check-empty-arrays-repair
 ```
 
-The helper repeats all checks. It then asks the operator to type `RETRY E6E183EF8E` to attest to the manual calendar check and explicitly authorize one retry. It holds the same application confirmation lock throughout. A durable `diagnostic_retry_started_v1` audit record is committed before the POST. No automatic retry is possible, including after a lost response or repeated command. The original claim stays in place; it is never deleted or reset.
+This verifies the uploaded correction's checksum/syntax, the original payload hash, the exact saved HTTP 400 rejection and stopped-at-create audit sequence, and absence of any later diagnostic attempt. It checks paid test status, saved review, configured mailbox, future arrival window, reviewed duration, privacy and disabled invitations. It holds the existing confirmation lock and reads the calendar for 36 hours either side of the shoot, blocking booking markers, remote conflicts and other local claims. It opens the existing ledger read-only and does not create an event or change the booking. Share its output before the next step.
 
-The retry uses the original saved event payload and original marker. The payload is private, has no attendees or reminders, disables notifications and calendar alarms, and creates no conference. The helper captures bounded, credential-redacted error fields, HTTP status and cURL error number. The original discarded response cannot be recovered; these diagnostics describe this newly authorized attempt.
+The existing --retry-once command remains consumed and blocked. Do not delete/reset the original claim or audit history, create another booking to bypass it, or repeat checkout.
 
-A successful create must return an event UID, pass an event-detail check for exact identity/privacy/interval, and pass a fresh conflict check before the existing confirmation record is marked confirmed. Any failure retains the protected state and any UID obtained. A network/database failure after an attempt must be reviewed; do not reset the audit or repeat the retry. Existing read-only Recheck Calendar Result remains the recovery route when a UID or matching remote event exists.
+## Separate one-time corrected creation
 
-No invitation or payment is sent by this helper. Invitations must remain disabled. The tool does not activate any control, and does not solve the original failure until the actual provider response is observed.
+After the read-only repair check passes and the owning SiteSee Photography calendar has been manually checked for a matching event:
+
+```bash
+runuser -u sitesee -- /opt/cpanel/ea-php82/root/usr/bin/php /home/sitesee/.sitesee-real-estate/tools/diagnose-calendar-confirmation.php E6E183EF8E --repair-empty-arrays-once
+```
+
+The helper repeats the checks, then prompts for REPAIR E6E183EF8E within 60 seconds. This authorizes one corrected request for the same booking, title/marker and shoot interval. The wider scan supplements the manual check; it cannot rule out an event renamed and moved outside that range.
+
+Before posting, the helper rechecks booking/configuration/audit state and commits diagnostic_empty_arrays_started_v1. That durable marker blocks another repair even after a crash, lost response or further rejection. The original claim and its event_json remain intact. The audit stores hashes of both original and submitted payloads; the only changes to this booking's submitted event are omission of attendees=[] and reminders=[].
+
+HTTP status and bounded, credential-redacted error fields are printed and recorded. A returned event UID is retained even if subsequent verification fails. Only exact identity/privacy/interval verification and a fresh conflict check allow the original confirmation to become confirmed. Any failure retains protection; share the output and do not repeat. When a UID or matching event is available, use the existing read-only Recheck Calendar Result workflow.
+
+The helper never calls Stripe or mail and never enables invitations. Uploading the package does not create an event. Live Zoho acceptance of the corrected request still needs the controlled server step.
 
 ## Validation
 
-PHP syntax and the targeted mock suite cover default read-only database preservation; explicit acknowledgement; one successful verified creation; repeat-command prevention; redacted provider rejection; lost reply; broad-range existing-event detection; remote/local conflicts; malformed and paginated reads; event movement; a racing calendar conflict; booking/config changes; paid state; test recipient; existing UID; invitation switch; and lock contention. No real API request is made by the test suite.
+Mocked tests cover wire payload omission and notification controls, read-only database byte preservation, strict rejection eligibility, missing/ambiguous audit records, payload hash mismatch, acknowledgement, successful single creation, repeat/crash protection, credential redaction, lost reply, existing event markers, conflicts, malformed/paginated reads, event movement, racing edits, booking/configuration changes, payment/test-recipient checks, existing UID and lock contention. No real API requests or messages are sent during tests.
 
-Source and tests are maintained with the SiteSee Real Estate repository. Upload only the PHP helper to the private tools directory; this README is not a public website page.
+Source changes remain in draft PR #38, branch feat/calendar-confirmation-20260925; they have not been merged into main.
