@@ -1,7 +1,7 @@
 {
   "release": "sitesee-calendar-confirmation-test-v1",
   "files": {
-    "server/booking-confirmation.php": "cb46cad2e7abf8857c341eee35506952a87cafa30c06a914ceea4ece615ddefa",
+    "server/booking-confirmation.php": "da47baeac10ac1414f336a5b6827578d68fbb3395a800a5a5efc17bdc054a2e8",
     "server/booking-invitation.php": "c5a8ea5cf53c4dce57c6f165a9b11fee38593df7d60ef2a1ccf39b0962c8a0ef",
     "server/booking-schedule.php": "99de974d2b45de2b75003a6e4a93ca0e71019cdb632cc52defc34aeb09727cb8",
     "server/booking-store.php": "842176a35abcdd7477f6e50ac322a33c971705482db2c94e65668aae0ebe81e4",
