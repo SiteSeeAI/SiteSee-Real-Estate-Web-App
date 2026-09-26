@@ -48,6 +48,22 @@ Refresh credentials are checkpointed privately before organization checks, so a 
 
 ## Consolidated verification and deliberate test
 
+### One-session runner (recommended after setup)
+
+Upload `tools/finish-booking-communications.py` to `/home/sitesee/`, then run in the root WHM Terminal:
+
+```bash
+python3 /home/sitesee/finish-booking-communications.py --send-probe-to cro@sitesee.ai --enable-after-pass
+```
+
+This wrapper verifies the installed command versions and runs all database operations as `sitesee`. It displays exact primary-email Contact candidates for staff selection. If none appears, it waits while staff reviews Contacts in Zoho and adds the correct test customer record if needed; it never creates a Contact automatically or adds a licensed user. No credentials are requested.
+
+After selection, it links the Contact, imports the existing invitation, checks its delivery and CRM association, sends at most one plain probe email, checks delivery and CRM history, and enables the dedicated test sender only after **both** original and probe records have verified sent, delivery and CRM states. Existing probe records are never submitted again, including uncertain or blocked attempts. Delivery checks accommodate 30 seconds of provider lag. CRM is attempted once per message per run; duplicate/candidate review states are retained for inspection. Re-running resumes saved progress. No calendar event, payment or invitation is created by this runner.
+
+The final report includes independent results and fixed diagnostics. Successful transport/CRM validation still requires the fresh calendar invitation acceptance test below. Eleven mocked runner tests cover contact selection, missing/wrong Contacts, progress errors, partial failures, delivery lag, duplicate review, and safe resumption after uncertain submission.
+
+### Individual commands (recovery/reference)
+
 Define this helper in the same WHM Terminal session. It runs database commands as `sitesee` so SQLite sidecar files retain the correct owner:
 
 ```bash
