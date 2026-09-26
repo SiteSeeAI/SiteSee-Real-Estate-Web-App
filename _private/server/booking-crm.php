@@ -73,7 +73,7 @@ function booking_crm_linked(PDO $db, string $reference, string $email, array $co
     return $link;
 }
 
-/** List every visible history page before adding history; inability to inspect blocks writes. */
+/** Inspect native synchronization or an explicitly selected existing email. */
 function booking_crm_history(string $contact, callable $crm): array
 {
     $all=[];$index=null;$seen=[];
@@ -114,7 +114,13 @@ function booking_communication_crm(PDO $db, string $key, array $config, callable
     if (($row['crm_org_id'] && $row['crm_org_id']!==$link['org_id']) || ($row['crm_contact_id'] && $row['crm_contact_id']!==$link['contact_id'])) {
         throw new RuntimeException('The stored CRM destination changed.');
     }
-    $history=booking_crm_history($link['contact_id'],$crm);
+    $syncMode = $row['sender']==='cro@sitesee.ai' ? ($config['original_sync_mode'] ?? 'native') : $config['sync_mode'];
+    // API-mode senders were explicitly verified as not synchronized during setup.
+    // Associate the actual sent Message-ID directly: Zoho rejects an already-associated
+    // original_message_id with DUPLICATE_DATA. Unrelated historical mailbox volume
+    // must not prevent a new API-owned email entry. Native sync still uses inspection.
+    if ($confirmExisting===null && in_array($row['crm_state'],['existing_candidate_review','provider_duplicate'],true)) return;
+    $history=($syncMode==='native' || $confirmExisting!==null) ? booking_crm_history($link['contact_id'],$crm) : [];
     $candidates=array_values(array_filter($history,static fn($e)=>booking_crm_history_candidate($e,$row)));
     if (count($candidates)>0) {
         // Documentation does not guarantee original_message_id on GET. Do not guess or duplicate.
@@ -134,11 +140,11 @@ function booking_communication_crm(PDO $db, string $key, array $config, callable
         return;
     }
     if ($confirmExisting!==null) throw new InvalidArgumentException('Matching CRM email was not found.');
-    $syncMode = $row['sender']==='cro@sitesee.ai' ? ($config['original_sync_mode'] ?? 'native') : $config['sync_mode'];
     if ($syncMode==='native') {
         booking_communication_update($db,$key,['crm_state'=>'awaiting_native_sync','crm_error'=>null]); return;
     }
     $db->exec('BEGIN IMMEDIATE');
+    $diagnostic='CRM association needs recovery.';
     try {
         $current=booking_communication_get($db,$key);
         if ($current['crm_state']==='associated') { $db->exec('COMMIT'); return; }
@@ -161,9 +167,14 @@ function booking_communication_crm(PDO $db, string $key, array $config, callable
         } elseif (($item['code'] ?? $r['body']['code'] ?? '')==='DUPLICATE_DATA') {
             // Documented provider duplicate result; retain it without inventing a CRM email ID.
             booking_communication_update($db,$key,['crm_state'=>'provider_duplicate','crm_error'=>'Provider reports existing association; inspect CRM history.']);
-        } else throw new RuntimeException('CRM association was not acknowledged.');
+        } else {
+            $code=$item['code'] ?? $r['body']['code'] ?? 'UNACKNOWLEDGED';
+            if (!is_string($code) || !preg_match('/^[A-Z_]{1,80}$/D',$code)) $code='UNACKNOWLEDGED';
+            $diagnostic='CRM association failed (HTTP '.(int)$r['status'].'; code '.$code.').';
+            throw new RuntimeException('CRM association was not acknowledged.');
+        }
     } catch (Throwable) {
-        booking_communication_update($db,$key,['crm_state'=>'retry_pending','crm_error'=>'CRM association needs recovery; mail must not be resent.']);
-        throw new RuntimeException('Mail remains sent. Retry only the CRM association.');
+        booking_communication_update($db,$key,['crm_state'=>'retry_pending','crm_error'=>$diagnostic.' Mail must not be resent.']);
+        throw new RuntimeException('Mail remains sent. '.$diagnostic.' Retry only the CRM association.');
     }
 }

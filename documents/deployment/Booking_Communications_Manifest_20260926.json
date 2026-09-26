@@ -14,8 +14,8 @@
     },
     "server/booking-crm.php": {
       "source": "_private/server/booking-crm.php",
-      "sha256": "42eb3369d40e1fc37712413cde685f76cdf72dac5329b199ac22c6ef42877c39",
-      "previous_sha256": null
+      "sha256": "acf250ec05945007b7940b09cd57280b9a8baea6ecc7bec81962345f9421bb97",
+      "previous_sha256": "42eb3369d40e1fc37712413cde685f76cdf72dac5329b199ac22c6ef42877c39"
     },
     "server/booking-invitation.php": {
       "source": "_private/server/booking-invitation.php",

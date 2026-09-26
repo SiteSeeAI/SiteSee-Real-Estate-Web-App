@@ -18,7 +18,7 @@ ORIGINAL = 'original:' + REFERENCE
 PROBE = 'probe:' + REFERENCE
 HASHES = {
     'tools/booking-communications.php': 'bf8173d38bfa7f980cf8a6d7e8e09ee07f0efabbdc3a466c87f08c2e1877ad5b',
-    'server/booking-crm.php': '42eb3369d40e1fc37712413cde685f76cdf72dac5329b199ac22c6ef42877c39',
+    'server/booking-crm.php': 'acf250ec05945007b7940b09cd57280b9a8baea6ecc7bec81962345f9421bb97',
     'server/booking-communication.php': 'd2fb1b321f23b73e5c0e8db60426c36429a0ef7b4dd855098dfafaebbc91b254',
     'server/booking-mail-client.php': '189e15f44c3c28856765527efdcf25b71f748add07d6e7d31c396d50d3ed5e5b',
 }

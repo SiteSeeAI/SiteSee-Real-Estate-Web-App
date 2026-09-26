@@ -10,7 +10,7 @@ Before sending, staff must verify the CRM organization and select an existing co
 
 A communication is claimed locally before creating its Microsoft draft. Its immutable Graph ID is saved before the send call. The submission response, observed sent copy, recipient-mailbox evidence and CRM association have separate fields. A timeout never authorizes a resend. CRM recovery uses the actual sent copy's Internet Message-ID and the same verified contact. Provider errors and credentials are not copied into messages or output.
 
-Zoho history is inspected before insertion. Native mailbox synchronization and API-managed history are distinct modes, checked separately for the new sender and original sender. Matching history whose original Message-ID is not exposed requires staff review; it does not trigger a duplicate insertion. CRM stores the customer-facing body and message identity; the invitation MIME and calendar linkage remain in the private communication ledger. Property access codes and internal shoot times are excluded.
+Native mailbox synchronization and API-managed history are distinct modes, checked separately for the new sender and original sender. Native history is inspected without inserting competing entries. For explicitly verified unsynchronized senders, Associate Email uses the actual sent `original_message_id` directly; Zoho's documented `DUPLICATE_DATA` response protects against a second association of that message to the record. A duplicate response remains pending review, never assumed successful or assigned an invented CRM email ID. Existing candidate-review states are preserved. CRM stores the customer-facing body and message identity; the invitation MIME and calendar linkage remain in the private communication ledger. Property access codes and internal shoot times are excluded.
 
 ## Upload and install
 
@@ -47,6 +47,20 @@ The Contacts ALL scope is the documented requirement for Associate Email; implem
 Refresh credentials are checkpointed privately before organization checks, so a later failed check does not require another grant. Existing final configuration is never overwritten. The dedicated booking path starts disabled. No email or CRM record is created by setup.
 
 ## Consolidated verification and deliberate test
+
+### Recovery after the history inspection limit
+
+The first deployed version enumerated every visible historical email before each association and stopped after 100 pages. Live verification of E6E183EF8E confirmed both original and probe messages sent and received, but this cap blocked both CRM entries before any association was attempted. The correction uses direct, duplicate-protected association for the already-reviewed API modes. Native synchronization continues to require inspection.
+
+Upload `tools/recover-booking-crm.py` to `/home/sitesee/` and run:
+
+```bash
+python3 /home/sitesee/recover-booking-crm.py --apply
+```
+
+This self-contained patch verifies both saved messages are already sent and received, locks against the previous runner, checks the deployed versions, backs up and updates only the CRM module, the known combined runner if present, and the release checksum manifest. It then recovers both CRM associations and enables the sender only after both succeed. It requests no secrets, sends no email, and does not create or change a calendar event or payment. Its allowed command actions are limited to `report`, `crm`, and `enable`. Safe provider HTTP status and error code diagnostics are included if an association fails; raw provider payloads and credentials are excluded. Re-running resumes recovery.
+
+Targeted correction validation passed 91 PHP communication checks, 7 recovery checks including an actual local install/backup/repeat rehearsal, and the 11 combined-runner checks. Provider interactions in these tests were mocked; live CRM acceptance remains to be confirmed by this recovery.
 
 ### One-session runner (recommended after setup)
 

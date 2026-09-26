@@ -19,19 +19,21 @@ function fixture(string $ref):array {
     $db->prepare("UPDATE bookings SET status='deposit_paid_test',deposit_paid_at=?,approved_at=?,photographer='David',duration_minutes=120 WHERE reference=?")->execute([gmdate('c'),gmdate('c'),$ref]);
     return booking_get($db,$ref);
 }
-$config=['org_id'=>'100','user_id'=>'200','sync_mode'=>'api'];
-$history=[];$crmWrites=0;$crmFail=false;$crmCommitThenTimeout=false;$wrongOrg=false;$wrongEmail=false;$malformedHistory=false;$duplicate=false;
-$crm=static function($method,$path,$body=null)use(&$history,&$crmWrites,&$crmFail,&$crmCommitThenTimeout,&$wrongOrg,&$wrongEmail,&$malformedHistory,&$duplicate):array {
+$config=['org_id'=>'100','user_id'=>'200','sync_mode'=>'api','original_sync_mode'=>'api'];
+$native=array_replace($config,['sync_mode'=>'native']);
+$history=[];$historyReads=0;$crmWrites=0;$crmFail=false;$crmCommitThenTimeout=false;$wrongOrg=false;$wrongEmail=false;$malformedHistory=false;$duplicate=false;$providerError=null;
+$crm=static function($method,$path,$body=null)use(&$history,&$historyReads,&$crmWrites,&$crmFail,&$crmCommitThenTimeout,&$wrongOrg,&$wrongEmail,&$malformedHistory,&$duplicate,&$providerError):array {
     if($path==='/org')return ['status'=>200,'body'=>['org'=>[['id'=>$wrongOrg?'999':'100']]]];
     if(str_starts_with($path,'/users'))return ['status'=>200,'body'=>['users'=>[['id'=>'200']]]];
     if(str_starts_with($path,'/Contacts/search'))return ['status'=>200,'body'=>['data'=>[['id'=>'300','Email'=>'cro@sitesee.ai']], 'info'=>['more_records'=>false]]];
     if($path==='/Contacts/300')return ['status'=>200,'body'=>['data'=>[['id'=>'300','Email'=>$wrongEmail?'wrong@example.com':'cro@sitesee.ai']]]];
-    if(str_contains($path,'/Emails'))return ['status'=>200,'body'=>$malformedHistory?['Emails'=>[]]:['Emails'=>$history,'info'=>['more_records'=>false]]];
+    if(str_contains($path,'/Emails')) {++$historyReads;return ['status'=>200,'body'=>$malformedHistory?['Emails'=>[]]:['Emails'=>$history,'info'=>['more_records'=>false]]];}
     if($method==='POST') {
         ++$crmWrites;ok(str_ends_with($path,'/actions/associate_email'),'Only CRM association endpoint, never send.');
         $e=$body['Emails'][0];ok($e['original_message_id']==='<sent-id@example.com>','Use provider original Message-ID.');
         ok(!str_contains($e['content'],'0123456789'),'Access codes absent from CRM content.');
         if($crmFail)throw new RuntimeException('secret provider failure');
+        if($providerError!==null)return ['status'=>403,'body'=>['code'=>$providerError,'message'=>'secret provider detail']];
         if($duplicate)return ['status'=>400,'body'=>['Emails'=>[['code'=>'DUPLICATE_DATA']]]];
         $history=[array_merge($e,['message_id'=>'crm-1','time'=>$e['date_time']])];
         if($crmCommitThenTimeout)throw new RuntimeException('lost CRM acknowledgment');
@@ -81,6 +83,7 @@ $crmFail=true;fails(fn()=>booking_communication_crm($db,$key,$config,$crm),'CRM 
 ok(booking_communication_get($db,$key)['submission_state']==='sent_observed' && $graphSends===1,'CRM error never alters mail or resends.');
 booking_communication_crm($db,$key,$config,$crm);$writes=$crmWrites;booking_communication_crm($db,$key,$config,$crm);
 ok($crmWrites===$writes && booking_communication_get($db,$key)['crm_state']==='associated','CRM repeat idempotent.');
+ok($historyReads===0,'Verified API sender associates exact Message-ID without scanning unrelated mailbox history.');
 booking_communication_delivery($db,$key,$graph);ok(booking_communication_get($db,$key)['delivery_state']==='recipient_copy_observed','Recipient evidence separately recorded.');
 ok(booking_get($db,'ABB0000001')===$bookingBefore,'Transport leaves booking, payment, review and schedule unchanged.');
 ok(booking_communication_get($db,$key)['event_uid']==='event@zoho.com','Calendar linkage retained.');
@@ -93,16 +96,23 @@ $key4=make('ABB0000004');$wrongFrom=true;fails(fn()=>booking_communication_submi
 $history=[];booking_crm_link($db,'ABB0000002','300',$config,$crm);
 $wrongOrg=true;fails(fn()=>booking_communication_crm($db,$key2,$config,$crm),'Wrong CRM organization blocked.');$wrongOrg=false;
 $wrongEmail=true;fails(fn()=>booking_communication_crm($db,$key2,$config,$crm),'Changed CRM email blocked.');$wrongEmail=false;
-$malformedHistory=true;fails(fn()=>booking_communication_crm($db,$key2,$config,$crm),'Incomplete history cannot cause insertion.');$malformedHistory=false;
+$malformedHistory=true;fails(fn()=>booking_communication_crm($db,$key2,$native,$crm),'Incomplete native history cannot cause insertion.');$malformedHistory=false;
 $crmCommitThenTimeout=true;fails(fn()=>booking_communication_crm($db,$key2,$config,$crm),'CRM accepted but acknowledgment lost.');$crmCommitThenTimeout=false;
-$writes=$crmWrites;booking_communication_crm($db,$key2,$config,$crm);ok($crmWrites===$writes,'History recovers committed CRM association without duplicate insert.');
+$writes=$crmWrites;$duplicate=true;booking_communication_crm($db,$key2,$config,$crm);$duplicate=false;
+ok($crmWrites===$writes+1 && booking_communication_get($db,$key2)['crm_state']==='provider_duplicate','Retry reuses the exact Message-ID; provider duplicate remains reviewable, never invented success.');
+$writes=$crmWrites;booking_communication_crm($db,$key2,$config,$crm);ok($crmWrites===$writes,'Unresolved provider duplicate is not repeatedly inserted.');
 // Native synchronization candidate without an exposed original ID is never guessed or duplicated.
 booking_communication_update($db,$key2,['crm_state'=>'pending','crm_message_id'=>null]);unset($history[0]['original_message_id']);
-booking_communication_crm($db,$key2,$config,$crm);ok(booking_communication_get($db,$key2)['crm_state']==='existing_candidate_review' && $crmWrites===$writes,'Matching native history blocks insertion pending review.');
+booking_communication_crm($db,$key2,$native,$crm);ok(booking_communication_get($db,$key2)['crm_state']==='existing_candidate_review' && $crmWrites===$writes,'Matching native history blocks insertion pending review.');
+booking_communication_crm($db,$key2,$config,$crm);ok($crmWrites===$writes,'An existing review requirement is retained even if the supplied mode changes.');
 booking_communication_crm($db,$key2,$config,$crm,'crm-1');ok(booking_communication_get($db,$key2)['crm_state']==='associated','Explicit existing-history review links it without insertion.');
 booking_communication_update($db,$key2,['crm_state'=>'pending']);$history=[];
 booking_communication_crm($db,$key2,array_replace($config,['sync_mode'=>'native']),$crm);ok(booking_communication_get($db,$key2)['crm_state']==='awaiting_native_sync' && $crmWrites===$writes,'Native sync lag never creates competing history.');
 $duplicate=true;booking_communication_crm($db,$key2,$config,$crm);ok(booking_communication_get($db,$key2)['crm_state']==='provider_duplicate','Provider duplicate preserved without fake CRM ID.');
+$duplicate=false;booking_communication_update($db,$key2,['crm_state'=>'pending']);$providerError='NO_PERMISSION';
+fails(fn()=>booking_communication_crm($db,$key2,$config,$crm),'Provider permission failure is retained for CRM-only recovery.');
+$error=booking_communication_get($db,$key2)['crm_error'];ok(str_contains($error,'HTTP 403; code NO_PERMISSION') && !str_contains($error,'secret'),'Diagnostics expose only HTTP status and a validated provider code.');
+$providerError=null;
 fails(fn()=>booking_crm_link($db,'ABB0000002','999',$config,$crm),'Unverified contact ID cannot link.');
 fails(fn()=>booking_communication_enqueue($db,'ABB0000001','invitation',booking_invitation_message($bookingBefore,['confirmed_at'=>gmdate('c')])),'Unique booking and kind blocks concurrent enqueue.');
 // Enumeration must inspect more than first page and must compare exact email.
@@ -111,6 +121,12 @@ $candidates=booking_crm_candidates('cro@sitesee.ai',$search);ok($pages===2 && co
 // The original delivered invitation is never a valid submission target.
 $m=booking_invitation_message($bookingBefore,['confirmed_at'=>gmdate('c')]);$m['from']='cro@sitesee.ai';$orig=booking_communication_enqueue($db,'ABB0000001','original',$m);
 fails(fn()=>booking_communication_submit($db,$orig,$graph),'Original message cannot enter send path.');
+booking_communication_update($db,$orig,['submission_state'=>'sent_observed','internet_message_id'=>'<sent-id@example.com>','sent_at'=>gmdate('c')]);
+$unreviewed=$config;unset($unreviewed['original_sync_mode']);$reads=$historyReads;$writes=$crmWrites;
+booking_communication_crm($db,$orig,$unreviewed,$crm);
+ok($historyReads===$reads+1 && $crmWrites===$writes,'Unreviewed original sender defaults to native inspection without inserting.');
+$reads=$historyReads;booking_communication_crm($db,$orig,$config,$crm);
+ok($historyReads===$reads && booking_communication_get($db,$orig)['crm_state']==='associated','Explicit original API mode records its actual sender without scanning old mailbox history.');
 $beforeCalls=count($graphCalls);fails(fn()=>booking_communication_crm($db,$key3,$config,$crm),'Unverified send cannot create CRM sent history.');ok(count($graphCalls)===$beforeCalls,'CRM recovery cannot call Graph.');
 // Exercise the real invitation orchestration with provider clients injected, no legacy mail callback.
 $full=fixture('ABB0000010');$cc=['confirmation_stage'=>'test','confirmation_enabled'=>true,'invitations_enabled'=>true,'enabled'=>true,
