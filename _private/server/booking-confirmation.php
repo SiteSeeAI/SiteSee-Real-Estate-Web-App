@@ -57,7 +57,9 @@ function booking_confirmation_http(string $method, string $url, ?array $form, ?s
         throw new BookingCalendarUnavailable('Calendar creation is unavailable.');
     }
     $event = json_decode($form['eventdata'], true);
-    if (!is_array($event) || ($event['notify_attendee'] ?? null) !== 0 || ($event['attendees'] ?? null) !== []
+    if (!is_array($event) || ($event['notify_attendee'] ?? null) !== 0
+        || array_key_exists('attendees', $event) || array_key_exists('group_attendees', $event)
+        || array_key_exists('reminders', $event)
         || ($event['isprivate'] ?? null) !== true || ($event['calendar_alarm'] ?? null) !== false) {
         throw new BookingCalendarUnavailable('Unsafe calendar creation request refused.');
     }
@@ -129,7 +131,8 @@ function booking_confirmation_event(array $row, array $window, string $marker): 
         'dateandtime'=>['start'=>gmdate('Ymd\THis\Z', strtotime($window['planned_start_utc'])),
             'end'=>gmdate('Ymd\THis\Z', strtotime($window['planned_end_utc'])), 'timezone'=>'America/Chicago'],
         'isallday'=>false, 'isprivate'=>true, 'isrep'=>false, 'transparency'=>0,
-        'calendar_alarm'=>false, 'notify_attendee'=>0, 'attendees'=>[], 'reminders'=>[], 'conference'=>'none',
+        // Zoho rejects empty optional arrays. Omission adds no guests or event reminders.
+        'calendar_alarm'=>false, 'notify_attendee'=>0, 'conference'=>'none',
         'allowForwarding'=>false, 'location'=>$location,
         'description'=>'TEST appointment. Booking reference: ' . $row['reference'] . '. Customer arrival window: '
             . $window['date'] . ' ' . $window['time'] . '-' . $window['end_time']
