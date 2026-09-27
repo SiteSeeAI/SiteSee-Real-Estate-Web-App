@@ -179,18 +179,84 @@ already present and required `-AllowClobber`. This occurred before administrator
 connections or calendar authorization writes. Some local dependencies may have
 installed before the stop; rerunning the setup checks for installed modules.
 
-The installer now passes `-AllowClobber` on its two explicit `Install-Module`
+Revision 2 added `-AllowClobber` to the Microsoft-tool `Install-Module`
 calls, allowing the official dependencies to supply the overlapping commands.
 It retains `CurrentUser`, the verified official PSGallery URL and normal
 publisher checks. It does not set a global installation default, mark other
 repositories trusted, remove existing modules or change execution policies.
 
-Replace the downloaded `setup-microsoft-calendar-access.ps1` with the corrected
-file and rerun the same Windows command already printed by WHM. The tenant and
-application IDs are unchanged; do not regenerate credentials or restart the
-server steps. Review the new FINAL RESULTS before assuming authorization passed.
+The user reported the same error again. That output did not identify which
+downloaded revision or module-installation stage was running; do not infer that
+the replacement file was used or that the additional parameter fixed the actual
+Windows environment. The user independently reported Windows PowerShell
+5.1.26100.9549, a supported host version.
 
 Reference: https://learn.microsoft.com/en-us/powershell/module/powershellget/install-module?view=powershellget-2.x
+
+### Consolidated recovery revision 20260927-r3
+
+Revision 3 checks Windows PowerShell 5.1, a 64-bit process and .NET Framework
+4.7.2 or newer. It prints its revision, exact file path and SHA256 on startup and
+the phase, failing command/line and error ID on failure. No credentials are
+requested beyond the existing nonsecret application/tenant IDs and Microsoft's
+own administrator sign-in screens.
+
+The prerequisite phase explicitly prepares PackageManagement 1.4.8.1 and
+PowerShellGet 2.2.5, the stable versions documented by Microsoft. It then exits
+that process. A fresh process imports those exact versions and verifies that
+`Install-Module` actually resolves to PowerShellGet 2.2.5 before installing the
+two required Microsoft modules. The installer verifies available versions after
+installation and restores the default PSGallery registration only if absent;
+it rejects an existing PSGallery entry pointing elsewhere.
+
+Microsoft's PowerShellGet 2.2.5 source shows that `-Force` suppresses the list of
+already installed dependencies sent to the NuGet provider. That can trigger
+reinstallation of loaded package managers. Revision 3 therefore installs only
+missing versions, specifies exact versions for side-by-side installation, and
+uses `-AllowClobber` **without** `-Force` for modules. NuGet provider bootstrap
+retains its separate force flag. Normal publisher checks and repository trust
+settings are preserved. If PowerShell asks to install from the official
+PSGallery, the operator must answer Y; no policy is silently weakened.
+
+Graph directory review and Exchange administration also run in separate fresh
+processes, avoiding shared authentication assemblies. A temporary handoff holds
+only revision, tenant, application and enterprise-principal IDs. Both parent and
+Exchange phase validate the handoff; it contains no secret/token and is removed
+when the parent finishes. A failed phase prevents every subsequent phase.
+
+For recovery, the downloadable copy has a unique filename,
+`sitesee-calendar-setup-20260927-r3.ps1`. Save it to Downloads and run the following
+block in the same Windows PowerShell window. It verifies the exact file bytes
+and extracts only GUIDs from the prior setup command in the current window's
+history; it never re-executes history text or reads persistent shell history.
+If the original command is no longer in that window's history, the installer
+prompts for the two IDs already printed in WHM; no ID or key is sent to chat.
+
+```powershell
+& {
+    $ErrorActionPreference = 'Stop'
+    $f = Join-Path $env:USERPROFILE 'Downloads\sitesee-calendar-setup-20260927-r3.ps1'
+    if ((Get-FileHash -LiteralPath $f -Algorithm SHA256).Hash -ne '0C63B053A3287F26133344EC4EA02E115E3F9CBE4527C8DEABC9CCC0787E8634') { throw 'STOP: This is not the verified r3 installer. Download the new r3 file linked in chat.' }
+    $pattern = "-TenantId\s+'(?<tenant>[0-9a-fA-F-]{36})'\s+-ApplicationId\s+'(?<app>[0-9a-fA-F-]{36})'"
+    $previous = Get-History | Where-Object { $_.CommandLine -like '*setup-microsoft-calendar-access.ps1*' -and $_.CommandLine -match $pattern } | Select-Object -Last 1
+    $ids = @{}
+    if ($previous) { $m = [regex]::Match($previous.CommandLine, $pattern); $ids = @{ TenantId = $m.Groups['tenant'].Value; ApplicationId = $m.Groups['app'].Value } }
+    Unblock-File -LiteralPath $f
+    & powershell.exe -NoLogo -NoProfile -ExecutionPolicy RemoteSigned -File $f @ids
+}
+```
+
+Complete the Microsoft sign-ins. If the final permission configuration passes,
+run the existing WHM read-only check once and review its output. A configuration
+PASS is still distinct from actual Graph access or an event-write test. Never
+repeat permissions blindly if another failure occurs; collect the revision,
+stage and FINAL RESULTS now printed by this installer.
+
+References:
+
+- https://learn.microsoft.com/en-us/powershell/gallery/powershellget/install-powershellget?view=powershellget-3.x
+- https://learn.microsoft.com/en-us/powershell/exchange/exchange-online-powershell-v2?view=exchange-ps
+- https://learn.microsoft.com/en-us/powershell/microsoftgraph/installation?view=graph-powershell-1.0
 
 ### Local verification
 
@@ -200,6 +266,12 @@ tenant/mailbox mismatches, broader existing grants, scope membership, negative
 mailbox access, cleanup on known failures, ambiguous write recovery, conflicting
 scope preservation, directory pagination, empty/missing results, input guards,
 dependency-command overlap with rerun, and rejection of a redirected repository.
+Nine additional cases in `tests/microsoft_calendar_bootstrap_test.ps1` verify
+old-package-manager recovery, missing gallery/NuGet, no forced dependency
+overwrite, install failure, installer command resolution, phase order, stopping
+after each failed phase, handoff mismatch/cleanup, invalid-ID diagnostics and
+real local child-process argument/exit handling. The child-process fixture is
+inert and performs no setup or Microsoft calls.
 All Microsoft responses were simulated. The administrator sign-ins, module
 installation on the user's Windows system, tenant configuration and actual
 Microsoft calendar calls have **not** been verified by these local tests.

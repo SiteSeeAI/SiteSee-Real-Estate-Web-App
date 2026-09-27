@@ -187,16 +187,17 @@ Run-Case 'secrets and invalid IDs rejected before use' {
 # Reproduce the user's Windows PowerShell bootstrap failure. These mocks avoid
 # installing anything on the test machine and remain separate from RBAC tests.
 function Get-PSRepository($Name) {
-    Assert ($Name -eq 'PSGallery') 'Only the official named repository is allowed'
-    [pscustomobject]@{ SourceLocation = $script:galleryLocation }
+    [pscustomobject]@{ Name = 'PSGallery'; SourceLocation = $script:galleryLocation }
 }
 function Get-PackageProvider([switch]$ListAvailable) { [pscustomobject]@{ Name = 'NuGet'; Version = [version]'2.8.5.201' } }
 function Get-Module($Name, [switch]$ListAvailable) {
-    if ($script:modulesPresent) { [pscustomobject]@{ Name = $Name; Version = [version]'99.0.0' } }
+    if ($script:modulesPresent -or $Name -in $script:installedModules) { [pscustomobject]@{ Name = $Name; Version = [version]'99.0.0' } }
 }
-function Install-Module($Name, $MinimumVersion, $Repository, $Scope, [switch]$Force, [switch]$AllowClobber, [switch]$SkipPublisherCheck) {
+function Find-Module($Name, $MinimumVersion, $Repository) { [pscustomobject]@{ Version = [version]$MinimumVersion } }
+function Install-Module($Name, $RequiredVersion, $Repository, $Scope, [switch]$Force, [switch]$AllowClobber, [switch]$SkipPublisherCheck) {
     if (-not $AllowClobber) { throw "The commands Find-Package,Install-Package,Uninstall-Package are already available. Use -AllowClobber." }
     Assert ($Repository -eq 'PSGallery' -and $Scope -eq 'CurrentUser' -and -not $SkipPublisherCheck) 'Official repository, user-only installation and publisher checks preserved'
+    Assert (-not $Force -and $RequiredVersion) 'Do not force reinstall loaded dependencies'
     Assert ($Name -in @('Microsoft.Graph.Authentication', 'ExchangeOnlineManagement')) 'Only the requested Microsoft modules installed'
     $script:installedModules += $Name
 }

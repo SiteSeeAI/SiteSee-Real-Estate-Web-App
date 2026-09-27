@@ -6,10 +6,19 @@ Only Exchange Application RBAC objects are created. Existing grants are retained
 No Graph calendar/event/mail write, booking change, or migration is performed.
 #>
 [CmdletBinding()]
-param([string]$TenantId, [string]$ApplicationId)
+param(
+    [string]$TenantId,
+    [string]$ApplicationId,
+    [ValidateSet('Setup', 'Prerequisites', 'Tools', 'Directory', 'Exchange')]
+    [string]$Phase = 'Setup',
+    [string]$ReceiptPath
+)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+$script:SetupRevision = '20260927-r3'
+$script:SetupFile = $PSCommandPath
+$script:SetupStage = 'startup'
 
 function Get-SiteSeeValue($Object, [string]$Name) {
     if ($null -eq $Object) { return $null }
@@ -224,69 +233,204 @@ function Invoke-SiteSeeCalendarGrant([string]$ExpectedTenant, [string]$AppId, [s
     }
 }
 
-function Initialize-SiteSeeModules {
+function Assert-SiteSeeRuntime {
+    if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT -or
+        $PSVersionTable.PSEdition -ne 'Desktop' -or $PSVersionTable.PSVersion.Major -ne 5) {
+        throw 'Run this installer in Windows PowerShell 5.1 using the supplied Windows command.'
+    }
+    if (-not [Environment]::Is64BitProcess) { throw 'Use 64-bit Windows PowerShell from the Windows Start menu.' }
+    $framework = Get-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full' -Name Release
+    if ([int]$framework.Release -lt 461808) { throw 'Microsoft tools require .NET Framework 4.7.2 or later. No permissions were changed.' }
+}
+
+function Initialize-SiteSeeGallery {
     [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
-    $gallery = Get-PSRepository -Name PSGallery
-    if ([string]$gallery.SourceLocation -notmatch '^https://www\.powershellgallery\.com/api/v2/?$') {
+    $galleries = @(Get-PSRepository | Where-Object { $_.Name -eq 'PSGallery' })
+    if ($galleries.Count -eq 0) {
+        Register-PSRepository -Default
+        $galleries = @(Get-PSRepository | Where-Object { $_.Name -eq 'PSGallery' })
+    }
+    if ($galleries.Count -ne 1 -or [string]$galleries[0].SourceLocation -notmatch '^https://www\.powershellgallery\.com/api/v2/?$') {
         throw 'PSGallery is not pointing to the official PowerShell Gallery.'
     }
     if (-not @(Get-PackageProvider -ListAvailable | Where-Object { $_.Name -eq 'NuGet' -and $_.Version -ge [version]'2.8.5.201' }).Count) {
         Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Scope CurrentUser -Force | Out-Null
     }
+}
+
+function Initialize-SiteSeePackageManagers {
+    $script:SetupStage = 'checking the official module repository and NuGet provider'
+    foreach ($name in @('PackageManagement', 'PowerShellGet')) {
+        $versions = @(Get-Module -ListAvailable -Name $name | ForEach-Object { [string]$_.Version })
+        Write-Host "Installed ${name}: $($versions -join ', ')"
+    }
+    Initialize-SiteSeeGallery
+    # Install supported package managers explicitly, then EXIT this child process.
+    # Installing them does not unload old DLLs already in this PowerShell session.
+    foreach ($module in @(
+        @{ Name = 'PackageManagement'; Version = '1.4.8.1' },
+        @{ Name = 'PowerShellGet'; Version = '2.2.5' }
+    )) {
+        $script:SetupStage = "preparing $($module.Name) $($module.Version)"
+        $available = @(Get-Module -ListAvailable -Name $module.Name | Where-Object { $_.Version -eq [version]$module.Version })
+        if ($available.Count -eq 0) {
+            Write-Host "Installing prerequisite $($module.Name) $($module.Version) for your Windows account..."
+            Write-Host 'If PowerShell asks to install from PSGallery, choose Y for this official Microsoft module.'
+            Install-Module -Name $module.Name -RequiredVersion $module.Version -Repository PSGallery -Scope CurrentUser -AllowClobber
+        }
+        $verified = @(Get-Module -ListAvailable -Name $module.Name | Where-Object { $_.Version -eq [version]$module.Version })
+        if ($verified.Count -eq 0) { throw "The installation of $($module.Name) did not produce the required version." }
+    }
+    Write-Host 'Prerequisites ready. Continuing automatically in a fresh Windows PowerShell process.'
+}
+
+function Import-SiteSeePackageManagers {
+    $script:SetupStage = 'loading the supported package managers in a fresh process'
+    Import-Module PackageManagement -RequiredVersion 1.4.8.1 -Force
+    Import-Module PowerShellGet -RequiredVersion 2.2.5 -Force
+    $installer = Get-Command Install-Module
+    if ($installer.ModuleName -ne 'PowerShellGet' -or $installer.Module.Version -ne [version]'2.2.5') {
+        throw 'Install-Module did not resolve to PowerShellGet 2.2.5; stopped before Microsoft tool installation.'
+    }
+    Write-Host 'Active package managers: PackageManagement 1.4.8.1; PowerShellGet 2.2.5'
+}
+
+function Initialize-SiteSeeModules {
+    Initialize-SiteSeeGallery
     foreach ($module in @(
         @{ Name = 'Microsoft.Graph.Authentication'; Minimum = '2.0.0' },
         @{ Name = 'ExchangeOnlineManagement'; Minimum = '3.7.0' }
     )) {
+        $script:SetupStage = "installing or checking $($module.Name)"
         if (-not @(Get-Module -ListAvailable -Name $module.Name | Where-Object { $_.Version -ge [version]$module.Minimum }).Count) {
             Write-Host "Installing $($module.Name) for your Windows account..."
-            # Windows PowerShell's PackageManagement dependency can share command
-            # names with an installed version. Permit this official-module install
-            # only; do not change repository trust or disable publisher checks.
-            Install-Module -Name $module.Name -MinimumVersion $module.Minimum -Repository PSGallery -Scope CurrentUser -Force -AllowClobber
+            # Resolve an exact version for side-by-side installation. Force would
+            # reinstall dependencies, including already loaded package managers.
+            $candidate = Find-Module -Name $module.Name -MinimumVersion $module.Minimum -Repository PSGallery
+            $version = [version]$candidate.Version
+            if ($version -lt [version]$module.Minimum) { throw 'The gallery returned an unsupported module version.' }
+            Write-Host 'If PowerShell asks to install from PSGallery, choose Y for this official Microsoft module.'
+            Install-Module -Name $module.Name -RequiredVersion $version.ToString() -Repository PSGallery -Scope CurrentUser -AllowClobber
         }
+        $verified = @(Get-Module -ListAvailable -Name $module.Name | Where-Object { $_.Version -ge [version]$module.Minimum })
+        if ($verified.Count -eq 0) { throw "The installation of $($module.Name) could not be verified." }
+        Write-Host "$($module.Name) available: $(($verified | Sort-Object Version -Descending | Select-Object -First 1).Version)"
     }
 }
 
-function Start-SiteSeeSetup([string]$Tenant, [string]$App) {
+function Get-SiteSeeEngine {
+    $engine = Join-Path ([Environment]::GetFolderPath('System')) 'WindowsPowerShell\v1.0\powershell.exe'
+    if (-not (Test-Path -LiteralPath $engine -PathType Leaf)) { throw 'Windows PowerShell executable was not found.' }
+    return $engine
+}
+
+function Invoke-SiteSeeChild([string]$ChildPhase, [string]$Tenant, [string]$App, [string]$Receipt) {
+    # Every phase uses the exact same file and a new process. No tokens cross
+    # process boundaries and Graph/Exchange authentication assemblies never mix.
+    $engine = Get-SiteSeeEngine
+    & $engine -NoLogo -NoProfile -ExecutionPolicy RemoteSigned -File $script:SetupFile -TenantId $Tenant -ApplicationId $App -Phase $ChildPhase -ReceiptPath $Receipt | Out-Host
+    return [int]$LASTEXITCODE
+}
+
+function Read-SiteSeeReceipt([string]$Path, [string]$Tenant, [string]$App) {
+    $item = Get-Item -LiteralPath $Path
+    if ($item.Length -le 0 -or $item.Length -gt 4096 -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+        throw 'The directory verification handoff is missing or invalid.'
+    }
+    $receipt = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
+    if ([string](Get-SiteSeeValue $receipt 'revision') -ne $script:SetupRevision -or
+        [string](Get-SiteSeeValue $receipt 'tenant') -ne $Tenant -or
+        [string](Get-SiteSeeValue $receipt 'application') -ne $App) { throw 'Directory verification does not match this run.' }
+    return ConvertTo-SiteSeeGuid ([string](Get-SiteSeeValue $receipt 'principal')) 'Verified enterprise application ID'
+}
+
+function Start-SiteSeeSetup([string]$Tenant, [string]$App, [string]$RunPhase = 'Setup', [string]$Receipt = '') {
     $graphConnected = $false
     $exchangeConnected = $false
+    $temporaryReceipt = ''
     try {
-        Write-Host 'SiteSee Microsoft calendar access setup'
+        Write-Host "SiteSee Microsoft calendar setup | revision $script:SetupRevision | phase $RunPhase"
+        Write-Host "Installer: $script:SetupFile"
+        Write-Host "SHA256: $((Get-FileHash -LiteralPath $script:SetupFile -Algorithm SHA256).Hash)"
+        $script:SetupStage = 'checking Windows PowerShell and .NET prerequisites'
+        Assert-SiteSeeRuntime
         Write-Host 'Uses the existing application. Enter IDs only; no secret or API key is needed.'
         if (-not $Tenant) { $Tenant = (Read-Host 'Tenant ID from WHM').Trim() }
         if (-not $App) { $App = (Read-Host 'Application ID from WHM').Trim() }
         $Tenant = ConvertTo-SiteSeeGuid $Tenant 'Tenant ID'
         $App = ConvertTo-SiteSeeGuid $App 'Application ID'
-        Initialize-SiteSeeModules
-        Import-Module Microsoft.Graph.Authentication -MinimumVersion 2.0.0
-        Write-Host 'Sign in with your Microsoft 365 administrator. The directory check requests read-only Application.Read.All.'
-        Connect-MgGraph -TenantId $Tenant -Scopes 'Application.Read.All' -ContextScope Process -NoWelcome | Out-Null
-        $graphConnected = $true
-        if ([string](Get-MgContext).TenantId -ne $Tenant) { throw 'The directory sign-in belongs to a different tenant.' }
-        $objectId = Get-SiteSeeDirectoryApp $App
-        Disconnect-MgGraph | Out-Null
-        $graphConnected = $false
-        Import-Module ExchangeOnlineManagement -MinimumVersion 3.7.0
-        Write-Host 'Sign in to Exchange with the same Microsoft 365 administrator (Exchange role management is required).'
-        Connect-ExchangeOnline -ShowBanner:$false | Out-Null
-        $exchangeConnected = $true
-        Invoke-SiteSeeCalendarGrant $Tenant $App $objectId
+        switch ($RunPhase) {
+            'Setup' {
+                # Handoff contains only public identifiers, never a token/secret.
+                $temporaryReceipt = [IO.Path]::GetTempFileName()
+                foreach ($nextPhase in @('Prerequisites', 'Tools', 'Directory', 'Exchange')) {
+                    $script:SetupStage = "running $nextPhase in a fresh process"
+                    $code = Invoke-SiteSeeChild $nextPhase $Tenant $App $temporaryReceipt
+                    if ($code -ne 0) { return 1 }
+                    if ($nextPhase -eq 'Directory') { Read-SiteSeeReceipt $temporaryReceipt $Tenant $App | Out-Null }
+                }
+            }
+            'Prerequisites' { Initialize-SiteSeePackageManagers }
+            'Tools' {
+                Import-SiteSeePackageManagers
+                Initialize-SiteSeeModules
+            }
+            'Directory' {
+                $script:SetupStage = 'loading Microsoft Graph Authentication'
+                Import-Module Microsoft.Graph.Authentication -MinimumVersion 2.0.0
+                $script:SetupStage = 'Microsoft administrator directory sign-in'
+                Write-Host 'Sign in with your Microsoft 365 administrator. The directory check requests read-only Application.Read.All.'
+                Connect-MgGraph -TenantId $Tenant -Scopes 'Application.Read.All' -ContextScope Process -NoWelcome | Out-Null
+                $graphConnected = $true
+                if ([string](Get-MgContext).TenantId -ne $Tenant) { throw 'The directory sign-in belongs to a different tenant.' }
+                $script:SetupStage = 'inspecting existing Entra application grants'
+                $objectId = Get-SiteSeeDirectoryApp $App
+                $verified = @{ revision = $script:SetupRevision; tenant = $Tenant; application = $App; principal = $objectId }
+                $verified | ConvertTo-Json -Compress | Set-Content -LiteralPath $Receipt -Encoding UTF8
+                Write-Host 'Directory identity and existing-grant review: PASS'
+            }
+            'Exchange' {
+                $script:SetupStage = 'validating the directory handoff'
+                $objectId = Read-SiteSeeReceipt $Receipt $Tenant $App
+                Import-SiteSeePackageManagers
+                $script:SetupStage = 'loading Exchange Online Management'
+                Import-Module ExchangeOnlineManagement -MinimumVersion 3.7.0
+                $script:SetupStage = 'Microsoft Exchange administrator sign-in'
+                Write-Host 'Sign in to Exchange with the same Microsoft 365 administrator (Exchange role management is required).'
+                Connect-ExchangeOnline -ShowBanner:$false | Out-Null
+                $exchangeConnected = $true
+                $script:SetupStage = 'checking available Exchange administration commands'
+                foreach ($command in @('Get-OrganizationConfig', 'Get-EXOMailbox', 'Get-Recipient', 'Get-ServicePrincipal',
+                    'New-ServicePrincipal', 'Get-ManagementScope', 'New-ManagementScope', 'Remove-ManagementScope',
+                    'Get-ManagementRoleAssignment', 'New-ManagementRoleAssignment', 'Remove-ManagementRoleAssignment',
+                    'Test-ServicePrincipalAuthorization')) { Get-Command $command -ErrorAction Stop | Out-Null }
+                $script:SetupStage = 'configuring and verifying mailbox-scoped calendar authorization'
+                Invoke-SiteSeeCalendarGrant $Tenant $App $objectId
+            }
+        }
         return 0
     } catch {
         Write-Host ''
         Write-Host 'FINAL RESULTS' -ForegroundColor Red
         Write-Host 'Microsoft calendar setup: STOPPED; do not activate migration.'
+        Write-Host "Revision: $script:SetupRevision | Phase: $RunPhase"
+        Write-Host "Stage: $script:SetupStage"
+        $invocation = Get-SiteSeeValue $_ 'InvocationInfo'
+        $failedCommand = Get-SiteSeeValue (Get-SiteSeeValue $invocation 'MyCommand') 'Name'
+        Write-Host "Command: $failedCommand | Line: $(Get-SiteSeeValue $invocation 'ScriptLineNumber')"
+        Write-Host "Error ID: $($_.FullyQualifiedErrorId)"
         Write-Host ([string]$_.Exception.Message)
         Write-Host 'Send this FINAL RESULTS block and any preceding STOP/REVIEW REQUIRED lines for review. No keys are needed.'
         return 1
     } finally {
         if ($graphConnected) { try { Disconnect-MgGraph | Out-Null } catch {} }
         if ($exchangeConnected) { try { Disconnect-ExchangeOnline -Confirm:$false -ErrorAction Stop | Out-Null } catch {} }
+        if ($temporaryReceipt) { Remove-Item -LiteralPath $temporaryReceipt -Force -ErrorAction SilentlyContinue }
     }
 }
 
 # Dot-sourcing loads functions for offline tests; normal invocation performs setup.
 if ($MyInvocation.InvocationName -ne '.') {
-    $result = Start-SiteSeeSetup $TenantId $ApplicationId
+    $result = Start-SiteSeeSetup $TenantId $ApplicationId $Phase $ReceiptPath
     exit $result
 }
