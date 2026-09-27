@@ -9,10 +9,13 @@ was explicitly NOT enabled by that run. Keep:
 
 `/home/sitesee/.sitesee-real-estate/microsoft-calendar-recovery-7n7lklo6/permission-repairs.json`
 
-This scheduling release has local automated coverage. Its installation, actual
-Microsoft booking confirmation, staff alternatives display and full invitation
-flow through the new provider remain unverified until the user runs the installer
-and supplies results. Existing branded Stripe TEST payment validation remains as
+This scheduling release has local automated coverage. The user has now supplied actual installer FINAL RESULTS: Microsoft scheduling
+ENABLED IN TEST MODE, active release hashes PASS, existing Zoho reservations
+preserved, and no booking row, payment, event, invitation, email, credential or
+Zoho setting changed. Backup: `/home/sitesee/.sitesee-real-estate/deployment-backups/microsoft-scheduling-7ug3cjsf`.
+Permission record: `/home/sitesee/.sitesee-real-estate/microsoft-calendar-recovery-qeejp11x/permission-repairs.json`.
+The real booking/invitation flow is still being verified; installation alone does
+not establish successful customer invitation delivery or duplicate-free rendering. Existing branded Stripe TEST payment validation remains as
 recorded in the checkout deployment document; it is not reset by this work.
 
 ## One upload and one command
@@ -119,8 +122,10 @@ also sends a native meeting invitation. Property access codes stay private.
    no invitation. If it is still unconfirmed, use that booking for this Microsoft
    test; otherwise select a new authorized TEST booking with a new reference.
    Do not resend E4E51A0481, E6E183EF8E or 3AC663B079 invitations.
-3. Open staff review, check alternatives and the displayed provider, save the
-   review, then explicitly confirm the TEST appointment. Verify one matching
+3. Open staff review and save the photographer/duration review first. The Calendar
+   Confirmation section and provider label appear only after that save. Verify
+   the Microsoft label, check alternatives if needed, then explicitly confirm
+   the TEST appointment. Verify one matching
    private block in the `sales@re.sitesee.ai` default calendar, the reviewed
    duration and the customer arrival window. Refresh/repeat confirmation to
    verify there is no duplicate event.
@@ -173,3 +178,36 @@ Official Microsoft contracts rechecked during implementation:
 - https://learn.microsoft.com/en-us/graph/api/calendar-post-events?view=graph-rest-1.0
 - https://learn.microsoft.com/en-us/graph/api/calendar-list-calendarview?view=graph-rest-1.0
 - https://learn.microsoft.com/en-us/graph/outlook-immutable-id
+
+## Booking-specific CRM link encountered during the real test
+
+The user reached “Verify and link the correct CRM contact before sending” for
+D32FFC7458. This guard is before draft creation and invitation submission; an
+existing calendar entry does not establish that a customer invitation was sent.
+The contact association is per booking. E4E51A0481's previously verified CRM
+selection is reusable evidence for the same expressly authorized test recipient,
+but D32FFC7458 needs its own local association.
+
+`tools/link-microsoft-test-contact.php` provides a narrow one-run repair. Upload
+to `/home/sitesee/link-microsoft-test-contact.php`, then run:
+
+```sh
+runuser -u sitesee -- /opt/cpanel/ea-php82/root/usr/bin/php /home/sitesee/link-microsoft-test-contact.php
+```
+
+It requires the expected paid/reviewed Microsoft booking and the prior sent
+invitation for E4E51A0481, both addressed to cro@sitesee.ai. It reuses only that
+booking's previously verified contact ID, validates the current CRM organization,
+authorized user, complete exact-email candidate search and contact record, and
+saves the target's local CRM link. It preserves conflicting links, refuses any
+recorded invitation/communication attempt, and never creates a contact or sends
+mail. Payment data, events, provider settings and the source booking stay intact.
+It reports saved invitation state and communication count; an unchanged rerun
+before sending remains safe. Any changed send state directs review, not resend.
+
+32 focused checks passed with mocked CRM reads, including wrong organization,
+changed contact email, missing prior selection, conflicting target links, payment
+and calendar preservation, unchanged rerun and previously attempted invitations.
+PHP syntax passed. Actual CRM repair remains unverified until server output.
+The staff interface still needs contact lookup/linking integrated before broader
+use so each booking does not require a terminal-only prerequisite.
