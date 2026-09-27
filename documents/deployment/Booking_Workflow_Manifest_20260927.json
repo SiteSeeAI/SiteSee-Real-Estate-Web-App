@@ -1,0 +1,8 @@
+{
+  "release": "booking-workflow-20260927",
+  "revision": "20260927-r1",
+  "files": {
+    "server/booking-workflow.php": "c871f9e546a150394435d5aa97943021b2b6170b22e4c866fc56d89993603565",
+    "server/booking-staff.php": "fd4710262f2d92932a97331cd20b73b8086e36e8bdb626f6b0e13571c824959d"
+  }
+}

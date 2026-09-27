@@ -9,6 +9,8 @@ import zlib
 root=Path(__file__).resolve().parents[1]
 names=['booking-scheduling-provider.php','booking-confirmation.php','booking-invitation.php','booking-availability-check.php','booking-staff.php']
 files={'server/'+name:(root/'_private/server'/name).read_text() for name in names}
+# Preserve the already deployed r1 controller when rebuilding its historical installer.
+files['server/booking-staff.php']=(root/'tests/fixtures/staff-workflow-before/booking-staff.php').read_text()
 files.update({name:(root/name).read_text() for name in ['tools/diagnose-calendar-confirmation.php','tools/audit-calendar-confirmation.php']})
 before={('tools/' if p.name.startswith(('audit-','diagnose-')) else 'server/')+p.name:hashlib.sha256(p.read_bytes().replace(b'\r\n',b'\n')).hexdigest() for p in (root/'tests/fixtures/microsoft-scheduling-before').glob('*.php')}
 bundle=json.dumps({'files':files,'before':before},sort_keys=True).encode()

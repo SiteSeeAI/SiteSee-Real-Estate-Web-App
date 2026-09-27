@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/booking-workflow.php';
+require_once __DIR__ . '/booking-invitation.php';
 header('Cache-Control: no-store, private, max-age=0');
 header('X-Robots-Tag: noindex, nofollow, noarchive');
 header('X-Frame-Options: DENY');
@@ -13,7 +13,7 @@ function staff_escape(string $value): string { return htmlspecialchars($value, E
 function staff_page(string $body, int $status = 200): never
 {
     http_response_code($status);
-    echo '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SiteSee | Booking Review</title><style>body{margin:0;background:#01111e;color:#102031;font:16px/1.55 Inter,Arial,sans-serif}main{max-width:900px;margin:4vw auto;padding:36px;background:#fff;border-top:7px solid #ffc107}h1,h2{font-family:Poppins,Arial,sans-serif}label{display:block;margin:14px 0}input:not([type=checkbox]){padding:9px;max-width:100%;box-sizing:border-box}button{background:#ffc107;padding:12px 18px;border:0;font-weight:bold;cursor:pointer}pre{overflow:auto;white-space:pre-wrap;word-break:break-word;background:#f4f6f7;padding:18px}table{width:100%;border-collapse:collapse}td,th{text-align:left;border-bottom:1px solid #ddd;padding:9px}a{color:#07517d}dd{margin:0 0 12px;overflow-wrap:anywhere}form{margin:12px 0}.note{background:#fff7db;padding:14px}.error{color:#9a1825}</style></head><body><main><h1>SiteSee Booking Review</h1>'
+    echo '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SiteSee | Booking Review</title><style>body{margin:0;background:#01111e;color:#102031;font:16px/1.55 Inter,Arial,sans-serif}main{max-width:900px;margin:4vw auto;padding:36px;background:#fff;border-top:7px solid #ffc107}h1,h2{font-family:Poppins,Arial,sans-serif}label{display:block;margin:14px 0}input:not([type=checkbox]){padding:9px;max-width:100%;box-sizing:border-box}button{background:#ffc107;padding:12px 18px;border:0;font-weight:bold;cursor:pointer}pre{overflow:auto;white-space:pre-wrap;word-break:break-word;background:#f4f6f7;padding:18px}table{width:100%;border-collapse:collapse}td,th{text-align:left;border-bottom:1px solid #ddd;padding:9px}a{color:#07517d}.note{background:#fff7db;padding:14px}.error{color:#9a1825}</style></head><body><main><h1>SiteSee Booking Review</h1>'
         . $body . '</main></body></html>';
     exit;
 }
@@ -66,41 +66,6 @@ if ($method === 'POST') {
         exit;
     } elseif (empty($_SESSION['staff_until']) || (int)$_SESSION['staff_until'] < time()) {
         staff_page('<p>Your staff session has expired. Reload and sign in again.</p>', 403);
-    } elseif (in_array($action, ['workflow_check','workflow_link','workflow_recover','workflow_history'], true)) {
-        try {
-            $reference = (string)($_POST['reference'] ?? '');
-            booking_workflow_row($db, $reference);
-            if ($action === 'workflow_check') {
-                $workflowReport = booking_workflow_check($db, $reference);
-                $_SESSION['contact_selection'] = ['reference'=>$reference,'expires'=>time()+900,
-                    'fingerprint'=>$workflowReport['fingerprint'],'ids'=>array_column($workflowReport['candidates'], 'id')];
-                $alternatives = $workflowReport['alternatives'];
-                $notice = 'Readiness checks completed. Review all results below. Nothing was sent or reserved.';
-            } elseif ($action === 'workflow_link') {
-                if (($_POST['contact_verified'] ?? '') !== 'yes') throw new InvalidArgumentException('Verify the displayed CRM contact first.');
-                booking_workflow_link($db, $reference, (string)($_POST['contact_id'] ?? ''), $_SESSION['contact_selection'] ?? []);
-                unset($_SESSION['contact_selection']);
-                $notice = 'CRM contact verified and linked to this booking. No invitation was sent.';
-            } elseif ($action === 'workflow_history') {
-                if (($_POST['history_verified'] ?? '') !== 'yes') throw new InvalidArgumentException('Review the existing CRM email first.');
-                $ticket = $_SESSION['history_selection'] ?? [];
-                $id = (string)($_POST['message_id'] ?? '');
-                if (($ticket['reference'] ?? '') !== $reference || ($ticket['expires'] ?? 0) < time() || !in_array($id, $ticket['ids'] ?? [], true)) {
-                    throw new InvalidArgumentException('This email selection expired. Use Recover Booking Status again.');
-                }
-                $crmConfig = booking_crm_config();
-                booking_communication_crm($db, 'invitation:' . $reference, $crmConfig, booking_crm_client($crmConfig), $id);
-                unset($_SESSION['history_selection']);
-                $notice = 'Existing CRM email linked. No invitation was resent.';
-            } else {
-                $workflowReport = booking_workflow_recover($db, $reference);
-                $_SESSION['history_selection'] = ['reference'=>$reference,'expires'=>time()+900,'ids'=>array_column($workflowReport['history'], 'id')];
-                $notice = 'Recovery completed. Review each result below. No calendar event or invitation was created.';
-            }
-        } catch (Throwable $exception) {
-            $error = $exception instanceof InvalidArgumentException ? $exception->getMessage()
-                : 'This workflow action could not finish. Use Check Booking Readiness for the combined results. Existing calendar and invitation attempts are preserved.';
-        }
     } elseif (in_array($action, ['confirm_calendar', 'reconcile_calendar', 'send_invitation', 'recheck_mail', 'associate_crm', 'check_windows', 'select_window'], true)) {
         try {
             $reference = (string)($_POST['reference'] ?? '');
@@ -130,9 +95,6 @@ if ($method === 'POST') {
                 $notice = 'Existing calendar event verified. No new event or invitation was created.';
             } else {
                 if (($_POST['verify_recipient'] ?? '') !== 'yes') throw new InvalidArgumentException('Verify the displayed test recipient before sending.');
-                $sendRow = booking_workflow_row($db, $reference);
-                $sendStatus = booking_workflow_status($db, $sendRow);
-                if (!$sendStatus['can_send']) throw new InvalidArgumentException('Review Booking Readiness & Recovery above. Link the CRM contact before sending; recover any existing invitation attempt without resending.');
                 booking_send_invitation($db, $reference);
                 $notice = 'Test invitation accepted by the mail server. Check the recipient mailbox to verify receipt.';
             }
@@ -170,16 +132,6 @@ if ($method === 'POST') {
         try {
             booking_review_paid($db, (string)($_POST['reference'] ?? ''), (int)($_POST['duration'] ?? 0),
                 (string)($_POST['photographer'] ?? ''), ($_POST['available'] ?? '') === 'yes', (string)($_POST['rush_decision'] ?? ''));
-            $notice = 'Staff review saved. Readiness results are shown together below; no appointment or invitation was created.';
-            try {
-                $reference = (string)($_POST['reference'] ?? '');
-                $workflowReport = booking_workflow_check($db, $reference);
-                $_SESSION['contact_selection'] = ['reference'=>$reference,'expires'=>time()+900,
-                    'fingerprint'=>$workflowReport['fingerprint'],'ids'=>array_column($workflowReport['candidates'], 'id')];
-                $alternatives = $workflowReport['alternatives'];
-            } catch (Throwable) {
-                $notice = 'Staff review saved. The combined checks could not finish; use Check Booking Readiness when the connections are available.';
-            }
         } catch (Throwable $exception) {
             $error = $exception instanceof InvalidArgumentException ? $exception->getMessage() : 'Review could not be saved.';
         }
@@ -242,11 +194,6 @@ if ($row) {
     if ($row['status'] === 'awaiting_deposit_test') {
         $body .= '<p class="note">Waiting for the test deposit. Schedule review becomes available only after the verified payment notification.</p>';
     }
-    $workflowStatus = null;
-    if ($row['status'] === 'deposit_paid_test' && $row['deposit_paid_at'] && strcasecmp($row['email'], 'cro@sitesee.ai') === 0) {
-        $workflowStatus = booking_workflow_status($db, $row);
-        $body .= booking_workflow_html($row, $workflowStatus, staff_csrf(), $workflowReport ?? null);
-    }
     if ($row['status'] === 'deposit_paid_test' && !$row['approved_at'] && !$row['reschedule_required']) {
         $duration = max(15, (int)($quote['knownMinutesMax'] ?? $quote['knownMinutes'] ?? 60));
         $body .= '<h2>Review Paid Request</h2><p>Assign the photographer and check the requested arrival window. If another date is needed, agree it with the agent first. Saving this review records your assignment. Calendar confirmation and the invitation are separate staff actions.</p>'
@@ -266,7 +213,7 @@ if ($row) {
         $confirmation = booking_confirmation_get($db, $reference);
         try { $confirmationConfig = booking_scheduling_config($confirmation); } catch (Throwable) { $confirmationConfig = null; }
         $canConfirm = $confirmationConfig && $confirmationConfig['confirmation_enabled'];
-        $body .= '<h2>Calendar Confirmation</h2><p>Calendar: ' . staff_escape($confirmationConfig ? (booking_scheduling_is_microsoft($confirmationConfig) ? 'Microsoft — sales@re.sitesee.ai' : 'Zoho — existing appointment connection') : 'Connection unavailable — confirmation blocked') . '</p><p>Photographer: ' . staff_escape((string)$row['photographer']) . '; reviewed shoot duration: ' . (int)$row['duration_minutes'] . ' minutes.</p>';
+        $body .= '<h2>Calendar Confirmation</h2><p>Calendar: ' . staff_escape($confirmationConfig && booking_scheduling_is_microsoft($confirmationConfig) ? 'Microsoft — sales@re.sitesee.ai' : 'Zoho — existing appointment connection') . '</p><p>Photographer: ' . staff_escape((string)$row['photographer']) . '; reviewed shoot duration: ' . (int)$row['duration_minutes'] . ' minutes.</p>';
         if (!$confirmation) {
             $body .= '<form method="post"><input type="hidden" name="csrf" value="' . $csrf . '"><input type="hidden" name="action" value="check_windows"><input type="hidden" name="reference" value="' . staff_escape($reference) . '"><button>Check Available Alternatives</button></form>';
             if (isset($alternativesError)) $body .= '<p class="note">' . staff_escape($alternativesError) . '</p>';
@@ -296,10 +243,10 @@ if ($row) {
                 $body .= '<p>Invitation accepted by the mail server for ' . staff_escape((string)$confirmation['invitation_recipient']) . '. Mailbox receipt and calendar acceptance must be checked separately.</p>';
             } elseif ($confirmation['invitation_state'] !== 'none') {
                 $body .= '<p class="note">Invitation delivery is uncertain. Check the recipient mailbox before any manual resend. Automatic retries are blocked.</p>';
-            } elseif ($canConfirm && $confirmationConfig['invitations_enabled'] && ($workflowStatus['can_send'] ?? false)) {
+            } elseif ($canConfirm && $confirmationConfig['invitations_enabled']) {
                 $body .= '<h2>Send Test Invitation</h2><p>Recipient: <strong>' . staff_escape($row['email']) . '</strong>. The invitation includes the property address and arrival window. Property access codes remain private.</p>'
                     . '<form method="post"><input type="hidden" name="csrf" value="' . $csrf . '"><input type="hidden" name="action" value="send_invitation"><input type="hidden" name="reference" value="' . staff_escape($reference) . '"><label><input type="checkbox" name="verify_recipient" value="yes" required> I verified this test recipient and want to send the calendar invitation.</label><button>Send Test Calendar Invitation</button></form>';
-            } else $body .= '<p class="note">Sending is blocked by a prerequisite or an existing communication record. Use Booking Readiness &amp; Recovery above to link the contact or recover the saved attempt.</p>';
+            } else $body .= '<p>Invitation delivery remains disabled. No invitation has been sent.</p>';
         }
     }
     $communications = $db->prepare('SELECT * FROM booking_communications WHERE reference=? ORDER BY created_at');
@@ -309,7 +256,12 @@ if ($row) {
             . ' — From: ' . staff_escape($communication['sender']) . '<br>Microsoft 365: ' . staff_escape($communication['submission_state'])
             . '<br>Recipient mailbox evidence: ' . staff_escape($communication['delivery_state'])
             . '<br>CRM: ' . staff_escape($communication['crm_state']) . '</p>';
-        if ($communication['kind'] === 'invitation') $body .= '<p>Use Recover Booking Status above to check the sent copy, recipient evidence and CRM history together. Receipt and calendar acceptance are separate.</p>';
+        if ($communication['kind'] === 'invitation') {
+            foreach (['recheck_mail'=>'Recheck Saved Message', 'associate_crm'=>'Recover CRM Association'] as $actionName=>$label) {
+                $body .= '<form method="post"><input type="hidden" name="csrf" value="' . $csrf . '"><input type="hidden" name="action" value="' . $actionName
+                    . '"><input type="hidden" name="reference" value="' . staff_escape($reference) . '"><button>' . $label . '</button></form>';
+            }
+        }
     }
     if ($row['status'] === 'pending_review') {
         $duration = max(15, (int)($quote['knownMinutesMax'] ?? $quote['knownMinutes'] ?? 60));
@@ -343,3 +295,5 @@ if ($row) {
     $body .= '</table>';
 }
 staff_page($body);
+
+

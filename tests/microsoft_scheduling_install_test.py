@@ -34,7 +34,9 @@ class SchedulingInstall(unittest.TestCase):
  def scan(self):return s.inventory(self.r,self.m,self.root,f.baseline.PHP,self.uid,self.files,self.before,credentials=self.secret)
  def values(self):return s.desired(self.m,self.root,self.files)
  def test_reproducible_payload(self):
-  for name,data in self.files.items():self.assertEqual(data,(PROJECT/('_private/'+name if name.startswith('server/') else name)).read_bytes())
+  for name,data in self.files.items():
+   expected=PROJECT/'tests/fixtures/staff-workflow-before/booking-staff.php' if name=='server/booking-staff.php' else PROJECT/('_private/'+name if name.startswith('server/') else name)
+   self.assertEqual(data,expected.read_bytes())
   path=PROJECT/'tools/install-microsoft-scheduling.py';before=path.read_bytes()
   subprocess.run(['python3',str(PROJECT/'tools/build-microsoft-scheduling.py')],check=True)
   self.assertEqual(path.read_bytes(),before)

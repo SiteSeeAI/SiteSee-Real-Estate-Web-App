@@ -211,3 +211,13 @@ and calendar preservation, unchanged rerun and previously attempted invitations.
 PHP syntax passed. Actual CRM repair remains unverified until server output.
 The staff interface still needs contact lookup/linking integrated before broader
 use so each booking does not require a terminal-only prerequisite.
+
+## Consolidated staff workflow follow-up
+
+The one-booking CRM repair passed for D32FFC7458, with Microsoft confirmation,
+a verified contact link, no saved invitation attempt and zero communication
+records in the latest operator output. The permanent inline contact and combined
+recovery update is documented in [Booking_Workflow_20260927.md](Booking_Workflow_20260927.md).
+Its installation and actual Microsoft invitation receipt/acceptance still need
+operator verification. Use its installer for the newer staff page; preserve this
+Microsoft scheduling release and its existing appointment identities.
