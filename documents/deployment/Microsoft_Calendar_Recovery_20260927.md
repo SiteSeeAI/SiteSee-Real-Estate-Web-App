@@ -1,5 +1,22 @@
 # Microsoft calendar consolidated recovery — 2026-09-27
 
+## Verified server connection — 2026-09-27
+
+The user supplied the consolidated runner's actual FINAL RESULTS: Microsoft TEST
+calendar connection PASS; six local permission repairs; temporary private TEST
+event creation, readback and removal verified (a completed prior test is reused
+when present). Scheduling migration was NOT ENABLED, and payments remain TEST.
+No booking database, customer invitation, email, payment, credential content or
+Zoho setting was changed by that connection run.
+
+Keep the exact permission recovery record:
+`/home/sitesee/.sitesee-real-estate/microsoft-calendar-recovery-7n7lklo6/permission-repairs.json`.
+
+The next release is documented in `Microsoft_Scheduling_20260927.md`. Its installer
+activates Microsoft for new TEST confirmations only after all local checks and a
+fresh calendar read. Actual deployment and a real booking through that new flow
+remain unverified until subsequent server output and the controlled booking test.
+
 ## Observed failure and scope
 
 The r2 installer identified the actual local blocker: `server` and `tools` were

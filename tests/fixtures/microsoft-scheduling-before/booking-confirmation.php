@@ -2,7 +2,6 @@
 declare(strict_types=1);
 require_once __DIR__ . '/booking-store.php';
 require_once __DIR__ . '/booking-calendar-client.php';
-require_once __DIR__ . '/booking-scheduling-provider.php';
 
 /** The existing read-only connection remains untouched. Writes use separate credentials. */
 function booking_confirmation_config(): array
@@ -207,8 +206,7 @@ function booking_confirmation_verify_clear(callable $connection, array $expected
 function booking_confirm_appointment(PDO $db, string $reference, ?array $config = null,
     ?callable $transport = null, ?DateTimeImmutable $now = null, ?string $lockPath = null): array
 {
-    $config ??= booking_scheduling_config(booking_confirmation_get($db,$reference));
-    if (booking_scheduling_is_microsoft($config)) return booking_scheduling_confirm_ms($db,$reference,$config,$transport,$now,$lockPath);
+    $config ??= booking_confirmation_config();
     $now ??= new DateTimeImmutable('now');
     $lock = booking_confirmation_lock($lockPath);
     try {
@@ -276,8 +274,7 @@ function booking_confirm_appointment(PDO $db, string $reference, ?array $config 
 /** Read-only recovery after timeout/crash. A missing event never authorizes an automatic retry. */
 function booking_reconcile_confirmation(PDO $db, string $reference, ?array $config = null, ?callable $transport = null, ?string $lockPath = null): array
 {
-    $config ??= booking_scheduling_config(booking_confirmation_get($db,$reference));
-    if (booking_scheduling_is_microsoft($config)) return booking_scheduling_reconcile_ms($db,$reference,$config,$transport,$lockPath);
+    $config ??= booking_confirmation_config();
     $lock = booking_confirmation_lock($lockPath);
     try {
         $row = booking_get($db, $reference);

@@ -1,23 +1,26 @@
 {
   "release": "sitesee-calendar-confirmation-test-v1",
   "files": {
-    "server/booking-confirmation.php": "06e259fc9582208cf5ae384b671aba3510b4aae7e3e45bed14f996256194caf6",
-    "server/booking-invitation.php": "95d15de549108995a4fbbf54a93e9c7cb8d197bf98c2138ced24b8c1c9461fe4",
+    "server/booking-confirmation.php": "bc80829c693e279dc60a68b8d4787e09e22de2d78d764794a383c0e00a6dfcb6",
+    "server/booking-invitation.php": "c0dba4b23f5cfceac5f48f970feca00f415676529f3ddec14d2d13e97b958bb8",
     "server/booking-schedule.php": "99de974d2b45de2b75003a6e4a93ca0e71019cdb632cc52defc34aeb09727cb8",
     "server/booking-store.php": "842176a35abcdd7477f6e50ac322a33c971705482db2c94e65668aae0ebe81e4",
     "server/booking-pay.php": "e2170aeb9e7976abed8e25046d64da046fdfe78831127c914e4ca13731a6899f",
-    "server/booking-staff.php": "31b4e32bc16e36c041f335c78e10a05e31df5e3695dee5e482999f9cd4065d45",
+    "server/booking-staff.php": "62bff6905a2fb75a0df3e3e9ead600e30865e01fe5a2f2a6ece67f446f7a9dd7",
     "tools/setup-zoho-calendar.py": "cc971758309a58123827c1b3fa3d9b5f3eb842e4f09996bf9da715ff963fe98f",
     "tools/setup-zoho-confirmation.py": "3446a5269c3d765574f353d4de54eba65d3a07a5d755cd782232c3dff810890b",
     "tools/check-calendar-confirmation.php": "bcb0bc733d1e85a4118ab67c1589376fb31538420a6e70bffcea990bd6944c1f",
     "server/booking-calendar-client.php": "e6f80acb03a71a5fc4daf055015fc45b1af62bbdd2700fb080c880bad6e7e0aa",
-    "tools/diagnose-calendar-confirmation.php": "567c69df1df573342c4381dfe95987edc570b376012f94c90a0902806878d9e8",
-    "tools/audit-calendar-confirmation.php": "76791f58ffae361531c48384b891daff56f3da1c7dd7922e7eab598e48c1c007",
+    "tools/diagnose-calendar-confirmation.php": "397611e861891c76f63ba15268e37863b03ef43d68b4243f051689ce34e3f966",
+    "tools/audit-calendar-confirmation.php": "484d00dc37e05f44613ae37bd31177ab7aebdd8b7b31b92f729152a4900faf1b",
     "server/booking-mail-client.php": "189e15f44c3c28856765527efdcf25b71f748add07d6e7d31c396d50d3ed5e5b",
     "server/booking-communication.php": "d2fb1b321f23b73e5c0e8db60426c36429a0ef7b4dd855098dfafaebbc91b254",
     "server/booking-crm.php": "acf250ec05945007b7940b09cd57280b9a8baea6ecc7bec81962345f9421bb97",
     "tools/booking-communications.php": "bf8173d38bfa7f980cf8a6d7e8e09ee07f0efabbdc3a466c87f08c2e1877ad5b",
     "tools/setup-booking-communications.py": "d95ba9420300e3940b8ae09ee2773370306eab7aa0e4e43194eb5fe7f4bdddd5",
-    "server/booking-checkout.php": "0121ff14a0ae12aff1d6ff3c54ee97447046ad4a4cf0a40f7555403dd032aa61"
+    "server/booking-checkout.php": "f818e0e349f79329e816c80587b28fca4c7f2bae31feb77cf1716112348bd41d",
+    "server/booking-scheduling-provider.php": "0c07f4296a673203ae0cf7bdcd2ee3283a298d780f8d7ce9a8a6312bc77cc0cc",
+    "server/booking-availability-check.php": "2e207ff610b2e57914779ef33dffaa1eb51b375118f8711d56a5ec307ba94b75",
+    "server/booking-microsoft-calendar.php": "d527f4d0807c5380d96a598a2844644b6873d502fc77af347fc3c63575ab8946"
   }
 }

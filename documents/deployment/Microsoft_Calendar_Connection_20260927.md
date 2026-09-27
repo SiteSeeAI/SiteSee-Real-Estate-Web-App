@@ -6,8 +6,10 @@ The user verified mailbox-scoped Exchange authorization and actual server reads
 of the default `sales@re.sitesee.ai` calendar. This release prepares a separate
 Microsoft calendar connection and verifies a temporary event's creation,
 readback and removal. It does **not** activate Microsoft booking scheduling.
-Real event writes and this installer's actual server run remain **unverified**
-until the user's FINAL RESULTS are reviewed.
+The user subsequently supplied the r3 runner's actual **PASS**: six permission
+repairs and temporary private TEST event creation/readback/removal verified.
+Scheduling was still disabled. See `Microsoft_Calendar_Recovery_20260927.md` for
+the exact recovery path and `Microsoft_Scheduling_20260927.md` for the next release.
 
 The first server attempt stopped before installation or Microsoft calls with
 `Existing private application subdirectory is unsafe: server`. That r1 message

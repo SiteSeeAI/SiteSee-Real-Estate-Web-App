@@ -5,9 +5,9 @@ require_once __DIR__ . '/diagnose-calendar-confirmation.php';
 
 const CA_REQUIRED_FILES = [
     'server/booking-calendar-client.php'=>'e6f80acb03a71a5fc4daf055015fc45b1af62bbdd2700fb080c880bad6e7e0aa',
-    'server/booking-confirmation.php'=>['06e259fc9582208cf5ae384b671aba3510b4aae7e3e45bed14f996256194caf6','bc80829c693e279dc60a68b8d4787e09e22de2d78d764794a383c0e00a6dfcb6'],
-    'server/booking-invitation.php'=>['95d15de549108995a4fbbf54a93e9c7cb8d197bf98c2138ced24b8c1c9461fe4','c0dba4b23f5cfceac5f48f970feca00f415676529f3ddec14d2d13e97b958bb8'],
-    'tools/diagnose-calendar-confirmation.php'=>['567c69df1df573342c4381dfe95987edc570b376012f94c90a0902806878d9e8','397611e861891c76f63ba15268e37863b03ef43d68b4243f051689ce34e3f966'],
+    'server/booking-confirmation.php'=>'06e259fc9582208cf5ae384b671aba3510b4aae7e3e45bed14f996256194caf6',
+    'server/booking-invitation.php'=>'95d15de549108995a4fbbf54a93e9c7cb8d197bf98c2138ced24b8c1c9461fe4',
+    'tools/diagnose-calendar-confirmation.php'=>'567c69df1df573342c4381dfe95987edc570b376012f94c90a0902806878d9e8',
 ];
 
 function ca_check(array &$failures, string $label, callable $check): mixed
@@ -44,7 +44,7 @@ function ca_run(string $root, string $reference, bool $reconcile, ?callable $tra
     $manifest=ca_check($failures,'Release manifest',static function()use($root):array{
             $m=json_decode((string)@file_get_contents($root.'/calendar-confirmation-release.json'),true,32,JSON_THROW_ON_ERROR);
         ca_need(($m['release']??'')==='sitesee-calendar-confirmation-test-v1' && is_array($m['files']??null),'Release manifest is invalid.');
-        foreach(CA_REQUIRED_FILES as $path=>$hash)ca_need(in_array(($m['files'][$path]??null),(array)$hash,true),'The current lookup correction is not listed in the release.');
+        foreach(CA_REQUIRED_FILES as $path=>$hash)ca_need(($m['files'][$path]??null)===$hash,'The current lookup correction is not listed in the release.');
         return $m;
     });
     if($manifest)foreach($manifest['files'] as $path=>$expected)ca_check($failures,'Deployed '.$path,static function()use($root,$path,$expected,&$hashes):bool{

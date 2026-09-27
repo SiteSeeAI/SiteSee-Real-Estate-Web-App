@@ -1,5 +1,22 @@
 # Microsoft Calendar and Booking Changes — 2026 09 26
 
+## Verified server connection — 2026-09-27
+
+The user supplied the consolidated runner's actual FINAL RESULTS: Microsoft TEST
+calendar connection PASS; six local permission repairs; temporary private TEST
+event creation, readback and removal verified (a completed prior test is reused
+when present). Scheduling migration was NOT ENABLED, and payments remain TEST.
+No booking database, customer invitation, email, payment, credential content or
+Zoho setting was changed by that connection run.
+
+Keep the exact permission recovery record:
+`/home/sitesee/.sitesee-real-estate/microsoft-calendar-recovery-7n7lklo6/permission-repairs.json`.
+
+The next release is documented in `Microsoft_Scheduling_20260927.md`. Its installer
+activates Microsoft for new TEST confirmations only after all local checks and a
+fresh calendar read. Actual deployment and a real booking through that new flow
+remain unverified until subsequent server output and the controlled booking test.
+
 ## Agreed direction
 
 Use the Microsoft 365 calendar belonging to `sales@re.sitesee.ai` for new
@@ -368,11 +385,11 @@ request, the r3 consolidated finish-and-repair runner now checks the full local
 release, collects independent findings, records/applies only verified permission
 reductions, rechecks, installs and continues the same temporary-event test with
 one bounded transient recovery retry. See `Microsoft_Calendar_Recovery_20260927.md`.
-No actual Microsoft write success has been reported yet.
+That pre-recovery status is superseded by the verified server results recorded above.
 
-1. Verify the mailbox/calendar and appropriate application access. Keep Microsoft
-   scheduling disabled until TEST creation, change, cancellation, conflict and
-   notification checks pass. Review mailbox-scoped access rather than granting
+1. Verify the mailbox/calendar and appropriate application access. Enable only the reviewed TEST confirmation release after the connection test.
+   Keep appointment changes, cancellation and customer automation unavailable
+   until their separate conflict and notification checks pass. Review mailbox-scoped access rather than granting
    unrelated tenant-wide access by default.
 2. Add provider-aware event identities and a durable operation history. Preserve
    existing Zoho records with their provider identity. Use stable retry keys,

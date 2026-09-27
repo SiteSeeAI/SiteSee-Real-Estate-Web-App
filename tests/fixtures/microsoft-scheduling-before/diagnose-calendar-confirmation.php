@@ -135,7 +135,7 @@ function cd_run(string $root, string $reference, bool $retry, ?callable $transpo
     if (!preg_match('/^[A-F0-9]{10,32}$/D', $reference)) cd_stop('Invalid booking reference.');
     if ($repair) {
         $release=@file_get_contents($root.'/server/booking-confirmation.php');
-        if (!is_string($release) || !in_array(hash('sha256',str_replace("\r\n","\n",$release)), ['06e259fc9582208cf5ae384b671aba3510b4aae7e3e45bed14f996256194caf6','bc80829c693e279dc60a68b8d4787e09e22de2d78d764794a383c0e00a6dfcb6'], true)) cd_stop('Upload the corrected booking-confirmation.php before checking this repair.');
+        if (!is_string($release) || hash('sha256',str_replace("\r\n","\n",$release)) !== '06e259fc9582208cf5ae384b671aba3510b4aae7e3e45bed14f996256194caf6') cd_stop('Upload the corrected booking-confirmation.php before checking this repair.');
         token_get_all($release,TOKEN_PARSE);
     }
     require_once $root . '/server/booking-calendar-client.php';

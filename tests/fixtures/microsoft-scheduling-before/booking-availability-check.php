@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once dirname(__DIR__) . '/real-estate-form-config.php';
-require_once __DIR__ . '/booking-confirmation.php';
+require_once __DIR__ . '/booking-calendar-client.php';
 require_once __DIR__ . '/booking-feedback.php';
 
 header('Content-Type: application/json; charset=UTF-8');
@@ -51,10 +51,9 @@ $recent[] = $now;
 $_SESSION['calendar_feedback_requests'] = $recent;
 session_write_close();
 try {
-    $config = booking_scheduling_config();
-    $db = booking_db();
+    $config = booking_calendar_config();
     if (!$config['enabled']) throw new BookingCalendarUnavailable('Calendar feedback is disabled.');
-    $result = booking_feedback($payload, static fn(array $range): array => booking_scheduling_snapshot($db, $config, $range));
+    $result = booking_feedback($payload, static fn(array $range): array => booking_calendar_snapshot($config, $range));
     booking_feedback_respond($result);
 } catch (InvalidArgumentException $error) {
     booking_feedback_respond(['ok'=>false, 'state'=>'unknown', 'message'=>$error->getMessage()], 422);

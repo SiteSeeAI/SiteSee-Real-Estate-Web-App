@@ -1,0 +1,13 @@
+{
+  "files": {
+    "server/booking-availability-check.php": "2e207ff610b2e57914779ef33dffaa1eb51b375118f8711d56a5ec307ba94b75",
+    "server/booking-confirmation.php": "bc80829c693e279dc60a68b8d4787e09e22de2d78d764794a383c0e00a6dfcb6",
+    "server/booking-invitation.php": "c0dba4b23f5cfceac5f48f970feca00f415676529f3ddec14d2d13e97b958bb8",
+    "server/booking-scheduling-provider.php": "0c07f4296a673203ae0cf7bdcd2ee3283a298d780f8d7ce9a8a6312bc77cc0cc",
+    "server/booking-staff.php": "62bff6905a2fb75a0df3e3e9ead600e30865e01fe5a2f2a6ece67f446f7a9dd7",
+    "tools/audit-calendar-confirmation.php": "484d00dc37e05f44613ae37bd31177ab7aebdd8b7b31b92f729152a4900faf1b",
+    "tools/diagnose-calendar-confirmation.php": "397611e861891c76f63ba15268e37863b03ef43d68b4243f051689ce34e3f966"
+  },
+  "release": "sitesee-microsoft-scheduling-test-v1",
+  "revision": "20260927-r1"
+}

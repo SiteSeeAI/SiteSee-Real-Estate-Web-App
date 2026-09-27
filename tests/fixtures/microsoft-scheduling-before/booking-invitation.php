@@ -70,7 +70,7 @@ function booking_invitation_message(array $row, array $confirmation): array
 /** One attempted submission. Provider and CRM recovery are separate from sending. */
 function booking_send_invitation(PDO $db, string $reference, ?array $config = null, ?callable $send = null, ?callable $transport = null, ?array $mailDependencies = null): void
 {
-    $config ??= booking_scheduling_config(booking_confirmation_get($db,$reference));
+    $config ??= booking_confirmation_config();
     if (($config['invitations_enabled'] ?? false) !== true) throw new InvalidArgumentException('Test invitation delivery is disabled.');
     $before = booking_get($db, $reference);
     if (!$before) throw new InvalidArgumentException('Booking not found.');
@@ -93,7 +93,11 @@ function booking_send_invitation(PDO $db, string $reference, ?array $config = nu
     }
 
     // A deleted or manually moved event must not produce a stale confirmation invitation.
-    booking_scheduling_verify_saved($config,$saved,$transport);
+    $connection = booking_confirmation_connection($config, $transport);
+    $uid = booking_confirmation_verify($connection('GET', booking_calendar_event_path($config['calendar_uid'], $saved['event_uid'])),
+        json_decode($saved['event_json'], true, 32, JSON_THROW_ON_ERROR), $config['calendar_uid']);
+    if ($uid !== $saved['event_uid']) throw new BookingCalendarUnavailable('Calendar identity changed.');
+    booking_confirmation_verify_clear($connection, json_decode($saved['event_json'], true, 32, JSON_THROW_ON_ERROR), $config['calendar_uid'], $uid);
     $db->exec('BEGIN IMMEDIATE');
     try {
         $row = booking_get($db, $reference);
