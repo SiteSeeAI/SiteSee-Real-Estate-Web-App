@@ -23,6 +23,13 @@ therefore preserved. No database is opened by this installer or its test.
 
 ## One upload and command
 
+**Current recovery path:** after the observed `0777` folders and `0666`
+`booking-schedule.php`, use the single `finish-microsoft-calendar-connection.py`
+runner documented in `Microsoft_Calendar_Recovery_20260927.md`. It inventories
+the full release, repairs verified excess permissions together, rechecks and
+continues through installation and the existing event test. The individual
+installer commands below document the earlier attempts.
+
 Download `tools/install-microsoft-calendar-connection.py`, upload it with cPanel
 File Manager to `/home/sitesee/install-microsoft-calendar-connection.py`, then run
 in WHM Terminal as root:

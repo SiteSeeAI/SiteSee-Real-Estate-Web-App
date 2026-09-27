@@ -361,6 +361,15 @@ an actual application-user PHP access check plus detailed metadata diagnostics.
 The unchanged PHP/config payload and any existing probe journal remain intact.
 Actual event creation/removal and migration are still unverified/disabled.
 
+R2's actual output then confirmed both `server` and `tools` were SiteSee-owned
+(UID 1009/GID 1011) with mode `0777`, followed by `booking-schedule.php` at `0666`.
+This establishes excess write permissions as the observed blocker. At the user's
+request, the r3 consolidated finish-and-repair runner now checks the full local
+release, collects independent findings, records/applies only verified permission
+reductions, rechecks, installs and continues the same temporary-event test with
+one bounded transient recovery retry. See `Microsoft_Calendar_Recovery_20260927.md`.
+No actual Microsoft write success has been reported yet.
+
 1. Verify the mailbox/calendar and appropriate application access. Keep Microsoft
    scheduling disabled until TEST creation, change, cancellation, conflict and
    notification checks pass. Review mailbox-scoped access rather than granting
