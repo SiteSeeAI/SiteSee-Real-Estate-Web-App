@@ -239,7 +239,10 @@ function Initialize-SiteSeeModules {
     )) {
         if (-not @(Get-Module -ListAvailable -Name $module.Name | Where-Object { $_.Version -ge [version]$module.Minimum }).Count) {
             Write-Host "Installing $($module.Name) for your Windows account..."
-            Install-Module -Name $module.Name -MinimumVersion $module.Minimum -Repository PSGallery -Scope CurrentUser -Force
+            # Windows PowerShell's PackageManagement dependency can share command
+            # names with an installed version. Permit this official-module install
+            # only; do not change repository trust or disable publisher checks.
+            Install-Module -Name $module.Name -MinimumVersion $module.Minimum -Repository PSGallery -Scope CurrentUser -Force -AllowClobber
         }
     }
 }

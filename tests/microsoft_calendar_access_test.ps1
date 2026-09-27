@@ -183,4 +183,37 @@ Run-Case 'secrets and invalid IDs rejected before use' {
     Expect-Stop { ConvertTo-SiteSeeGuid '00000000-0000-0000-0000-000000000000' 'Application ID' } 'cannot be empty'
     Expect-Stop { Get-SiteSeeGraph 'https://graph.microsoft.com/v1.0/users/sales@re.sitesee.ai/events' } 'Unexpected directory URL'
 }
+
+# Reproduce the user's Windows PowerShell bootstrap failure. These mocks avoid
+# installing anything on the test machine and remain separate from RBAC tests.
+function Get-PSRepository($Name) {
+    Assert ($Name -eq 'PSGallery') 'Only the official named repository is allowed'
+    [pscustomobject]@{ SourceLocation = $script:galleryLocation }
+}
+function Get-PackageProvider([switch]$ListAvailable) { [pscustomobject]@{ Name = 'NuGet'; Version = [version]'2.8.5.201' } }
+function Get-Module($Name, [switch]$ListAvailable) {
+    if ($script:modulesPresent) { [pscustomobject]@{ Name = $Name; Version = [version]'99.0.0' } }
+}
+function Install-Module($Name, $MinimumVersion, $Repository, $Scope, [switch]$Force, [switch]$AllowClobber, [switch]$SkipPublisherCheck) {
+    if (-not $AllowClobber) { throw "The commands Find-Package,Install-Package,Uninstall-Package are already available. Use -AllowClobber." }
+    Assert ($Repository -eq 'PSGallery' -and $Scope -eq 'CurrentUser' -and -not $SkipPublisherCheck) 'Official repository, user-only installation and publisher checks preserved'
+    Assert ($Name -in @('Microsoft.Graph.Authentication', 'ExchangeOnlineManagement')) 'Only the requested Microsoft modules installed'
+    $script:installedModules += $Name
+}
+Run-Case 'bootstrap handles dependency command overlap and skips installed modules on rerun' {
+    $script:galleryLocation = 'https://www.powershellgallery.com/api/v2'
+    $script:modulesPresent = $false; $script:installedModules = @()
+    Initialize-SiteSeeModules
+    Assert (($script:installedModules -join ',') -eq 'Microsoft.Graph.Authentication,ExchangeOnlineManagement') 'Both required modules installed despite command overlap'
+    $script:modulesPresent = $true
+    Initialize-SiteSeeModules
+    Assert ($script:installedModules.Count -eq 2) 'Rerun does not reinstall existing modules'
+    Assert ($state.Writes.Count -eq 0) 'No permission writes during bootstrap'
+}
+Run-Case 'bootstrap rejects redirected module repository before installation' {
+    $script:galleryLocation = 'https://other.example/api/v2'
+    $script:modulesPresent = $false; $script:installedModules = @()
+    Expect-Stop { Initialize-SiteSeeModules } 'official PowerShell Gallery'
+    Assert ($script:installedModules.Count -eq 0) 'No module installation from another repository'
+}
 Write-Host "RESULT: $passed offline behavioral cases passed. Microsoft responses were simulated."

@@ -171,13 +171,35 @@ with the same IDs inspects the deterministic names and reuses verified objects.
 Do not delete other applications, mail grants, tenant policies or scopes to
 recover. Do not roll back working mail or branded checkout for a calendar error.
 
+### Windows prerequisite correction after the first run
+
+The first administrator run stopped in module installation: PackageManagement
+reported that `Find-Package`, `Install-Package` and `Uninstall-Package` were
+already present and required `-AllowClobber`. This occurred before administrator
+connections or calendar authorization writes. Some local dependencies may have
+installed before the stop; rerunning the setup checks for installed modules.
+
+The installer now passes `-AllowClobber` on its two explicit `Install-Module`
+calls, allowing the official dependencies to supply the overlapping commands.
+It retains `CurrentUser`, the verified official PSGallery URL and normal
+publisher checks. It does not set a global installation default, mark other
+repositories trusted, remove existing modules or change execution policies.
+
+Replace the downloaded `setup-microsoft-calendar-access.ps1` with the corrected
+file and rerun the same Windows command already printed by WHM. The tenant and
+application IDs are unchanged; do not regenerate credentials or restart the
+server steps. Review the new FINAL RESULTS before assuming authorization passed.
+
+Reference: https://learn.microsoft.com/en-us/powershell/module/powershellget/install-module?view=powershellget-2.x
+
 ### Local verification
 
-PowerShell 7.4.13 parsed the script and passed 13 offline behavioral cases in
+PowerShell 7.4.13 parsed the script and passed 15 offline behavioral cases in
 `tests/microsoft_calendar_access_test.ps1`: new setup and unchanged rerun,
 tenant/mailbox mismatches, broader existing grants, scope membership, negative
 mailbox access, cleanup on known failures, ambiguous write recovery, conflicting
-scope preservation, directory pagination, empty/missing results and input guards.
+scope preservation, directory pagination, empty/missing results, input guards,
+dependency-command overlap with rerun, and rejection of a redirected repository.
 All Microsoft responses were simulated. The administrator sign-ins, module
 installation on the user's Windows system, tenant configuration and actual
 Microsoft calendar calls have **not** been verified by these local tests.
