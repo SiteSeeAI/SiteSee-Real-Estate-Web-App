@@ -96,7 +96,7 @@ function Invoke-SiteSeeChild($ChildPhase, $Tenant, $App, $Receipt) {
     $script:phases += $ChildPhase; $script:receipts += $Receipt
     if ($ChildPhase -eq $script:failPhase) { return 1 }
     if ($ChildPhase -eq 'Directory') {
-        @{ revision = $script:SetupRevision; tenant = $(if ($script:badReceipt) { $principal } else { $Tenant }); application = $App; principal = $principal } |
+        @{ revision = $script:SetupRevision; tenant = $(if ($script:badReceipt) { $principal } else { $Tenant }); application = $App; principal = $principal; account = 'admin@example.com' } |
             ConvertTo-Json | Set-Content -LiteralPath $Receipt -Encoding UTF8
     }
     return 0
@@ -122,6 +122,18 @@ Run-Case 'mismatched directory handoff stops before Exchange and is cleaned up' 
 Run-Case 'invalid IDs produce a readable failure without launching children' {
     Assert ((Start-SiteSeeSetup 'not-an-id' $app) -eq 1) 'Invalid input fails'
     Assert ($script:phases.Count -eq 0) 'No child launched'
+}
+Run-Case 'verified administrator identity survives the handoff and blank identity is rejected' {
+    $receiptFile = [IO.Path]::GetTempFileName()
+    try {
+        $values = @{ revision = $script:SetupRevision; tenant = $tenant; application = $app; principal = $principal; account = 'admin@example.com' }
+        $values | ConvertTo-Json | Set-Content -LiteralPath $receiptFile -Encoding UTF8
+        $verified = Read-SiteSeeReceipt $receiptFile $tenant $app
+        Assert ($verified.Account -eq 'admin@example.com' -and $verified.Principal -eq $principal) 'Verified identity carried'
+        $values.account = ''
+        $values | ConvertTo-Json | Set-Content -LiteralPath $receiptFile -Encoding UTF8
+        Expect-Stop { Read-SiteSeeReceipt $receiptFile $tenant $app } 'missing or invalid'
+    } finally { Remove-Item -LiteralPath $receiptFile -Force }
 }
 
 # A real local process validates argument quoting and nonzero exit propagation.

@@ -258,19 +258,57 @@ References:
 - https://learn.microsoft.com/en-us/powershell/exchange/exchange-online-powershell-v2?view=exchange-ps
 - https://learn.microsoft.com/en-us/powershell/microsoftgraph/installation?view=graph-powershell-1.0
 
+### Tenant verification recovery revision 20260927-r4
+
+The user's r3 run completed Windows prerequisites, Microsoft-tool installation
+and directory review, then stopped in Exchange before any authorization write:
+`The Exchange sign-in belongs to a different tenant.` Its code compared only
+`Get-OrganizationConfig.ExternalDirectoryOrganizationId` with the expected ID.
+Because an absent field also failed that comparison, the message alone cannot
+establish that the operator selected the wrong account. Neither the actual
+tenant values nor the actual cause of the reported stop is known yet.
+
+Revision 4 uses Microsoft's documented `Get-ConnectionInformation.TenantID`
+from exactly one connected, direct Exchange Online session. It disallows
+delegated routing and Security & Compliance sessions. The active tenant must
+be a valid GUID matching the server tenant. An organization tenant ID, when
+returned, must also be valid and match; a missing organization field is reported
+explicitly rather than mislabeled as a mismatch. Missing active identity,
+multiple connections and conflicting IDs still stop before any permission write.
+
+The Graph context's administrator account is included in the temporary handoff
+and passed to `Connect-ExchangeOnline -UserPrincipalName`, keeping account
+selection tied to the already verified directory sign-in. This is a sign-in
+hint, not a replacement for verifying the actual Exchange tenant afterward.
+FINAL RESULTS now includes the expected tenant, Exchange account and both
+returned tenant fields on an identity failure, without exposing tokens or secrets.
+
+The download is `sitesee-calendar-setup-20260927-r4.ps1`; use its supplied hash-
+checked launch command, not the old r3 command. Prerequisite phases retain their
+existing-version checks and do not reinstall modules already available. Enter
+the existing tenant/application IDs if requested. No new credentials are needed.
+
+Official references:
+
+- https://learn.microsoft.com/en-us/powershell/module/exchangepowershell/get-connectioninformation?view=exchange-ps
+- https://learn.microsoft.com/en-us/powershell/module/exchangepowershell/connect-exchangeonline?view=exchange-ps
+
 ### Local verification
 
-PowerShell 7.4.13 parsed the script and passed 15 offline behavioral cases in
+PowerShell 7.4.13 parsed the script and passed 18 offline behavioral cases in
 `tests/microsoft_calendar_access_test.ps1`: new setup and unchanged rerun,
 tenant/mailbox mismatches, broader existing grants, scope membership, negative
 mailbox access, cleanup on known failures, ambiguous write recovery, conflicting
 scope preservation, directory pagination, empty/missing results, input guards,
 dependency-command overlap with rerun, and rejection of a redirected repository.
-Nine additional cases in `tests/microsoft_calendar_bootstrap_test.ps1` verify
+The additional tenant cases cover an absent organization field with a verified
+direct connection, absent/conflicting/invalid IDs, multiple connections and
+delegated routing; no tenant mismatch is bypassed.
+Ten additional cases in `tests/microsoft_calendar_bootstrap_test.ps1` verify
 old-package-manager recovery, missing gallery/NuGet, no forced dependency
 overwrite, install failure, installer command resolution, phase order, stopping
 after each failed phase, handoff mismatch/cleanup, invalid-ID diagnostics and
-real local child-process argument/exit handling. The child-process fixture is
+verified administrator-account handoff and real local child-process argument/exit handling. The child-process fixture is
 inert and performs no setup or Microsoft calls.
 All Microsoft responses were simulated. The administrator sign-ins, module
 installation on the user's Windows system, tenant configuration and actual

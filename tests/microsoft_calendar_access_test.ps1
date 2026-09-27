@@ -20,7 +20,7 @@ $passed = 0
 
 function Reset-State {
     $script:state = @{
-        Tenant = $tenant; Principals = @(); Scopes = @(); Assignments = @(); Writes = @(); Reads = @()
+        Tenant = $tenant; ConnectionTenant = $tenant; ConnectionCount = 1; DelegatedOrganization = ''; Principals = @(); Scopes = @(); Assignments = @(); Writes = @(); Reads = @()
         BroadScope = $false; BadExisting = $false; NegativeGranted = $false; FailGrant = $false
         TimeoutGrant = $false; WrongMailbox = $false; EntraRole = 'Mail.Send'; NextLink = ''
         EmptyRoles = $false; MissingRoleList = $false; GraphWrite = $false
@@ -33,6 +33,11 @@ function Expect-Stop([scriptblock]$Action, [string]$Pattern) {
     Assert $stopped 'Expected a stop'
 }
 function Get-OrganizationConfig { [pscustomobject]@{ ExternalDirectoryOrganizationId = $state.Tenant } }
+function Get-ConnectionInformation {
+    for ($index = 0; $index -lt $state.ConnectionCount; $index++) {
+        [pscustomobject]@{ State = 'Connected'; TenantID = $state.ConnectionTenant; UserPrincipalName = 'admin@example.com'; DelegatedOrganization = $state.DelegatedOrganization; IsEopSession = $false }
+    }
+}
 function Get-EXOMailbox($Identity, $Properties) {
     if ($Identity -eq 'sales@re.sitesee.ai') {
         [pscustomobject]@{ PrimarySmtpAddress = $(if ($state.WrongMailbox) { 'other@example.com' } else { $Identity }); ExternalDirectoryObjectId = $sales }
@@ -117,9 +122,32 @@ Run-Case 'new setup grants exact mailbox scope and rerun makes no writes' {
     Assert ($state.Writes.Count -eq $before) 'Unchanged rerun must not write'
 }
 Run-Case 'wrong tenant makes no writes' {
-    $state.Tenant = $cro
+    $state.Tenant = $cro; $state.ConnectionTenant = $cro
     Expect-Stop { Invoke-SiteSeeCalendarGrant $tenant $app $principal } 'different tenant'
     Assert ($state.Writes.Count -eq 0) 'No wrong-tenant writes'
+}
+Run-Case 'missing organization field uses the verified direct active connection tenant' {
+    $state.Tenant = ''
+    Invoke-SiteSeeCalendarGrant $tenant $app $principal
+    Assert ($state.Assignments.Count -eq 1) 'Verified direct connection remains usable'
+}
+Run-Case 'missing or conflicting tenant data stops before writes' {
+    $state.ConnectionTenant = ''
+    Expect-Stop { Invoke-SiteSeeCalendarGrant $tenant $app $principal } 'identity remains unverified'
+    Assert ($state.Writes.Count -eq 0) 'Missing connection identity stops'
+    $state.ConnectionTenant = $tenant; $state.Tenant = $cro
+    Expect-Stop { Invoke-SiteSeeCalendarGrant $tenant $app $principal } 'tenant IDs disagree'
+    Assert ($state.Writes.Count -eq 0) 'Conflicting sources stop'
+    $state.Tenant = 'invalid'
+    Expect-Stop { Invoke-SiteSeeCalendarGrant $tenant $app $principal } 'complete ID'
+    Assert ($state.Writes.Count -eq 0) 'Invalid organization identity stops'
+}
+Run-Case 'multiple connections and delegated routing cannot satisfy tenant guard' {
+    $state.ConnectionCount = 2
+    Expect-Stop { Invoke-SiteSeeCalendarGrant $tenant $app $principal } 'single active'
+    $state.ConnectionCount = 1; $state.DelegatedOrganization = 'other.onmicrosoft.com'
+    Expect-Stop { Invoke-SiteSeeCalendarGrant $tenant $app $principal } 'direct Exchange'
+    Assert ($state.Writes.Count -eq 0) 'No writes for ambiguous routing'
 }
 Run-Case 'wrong mailbox identity makes no writes' {
     $state.WrongMailbox = $true

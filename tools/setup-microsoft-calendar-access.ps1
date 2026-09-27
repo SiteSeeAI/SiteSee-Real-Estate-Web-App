@@ -16,9 +16,10 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-$script:SetupRevision = '20260927-r3'
+$script:SetupRevision = '20260927-r4'
 $script:SetupFile = $PSCommandPath
 $script:SetupStage = 'startup'
+$script:ExchangeIdentitySummary = @()
 
 function Get-SiteSeeValue($Object, [string]$Name) {
     if ($null -eq $Object) { return $null }
@@ -122,6 +123,50 @@ function Assert-SiteSeeScope($Scope, [string]$ExpectedFilter, [string]$MailboxOb
     }
 }
 
+function Assert-SiteSeeExchangeTenant([string]$ExpectedTenant) {
+    # This process has just opened one Exchange connection. Do not infer tenant
+    # mismatch from a missing organization property or accept delegated routing.
+    $connections = @(Get-ConnectionInformation | Where-Object { [string](Get-SiteSeeValue $_ 'State') -eq 'Connected' })
+    if ($connections.Count -ne 1) { throw 'A single active Exchange connection could not be verified. No permission was changed.' }
+    $connection = $connections[0]
+    $connectedTenant = ([string](Get-SiteSeeValue $connection 'TenantID')).Trim()
+    $signedIn = [string](Get-SiteSeeValue $connection 'UserPrincipalName')
+    $organizations = @(Get-OrganizationConfig)
+    if ($organizations.Count -ne 1) { throw 'A single Exchange organization could not be verified. No permission was changed.' }
+    $organizationTenant = ([string](Get-SiteSeeValue $organizations[0] 'ExternalDirectoryOrganizationId')).Trim()
+    $script:ExchangeIdentitySummary = @(
+        "Expected server tenant: $ExpectedTenant",
+        "Exchange signed-in account: $signedIn",
+        "Exchange connection tenant: $(if ($connectedTenant) { $connectedTenant } else { '[not returned]' })",
+        "Exchange organization tenant: $(if ($organizationTenant) { $organizationTenant } else { '[not returned]' })"
+    )
+    foreach ($line in $script:ExchangeIdentitySummary) { Write-Host $line }
+    if ([string](Get-SiteSeeValue $connection 'DelegatedOrganization') -or
+        [string](Get-SiteSeeValue $connection 'IsEopSession') -ne 'False') {
+        throw 'This setup requires a direct Exchange Online connection to the SiteSee tenant. No permission was changed.'
+    }
+    if (-not $connectedTenant) { throw 'Exchange did not return its active connection tenant ID; identity remains unverified. No permission was changed.' }
+    $connectedTenant = ConvertTo-SiteSeeGuid $connectedTenant 'Active Exchange tenant ID'
+    if ($connectedTenant -ne $ExpectedTenant) {
+        throw 'The active Exchange connection belongs to a different tenant. Use an administrator in the expected server tenant. No permission was changed.'
+    }
+    if ($organizationTenant) {
+        $organizationTenant = ConvertTo-SiteSeeGuid $organizationTenant 'Exchange organization tenant ID'
+        if ($organizationTenant -ne $ExpectedTenant) {
+            throw 'Exchange connection and organization tenant IDs disagree. No permission was changed.'
+        }
+    } else {
+        Write-Host 'Organization tenant field was not returned; direct active Exchange connection tenant verified.'
+    }
+}
+
+function ConvertTo-SiteSeeAdminAccount([string]$Account) {
+    if ($Account -notmatch '^[^\s@]+@[^\s@]+$' -or $Account.Length -gt 320) {
+        throw 'The administrator account from the verified directory sign-in was missing or invalid.'
+    }
+    return $Account
+}
+
 function Invoke-SiteSeeCalendarGrant([string]$ExpectedTenant, [string]$AppId, [string]$ObjectId) {
     $mailbox = 'sales@re.sitesee.ai'
     $outsideMailbox = 'cro@sitesee.ai'
@@ -132,10 +177,7 @@ function Invoke-SiteSeeCalendarGrant([string]$ExpectedTenant, [string]$AppId, [s
     $newScope = $false
     $newAssignment = $false
     try {
-        $org = Get-OrganizationConfig
-        if ([string](Get-SiteSeeValue $org 'ExternalDirectoryOrganizationId') -ne $ExpectedTenant) {
-            throw 'The Exchange sign-in belongs to a different tenant. No permission was changed.'
-        }
+        Assert-SiteSeeExchangeTenant $ExpectedTenant
         $target = Get-EXOMailbox -Identity $mailbox -Properties ExternalDirectoryObjectId,PrimarySmtpAddress
         $outside = Get-EXOMailbox -Identity $outsideMailbox -Properties ExternalDirectoryObjectId,PrimarySmtpAddress
         if ([string](Get-SiteSeeValue $target 'PrimarySmtpAddress') -ne $mailbox -or
@@ -341,13 +383,17 @@ function Read-SiteSeeReceipt([string]$Path, [string]$Tenant, [string]$App) {
     if ([string](Get-SiteSeeValue $receipt 'revision') -ne $script:SetupRevision -or
         [string](Get-SiteSeeValue $receipt 'tenant') -ne $Tenant -or
         [string](Get-SiteSeeValue $receipt 'application') -ne $App) { throw 'Directory verification does not match this run.' }
-    return ConvertTo-SiteSeeGuid ([string](Get-SiteSeeValue $receipt 'principal')) 'Verified enterprise application ID'
+    return [pscustomobject]@{
+        Principal = ConvertTo-SiteSeeGuid ([string](Get-SiteSeeValue $receipt 'principal')) 'Verified enterprise application ID'
+        Account = ConvertTo-SiteSeeAdminAccount ([string](Get-SiteSeeValue $receipt 'account'))
+    }
 }
 
 function Start-SiteSeeSetup([string]$Tenant, [string]$App, [string]$RunPhase = 'Setup', [string]$Receipt = '') {
     $graphConnected = $false
     $exchangeConnected = $false
     $temporaryReceipt = ''
+    $script:ExchangeIdentitySummary = @()
     try {
         Write-Host "SiteSee Microsoft calendar setup | revision $script:SetupRevision | phase $RunPhase"
         Write-Host "Installer: $script:SetupFile"
@@ -382,25 +428,28 @@ function Start-SiteSeeSetup([string]$Tenant, [string]$App, [string]$RunPhase = '
                 Write-Host 'Sign in with your Microsoft 365 administrator. The directory check requests read-only Application.Read.All.'
                 Connect-MgGraph -TenantId $Tenant -Scopes 'Application.Read.All' -ContextScope Process -NoWelcome | Out-Null
                 $graphConnected = $true
-                if ([string](Get-MgContext).TenantId -ne $Tenant) { throw 'The directory sign-in belongs to a different tenant.' }
+                $context = Get-MgContext
+                if ([string]$context.TenantId -ne $Tenant) { throw 'The directory sign-in belongs to a different tenant.' }
+                $adminAccount = ConvertTo-SiteSeeAdminAccount ([string]$context.Account)
                 $script:SetupStage = 'inspecting existing Entra application grants'
                 $objectId = Get-SiteSeeDirectoryApp $App
-                $verified = @{ revision = $script:SetupRevision; tenant = $Tenant; application = $App; principal = $objectId }
+                $verified = @{ revision = $script:SetupRevision; tenant = $Tenant; application = $App; principal = $objectId; account = $adminAccount }
                 $verified | ConvertTo-Json -Compress | Set-Content -LiteralPath $Receipt -Encoding UTF8
                 Write-Host 'Directory identity and existing-grant review: PASS'
             }
             'Exchange' {
                 $script:SetupStage = 'validating the directory handoff'
-                $objectId = Read-SiteSeeReceipt $Receipt $Tenant $App
+                $verified = Read-SiteSeeReceipt $Receipt $Tenant $App
+                $objectId = $verified.Principal
                 Import-SiteSeePackageManagers
                 $script:SetupStage = 'loading Exchange Online Management'
                 Import-Module ExchangeOnlineManagement -MinimumVersion 3.7.0
                 $script:SetupStage = 'Microsoft Exchange administrator sign-in'
-                Write-Host 'Sign in to Exchange with the same Microsoft 365 administrator (Exchange role management is required).'
-                Connect-ExchangeOnline -ShowBanner:$false | Out-Null
+                Write-Host "Exchange administrator account from the verified directory sign-in: $($verified.Account)"
+                Connect-ExchangeOnline -UserPrincipalName $verified.Account -ShowBanner:$false | Out-Null
                 $exchangeConnected = $true
                 $script:SetupStage = 'checking available Exchange administration commands'
-                foreach ($command in @('Get-OrganizationConfig', 'Get-EXOMailbox', 'Get-Recipient', 'Get-ServicePrincipal',
+                foreach ($command in @('Get-ConnectionInformation', 'Get-OrganizationConfig', 'Get-EXOMailbox', 'Get-Recipient', 'Get-ServicePrincipal',
                     'New-ServicePrincipal', 'Get-ManagementScope', 'New-ManagementScope', 'Remove-ManagementScope',
                     'Get-ManagementRoleAssignment', 'New-ManagementRoleAssignment', 'Remove-ManagementRoleAssignment',
                     'Test-ServicePrincipalAuthorization')) { Get-Command $command -ErrorAction Stop | Out-Null }
@@ -420,6 +469,7 @@ function Start-SiteSeeSetup([string]$Tenant, [string]$App, [string]$RunPhase = '
         Write-Host "Command: $failedCommand | Line: $(Get-SiteSeeValue $invocation 'ScriptLineNumber')"
         Write-Host "Error ID: $($_.FullyQualifiedErrorId)"
         Write-Host ([string]$_.Exception.Message)
+        foreach ($line in $script:ExchangeIdentitySummary) { Write-Host $line }
         Write-Host 'Send this FINAL RESULTS block and any preceding STOP/REVIEW REQUIRED lines for review. No keys are needed.'
         return 1
     } finally {
