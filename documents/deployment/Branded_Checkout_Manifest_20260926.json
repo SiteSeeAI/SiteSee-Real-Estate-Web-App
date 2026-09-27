@@ -1,0 +1,10 @@
+{
+  "release": "sitesee-branded-checkout-test-v1",
+  "files": {
+    "server/booking-checkout.php": "0121ff14a0ae12aff1d6ff3c54ee97447046ad4a4cf0a40f7555403dd032aa61",
+    "views/booking-payment.php": "b9fc01773cb12a08f79f3e58acfcefa0e91b6b7034e256fe12181e21d3ce3b45",
+    "payment-assets/booking-payment.css": "125e6763c5659c8835aef66d75299692d50b2c148f0ce2aef578bf5a67af4f7c",
+    "payment-assets/booking-payment.js": "88ea2aedc48062dbf3999d87144b3d68588def809d0ad3e43f99d70e08b26fb4",
+    "server/booking-pay.php": "e2170aeb9e7976abed8e25046d64da046fdfe78831127c914e4ca13731a6899f"
+  }
+}

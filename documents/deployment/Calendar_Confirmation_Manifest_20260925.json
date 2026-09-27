@@ -5,7 +5,7 @@
     "server/booking-invitation.php": "95d15de549108995a4fbbf54a93e9c7cb8d197bf98c2138ced24b8c1c9461fe4",
     "server/booking-schedule.php": "99de974d2b45de2b75003a6e4a93ca0e71019cdb632cc52defc34aeb09727cb8",
     "server/booking-store.php": "842176a35abcdd7477f6e50ac322a33c971705482db2c94e65668aae0ebe81e4",
-    "server/booking-pay.php": "845ba608002c03e761ed5296b2301f5f32dd4891705a84c718aadc14c1ede120",
+    "server/booking-pay.php": "e2170aeb9e7976abed8e25046d64da046fdfe78831127c914e4ca13731a6899f",
     "server/booking-staff.php": "31b4e32bc16e36c041f335c78e10a05e31df5e3695dee5e482999f9cd4065d45",
     "tools/setup-zoho-calendar.py": "cc971758309a58123827c1b3fa3d9b5f3eb842e4f09996bf9da715ff963fe98f",
     "tools/setup-zoho-confirmation.py": "3446a5269c3d765574f353d4de54eba65d3a07a5d755cd782232c3dff810890b",
@@ -17,6 +17,7 @@
     "server/booking-communication.php": "d2fb1b321f23b73e5c0e8db60426c36429a0ef7b4dd855098dfafaebbc91b254",
     "server/booking-crm.php": "acf250ec05945007b7940b09cd57280b9a8baea6ecc7bec81962345f9421bb97",
     "tools/booking-communications.php": "bf8173d38bfa7f980cf8a6d7e8e09ee07f0efabbdc3a466c87f08c2e1877ad5b",
-    "tools/setup-booking-communications.py": "d95ba9420300e3940b8ae09ee2773370306eab7aa0e4e43194eb5fe7f4bdddd5"
+    "tools/setup-booking-communications.py": "d95ba9420300e3940b8ae09ee2773370306eab7aa0e4e43194eb5fe7f4bdddd5",
+    "server/booking-checkout.php": "0121ff14a0ae12aff1d6ff3c54ee97447046ad4a4cf0a40f7555403dd032aa61"
   }
 }
