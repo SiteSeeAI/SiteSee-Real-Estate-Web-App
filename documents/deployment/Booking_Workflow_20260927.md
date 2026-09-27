@@ -5,13 +5,47 @@
 Microsoft scheduling was enabled and D32FFC7458 was confirmed on the Microsoft
 calendar. Staff then encountered a missing CRM contact link only when attempting
 to send the invitation. The one-booking helper has now verified and linked its
-contact using the prior E4E51A0481 selection. The user's latest output records
-`invitation_state=none` and zero communication records; it does not establish
-invitation submission, receipt or acceptance for D32FFC7458.
+contact using the prior E4E51A0481 selection. At that stage the repair output
+recorded `invitation_state=none` and zero communication records. The subsequent
+installation and invitation validation below supersede that earlier state.
 
 The permanent correction puts readiness, contact selection and communication
 recovery in the existing authenticated staff page. Future bookings do not need
 a separately generated terminal contact-link helper.
+
+## Actual server validation — 2026-09-27
+
+The operator supplied the installer FINAL RESULTS: installed in TEST mode,
+Microsoft calendar/dedicated sender/Zoho CRM read preflight PASS, and active
+release hashes PASS. Installation changed no booking row, event, invitation,
+email, payment, credential content or integration setting. Preserve its backup:
+
+`/home/sitesee/.sitesee-real-estate/deployment-backups/booking-workflow-2cn2dftl`
+
+The uploaded desktop screenshot showed the new staff interface, Microsoft
+assignment, saved CRM link, confirmed 95-minute private shoot, $128.45 deposit
+and $128.45 balance. The customer arrival window remained September 30,
+13:00–15:00 Central; the internal shoot interval was 13:00–14:35 Central.
+No invitation attempt was recorded in that screenshot.
+
+After the send/recovery instructions, the operator reported these actual
+statuses for D32FFC7458:
+
+| Evidence | Observed state |
+|---|---|
+| Calendar appointment | `confirmed` (Microsoft assignment previously shown) |
+| Invitation | `sent` |
+| Saved message | `sent_observed` |
+| Recipient evidence | `recipient_copy_observed` |
+| Zoho email history | `associated` |
+
+This establishes the recorded confirmation, actual sent-copy evidence,
+recipient mailbox copy and CRM association for this TEST booking. Do not resend
+it or rerun the earlier E6E183EF8E probe. These states do not establish RSVP
+acceptance, calendar-client rendering without duplicates, or lifecycle
+cancellation/rescheduling. The operator has not separately confirmed acceptance
+for D32FFC7458. The fresh combined-check calendar diagnostic text was not pasted;
+the reported `confirmed` value is the saved appointment state.
 
 ## Staff behavior
 
@@ -122,14 +156,13 @@ failure, interrupted recovery, unchanged reruns, configuration preservation,
 permission batching, unknown edits and grouped preflight failures. Provider
 responses in automated tests are simulated.
 
-After reviewing the actual installation output, inspect D32FFC7458 in the staff
-browser. If its invitation has already been sent, use **Recover Booking Status**;
-do not send it again. Verify the actual Microsoft invitation receipt and
-acceptance separately. A later new paid TEST booking verifies the inline contact
-selection path; do not reuse a paid booking to manufacture a new payment.
+Installation, desktop staff rendering and the reported invitation/delivery/CRM
+states are now verified by operator evidence above. Acceptance remains a
+separate observation. A later new paid TEST booking can verify the new inline
+contact-selection path: D32FFC7458 was already linked by the earlier helper.
+Do not reuse a paid booking to manufacture a new payment.
 
-Installation and the new staff interface are not yet verified on the actual
-server at preparation time. This release does not implement cancellation,
+This release does not implement cancellation,
 rescheduling of already-confirmed appointments, automatic reconciliation of
 manual calendar moves/deletes, customer management links or order/upsell edits.
 In particular, a deleted calendar event does not automatically release its

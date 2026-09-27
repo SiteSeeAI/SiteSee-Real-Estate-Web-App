@@ -14,9 +14,14 @@ ENABLED IN TEST MODE, active release hashes PASS, existing Zoho reservations
 preserved, and no booking row, payment, event, invitation, email, credential or
 Zoho setting changed. Backup: `/home/sitesee/.sitesee-real-estate/deployment-backups/microsoft-scheduling-7ug3cjsf`.
 Permission record: `/home/sitesee/.sitesee-real-estate/microsoft-calendar-recovery-qeejp11x/permission-repairs.json`.
-The real booking/invitation flow is still being verified; installation alone does
-not establish successful customer invitation delivery or duplicate-free rendering. Existing branded Stripe TEST payment validation remains as
-recorded in the checkout deployment document; it is not reset by this work.
+Subsequent operator evidence for D32FFC7458 shows a Microsoft-confirmed booking,
+invitation `sent`, saved copy `sent_observed`, delivery
+`recipient_copy_observed`, and CRM `associated`. RSVP acceptance and calendar-client
+rendering without duplicates are not established by these states. See
+[Booking_Workflow_20260927.md](Booking_Workflow_20260927.md) for the installed
+staff-workflow update, its backup and the actual evidence. Existing branded
+Stripe TEST payment validation remains as recorded in the checkout deployment
+document; it is not reset by this work.
 
 ## One upload and one command
 
@@ -208,16 +213,18 @@ before sending remains safe. Any changed send state directs review, not resend.
 32 focused checks passed with mocked CRM reads, including wrong organization,
 changed contact email, missing prior selection, conflicting target links, payment
 and calendar preservation, unchanged rerun and previously attempted invitations.
-PHP syntax passed. Actual CRM repair remains unverified until server output.
-The staff interface still needs contact lookup/linking integrated before broader
-use so each booking does not require a terminal-only prerequisite.
+PHP syntax passed. Subsequent operator output verified this CRM repair. The
+consolidated workflow below adds inline contact selection to remove the
+terminal-only prerequisite from future staff bookings.
 
 ## Consolidated staff workflow follow-up
 
-The one-booking CRM repair passed for D32FFC7458, with Microsoft confirmation,
-a verified contact link, no saved invitation attempt and zero communication
-records in the latest operator output. The permanent inline contact and combined
-recovery update is documented in [Booking_Workflow_20260927.md](Booking_Workflow_20260927.md).
-Its installation and actual Microsoft invitation receipt/acceptance still need
-operator verification. Use its installer for the newer staff page; preserve this
-Microsoft scheduling release and its existing appointment identities.
+The one-booking CRM repair passed for D32FFC7458. The permanent inline contact
+and combined recovery update was then installed successfully and displayed in
+the operator's browser. The latest reported states are invitation `sent`,
+`sent_observed`, `recipient_copy_observed`, and CRM `associated`.
+Its backup is `/home/sitesee/.sitesee-real-estate/deployment-backups/booking-workflow-2cn2dftl`.
+Acceptance remains separately unverified. The full evidence and remaining
+lifecycle work are documented in [Booking_Workflow_20260927.md](Booking_Workflow_20260927.md).
+Use that installer for the newer staff page; preserve this Microsoft scheduling
+release and its existing appointment identities. Do not resend D32FFC7458.
