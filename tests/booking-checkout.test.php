@@ -58,8 +58,14 @@ foreach(['livemode'=>true,'amount_total'=>1,'currency'=>'eur','client_reference_
     $bad=$session($ref);$bad[$field]=$value;
     $reject(static fn()=>booking_checkout_result($bad,$row,'cs_test_embedded'),'Mismatched '.$field.' rejected.');
 }
-$bad=$session($ref);$bad['client_secret']='unrelated-secret';
-$reject(static fn()=>booking_checkout_result($bad,$row),'Malformed secret rejected.');
+// Stripe documents client_secret as an opaque string, not an ID-derived format.
+$opaque='opaque.checkout.'.str_repeat('Ab9_-/+=',55);
+$opaqueSession=$session($ref);$opaqueSession['client_secret']=$opaque;
+$assert(booking_checkout_result($opaqueSession,$row,'cs_test_embedded')['clientSecret']===$opaque,'Opaque Stripe secret passes through unchanged.');
+foreach([null,'','   ',123,[],"token\nvalue",str_repeat('x',16385)]as$invalidSecret){
+    $bad=$session($ref);$bad['client_secret']=$invalidSecret;
+    $reject(static fn()=>booking_checkout_result($bad,$row),'Missing, non-string, control-character or oversized secret rejected.');
+}
 $complete=static fn()=> $session($ref,'cs_test_embedded','complete');
 $assert(booking_checkout_start($db,$ref,$token,'127.0.0.1',$complete)['mode']==='pending','Complete Stripe session waits for signed webhook.');
 $assert(booking_get($db,$ref)['status']==='awaiting_deposit_test','Return lookup cannot mark deposit paid.');
@@ -110,6 +116,27 @@ $db->prepare("UPDATE bookings SET checkout_state='creating', checkout_attempt=1,
 $db->prepare('INSERT INTO booking_checkout_ui VALUES (?,?,?)')->execute([$locked,1,BOOKING_CHECKOUT_API_VERSION]);
 $reject(static fn()=>booking_checkout_start($db,$locked,$lockedToken,'127.0.0.1',$provider),'Concurrent submission cannot bypass creation lease.');
 $db->exec('BEGIN IMMEDIATE');$db->exec('ROLLBACK'); // Rejection released its transaction.
+
+// A provider success followed by local secret rejection must recover the same
+// session with the exact original POST and idempotency key, then use GET only.
+$recovery='AABBCC0055';$recoveryToken=$make($recovery);$recoveryCalls=[];
+$recover=static function($method,$id,$body,$idem)use(&$recoveryCalls,$session,$recovery,$opaque):array{
+    $recoveryCalls[]=[$method,$id,$body,$idem];
+    $reply=$session($recovery,'cs_test_recovered');
+    $reply['client_secret']=count($recoveryCalls)===1 ? null : $opaque;
+    return $reply;
+};
+$reject(static fn()=>booking_checkout_start($db,$recovery,$recoveryToken,'127.0.0.1',$recover),'Local rejection after provider success is recoverable.');
+$failed=booking_get($db,$recovery);
+$assert($failed['checkout_state']==='creating' && (int)$failed['checkout_attempt']===1,'Failed validation preserves the original attempt.');
+$assert(booking_checkout_start($db,$recovery,$recoveryToken,'127.0.0.1',$recover)['clientSecret']===$opaque,'Retry accepts an opaque provider secret.');
+$assert($recoveryCalls[0]===$recoveryCalls[1],'Recovery replays the exact original request and idempotency key.');
+$recovered=booking_get($db,$recovery);
+$assert($recovered['stripe_session_id']==='cs_test_recovered' && $recovered['checkout_state']==='open','Recovered session is attached to the existing ledger.');
+$assert($recovered['status']==='awaiting_deposit_test','Recovering a session does not record payment.');
+$assert(!str_contains(json_encode($recovered),$opaque) && !str_contains(json_encode($db->query('SELECT * FROM booking_checkout_ui')->fetchAll()),$opaque),'Opaque secret is absent from both persistent records.');
+booking_checkout_start($db,$recovery,$recoveryToken,'127.0.0.1',$recover);
+$assert(array_column($recoveryCalls,0)===['POST','POST','GET'],'Subsequent retry retrieves the recovered session.');
 
 $viewRow=booking_get($db,$retry);$req=booking_request($viewRow);$req['details']['street']='<script>alert(1)</script>';
 $viewRow['request_json']=json_encode($req);

@@ -51,12 +51,8 @@ function booking_checkout_result(array $session, array $row, ?string $id = null)
 {
     $state = booking_checkout_validate($session, $row, $id);
     if ($state !== 'open') return ['mode'=>$state === 'complete' ? 'pending' : 'expired'];
-    // Stripe owns this opaque value. Its documented contract does not promise
-    // a session-ID prefix or a particular alphabet. Bind the response using
-    // booking_checkout_validate above, then pass the secret to Stripe.js intact.
-    $secret = $session['client_secret'] ?? null;
-    if (!is_string($secret) || trim($secret) === '' || strlen($secret) > 16384
-        || preg_match('/[\x00-\x1F\x7F]/', $secret)) {
+    $secret = (string)($session['client_secret'] ?? '');
+    if (!preg_match('/^' . preg_quote($session['id'], '/') . '_secret_[A-Za-z0-9]+$/D', $secret)) {
         throw new RuntimeException('Stripe did not return a valid embedded session.');
     }
     return ['mode'=>'embedded', 'clientSecret'=>$secret];

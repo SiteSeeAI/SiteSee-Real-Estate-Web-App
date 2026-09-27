@@ -108,6 +108,53 @@ class InstallTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             installer.existing_config(self.root)
 
+    def stage_original_branded_release(self):
+        self.install()
+        helper = self.root / 'server/booking-checkout.php'
+        helper.write_bytes((PROJECT / 'tests/fixtures/booking-checkout-before-opaque.php.txt').read_bytes())
+        original_files = installer.PREVIOUS_BRANDED_FILES
+        self.assertEqual(installer.digest(helper.read_bytes()), original_files['server/booking-checkout.php'])
+        calendar = json.loads(self.manifest.read_text())
+        calendar['files'].update({n: h for n, h in original_files.items() if n.startswith('server/')})
+        self.manifest.write_text(json.dumps(calendar))
+        (self.root / 'branded-checkout-release.json').write_text(json.dumps({
+            'release': 'sitesee-branded-checkout-test-v1', 'files': original_files}))
+
+    def test_upgrade_preserves_pending_booking_and_configuration(self):
+        self.stage_original_branded_release()
+        protected = {}
+        for name in ('data/bookings.sqlite', 'booking-checkout.json', 'booking-mail.json', 'zoho-calendar.json'):
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            if not path.exists():
+                path.write_bytes(b'pending-session-and-existing-settings-must-not-change')
+            protected[path] = path.read_bytes()
+        backup = self.install()
+        changed = json.loads((backup / 'restore-paths.json').read_text())
+        self.assertEqual(set(changed), {'server/booking-checkout.php', 'branded-checkout-release.json', 'calendar-confirmation-release.json'})
+        self.assertTrue(all(changed.values()))
+        for path, data in protected.items():
+            self.assertEqual(path.read_bytes(), data)
+        self.assertIsNone(self.install())
+
+    def test_upgrade_failure_restores_original_branded_release(self):
+        self.stage_original_branded_release()
+        names = ('server/booking-checkout.php', 'branded-checkout-release.json', 'calendar-confirmation-release.json', 'booking-checkout.json')
+        original_bytes = {n: (self.root / n).read_bytes() for n in names}
+        write = installer.atomic_write
+        count = [0]
+        def failing(*args, **kwargs):
+            count[0] += 1
+            if count[0] == 3:
+                raise OSError('simulated upgrade manifest interruption')
+            return write(*args, **kwargs)
+        with patch.object(installer, 'atomic_write', side_effect=failing):
+            with self.assertRaises(OSError):
+                self.install()
+        for name, content in original_bytes.items():
+            self.assertEqual((self.root / name).read_bytes(), content)
+        installer.preflight(self.root, self.public, self.files, PHP)
+
 
 if __name__ == '__main__':
     unittest.main()

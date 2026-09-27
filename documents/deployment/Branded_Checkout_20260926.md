@@ -95,6 +95,48 @@ No live payment setting should be enabled by this release.
 
 ## Recovery
 
+### Checkout response repair — 2026 09 26
+
+The first server smoke test returned HTTP 200 from Stripe and an open, unpaid,
+TEST `embedded_page` session, but the local payment page displayed its generic
+preparation error. Review found that the application imposed an undocumented
+`session_id_secret_alphanumeric` format on `client_secret`. Stripe documents
+that field as a string to pass to Stripe.js, with no promised internal format.
+The actual secret was redacted, so that specific production rejection is not
+independently confirmed; it remains the leading explanation pending the retry.
+
+The repair treats the secret as an opaque, nonempty string with a size bound and
+control-character rejection. All existing session, reference, currency, amount,
+TEST-mode and webhook-authority checks remain in place. Neither the Stripe
+request payload nor its idempotency key changes. No client secret is logged or
+persisted.
+
+Upload the updated `install-branded-checkout.py` over the existing file in
+`/home/sitesee/`, then run the same installation command. The installer recognizes
+the exact original branded release as well as the repaired version. On an
+already-branded installation, only `server/booking-checkout.php` and the two
+release manifests change. It backs up those files and restores completed writes
+if installation fails. It makes no provider calls and does not open the database.
+An unchanged rerun is harmless. No key entry is needed when the existing TEST
+configuration is valid.
+
+Review FINAL RESULTS before retrying the **same newly created unpaid booking**.
+Do not reset its checkout state, attempt counter or idempotency key, create a
+replacement booking, or expire its Stripe session as part of this repair. A
+failed local validation left the original attempt retryable; its normal retry
+uses the same Stripe request and idempotency key, then records the recovered
+session in the existing ledger. If another error appears, investigate it rather
+than assuming this diagnosis was confirmed.
+
+Local checks cover opaque-secret passthrough, invalid-secret rejection, exact
+request replay after local rejection, subsequent GET-only reuse, and installer
+upgrade/rollback with unchanged database and configuration bytes. Provider
+responses remain simulated. Real iframe, desktop/mobile layout, paid refresh,
+calendar/invitation, decline and 3D Secure checks are still pending for this
+branded release.
+
+Reference: https://docs.stripe.com/api/checkout/sessions/object#checkout_session_object-client_secret
+
 The installer prints its exact backup directory. Its `restore-paths.json` identifies
 which paths existed before installation; `calendar-confirmation-release.json` and
 the old payment controller are backed up there. Do not blindly restore an older
