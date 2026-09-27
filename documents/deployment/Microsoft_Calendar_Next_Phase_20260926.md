@@ -353,6 +353,14 @@ event test from the server. It does not replace Zoho booking controllers. Their
 confirmation and invitation checks currently use Zoho-specific event identities;
 an actual provider-aware scheduling release is required before switching them.
 
+The first connection-installer run then stopped locally at the `server` directory
+check, before installing files or making Microsoft requests. Its generic message
+did not identify the directory's owner/mode. Installer r2 corrects rejection of
+safe root-owned code directories, preserves all existing permissions, and adds
+an actual application-user PHP access check plus detailed metadata diagnostics.
+The unchanged PHP/config payload and any existing probe journal remain intact.
+Actual event creation/removal and migration are still unverified/disabled.
+
 1. Verify the mailbox/calendar and appropriate application access. Keep Microsoft
    scheduling disabled until TEST creation, change, cancellation, conflict and
    notification checks pass. Review mailbox-scoped access rather than granting

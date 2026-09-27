@@ -9,6 +9,13 @@ readback and removal. It does **not** activate Microsoft booking scheduling.
 Real event writes and this installer's actual server run remain **unverified**
 until the user's FINAL RESULTS are reviewed.
 
+The first server attempt stopped before installation or Microsoft calls with
+`Existing private application subdirectory is unsafe: server`. That r1 message
+combined owner/type/write-mode checks without reporting actual metadata, so it
+does not establish which condition failed. Source inspection found an overly
+restrictive owner check: it rejected safe root-owned code directories that
+earlier installers could create while running in WHM as root.
+
 Existing booking confirmation and invitation code is Zoho-specific. Changing
 only a calendar setting would not migrate those identities. Existing Zoho
 events, stored reservations, invitation UIDs and CRM communication evidence are
@@ -23,6 +30,16 @@ in WHM Terminal as root:
 ```bash
 python3 /home/sitesee/install-microsoft-calendar-connection.py
 ```
+
+For the reported r1 stop, use the uniquely named r2 download and upload it as
+`/home/sitesee/install-microsoft-calendar-connection-r2.py`, then run:
+
+```bash
+python3 /home/sitesee/install-microsoft-calendar-connection-r2.py
+```
+
+The download is an identical copy of the canonical installer source; startup
+must print `Revision: 20260927-r2`. No preliminary chmod/chown command is needed.
 
 No key or ID is requested. The installer reuses
 `/home/sitesee/.sitesee-graph-mail.json`, checks the existing TEST mail identity,
@@ -129,6 +146,39 @@ require private modes. Existing file permissions are not changed.
 
 These are local checks with Microsoft responses simulated. They are not evidence
 of actual event creation, calendar migration, cancellation or rescheduling.
+
+### Installer r2 ownership and access correction
+
+Revision r2 accepts existing nonsecret code directories/files owned by root or
+the SiteSee account, provided their type/link/write-mode checks pass. Credentials,
+the private application root, new connection files and the probe journal retain
+their original SiteSee-owner checks. Symlinks, unrelated owners and group/world
+writable code are still rejected. Folder failures now report path, numeric
+owner/group, exact mode and the failed condition, collecting both server/tools
+problems in one result. Source file diagnostics include the same metadata;
+no credential contents or tokens are displayed.
+
+Before installation, r2 also launches PHP as the actual SiteSee account using
+the same supplementary-group, GID and UID handoff as the event test. It checks
+PHP capabilities, directory read/traversal, application-code and credential
+readability, and root-directory write access for the private journal. Readable
+root-owned code is accepted without changing any existing owner or mode.
+An inaccessible directory/file stays unchanged and produces a concrete error.
+This local check makes no provider calls and does not read the booking database.
+
+Installed PHP/config bytes and the package manifest's r1 payload revision are
+unchanged; r2 is an installer-only correction. An earlier successful or partial
+installation and its operation journal can therefore be reused without resetting
+the event test. The installer prints its independent r2 revision.
+
+R2 local verification: 17 installer cases passed, including simulated root/site
+owner rules, unrelated owners, multi-folder diagnostics, account handoff, access
+denial, unchanged r1 manifests/journals and all earlier rollback/preservation
+checks. Four additional real second-user rehearsals were skipped because the
+execution namespace maps only UID/GID 0; those checks are not claimed as passed.
+Actual SiteSee-user PHP access and real Microsoft writes still require the
+server run. The earlier 13 PHP provider cases remain applicable; PHP payloads
+were not modified in r2.
 
 ## After the actual connection test
 

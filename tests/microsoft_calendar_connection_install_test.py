@@ -1,10 +1,12 @@
 import importlib.util
 import json
 import os
+import pwd
 from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -176,6 +178,136 @@ class ConnectionInstaller(unittest.TestCase):
             self.assertFalse((self.root / 'microsoft-calendar-probe.json').exists())
         finally:
             os.close(fd)
+
+    def application_fixture(self):
+        if os.geteuid() != 0:
+            self.skipTest('Real root/application-user ownership rehearsal requires root.')
+        account = pwd.getpwnam('nobody')
+        Path(self.tmp.name).chmod(0o755)
+        for path in [self.root, self.credentials] + list(self.root.rglob('*')):
+            try:
+                os.chown(path, account.pw_uid, account.pw_gid)
+            except OSError as error:
+                if error.errno in (1, 22):
+                    self.skipTest('This execution namespace cannot use a second UID; account policies have separate simulated tests.')
+                raise
+        for name in ('server', 'tools'):
+            path = self.root / name
+            os.chown(path, 0, 0)
+            path.chmod(0o755)
+        for path in (self.root / 'server').iterdir():
+            os.chown(path, 0, 0)
+            path.chmod(0o644)
+        return account
+
+    def inspect_as(self, account):
+        return m.inspect(self.root, self.files, PHP, account.pw_uid, self.credentials, account)
+
+    def test_root_owned_directories_and_code_work_as_actual_application_user(self):
+        account = self.application_fixture()
+        before = {p: (p.stat().st_uid, p.stat().st_gid, p.stat().st_mode, p.read_bytes() if p.is_file() else None)
+                  for p in [self.root] + list(self.root.rglob('*'))}
+        desired = self.inspect_as(account)
+        m.install(self.root, desired, account.pw_uid, account.pw_gid)
+        self.assertEqual(self.inspect_as(account), desired)
+        self.assertIsNone(m.install(self.root, desired, account.pw_uid, account.pw_gid))
+        for p, expected in before.items():
+            self.assertEqual((p.stat().st_uid, p.stat().st_gid, p.stat().st_mode,
+                              p.read_bytes() if p.is_file() else None), expected)
+
+    def test_root_owned_inaccessible_directory_is_not_accepted_or_changed(self):
+        account = self.application_fixture()
+        folder = self.root / 'server'
+        folder.chmod(0o700)
+        with self.assertRaisesRegex(m.InstallError, 'Directory is not readable/traversable: .*server'):
+            self.inspect_as(account)
+        self.assertEqual(folder.stat().st_mode & 0o777, 0o700)
+        self.assertFalse((self.root / 'microsoft-calendar.json').exists())
+
+    def test_root_owned_unreadable_runtime_code_is_not_accepted(self):
+        account = self.application_fixture()
+        path = self.root / 'server/booking-mail-client.php'
+        path.chmod(0o600)
+        with self.assertRaisesRegex(m.InstallError, 'File is not readable: .*booking-mail-client.php'):
+            self.inspect_as(account)
+        self.assertEqual(path.stat().st_uid, 0)
+
+    def test_secret_owner_rule_remains_strict(self):
+        account = self.application_fixture()
+        os.chown(self.credentials, 0, 0)
+        with self.assertRaisesRegex(m.InstallError, 'SiteSee-owned private'):
+            self.inspect_as(account)
+
+    def test_writable_directories_report_all_modes_without_changing_them(self):
+        (self.root / 'server').chmod(0o777)
+        (self.root / 'tools').chmod(0o775)
+        with self.assertRaises(m.InstallError) as caught:
+            self.inspect()
+        message = str(caught.exception)
+        self.assertIn('server: group/world writable', message)
+        self.assertIn('tools: group/world writable', message)
+        self.assertIn('mode=0777', message)
+        self.assertIn('mode=0775', message)
+        self.assertFalse((self.root / 'microsoft-calendar.json').exists())
+
+    def test_unrelated_directory_owner_is_rejected(self):
+        folder = self.root / 'server'
+        original = folder.stat()
+        fake = SimpleNamespace(st_uid=65533, st_gid=65533, st_mode=original.st_mode,
+                               st_nlink=original.st_nlink, st_size=original.st_size)
+        with patch.object(Path, 'lstat', return_value=fake):
+            result = m.directory_check(folder, 1001)
+        self.assertIn('owner must be root or SiteSee; uid=65533', result[0])
+
+    def test_existing_r1_release_manifest_is_preserved_on_r2_rerun(self):
+        desired = self.inspect()
+        expected = {'release': m.RELEASE, 'revision': '20260927-r1',
+                    'files': {name: m.digest(data) for name, data in self.files.items()}}
+        self.assertEqual(json.loads(desired['microsoft-calendar-connection-release.json']), expected)
+        m.install(self.root, desired, self.uid, self.gid)
+        journal = self.write('microsoft-calendar-probe.json', b'{"state":"create_started"}')
+        self.assertEqual(self.inspect(), desired)
+        self.assertIsNone(m.install(self.root, desired, self.uid, self.gid))
+        self.assertEqual(journal.read_bytes(), b'{"state":"create_started"}')
+
+    def test_root_owner_policy_accepts_code_only_and_preserves_secret_ownership(self):
+        original = (self.root / 'server').stat()
+        fake = SimpleNamespace(st_uid=0, st_gid=0, st_mode=0o40755,
+                               st_nlink=original.st_nlink, st_size=original.st_size)
+        with patch.object(Path, 'lstat', return_value=fake):
+            self.assertEqual(m.directory_check(self.root / 'server', 1001), [])
+            self.assertTrue(m.directory_check(self.root, 1001, root=True))
+        path = self.write('server/owner-fixture.php', b'nonsecret code')
+        original = path.stat()
+        fake = SimpleNamespace(st_uid=0, st_gid=0, st_mode=0o100644, st_nlink=1, st_size=original.st_size)
+        with patch.object(m.os, 'fstat', return_value=fake):
+            self.assertEqual(m.private_bytes(path, 1001, private=False), b'nonsecret code')
+            with self.assertRaises(m.InstallError):
+                m.private_bytes(path, 1001, private=True)
+
+    def test_application_identity_handoff_uses_initgroups_then_gid_then_uid(self):
+        account = SimpleNamespace(pw_name='sitesee-fixture', pw_uid=1001, pw_gid=1002)
+        calls = []
+        with patch.object(m.os, 'initgroups', side_effect=lambda *v: calls.append(('groups',)+v)), \
+             patch.object(m.os, 'setgid', side_effect=lambda *v: calls.append(('gid',)+v)), \
+             patch.object(m.os, 'setuid', side_effect=lambda *v: calls.append(('uid',)+v)), \
+             patch.object(m.os, 'umask', side_effect=lambda *v: calls.append(('mask',)+v)):
+            m.account_switch(account)()
+        self.assertEqual(calls, [('groups','sitesee-fixture',1002), ('gid',1002), ('uid',1001), ('mask',0o077)])
+
+    def test_application_access_denials_are_collected_before_install(self):
+        account = SimpleNamespace(pw_name='sitesee-fixture', pw_uid=1001, pw_gid=1002)
+        failures = ['Directory is not readable/traversable: ' + str(self.root / 'server'),
+                    'File is not readable: ' + str(self.root / 'server/booking-mail-client.php')]
+        result = subprocess.CompletedProcess([],1,stdout=json.dumps(failures).encode(),stderr=b'')
+        with patch.object(m.subprocess, 'run', return_value=result) as run:
+            with self.assertRaises(m.InstallError) as caught:
+                m.runtime_check(PHP, self.root, [self.root / 'server'], [self.root / 'server/booking-mail-client.php'], 1001, account)
+            self.assertIsNotNone(run.call_args.kwargs['preexec_fn'])
+            self.assertIn('Directory is not readable/traversable', str(caught.exception))
+            self.assertIn('File is not readable', str(caught.exception))
+            self.assertNotIn('fake-fixture-only', run.call_args.kwargs['input'].decode())
+        self.assertFalse((self.root / 'microsoft-calendar.json').exists())
 
 
 if __name__ == '__main__':
