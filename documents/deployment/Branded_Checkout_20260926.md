@@ -69,7 +69,7 @@ Public PHP wrappers, public assets and routing remain unchanged.
 - The existing calendar and CRM email-history flow remains a separate staff
   workflow after payment and review.
 
-## Validation and remaining server check
+## Validation and TEST server results — 2026 09 26
 
 Automated checks cover embedded/legacy session reuse, ambiguous timeouts, duplicate
 clicks, expiry, rejection of live keys, authentication, CSRF, missing consent,
@@ -77,21 +77,51 @@ cross-origin requests, amount/reference validation, webhook authority, escaping,
 installer rollback and preservation of the existing credentials/database.
 
 Provider calls are simulated in local unit tests. HTTP controller tests run the
-actual PHP page against a disposable local database. The available browser could
-not open local preview files, so desktop/mobile appearance and the real Stripe
-iframe are not claimed as browser-verified.
+actual PHP page against a disposable local database. Local browser previews were
+unavailable; the deployed checks below were subsequently performed by the
+operator. Evidence consists of pasted installer/diagnostic output, supplied
+screenshots and explicit operator confirmations, not direct assistant access to
+the server or Stripe account.
 
-After installation, create **one fresh test booking** with a new reference. Use the
-same existing test recipient, `cro@sitesee.ai`, so the established invitation guard
-continues to apply. Complete the deposit with a Stripe test card. Confirm that:
+| Check | Observed result and evidence |
+| --- | --- |
+| Repair installation | Operator supplied FINAL RESULTS: installed, embedded TEST checkout enabled, opaque client-secret validation installed, active release hashes PASS. Backup: `/home/sitesee/.sitesee-real-estate/deployment-backups/branded-checkout-20260927T003449594539Z`. |
+| E4E51A0481 deposit | Branded desktop paid page showed $256.90 total, $128.45 deposit recorded and $128.45 remaining. |
+| E4E51A0481 staff workflow | After the guarded unconfirmed-window move and renewed staff review, the screenshot showed a confirmed September 30, 9–11 AM Central arrival window, with internal shoot time 9–10:35 AM. |
+| E4E51A0481 invitation | A per-booking CRM contact link was required before sending. The operator completed the existing lookup/link command and explicitly reported the invitation sent and received at `cro@sitesee.ai`. No old invitation or probe was resent. |
+| D32FFC7458 mobile form | Supplied phone screenshots showed the actual embedded Stripe card fields and TEST MODE indicator, with readable controls and no visible horizontal clipping. |
+| Declined-card response | A screenshot showed the test card ending 0002 declined; a subsequent screenshot showed replacement card entry in the same test flow. |
+| 3D Secure and successful payment | The phone screenshots showed Stripe's test authentication screen followed by the branded deposit-recorded page for D32FFC7458: $128.45 received, $128.45 remaining, September 30, 1–3 PM Central requested window. |
+| Authentication cancellation and retry | Operator explicitly confirmed successful cancellation/retry when asked on September 26 at 8:26 PM Central. |
+| Paid-page refresh | Operator explicitly confirmed that the paid state persisted after refresh. |
+| Desktop embedded form | Operator explicitly confirmed its appearance was successful. No separate desktop iframe screenshot was supplied in this final check. |
 
-1. The branded summary displays the correct locked price, 50% deposit and balance.
-2. The card fields mount on the SiteSee page and the deposit is recorded once.
-3. Refreshing or reopening the paid link shows payment status, not a second charge.
-4. The established staff review → calendar confirmation → invitation workflow passes.
+These checks complete the requested branded TEST-checkout acceptance checks.
+D32FFC7458 was designated a payment-only test and the operator was instructed to
+leave it awaiting staff review. Its calendar confirmation and invitation are not
+claimed here. CRM email-history association for the new invitations and
+automated RSVP processing were not independently inspected by this validation.
 
-Also exercise a declined test card and a 3D Secure test card before live activation.
-No live payment setting should be enabled by this release.
+### Follow-up work before live activation
+
+The release remains strictly in TEST mode. No live activation, merge, credential
+change or account-wide Stripe setting change is authorized by these results.
+
+- Confirmed appointments still need a supported cancellation/rescheduling
+  workflow that updates Zoho, stored reservations and existing customer
+  invitations together. The current window-move helper handles only an
+  unconfirmed paid TEST request.
+- E6E183EF8E remains a stored confirmed reservation for September 30, 7–9 AM
+  Central even though the operator reported deleting its Zoho event. The
+  read-only diagnostic found no nearby Zoho busy interval and did find that
+  stored reservation. Keep its history; controlled reconciliation is still
+  needed before releasing its time.
+- Customer availability currently reads Zoho, whereas final staff confirmation
+  also includes stored reservations. Both screens need consistent availability
+  rules and visible alternatives when the selected window is blocked.
+- The staff page needs an accessible CRM contact verification/linking step.
+  The existing CLI lookup/link workflow currently supplies this per-booking
+  prerequisite; it must not be bypassed or confused with a mail failure.
 
 ## Recovery
 
@@ -103,7 +133,8 @@ preparation error. Review found that the application imposed an undocumented
 `session_id_secret_alphanumeric` format on `client_secret`. Stripe documents
 that field as a string to pass to Stripe.js, with no promised internal format.
 The actual secret was redacted, so that specific production rejection is not
-independently confirmed; it remains the leading explanation pending the retry.
+independently confirmed from the redacted response. The repaired installation
+and subsequent TEST payments succeeded, as recorded above.
 
 The repair treats the secret as an opaque, nonempty string with a size bound and
 control-character rejection. All existing session, reference, currency, amount,
@@ -131,9 +162,9 @@ than assuming this diagnosis was confirmed.
 Local checks cover opaque-secret passthrough, invalid-secret rejection, exact
 request replay after local rejection, subsequent GET-only reuse, and installer
 upgrade/rollback with unchanged database and configuration bytes. Provider
-responses remain simulated. Real iframe, desktop/mobile layout, paid refresh,
-calendar/invitation, decline and 3D Secure checks are still pending for this
-branded release.
+responses remain simulated. The subsequent deployed iframe, desktop/mobile,
+paid-refresh, calendar/invitation, decline and 3D Secure results are recorded in
+the TEST server results above.
 
 Reference: https://docs.stripe.com/api/checkout/sessions/object#checkout_session_object-client_secret
 
