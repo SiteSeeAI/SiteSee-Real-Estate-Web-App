@@ -81,6 +81,115 @@ checks, redirects and explicit separation of read success from write access.
 Provider responses were mocked. No actual Microsoft calendar access has yet
 been verified by this diagnostic.
 
+## Microsoft permission setup after the observed 403
+
+The server preflight on September 27 reached the default-calendar request and
+received HTTP 403. Treat this as an authorization/access failure, not an empty
+calendar. The exact missing permission or scope is not established by that
+response alone. The user requested a consolidated setup instead of successive
+manual portal steps and ID questions.
+
+`tools/setup-microsoft-calendar-access.ps1` performs that setup in a normal
+Windows PowerShell window under the operator's own Windows account. It installs
+Microsoft.Graph.Authentication and ExchangeOnlineManagement for CurrentUser
+from the official PowerShell Gallery when needed. It makes no permanent
+execution-policy change. Microsoft sign-in and the organization's permission
+policies remain mandatory; use an administrator able to read application grants
+and manage Exchange application roles. Do not run this PowerShell file in WHM.
+
+The existing tenant/application IDs are nonsecret identifiers, obtained from the
+server's existing credential file. No secret is requested or copied. Microsoft
+Graph PowerShell requests delegated `Application.Read.All` for inspecting the
+existing application and its assigned permissions. That administrator sign-in is
+separate from the application's existing client-credentials connection.
+
+The script verifies both signed-in tenants, resolves the enterprise service
+principal object ID automatically, and checks the approved mailbox primary
+addresses. It rejects existing Entra calendar/full-mailbox grants or different
+Exchange calendar scopes for review rather than silently modifying them or
+claiming they are restricted by the new scope. Unrelated mail grants are retained.
+
+It creates or reuses an Exchange pointer to the **existing** application, an exact
+`EmailAddresses -eq 'smtp:sales@re.sitesee.ai'` recipient scope, and the scoped
+`Application Calendars.ReadWrite` role assignment. It does not add an Entra
+tenant-wide Calendars.ReadWrite grant. Before authorization, the scope preview
+must resolve exactly one recipient, with the verified sales mailbox object ID.
+The final RBAC checks require calendar access in sales and exclusion of cro.
+An unchanged rerun validates matching objects without creating duplicates.
+
+Only configuration is verified by these RBAC tests. They do not exercise a real
+calendar read/write, confirm that cached Graph access is ready, or activate the
+SiteSee Microsoft calendar adapter. No event, invitation, email, booking,
+payment, application secret, Zoho setting or existing mail permission is changed.
+
+### Consolidated run sequence
+
+1. Save `setup-microsoft-calendar-access.ps1` in the Windows Downloads folder.
+2. In WHM Terminal, run this single command. It prints a complete Windows command
+   with the existing IDs already filled in. It prints no secret or token.
+
+```bash
+python3 - <<'PY'
+import json, re
+from pathlib import Path
+config = json.loads(Path('/home/sitesee/.sitesee-graph-mail.json').read_text())
+ids = [str(config.get(k, '')) for k in ('tenant_id', 'client_id')]
+if not all(re.fullmatch(r'[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}', v) for v in ids):
+    raise SystemExit('STOP: Existing application IDs could not be verified.')
+print("& { $f = Join-Path $env:USERPROFILE 'Downloads\\setup-microsoft-calendar-access.ps1'; Unblock-File -LiteralPath $f; powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File $f -TenantId '" + ids[0] + "' -ApplicationId '" + ids[1] + "' }")
+PY
+```
+
+3. Open **Windows PowerShell** from the Windows Start menu, paste the generated
+   command and complete the Microsoft administrator sign-ins. Module installation
+   and all supported setup/verification steps are automatic. `RemoteSigned`
+   applies only to the child process, and only the downloaded setup file is
+   unblocked. Do not bypass an organizational execution or sign-in policy.
+4. If the script reports permission configuration PASS, run its printed WHM
+   command: `python3 /home/sitesee/check-microsoft-calendar.py`. Review both final
+   result blocks. A real Graph read PASS remains required before migration work
+   can treat the mailbox as accessible; event writes remain untested.
+
+Microsoft documents a 30-minute to two-hour application permission cache window;
+the RBAC test bypasses that cache. A continued immediate 403 does not justify
+replacing keys or adding tenant-wide permission. If setup passed, allow that
+window before retrying the existing read-only check; persistent failure needs
+review of the actual results and policies, not repeated permission changes.
+
+### Failure and recovery
+
+The setup stops on mismatched identities, existing conflicting authorization,
+ambiguous/missing directory results, unexpected pagination and invalid scopes.
+On failure it attempts to remove only the new role assignment and scope whose
+creation this invocation confirmed. A newly registered Exchange service-principal
+pointer may remain; it does not grant access on its own. Existing objects are
+never rewritten or removed.
+
+A remote timeout may occur after a write succeeded. The script does not claim
+complete rollback in that case. Keep STOP and REVIEW REQUIRED output. A rerun
+with the same IDs inspects the deterministic names and reuses verified objects.
+Do not delete other applications, mail grants, tenant policies or scopes to
+recover. Do not roll back working mail or branded checkout for a calendar error.
+
+### Local verification
+
+PowerShell 7.4.13 parsed the script and passed 13 offline behavioral cases in
+`tests/microsoft_calendar_access_test.ps1`: new setup and unchanged rerun,
+tenant/mailbox mismatches, broader existing grants, scope membership, negative
+mailbox access, cleanup on known failures, ambiguous write recovery, conflicting
+scope preservation, directory pagination, empty/missing results and input guards.
+All Microsoft responses were simulated. The administrator sign-ins, module
+installation on the user's Windows system, tenant configuration and actual
+Microsoft calendar calls have **not** been verified by these local tests.
+
+Official permission references:
+
+- https://learn.microsoft.com/en-us/exchange/permissions-exo/application-rbac
+- https://learn.microsoft.com/en-us/graph/api/serviceprincipal-list-approleassignments?view=graph-rest-1.0
+- https://learn.microsoft.com/en-us/powershell/exchange/recipientfilter-properties?view=exchange-ps
+- https://learn.microsoft.com/en-us/powershell/exchange/connect-to-exchange-online-powershell?view=exchange-ps
+- https://learn.microsoft.com/en-us/powershell/microsoftgraph/authentication-commands?view=graph-powershell-1.0
+
 ## Calendar implementation and transition
 
 1. Verify the mailbox/calendar and appropriate application access. Keep Microsoft
