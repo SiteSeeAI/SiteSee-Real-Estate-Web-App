@@ -324,6 +324,35 @@ Official permission references:
 
 ## Calendar implementation and transition
 
+### Actual permission and server-read results — September 27, 2026
+
+The user reported a PASS from permission setup revision `20260927-r4`:
+
+- Application: `125a86f5-2a29-4b1e-8b8a-26026e3fa59c`.
+- Enterprise application object: `8d26b7a9-b7c1-4a31-be76-68447935edbf`.
+- Application calendar read/write scope: `sales@re.sitesee.ai` only.
+- Excluded mailbox `cro@sitesee.ai`: PASS.
+- Existing mail grants, application secrets, Stripe and Zoho unchanged.
+
+The subsequent WHM read-only preflight also passed actual Microsoft calls:
+default calendar owner `sales@re.sitesee.ai`, name `Calendar`, `canEdit: YES`,
+calendar metadata/inventory reads PASS and default event read PASS. The other
+visible calendars were United States holidays and Birthdays. The selected ID is:
+
+```text
+AAkALgAAAAAAHYQDEapmEc2byACqAC-EWg0AhxzFTH7h2UC_-_f2aEjbcQAAAAA0UAAA
+```
+
+That preflight did not calculate availability or write an event. Effective event
+creation/removal is still unverified; migration is disabled. The earlier
+permission/setup failures do not require another Windows setup or new key now.
+
+The next package, documented in `Microsoft_Calendar_Connection_20260927.md`,
+installs a separate, inactive PHP connection and runs one recoverable private
+event test from the server. It does not replace Zoho booking controllers. Their
+confirmation and invitation checks currently use Zoho-specific event identities;
+an actual provider-aware scheduling release is required before switching them.
+
 1. Verify the mailbox/calendar and appropriate application access. Keep Microsoft
    scheduling disabled until TEST creation, change, cancellation, conflict and
    notification checks pass. Review mailbox-scoped access rather than granting
