@@ -4,6 +4,18 @@ Customer cancellation and rescheduling remain the priority. Customer portal work
 
 This release is prepared for `feat/calendar-confirmation-20260925`, draft PR #38, starting from verified commit `044fa001af4d4775f0e88ac3d585103d052929d7`. Main is not merged. No branch is removed. There is no direct server access from this workspace.
 
+## Recorded Server Installation — 2026 09 28
+
+The operator supplied successful output from **SiteSee TEST Appointment Management | 20260928-r1** on 2026-09-28. This records installation evidence for implementation commit `9101cf4d0c452d2c33e030d76f492b513b5f1db4`; it does not establish browser or provider-write acceptance.
+
+- Local inventory: 70 file/directory checks, zero permission repairs and zero blocking findings.
+- Microsoft calendar/availability, Zoho CRM identity/exact-email lookup and dedicated invitation sender mailbox: read-only preflight PASS.
+- Release hashes: PASS. Customer management, staff controls and the five-minute read-only reconciliation job: installed in TEST mode.
+- The installer reported no booking, payment, event, invitation, email, credential or integration-setting changes. Stripe remains TEST; legacy Zoho appointment identities are preserved.
+- Actual backup: `/home/sitesee/.sitesee-real-estate/deployment-backups/appointment-management-qlqlfqtn`.
+
+No reinstall is needed for this result. Next, complete **First Server Check** and **One End-To-End Check** below using a fresh paid TEST booking. D32FFC7458 remains protected. Browser changes, notice receipt, Microsoft update/delete behavior, Zoho history association and actual cron execution remain pending operator verification. Manual move/delete reconciliation also needs controlled verification before the appointment-management priority is considered complete. Customer portal work remains deferred.
+
 ## One Upload And One Command
 
 1. Download `tools/install-appointment-management.py` from this release. In cPanel File Manager, upload it directly into `/home/sitesee`, outside `public_html`. Confirm the filename is exactly `install-appointment-management.py`, without an added number or brackets.
