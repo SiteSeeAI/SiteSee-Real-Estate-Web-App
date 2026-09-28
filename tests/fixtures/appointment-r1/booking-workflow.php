@@ -47,7 +47,7 @@ function booking_workflow_status(PDO $db, array $row): array
         try { booking_confirmation_gate($config, $row); }
         catch (Throwable) { $canSend = false; }
     }
-    return ['lifecycle'=>booking_lifecycle_state($db,$row['reference']), 'claim'=>$claim, 'mail'=>$mail, 'config'=>$config, 'link'=>$link, 'can_send'=>(bool)$canSend,
+    return ['claim'=>$claim, 'mail'=>$mail, 'config'=>$config, 'link'=>$link, 'can_send'=>(bool)$canSend,
         'calendar'=>$config ? (booking_scheduling_is_microsoft($config) ? 'Microsoft — sales@re.sitesee.ai / Calendar' : 'Zoho — existing appointment') : 'Connection unavailable — confirmation and sending blocked',
         'contact'=>$contact, 'mail_ready'=>$mailReady];
 }
@@ -167,13 +167,6 @@ function booking_workflow_recover(PDO $db, string $reference, array $deps = []):
     try {
         if (!$claim) {
             $report['items']['Calendar'] = 'No calendar attempt exists. Nothing was created.';
-        } elseif (booking_lifecycle_state($db,$reference)['state'] === 'cancelled') {
-            require_once __DIR__.'/booking-lifecycle.php';
-            $api=booking_workflow_reader($deps['calendar'] ?? booking_lifecycle_connection($claim));
-            $observed=booking_lifecycle_observe($claim,$api);
-            $report['items']['Calendar']=$observed['missing']
-                ? 'Cancellation verified: the saved event is absent. The cancelled booking contributes no local reservation.'
-                : 'CHECK REQUIRED: an event exists for this cancelled booking. Use Reconcile Calendar to review it; do not recreate or resend.';
         } else {
             $config = $deps['calendar_config'] ?? booking_scheduling_config($claim);
             $transport = isset($deps['calendar']) ? booking_workflow_reader($deps['calendar']) : null;
@@ -185,7 +178,7 @@ function booking_workflow_recover(PDO $db, string $reference, array $deps = []):
             $report['items']['Calendar'] = 'Existing appointment verified; no new event was created.';
         }
     } catch (Throwable) {
-        $report['items']['Calendar'] = 'CHECK REQUIRED: saved appointment could not be verified. Review its assigned calendar for a move, deletion or conflict. Use Manage Appointment for the current reservation status.';
+        $report['items']['Calendar'] = 'CHECK REQUIRED: saved appointment could not be verified. Review its assigned calendar for a move, deletion or conflict. The local reservation remains held.';
     }
     $key = 'invitation:' . $reference; $mail = booking_communication_get($db, $key);
     if (!$mail) {
@@ -259,7 +252,7 @@ function booking_workflow_html(array $row, array $status, string $csrf, ?array $
     $ref = $row['reference']; $claim = $status['claim']; $mail = $status['mail'];
     $values = ['Assigned calendar'=>$status['calendar'], 'Staff review'=>$row['approved_at'] ? 'Recorded' : 'Required',
         'CRM contact'=>$status['contact'], 'Invitation configuration'=>($status['mail_ready'] ?? false) ? 'TEST sender configured; check readiness for current mailbox access' : 'Unavailable or disabled — sending blocked',
-        'Calendar appointment'=>($status['lifecycle']['state']??'active') !== 'active' ? $status['lifecycle']['state'] : ($claim ? $claim['state'] : 'Not confirmed'),
+        'Calendar appointment'=>$claim ? $claim['state'] : 'Not confirmed',
         'Invitation'=>$claim ? $claim['invitation_state'] : 'Not attempted',
         'Saved message'=>$mail ? $mail['submission_state'] : 'No communication record',
         'Recipient evidence'=>$mail ? $mail['delivery_state'] : 'Not verified',

@@ -17,7 +17,9 @@ class LifecycleInstall(unittest.TestCase):
  def scan(self):return x.inventory(self.w,self.s,self.r,self.m,self.root,self.public,self.cron,base.base.f.baseline.PHP,self.uid,self.files,self.before,credentials=self.fixture.fixture.secret)
  def deploy(self,write=None):return x.deploy(self.m,self.root,self.values(),self.uid,self.gid,self.public,self.cron,write)
  def test_reproducible_payload(self):
-  for n,b in self.files.items():self.assertEqual(b,(PROJECT/n if n.startswith('public/') else PROJECT/'_private'/n).read_bytes())
+  for n,b in self.files.items():
+   frozen=PROJECT/'tests/fixtures/appointment-r1'/Path(n).name
+   self.assertEqual(b,(frozen if frozen.exists() else PROJECT/n if n.startswith('public/') else PROJECT/'_private'/n).read_bytes())
   path=PROJECT/'tools/install-appointment-management.py';before=path.read_bytes();subprocess.run(['python3',str(PROJECT/'tools/build-appointment-management.py')],check=True);self.assertEqual(before,path.read_bytes())
  def test_install_rerun_and_preservation(self):
   self.assertEqual(self.scan().errors,[])

@@ -54,6 +54,14 @@ $after=booking_get($db,$ref);foreach(array_keys($before)as$k)if(!in_array($k,['r
 $m=booking_communication_get($db,'lifecycle-1:'.$ref);$message=json_decode($m['message_json'],true);
 ok(str_contains($message['ical'],'SEQUENCE:1')&&str_contains($message['ical'],'METHOD:REQUEST')&&str_contains($message['ical'],'UID:sitesee-arrival-test-'.$ref),'Update ICS stable UID and increased sequence.');
 ok(!str_contains(json_encode($message),'0123456789'),'No access codes in notice.');
+$unfolded=str_replace(["\r\n ","\r\n\t"],'',$message['ical']);
+ok(preg_match('~https://re\.sitesee\.ai/manage-appointment\.php#'.$ref.'\.([a-f0-9]{64})~',$message['plain'],$linkMatch)===1,'Update email retains management link.');
+ok(str_contains($unfolded,$linkMatch[0])&&booking_management_auth($db,$ref,$linkMatch[1]),'Calendar DESCRIPTION retains an authentic link.');
+$hash=booking_lifecycle_state($db,$ref)['token_hash'];
+ok(booking_management_notice_link($db,$ref)===$linkMatch[0]&&booking_lifecycle_state($db,$ref)['token_hash']===$hash,'Valid saved link reused without revoking customer session.');
+booking_lifecycle_set($db,$ref,['token_expires'=>time()-1]);$renewed=booking_management_notice_link($db,$ref);
+ok($renewed!==$linkMatch[0]&&!booking_management_auth($db,$ref,$linkMatch[1]),'Expired saved link replaced.');
+
 no(fn()=>booking_lifecycle_change($db,$ref,'reschedule',$fp,'customer',$w['date'],$w['time'],$deps),'Repeated reschedule denied without second PATCH.');
 no(fn()=>booking_send_invitation($db,$ref),'Original invitation cannot be sent after update.');
 no(fn()=>booking_lifecycle_change($db,$ref,'cancel',booking_lifecycle_fingerprint($db,$ref),'customer','','',$deps),'Unfinished earlier notice blocks another change.');
@@ -66,6 +74,19 @@ ok(booking_get($db,$ref)===$after,'Cancellation preserves complete paid booking.
 $m=json_decode(booking_communication_get($db,'lifecycle-2:'.$ref)['message_json'],true);
 ok(str_contains($m['ical'],'METHOD:CANCEL')&&str_contains($m['ical'],'STATUS:CANCELLED')&&str_contains($m['ical'],'SEQUENCE:2'),'Cancellation ICS correct.');
 ok(booking_lifecycle_busy($db,['busy'=>[]])['busy']===[],'Cancelled reservation released.');
+$recover=booking_workflow_recover($db,$ref,['calendar'=>$api]);
+ok(str_contains($recover['items']['Calendar'],'Cancellation verified'),'Original recovery recognizes verified cancellation.');
+ok($writes===$n&&booking_lifecycle_busy($db,['busy'=>[]])['busy']===[],'Cancelled recovery neither writes calendar nor recreates hold.');
+$reappeared=json_decode(booking_confirmation_get($db,$ref)['event_json'],true)+['id'=>$c['event_uid'],'@odata.etag'=>'W/"v99"','organizer'=>['emailAddress'=>['address'=>BOOKING_MS_MAILBOX]],'isCancelled'=>false,'type'=>'singleInstance'];
+$present=static fn($method,$path)=>str_contains($path,'/events/')?['status'=>200,'body'=>$reappeared]:$api($method,$path);
+$recover=booking_workflow_recover($db,$ref,['calendar'=>$present]);
+ok(str_contains($recover['items']['Calendar'],'an event exists for this cancelled booking'),'Reappeared event is flagged, never declared absent.');
+$status=booking_workflow_status($db,booking_get($db,$ref));
+ok(str_contains(booking_workflow_html(booking_get($db,$ref),$status,'csrf'),'<dd>cancelled</dd>'),'Top calendar status reflects cancellation without changing original confirmation evidence.');
+
+$mode='outage';$recover=booking_workflow_recover($db,$ref,['calendar'=>$api]);$mode='ok';
+ok(str_contains($recover['items']['Calendar'],'CHECK REQUIRED')&&!str_contains($recover['items']['Calendar'],'remains held'),'Outage does not claim cancellation is freshly verified or a reservation is held.');
+
 $ref='AAA0000002';paid($ref);$c=booking_confirmation_get($db,$ref);$old=$c['planned_start'];
 $events[$c['event_uid']]['start']['dateTime']=gmdate('Y-m-d\TH:i:s',$old+86400);$events[$c['event_uid']]['end']['dateTime']=gmdate('Y-m-d\TH:i:s',$old+86400+5700);
 booking_lifecycle_sync($db,$ref,$deps);$s=booking_lifecycle_state($db,$ref);

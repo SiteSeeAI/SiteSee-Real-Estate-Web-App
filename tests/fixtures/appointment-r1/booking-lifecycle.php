@@ -32,19 +32,6 @@ function booking_management_issue(PDO $db,string $reference): string
     // Fragment secrets never enter HTTP request URLs, server logs, or Referer headers.
     return SITESEE_REAL_ESTATE_SITE_URL.'/manage-appointment.php#'.$reference.'.'.$token;
 }
-/** Reuse only an unexpired, unrevoked link from this booking's private saved notices. */
-function booking_management_notice_link(PDO $db,string $reference): string
-{
-    $q=$db->prepare('SELECT message_json FROM booking_communications WHERE reference=? ORDER BY created_at DESC');
-    $q->execute([$reference]);
-    $prefix=SITESEE_REAL_ESTATE_SITE_URL.'/manage-appointment.php#'.$reference.'.';
-    foreach($q->fetchAll() as $saved){
-        $message=json_decode($saved['message_json'],true,64,JSON_THROW_ON_ERROR);
-        if(preg_match('~'.preg_quote($prefix,'~').'([a-f0-9]{64})(?![a-f0-9])~D',$message['plain']??'',$match)
-            && booking_management_auth($db,$reference,$match[1]))return $prefix.$match[1];
-    }
-    return booking_management_issue($db,$reference);
-}
 function booking_management_auth(PDO $db,string $reference,string $token): bool
 {
     if(!preg_match('/^[A-F0-9]{10,32}$/D',$reference)||!preg_match('/^[a-f0-9]{64}$/D',$token))return false;
@@ -130,7 +117,6 @@ function booking_lifecycle_sync_locked(PDO $db,string $reference,callable $api,i
     if(!$claim||$claim['state']!=='confirmed'||!$claim['event_uid']||booking_lifecycle_pending($db,$reference))return $s;
     $o=booking_lifecycle_observe($claim,$api);
     if($s['state']==='cancelled'){
-        if($o['missing'])booking_lifecycle_set($db,$reference,['checked_at'=>$now,'diagnostic'=>null]);
         if(!$o['missing'])booking_lifecycle_set($db,$reference,['state'=>'calendar_changed','actual_start'=>$o['start'],'actual_end'=>$o['end'],
             'checked_at'=>$now,'diagnostic'=>'A cancelled event reappeared. Staff review required.']);
         return booking_lifecycle_state($db,$reference);
@@ -187,7 +173,7 @@ function booking_lifecycle_windows(PDO $db,string $reference,string $date,array 
     return array_slice(booking_available_windows($date,$row['rush_status']==='approved',(int)$row['duration_minutes'],$snapshot,
         new DateTimeImmutable('@'.$now),14),0,24);
 }
-function booking_lifecycle_message(array $row,array $claim,int $revision,string $action,string $managementLink = ''): array
+function booking_lifecycle_message(array $row,array $claim,int $revision,string $action): array
 {
     $m=booking_invitation_message($row,$claim);$cancel=$action==='cancel';
     $method=$cancel?'CANCEL':'REQUEST';
@@ -195,7 +181,6 @@ function booking_lifecycle_message(array $row,array $claim,int $revision,string 
         .($cancel?'Your appointment is cancelled.':'Your appointment arrival window has been updated to '.booking_request($row)['appointment']['date'].' '.booking_request($row)['appointment']['time'].'–'.booking_request($row)['appointment']['windowEnd'].' Central Time.')
         ."\nReference: ".$row['reference']."\nProperty: ".booking_confirmation_property(booking_request($row)['details'])
         ."\nPayment records are unchanged. This notice does not issue a refund or determine any cancellation fee."
-        .( !$cancel && $managementLink !== '' ? "\n\nManage your appointment securely: ".$managementLink."\nThis private link expires seven days after it was issued. Contact SiteSee for a replacement." : '')
         ."\nFor help, reply to this message.";
     $ical=preg_replace_callback('/DESCRIPTION:.*?(?=\r\nORGANIZER;)/s',static fn()=>booking_ical_fold('DESCRIPTION:'.booking_ical_text($plain)),$m['ical']);
     $ical=str_replace(['METHOD:REQUEST','SEQUENCE:0','STATUS:CONFIRMED','PARTSTAT=NEEDS-ACTION;RSVP=TRUE'],
@@ -234,7 +219,7 @@ function booking_lifecycle_finish(PDO $db,array $op): void
         booking_schedule_event($db,$ref,$cancel?'appointment_cancelled':'appointment_rescheduled',['actor'=>$op['actor'],'revision'=>(int)$op['revision'],
             'old_window'=>booking_request($p['row'])['appointment'],'new_window'=>$cancel?null:$p['appointment'],
             'calendar_uid'=>$p['claim']['calendar_uid'],'event_uid'=>$p['claim']['event_uid']]);
-        booking_communication_enqueue($db,$ref,'lifecycle-'.$op['revision'],booking_lifecycle_message(booking_get($db,$ref),booking_confirmation_get($db,$ref),(int)$op['revision'],$op['action'],$cancel?'':booking_management_notice_link($db,$ref)),$p['claim']);
+        booking_communication_enqueue($db,$ref,'lifecycle-'.$op['revision'],booking_lifecycle_message(booking_get($db,$ref),booking_confirmation_get($db,$ref),(int)$op['revision'],$op['action']),$p['claim']);
         $db->exec('COMMIT');
     }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
 }

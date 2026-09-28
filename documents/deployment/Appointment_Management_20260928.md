@@ -16,7 +16,17 @@ The operator supplied successful output from **SiteSee TEST Appointment Manageme
 
 No reinstall is needed for this result. Next, complete **First Server Check** and **One End-To-End Check** below using a fresh paid TEST booking. D32FFC7458 remains protected. Browser changes, notice receipt, Microsoft update/delete behavior, Zoho history association and actual cron execution remain pending operator verification. Manual move/delete reconciliation also needs controlled verification before the appointment-management priority is considered complete. Customer portal work remains deferred.
 
-## One Upload And One Command
+## Operator Validation And Repair — 2026 09 28
+
+For fresh TEST booking **3EB7F85259**, the operator verified a customer reschedule and a staff-page cancellation. The existing Microsoft event was moved without duplication. The cancellation arrived; the operator confirmed the Real Estate calendar event was removed and removed the recipient calendar copy through Outlook. Original invitation, reschedule (`lifecycle-1`) and cancellation (`lifecycle-2`) were subsequently verified through sent-copy/recipient-copy recovery and Zoho email association. Staff cancellation is established; customer-page cancellation remains untested on the server.
+
+The initial read-only report showed the same provider event and an applied reschedule. Its `other_booking_fields_unchanged: false` was a report defect: the saved `booking_get` snapshot contains joined scheduling fields absent from the base `bookings` row. That result does not establish a financial change. A corrected comparison must still be run on the server. The reconciliation log was empty, so scheduled execution is not yet established.
+
+The operator exposed two code defects: reschedule notices omitted the private management link from their replacement calendar description, and original booking recovery treated the expected absence of a cancelled event as failure, inaccurately claiming a local hold. The local availability code already excludes cancelled bookings. The existing upper calendar status also displayed the historical confirmation rather than lifecycle cancellation.
+
+Use the **r2 repair** in [Appointment_Repair_20260928.md](Appointment_Repair_20260928.md) for the installed r1 release. Do not rerun the initial installer over the repaired installation. The initial installer remains frozen and reproducible for historical recovery. D32FFC7458 stays protected. Portal work remains deferred.
+
+## Original r1 Installation — One Upload And One Command
 
 1. Download `tools/install-appointment-management.py` from this release. In cPanel File Manager, upload it directly into `/home/sitesee`, outside `public_html`. Confirm the filename is exactly `install-appointment-management.py`, without an added number or brackets.
 2. Open WHM Terminal as root and run:
