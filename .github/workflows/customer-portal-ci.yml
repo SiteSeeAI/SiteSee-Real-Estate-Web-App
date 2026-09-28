@@ -1,0 +1,56 @@
+name: Customer Portal Checks
+
+on:
+  pull_request:
+    paths:
+      - '_private/server/portal-*.php'
+      - 'documents/portal/**'
+      - 'tests/portal-*'
+      - '.github/workflows/customer-portal-ci.yml'
+  push:
+    branches: ['feat/calendar-confirmation-20260925']
+    paths:
+      - '_private/server/portal-*.php'
+      - 'documents/portal/**'
+      - 'tests/portal-*'
+      - '.github/workflows/customer-portal-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  portal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_sqlite
+      - name: Validate private account primitives
+        run: |
+          php -l _private/server/portal-access.php
+          php tests/portal-access.test.php
+      - name: Install isolated browser test dependencies
+        run: |
+          npm install --prefix "$RUNNER_TEMP/portal-browser" --no-save playwright@1.58.2
+          "$RUNNER_TEMP/portal-browser/node_modules/.bin/playwright" install --with-deps chromium --only-shell
+      - name: Check preview interactions and responsive layout
+        env:
+          NODE_PATH: ${{ runner.temp }}/portal-browser/node_modules
+          PORTAL_SCREENSHOTS: ${{ runner.temp }}/portal-screenshots
+        run: |
+          mkdir -p "$PORTAL_SCREENSHOTS"
+          node tests/portal-preview.browser.cjs
+      - name: Save example-only preview screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: customer-portal-preview
+          path: ${{ runner.temp }}/portal-screenshots
+          if-no-files-found: ignore
+          retention-days: 7
