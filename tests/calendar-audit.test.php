@@ -1,7 +1,8 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__.'/../tools/audit-calendar-confirmation.php';
-$source=getenv('SITESEE_DIAGNOSTIC_TEST_SOURCE') ?: dirname(__DIR__).'/_private';
+require_once __DIR__.'/historical-source.php';
+$source=getenv('SITESEE_DIAGNOSTIC_TEST_SOURCE') ?: historical_source();
 require_once $source.'/server/booking-calendar-client.php';
 $root=sys_get_temp_dir().'/sitesee-diagnostic-'.bin2hex(random_bytes(6));
 mkdir($root,0700);mkdir($root.'/data',0700);mkdir($root.'/server',0700);

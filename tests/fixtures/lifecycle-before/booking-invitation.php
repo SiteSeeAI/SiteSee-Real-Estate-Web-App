@@ -23,7 +23,7 @@ function booking_ical_fold(string $line): string
 }
 
 /** The customer sees only the agreed arrival window, never the private planned start. */
-function booking_invitation_message(array $row, array $confirmation, string $managementLink = ''): array
+function booking_invitation_message(array $row, array $confirmation): array
 {
     foreach ([$row['email'], BOOKING_MAIL_SENDER] as $email) {
         if (!filter_var($email, FILTER_VALIDATE_EMAIL) || preg_match('/[\r\n;:,]/', $email)) {
@@ -41,7 +41,7 @@ function booking_invitation_message(array $row, array $confirmation, string $man
         . "\nProperty: " . $property . "\nReference: " . $row['reference']
         . "\nThe calendar entry shows the two-hour arrival window. Photography may continue beyond that window."
         . "\nNo live payment has been collected."
-        . ($managementLink !== '' ? "\n\nManage your appointment securely: " . $managementLink . "\nThis private link expires after seven days. Contact SiteSee for a replacement." : "\n\nPlease contact SiteSee to request a change. Your confirmed window stays in place until a change is agreed.");
+        . "\n\nPlease contact SiteSee to request a change. Your confirmed window stays in place until a change is agreed.";
     $lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//SiteSee//Arrival Window//EN', 'CALSCALE:GREGORIAN',
         'METHOD:REQUEST', 'BEGIN:VEVENT', 'UID:sitesee-arrival-test-' . $row['reference'] . '@re.sitesee.ai',
         'DTSTAMP:' . gmdate('Ymd\THis\Z', strtotime($confirmation['confirmed_at'])), 'SEQUENCE:0',
@@ -68,10 +68,8 @@ function booking_invitation_message(array $row, array $confirmation, string $man
 }
 
 /** One attempted submission. Provider and CRM recovery are separate from sending. */
-function booking_send_invitation_locked(PDO $db, string $reference, ?array $config = null, ?callable $send = null, ?callable $transport = null, ?array $mailDependencies = null): void
+function booking_send_invitation(PDO $db, string $reference, ?array $config = null, ?callable $send = null, ?callable $transport = null, ?array $mailDependencies = null): void
 {
-    booking_lifecycle_assert_active($db,$reference);
-    if ((int)booking_lifecycle_state($db,$reference)['revision'] > 0) throw new InvalidArgumentException('Use the saved change notice; the original invitation must not be sent after a change.');
     $config ??= booking_scheduling_config(booking_confirmation_get($db,$reference));
     if (($config['invitations_enabled'] ?? false) !== true) throw new InvalidArgumentException('Test invitation delivery is disabled.');
     $before = booking_get($db, $reference);
@@ -110,9 +108,7 @@ function booking_send_invitation_locked(PDO $db, string $reference, ?array $conf
         $request = booking_request($row);
         $start = booking_calendar_date($request['appointment']['date'])->setTime((int)substr($request['appointment']['time'], 0, 2), 0);
         if ($start->getTimestamp() <= time()) throw new InvalidArgumentException('This arrival window has started. Do not send a late confirmation invitation.');
-        require_once __DIR__.'/booking-lifecycle.php';
-        $managementLink = booking_lifecycle_enabled() ? booking_management_issue($db,$reference) : '';
-        $message = booking_invitation_message($row, $confirmation, $managementLink);
+        $message = booking_invitation_message($row, $confirmation);
         if ($send === null) $key = booking_communication_enqueue($db,$reference,'invitation',$message,$confirmation);
         $db->prepare("UPDATE booking_confirmations SET invitation_state='sending', invitation_attempted_at=?, invitation_recipient=? WHERE reference=?")
             ->execute([gmdate('c'), $row['email'], $reference]);
@@ -138,11 +134,4 @@ function booking_send_invitation_locked(PDO $db, string $reference, ?array $conf
             // Sent-copy lag and CRM failures are recovered separately. Never undo mail acceptance.
         }
     }
-}
-
-function booking_send_invitation(PDO $db, string $reference, ?array $config = null, ?callable $send = null, ?callable $transport = null, ?array $mailDependencies = null): void
-{
-    $lock=booking_confirmation_lock();
-    try { booking_send_invitation_locked($db,$reference,$config,$send,$transport,$mailDependencies); }
-    finally { fclose($lock); }
 }

@@ -1,0 +1,19 @@
+{
+  "release": "appointment-management-20260928",
+  "revision": "20260928-r1",
+  "files": {
+    "server/booking-lifecycle-store.php": "1b1b74d4bded768e74f3510670adf415c5440f88c7f3e2897135e30e610b25a4",
+    "server/booking-lifecycle.php": "38de787ef58745c83b7be973b76686bc7cbf299a52e3235ea9f4ceced21c5ca2",
+    "server/booking-lifecycle-ui.php": "ff45706a9b96640d403c1af129fbeb6948ae94f2158cea912a6780d21e7e7212",
+    "server/booking-manage.php": "68a7db6a39afe2f39182256419a839455c45cd620a6f979af1809449a61c5114",
+    "server/booking-lifecycle-reconcile.php": "b4bbebc42f4892804f40eeb786c0ee958f7a53bd3095788d4185d420afb64830",
+    "server/booking-schedule.php": "abcbb7c4f53a4a8b74e26613790ed9e4ab761d08a9d5410fbefac8572c2a5013",
+    "server/booking-scheduling-provider.php": "9ce3a863abfa611633c2f7df375bd51aaf531d7bc439f61ecc80f8fbe5ae362c",
+    "server/booking-confirmation.php": "75bcdf00a19a7138fcdc6343624e10e8456cf0698526161d57e839f04af07744",
+    "server/booking-communication.php": "7d206e26ba5277b6245d849843e3dd180aa6be2e1a96b82a993b7825e2508c1f",
+    "server/booking-invitation.php": "f082c8794222ed7ff5d658ec6f48ee619a6747c992593650ddbd59528d66d8d7",
+    "server/booking-workflow.php": "de681c06b87d56aa2b36dc7ef826f130abc3cf7a819fccb8dc918497516169c6",
+    "server/booking-staff.php": "05326ad4f6bd4d830e7c3907b99387c2866975a749c031e1d31684730886aa6e",
+    "public/manage-appointment.php": "5dd668490f5952f32f3c7ea93a79352b3810b72b2d0263eada044121fbbe3eab"
+  }
+}

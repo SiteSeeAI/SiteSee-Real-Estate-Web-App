@@ -1,3 +1,4 @@
+from release_source import historical
 import importlib.util
 import json
 import os
@@ -36,7 +37,7 @@ class SchedulingInstall(unittest.TestCase):
  def test_reproducible_payload(self):
   for name,data in self.files.items():
    expected=PROJECT/'tests/fixtures/staff-workflow-before/booking-staff.php' if name=='server/booking-staff.php' else PROJECT/('_private/'+name if name.startswith('server/') else name)
-   self.assertEqual(data,expected.read_bytes())
+   self.assertEqual(data,historical(expected).read_bytes())
   path=PROJECT/'tools/install-microsoft-scheduling.py';before=path.read_bytes()
   subprocess.run(['python3',str(PROJECT/'tools/build-microsoft-scheduling.py')],check=True)
   self.assertEqual(path.read_bytes(),before)

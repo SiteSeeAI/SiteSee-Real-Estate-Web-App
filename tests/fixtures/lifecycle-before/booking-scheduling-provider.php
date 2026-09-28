@@ -123,7 +123,9 @@ function booking_scheduling_ms_clear(callable $connection, array $expected, stri
 }
 function booking_scheduling_local(PDO $db, array $snapshot): array
 {
-    return booking_lifecycle_busy($db,$snapshot);
+    foreach ($db->query('SELECT planned_start,planned_end FROM booking_confirmations')->fetchAll() as $claim)
+        $snapshot['busy'][] = [(int)$claim['planned_start'],(int)$claim['planned_end']];
+    return $snapshot;
 }
 function booking_scheduling_snapshot(PDO $db, array $config, array $range, ?callable $connection = null): array
 {
@@ -170,7 +172,6 @@ function booking_scheduling_confirm_ms(PDO $db,string $reference,array $config,?
         $row = booking_get($db,$reference);
         if (!$row) throw new InvalidArgumentException('Booking not found.');
         booking_confirmation_gate($config,$row);
-        booking_lifecycle_assert_active($db,$reference);
         $claim = booking_confirmation_get($db,$reference);
         if ($claim) {
             booking_ms_need($claim['calendar_uid'] === $config['calendar_uid'],'Saved calendar identity differs.');
@@ -214,7 +215,6 @@ function booking_scheduling_reconcile_ms(PDO $db,string $reference,array $config
     try {
         $row = booking_get($db,$reference); if (!$row) throw new InvalidArgumentException('Booking not found.');
         booking_confirmation_gate($config,$row);
-        booking_lifecycle_assert_active($db,$reference);
         $claim = booking_confirmation_get($db,$reference);
         if (!$claim) throw new InvalidArgumentException('No calendar creation has been attempted.');
         booking_ms_need(booking_scheduling_valid_config($config) && $claim['calendar_uid'] === $config['calendar_uid'],'Saved calendar identity differs.');

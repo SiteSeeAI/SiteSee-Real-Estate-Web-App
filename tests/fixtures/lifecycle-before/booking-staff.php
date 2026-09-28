@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/booking-lifecycle-ui.php';
+require_once __DIR__ . '/booking-workflow.php';
 header('Cache-Control: no-store, private, max-age=0');
 header('X-Robots-Tag: noindex, nofollow, noarchive');
 header('X-Frame-Options: DENY');
@@ -66,36 +66,6 @@ if ($method === 'POST') {
         exit;
     } elseif (empty($_SESSION['staff_until']) || (int)$_SESSION['staff_until'] < time()) {
         staff_page('<p>Your staff session has expired. Reload and sign in again.</p>', 403);
-    } elseif (str_starts_with($action, 'lifecycle_')) {
-        try {
-            if (!booking_lifecycle_enabled()) throw new InvalidArgumentException('Appointment management is not enabled.');
-            $reference=(string)($_POST['reference']??'');
-            booking_lifecycle_row($db,$reference);
-            $choice=substr($action,10);
-            if ($choice==='link') $issuedLink=booking_management_issue($db,$reference);
-            elseif ($choice==='history') {
-                $ticket=$_SESSION['lifecycle_history_selection']??[];$id=(string)($_POST['message_id']??'');
-                if(($_POST['agreed']??'')!=='yes'||($ticket['reference']??'')!==$reference||($ticket['expires']??0)<time()||!in_array($id,$ticket['ids']??[],true))throw new InvalidArgumentException('Recover Notice & Zoho History again and verify the displayed candidate.');
-                $c=booking_crm_config();booking_communication_crm($db,$ticket['key'],$c,booking_crm_client($c),$id);unset($_SESSION['lifecycle_history_selection']);$notice='Existing change notice linked to Zoho; no message was resent.';
-            }
-            elseif ($choice==='resolve_unchanged') { if(($_POST['agreed']??'')!=='yes')throw new InvalidArgumentException('Review the unresolved attempt first.');booking_lifecycle_resolve_unchanged($db,$reference);$notice='Provider version remains unchanged. The unapplied attempt was resolved without another calendar write.'; }
-            elseif ($choice==='legacy_deleted') { if(($_POST['agreed']??'')!=='yes')throw new InvalidArgumentException('Verify the original event deletion first.');booking_lifecycle_legacy_deleted($db,$reference,(string)($_POST['fingerprint']??''));$notice='Verified stale reservation released. Confirm cancellation to prepare its customer notice.'; }
-            elseif ($choice==='sync') { booking_lifecycle_sync($db,$reference);$notice='Calendar state reconciled. No event or notice was sent.'; }
-            elseif ($choice==='windows') {
-                $lifecycleWindows=booking_lifecycle_windows($db,$reference,(string)($_POST['date']??''));
-                $notice=$lifecycleWindows?'Available alternatives are shown in Manage Appointment.':'No fitting windows found in the next 14 days. Choose a later starting date.';
-            } elseif (in_array($choice,['cancel','reschedule','adopt'],true)) {
-                if (($_POST['agreed']??'')!=='yes') throw new InvalidArgumentException('Record the customer’s agreement first.');
-                booking_lifecycle_change($db,$reference,$choice,(string)($_POST['fingerprint']??''),'staff',(string)($_POST['date']??''),(string)($_POST['time']??''));
-                $notice='Appointment change saved. Send the saved change notice below.';
-            } elseif (in_array($choice,['notice','recover_notice'],true)) {
-                $report=booking_lifecycle_notice($db,$reference,$choice==='notice');$notice=implode(' ',array_filter($report,'is_string'));
-                $lifecycleHistory=$report['history']??[];$_SESSION['lifecycle_history_selection']=['reference'=>$reference,'expires'=>time()+900,'ids'=>array_column($lifecycleHistory,'id'),'key'=>'lifecycle-'.booking_lifecycle_state($db,$reference)['revision'].':'.$reference];
-            } else throw new InvalidArgumentException('Unknown appointment action.');
-        } catch (Throwable $exception) {
-            $error=$exception instanceof InvalidArgumentException || $exception instanceof BookingCalendarUnavailable
-                ?$exception->getMessage():'Appointment management could not finish. Reconcile Calendar / Recover Change before repeating any action.';
-        }
     } elseif (in_array($action, ['workflow_check','workflow_link','workflow_recover','workflow_history'], true)) {
         try {
             $reference = (string)($_POST['reference'] ?? '');
@@ -248,7 +218,7 @@ $body = '<p class="note">TEST PHASE: new requests collect a test deposit before 
 if ($notice) $body .= '<p class="note" role="status">' . staff_escape($notice) . '</p>';
 if ($error) $body .= '<p class="error">' . staff_escape($error) . '</p>';
 if ($issuedLink) {
-    $body .= '<h2>Private Booking Link</h2><p>Copy this private link to the authorized test customer. It appears only once; save it before leaving this page.</p><p><input type="text" readonly aria-label="Private booking link" value="' . staff_escape($issuedLink) . '" style="width:100%"></p><p><a href="' . staff_escape($issuedLink) . '" target="_blank" rel="noopener noreferrer">Open Booking Page ↗</a></p>';
+    $body .= '<h2>Private Booking Link</h2><p>Copy this link to an authorized test payer. It appears only once; save it before leaving this page.</p><p><input type="text" readonly aria-label="Test payment link" value="' . staff_escape($issuedLink) . '" style="width:100%"></p><p><a href="' . staff_escape($issuedLink) . '" target="_blank" rel="noopener noreferrer">Open Booking Page ↗</a></p>';
 }
 $reference = (string)($_POST['reference'] ?? $_GET['reference'] ?? '');
 $row = booking_get($db, $reference);
@@ -276,8 +246,6 @@ if ($row) {
     if ($row['status'] === 'deposit_paid_test' && $row['deposit_paid_at'] && strcasecmp($row['email'], 'cro@sitesee.ai') === 0) {
         $workflowStatus = booking_workflow_status($db, $row);
         $body .= booking_workflow_html($row, $workflowStatus, staff_csrf(), $workflowReport ?? null);
-        $lifecycleClaim=booking_confirmation_get($db,$reference);
-        if(booking_lifecycle_enabled() && $lifecycleClaim && $lifecycleClaim['state']==='confirmed') $body .= booking_lifecycle_html($db,$row,staff_csrf(),true,$lifecycleWindows??[],$lifecycleHistory??[]);
     }
     if ($row['status'] === 'deposit_paid_test' && !$row['approved_at'] && !$row['reschedule_required']) {
         $duration = max(15, (int)($quote['knownMinutesMax'] ?? $quote['knownMinutes'] ?? 60));
@@ -294,7 +262,7 @@ if ($row) {
     } elseif ($row['status'] === 'deposit_paid_test' && $row['approved_at']) {
         $body .= '<p class="note">Staff review recorded. Use the calendar confirmation section below when test confirmation is enabled.</p>';
     }
-    if ($row['status'] === 'deposit_paid_test' && $row['approved_at'] && booking_lifecycle_state($db,$reference)['state']==='active' && (int)booking_lifecycle_state($db,$reference)['revision']===0 && !booking_lifecycle_pending($db,$reference)) {
+    if ($row['status'] === 'deposit_paid_test' && $row['approved_at']) {
         $confirmation = booking_confirmation_get($db, $reference);
         try { $confirmationConfig = booking_scheduling_config($confirmation); } catch (Throwable) { $confirmationConfig = null; }
         $canConfirm = $confirmationConfig && $confirmationConfig['confirmation_enabled'];

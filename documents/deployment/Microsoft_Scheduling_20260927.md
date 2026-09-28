@@ -228,3 +228,7 @@ Acceptance remains separately unverified. The full evidence and remaining
 lifecycle work are documented in [Booking_Workflow_20260927.md](Booking_Workflow_20260927.md).
 Use that installer for the newer staff page; preserve this Microsoft scheduling
 release and its existing appointment identities. Do not resend D32FFC7458.
+
+## Appointment Lifecycle Follow-Up — 2026 09 28
+
+The next release is prepared in [Appointment_Management_20260928.md](Appointment_Management_20260928.md). It adds customer/staff management, Microsoft event updates/cancellation and reconciliation while retaining legacy Zoho identities. It is not yet server-verified. Preserve all verified evidence above, do not resend D32FFC7458, and use the new one-file installer for this next deployment.

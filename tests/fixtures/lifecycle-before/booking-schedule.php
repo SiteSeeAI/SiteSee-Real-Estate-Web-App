@@ -1,11 +1,9 @@
 <?php
 declare(strict_types=1);
-require_once __DIR__ . '/booking-lifecycle-store.php';
 
 /** Additive scheduling ledger; existing bookings need no column migration. */
 function booking_schedule_schema(PDO $db): void
 {
-    booking_lifecycle_schema($db);
     $db->exec("CREATE TABLE IF NOT EXISTS booking_confirmations (
         reference TEXT PRIMARY KEY, state TEXT NOT NULL CHECK(state IN ('creating','uncertain','confirmed')),
         calendar_uid TEXT NOT NULL, event_uid TEXT, planned_start INTEGER NOT NULL, planned_end INTEGER NOT NULL,

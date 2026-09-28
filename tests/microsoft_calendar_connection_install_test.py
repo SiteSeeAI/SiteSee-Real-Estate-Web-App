@@ -1,3 +1,4 @@
+from release_source import historical
 import importlib.util
 import json
 import os
@@ -37,7 +38,7 @@ class ConnectionInstaller(unittest.TestCase):
             ('branded-checkout-release.json', 'sitesee-branded-checkout-test-v1', ['booking-pay.php','booking-checkout.php'])]:
             hashes = {}
             for name in names:
-                data = (PROJECT / '_private/server' / name).read_bytes()
+                data = historical(PROJECT / '_private/server' / name).read_bytes()
                 self.write('server/' + name, data)
                 hashes['server/' + name] = m.digest(data)
             self.write(manifest, m.encode({'release': release, 'files': hashes}))

@@ -7,8 +7,11 @@ from pathlib import Path
 import re
 import zlib
 root=Path(__file__).resolve().parents[1]
+def historical(path):
+ frozen=root/'tests/fixtures/lifecycle-before'/path.name
+ return frozen if '_private' in path.parts and frozen.is_file() else path
 names=['booking-scheduling-provider.php','booking-confirmation.php','booking-invitation.php','booking-availability-check.php','booking-staff.php']
-files={'server/'+name:(root/'_private/server'/name).read_text() for name in names}
+files={'server/'+name:historical(root/'_private/server'/name).read_text() for name in names}
 # Preserve the already deployed r1 controller when rebuilding its historical installer.
 files['server/booking-staff.php']=(root/'tests/fixtures/staff-workflow-before/booking-staff.php').read_text()
 files.update({name:(root/name).read_text() for name in ['tools/diagnose-calendar-confirmation.php','tools/audit-calendar-confirmation.php']})

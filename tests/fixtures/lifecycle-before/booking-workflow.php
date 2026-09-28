@@ -39,10 +39,7 @@ function booking_workflow_status(PDO $db, array $row): array
     $mailReady = true;
     try { booking_mail_config(true); } catch (Throwable) { $mailReady = false; }
     $canSend = $config && $config['invitations_enabled'] && $mailReady && $link && $claim && $claim['state'] === 'confirmed'
-        && $claim['invitation_state'] === 'none' && !$mail
-        && booking_lifecycle_state($db,$row['reference'])['state']==='active'
-        && (int)booking_lifecycle_state($db,$row['reference'])['revision']===0
-        && !booking_lifecycle_pending($db,$row['reference']);
+        && $claim['invitation_state'] === 'none' && !$mail;
     if ($canSend) {
         try { booking_confirmation_gate($config, $row); }
         catch (Throwable) { $canSend = false; }

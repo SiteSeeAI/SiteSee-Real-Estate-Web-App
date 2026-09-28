@@ -1,3 +1,4 @@
+from release_source import historical
 import importlib.util
 import json
 import os
@@ -22,7 +23,7 @@ class WorkflowInstall(unittest.TestCase):
   writer=self.fixture.fixture.fixture.write
   for name in self.before:
    path=PROJECT/'tests/fixtures/staff-workflow-before/booking-staff.php' if name==w.CONTROLLER else PROJECT/'_private'/name
-   writer(name,path.read_bytes())
+   writer(name,historical(path).read_bytes())
   # Keep the fixture's active manifest consistent with the real reviewed dependencies.
   manifest=json.loads((self.root/'calendar-confirmation-release.json').read_bytes())
   manifest['files'].update({n:h for n,h in self.before.items() if n.startswith('server/')})
@@ -44,7 +45,7 @@ class WorkflowInstall(unittest.TestCase):
   return w.inventory(self.s,self.r,self.m,self.root,base.f.baseline.PHP,self.uid,self.files,self.before,credentials=self.fixture.secret)
  def values(self):return w.desired(self.m,self.root,self.files)
  def test_payload_and_rebuild(self):
-  for n,b in self.files.items():self.assertEqual((PROJECT/'_private'/n).read_bytes(),b)
+  for n,b in self.files.items():self.assertEqual(historical(PROJECT/'_private'/n).read_bytes(),b)
   p=PROJECT/'tools/install-booking-workflow.py';before=p.read_bytes()
   subprocess.run(['python3',str(PROJECT/'tools/build-booking-workflow.py')],check=True)
   self.assertEqual(before,p.read_bytes())

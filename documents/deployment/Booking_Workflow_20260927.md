@@ -170,3 +170,7 @@ stored reservation. Those lifecycle changes remain the next planned release.
 
 Stripe remains TEST only. Pricing, the 50% base deposit, balance-only $59 rush
 fee, consent, verified-webhook authority and account-wide settings are unchanged.
+
+## Appointment Lifecycle Follow-Up — 2026 09 28
+
+The next release is prepared in [Appointment_Management_20260928.md](Appointment_Management_20260928.md). It adds customer/staff management, Microsoft event updates/cancellation and reconciliation while retaining legacy Zoho identities. It is not yet server-verified. Preserve all verified evidence above, do not resend D32FFC7458, and use the new one-file installer for this next deployment.

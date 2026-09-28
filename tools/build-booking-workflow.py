@@ -7,12 +7,15 @@ from pathlib import Path
 import re
 import zlib
 root=Path(__file__).resolve().parents[1]
-files={name:(root/'_private'/name).read_text() for name in ('server/booking-workflow.php','server/booking-staff.php')}
+def historical(path):
+ frozen=root/'tests/fixtures/lifecycle-before'/path.name
+ return frozen if '_private' in path.parts and frozen.is_file() else path
+files={name:historical(root/'_private'/name).read_text() for name in ('server/booking-workflow.php','server/booking-staff.php')}
 dependencies=['real-estate-form-config.php','real-estate-pricing.php',
  'server/booking-store.php','server/booking-schedule.php','server/booking-crm.php','server/booking-communication.php',
  'server/booking-mail-client.php','server/booking-confirmation.php','server/booking-invitation.php',
  'server/booking-calendar-client.php','server/booking-availability.php','server/booking-scheduling-provider.php']
-before={name:hashlib.sha256((root/'_private'/name).read_bytes()).hexdigest() for name in dependencies}
+before={name:hashlib.sha256(historical(root/'_private'/name).read_bytes()).hexdigest() for name in dependencies}
 before['server/booking-staff.php']=hashlib.sha256((root/'tests/fixtures/staff-workflow-before/booking-staff.php').read_bytes()).hexdigest()
 bundle=json.dumps({'files':files,'before':before},sort_keys=True).encode()
 path=root/'tools/install-booking-workflow.py';source=path.read_text()

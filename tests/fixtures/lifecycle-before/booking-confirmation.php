@@ -215,7 +215,6 @@ function booking_confirm_appointment(PDO $db, string $reference, ?array $config 
         $row = booking_get($db, $reference);
         if (!$row) throw new InvalidArgumentException('Booking not found.');
         booking_confirmation_gate($config, $row);
-        booking_lifecycle_assert_active($db,$reference);
         $existing = booking_confirmation_get($db, $reference);
         if ($existing) {
             if ($existing['state'] === 'confirmed') return $existing;
@@ -236,7 +235,9 @@ function booking_confirm_appointment(PDO $db, string $reference, ?array $config 
         $connection = booking_confirmation_connection($config, $transport);
         $snapshot = booking_calendar_read_busy(static fn($path, $query) => $connection('GET', $path . '?' . http_build_query($query)), $config['calendar_uid'], $range);
         // Local durable claims also block time if a provider reply was lost or is delayed.
-        $snapshot=booking_lifecycle_busy($db,$snapshot);
+        foreach ($db->query('SELECT planned_start,planned_end FROM booking_confirmations')->fetchAll() as $claim) {
+            $snapshot['busy'][] = [(int)$claim['planned_start'], (int)$claim['planned_end']];
+        }
         $windows = booking_available_windows($appointment['date'], $row['rush_status'] === 'approved',
             (int)$row['duration_minutes'], $snapshot, $requestedAt, 1);
         $matches = array_values(array_filter($windows, static fn($w) => $w['time'] === $appointment['time']));
@@ -282,7 +283,6 @@ function booking_reconcile_confirmation(PDO $db, string $reference, ?array $conf
         $row = booking_get($db, $reference);
         if (!$row) throw new InvalidArgumentException('Booking not found.');
         booking_confirmation_gate($config, $row);
-        booking_lifecycle_assert_active($db,$reference);
         $claim = booking_confirmation_get($db, $reference);
         if (!$claim) throw new InvalidArgumentException('No calendar creation has been attempted.');
         if ($claim['state'] === 'confirmed') return $claim;
