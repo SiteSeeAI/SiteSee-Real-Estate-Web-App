@@ -25,6 +25,10 @@ Appointment modification and cancellation validation remains complete. The succe
 
 The source comparison found that the investigated deployment/repository hash differences were exactly explained by CRLF versus LF line endings. Keep server bytes unchanged. No existing application, installer, cron or webhook source is changed by this checkpoint. No consolidation or replacement package is proposed here.
 
+## Checkpoint verification
+
+GitHub Actions run [36487880589](https://github.com/SiteSeeAI/SiteSee-Real-Estate/actions/runs/36487880589) passed on commit `62b176407ed6f05efc8333ebfaeabec489abfc61`: PHP 8.2 syntax and account isolation tests, plus Chromium preview interaction and 320/390/736/1024-pixel overflow checks. This validates the unwired primitives and design preview, not the unfinished HTTP/session/payment integrations. Existing application files were checked against the baseline Git blob hashes before the additive commit and were unchanged.
+
 ## Screen flow
 
 My Orders is the landing screen. Current orders and past orders/receipts share one history location. An order opens its details, appointment status, eligible appointment actions, payment status and documents. Account holds sign-in and profile controls. The header carries one gold New Order button.

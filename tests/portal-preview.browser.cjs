@@ -55,6 +55,14 @@ const {chromium} = require('playwright');
     await page.getByRole('button',{name:'My Orders',exact:true}).first().click();
     await page.setViewportSize({width:390,height:844});
     if(process.env.PORTAL_SCREENSHOTS)await page.screenshot({path:path.join(process.env.PORTAL_SCREENSHOTS,'portal-mobile.png'),fullPage:true});
+    await page.getByRole('button',{name:'View order →'}).first().click();
+    await page.getByRole('button',{name:'Order again'}).click();
+    assert.equal(await page.getByLabel('Street address').inputValue(),'214 Example Lane');
+    await page.getByRole('button',{name:'Next →'}).click();
+    assert.equal(await page.locator('.sp-total strong').textContent(),'$499.00');
+    await page.getByRole('button',{name:'Next →'}).click();
+    assert.equal(await page.getByLabel('Preferred date',{exact:true}).inputValue(),'');
+    assert.equal(await page.getByRole('checkbox',{name:'I agree to the cancellation policy.'}).isChecked(),false);
     assert.deepEqual(errors,[]);
     console.log('portal-preview: PASS (navigation, preserved answers, canonical prices, dependencies, escaped input, responsive widths)');
   } finally {await browser.close();}

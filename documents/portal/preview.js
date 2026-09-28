@@ -13,6 +13,9 @@
     appointment:{date:'',time:'09:00',rushRequested:false,meetPhotographer:'Yes',accessType:'Lockbox',lockbox:'',keyLocation:'',specialRequests:'',mustHaveShots:'',onsiteDifferent:false,onsiteName:'',onsiteEmail:'',onsitePhone:'',additionalDifferent:false,additionalName:'',additionalEmail:'',additionalPhone:'',cancellationAccepted:false}
   };
   let view = 'orders', step = 0, past = false, example = 'current';
+  const emptyAppointment = structuredClone(draft.appointment);
+  const defaultResidential = structuredClone(draft.residential);
+  const defaultCommercial = structuredClone(draft.commercial);
   const state = () => draft[draft.market];
   const engine = () => draft.market === 'residential' ? SiteSeeQuote : SiteSeeCommercialQuote;
   function quote() { try { return engine().calculate(state()); } catch (_) { return null; } }
@@ -143,7 +146,14 @@
     if(b.dataset.example){example=b.dataset.example;view='detail';render();}
     if(b.hasAttribute('data-step')){step=Number(b.dataset.step);view='new';render();}
     if(b.hasAttribute('data-back')){if(step>0)step--;else view='orders';render();}
-    if(b.hasAttribute('data-reorder')){draft.market=example==='review'?'commercial':'residential';if(example==='current')draft.residential.package='gold';draft.appointment.date='';draft.appointment.cancellationAccepted=false;view='new';step=1;render();}
+    if(b.hasAttribute('data-reorder')){
+      draft.market=example==='review'?'commercial':'residential';
+      draft.residential=structuredClone(defaultResidential);draft.commercial=structuredClone(defaultCommercial);
+      if(example==='current')draft.residential.package='gold';
+      draft.details.street=example==='current'?'214 Example Lane':example==='review'?'805 Demonstration Court':'28 Sample Avenue';
+      draft.details.unit='';draft.details.propertyId='';draft.details.city='Chicago';draft.details.state='IL';draft.details.zip='60601';
+      draft.appointment=structuredClone(emptyAppointment);view='new';step=1;render();
+    }
   });
   function saveInput(input){
     const group=input.dataset.group,key=input.dataset.key;if(!group||!key)return;
