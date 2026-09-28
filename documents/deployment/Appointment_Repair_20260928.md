@@ -48,3 +48,13 @@ Manual calendar move/delete reconciliation remains a separate controlled server 
 ## Local Validation
 
 The repair has PHP coverage for valid/expired link handling, calendar-description links, cancelled recovery, provider failure, reappeared events, released holds and the lifecycle-aware status text. Installer tests cover every write interruption, repeat runs, unknown edits, corrupt backups, PHP CLI selection and report accuracy. Existing customer authentication and staff workflow HTTP checks also pass. These are simulated/local checks; actual cron and Outlook behavior require the operator checks above.
+
+## Actual r2 Installation And Subsequent Worker Failure
+
+The operator reported r2 installed, hashes PASS, PHP CLI `/opt/cpanel/ea-php82/root/usr/bin/php`, activation-only bootstrap PASS, and backup `/home/sitesee/.sitesee-real-estate/deployment-backups/appointment-repair-96p1_x8k`. The corrected report for 3EB7F85259 showed both operation snapshots preserve all base booking fields other than scheduled UTC; both use the same provider identity. All three communications have verified sent and recipient copies and associated Zoho history. The booking is cancelled, no operations are pending, and its local hold is released.
+
+Cron is active, but raw operator logs show repeated starts followed immediately by PHP failure from 17:05 through 18:15 UTC on 2026-09-28. This is not a five-minute waiting issue. The r2 bootstrap exited before opening the database, so it missed the failure. Its filtered report also omitted failure entries.
+
+A local reproduction with the account home as the working directory fails at the database public-root guard: CLI's empty `DOCUMENT_ROOT` resolves through `realpath('')` to the home directory, making the private database appear publicly located. Use [Appointment_Worker_Repair_20260928.md](Appointment_Worker_Repair_20260928.md) for the r3 worker repair and deeper preflight. The raw production log does not contain the underlying exception text; stage-specific diagnostics now distinguish this reproduced issue from any additional server failure.
+
+The new test reference is **B0AC5BEFEB**. The operator has not yet supplied its customer-link/reschedule/cancellation results; do not infer those from the old booking's report. The r3 report covers both references.

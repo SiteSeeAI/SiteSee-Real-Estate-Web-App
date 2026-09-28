@@ -60,7 +60,9 @@ class Repair(unittest.TestCase):
   self.assertIn('Worker bootstrap: PASS',out.getvalue())
   self.assertEqual((self.root/'data/bookings.sqlite').read_bytes(),before)
  def test_bundle_reproducible(self):
-  for n,b in self.files.items():self.assertEqual(b,(PROJECT/'_private'/n).read_bytes())
+  for n,b in self.files.items():
+   frozen=PROJECT/'tests/fixtures/appointment-r2'/Path(n).name
+   self.assertEqual(b,(frozen if frozen.exists() else PROJECT/'_private'/n).read_bytes())
   p=PROJECT/'tools/repair-appointment-management.py';before=p.read_bytes();subprocess.run(['python3',str(PROJECT/'tools/build-appointment-repair.py')],check=True);self.assertEqual(before,p.read_bytes())
  def test_report_does_not_treat_joined_fields_as_financial_changes(self):
   module=load('report',PROJECT/'tools/appointment-management-report.py')
