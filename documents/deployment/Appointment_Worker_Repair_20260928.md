@@ -36,3 +36,7 @@ Customer rescheduling/link retention/cancellation validation for **B0AC5BEFEB** 
 ## Validation
 
 Regression tests execute the old and repaired workers from a simulated account home, demonstrate the old guard failure and corrected completion, check the actual public-directory guard, reach database/selection in diagnostic mode, exclude the protected booking, and retain safe failure logs. Installer tests cover every changed-file interruption, repeated runs, unknown edits and preservation of database/credential bytes during deployment. These tests use isolated local data; actual Microsoft reads and cron completion still require server evidence.
+
+## Actual Scheduled Completion And Legacy Follow-up
+
+Operator output confirms the worker completed at 19:35 UTC with four reconciled bookings and one requiring review. Both target cancelled bookings had updated check timestamps and null diagnostics; all three communications for each were fully verified and associated with Zoho CRM. Customer management-link retention in the rescheduled Outlook appointment was explicitly confirmed. The remaining booking was E6E183EF8E on legacy Zoho; see [Legacy_Cancellation_Repair_20260928.md](Legacy_Cancellation_Repair_20260928.md) for its staff-confirmed deletion/cancellation evidence and the targeted r4 correction.

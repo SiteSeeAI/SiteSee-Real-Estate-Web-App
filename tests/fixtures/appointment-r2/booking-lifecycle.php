@@ -87,23 +87,8 @@ function booking_lifecycle_missing_reply(array $r): bool
 {
     return ($r['status']??0)===404&&($r['body']['error']['code']??'')==='ErrorItemNotFound';
 }
-/** A completed staff cancellation must prove the same legacy identity before 404 can mean absent. */
-function booking_lifecycle_verified_legacy_cancel(PDO $db,array $claim): bool
-{
-    if(str_starts_with($claim['calendar_uid'],'microsoft:'))return false;
-    $state=booking_lifecycle_state($db,$claim['reference']);
-    if($state['state']!=='cancelled')return false;
-    $q=$db->prepare("SELECT payload_json FROM booking_lifecycle_operations WHERE reference=? AND revision=? AND state='applied' AND action='cancel' AND actor='staff'");
-    $q->execute([$claim['reference'],$state['revision']]);$raw=$q->fetchColumn();
-    if(!is_string($raw))return false;
-    $saved=json_decode($raw,true,64,JSON_THROW_ON_ERROR);
-    return ($saved['legacy_deleted']??false)===true
-        && ($saved['row']['reference']??null)===$claim['reference']
-        && ($saved['claim']['event_uid']??null)===$claim['event_uid']
-        && ($saved['claim']['calendar_uid']??null)===$claim['calendar_uid'];
-}
 /** Read an immutable ID at both calendar and mailbox scope before believing it disappeared. */
-function booking_lifecycle_observe(array $claim,callable $api,bool $verifiedLegacyCancellation=false): array
+function booking_lifecycle_observe(array $claim,callable $api): array
 {
     $expected=json_decode($claim['event_json'],true,32,JSON_THROW_ON_ERROR);
     if(str_starts_with($claim['calendar_uid'],'microsoft:')){
@@ -126,12 +111,6 @@ function booking_lifecycle_observe(array $claim,callable $api,bool $verifiedLega
     }
     // Legacy Zoho event identities remain on Zoho. Existing credentials are read/create only.
     $r=$api('GET',booking_calendar_event_path($claim['calendar_uid'],$claim['event_uid']));
-    if($verifiedLegacyCancellation && ($r['status']??0)===404 && is_array($r['body']??null) && $r['body']){
-        // A working, complete calendar read is still mandatory; a denied/outage response is not deletion.
-        booking_calendar_read_busy(static fn($path,$query)=>$api('GET',$path.'?'.http_build_query($query)),$claim['calendar_uid'],
-            ['start'=>(int)$claim['planned_start']-86400,'end'=>(int)$claim['planned_end']+86400]);
-        return ['missing'=>true];
-    }
     $items=$r['body']['events']??null;
     if(($r['status']??0)===200&&is_array($items)&&count($items)===1&&($items[0]['estatus']??'')==='deleted'
         &&($items[0]['uid']??'')===$claim['event_uid']&&($items[0]['caluid']??'')===$claim['calendar_uid'])return ['missing'=>true];
@@ -149,7 +128,7 @@ function booking_lifecycle_sync_locked(PDO $db,string $reference,callable $api,i
 {
     $claim=booking_confirmation_get($db,$reference);$s=booking_lifecycle_state($db,$reference);
     if(!$claim||$claim['state']!=='confirmed'||!$claim['event_uid']||booking_lifecycle_pending($db,$reference))return $s;
-    $o=booking_lifecycle_observe($claim,$api,booking_lifecycle_verified_legacy_cancel($db,$claim));
+    $o=booking_lifecycle_observe($claim,$api);
     if($s['state']==='cancelled'){
         if($o['missing'])booking_lifecycle_set($db,$reference,['checked_at'=>$now,'diagnostic'=>null]);
         if(!$o['missing'])booking_lifecycle_set($db,$reference,['state'=>'calendar_changed','actual_start'=>$o['start'],'actual_end'=>$o['end'],

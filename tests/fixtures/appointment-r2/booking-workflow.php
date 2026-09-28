@@ -170,7 +170,7 @@ function booking_workflow_recover(PDO $db, string $reference, array $deps = []):
         } elseif (booking_lifecycle_state($db,$reference)['state'] === 'cancelled') {
             require_once __DIR__.'/booking-lifecycle.php';
             $api=booking_workflow_reader($deps['calendar'] ?? booking_lifecycle_connection($claim));
-            $observed=booking_lifecycle_observe($claim,$api,booking_lifecycle_verified_legacy_cancel($db,$claim));
+            $observed=booking_lifecycle_observe($claim,$api);
             $report['items']['Calendar']=$observed['missing']
                 ? 'Cancellation verified: the saved event is absent. The cancelled booking contributes no local reservation.'
                 : 'CHECK REQUIRED: an event exists for this cancelled booking. Use Reconcile Calendar to review it; do not recreate or resend.';

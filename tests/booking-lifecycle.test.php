@@ -159,6 +159,27 @@ $legacyDeps=['calendar'=>$legacy,'lock_path'=>$tmp.'/lock','now'=>$now];$origina
 booking_lifecycle_legacy_deleted($db,$ref,booking_lifecycle_fingerprint($db,$ref),$legacyDeps);
 booking_lifecycle_change($db,$ref,'cancel',booking_lifecycle_fingerprint($db,$ref),'staff','','',$legacyDeps);
 ok(booking_lifecycle_state($db,$ref)['state']==='cancelled'&&booking_confirmation_get($db,$ref)===$original,'Legacy cancellation retains original calendar/event/invitation identities.');
+$legacyRow=booking_get($db,$ref);$noticeBefore=booking_communication_get($db,'lifecycle-1:'.$ref);
+ok(booking_lifecycle_verified_legacy_cancel($db,$original),'Applied staff cancellation proves the exact deleted legacy identity.');
+booking_lifecycle_set($db,$ref,['diagnostic'=>'Scheduled reconciliation could not verify this appointment.','checked_at'=>1]);
+booking_lifecycle_sync($db,$ref,$legacyDeps);
+$state=booking_lifecycle_state($db,$ref);
+ok($state['state']==='cancelled'&&$state['diagnostic']===null&&$state['checked_at']===$now,'Scheduled reconciliation accepts proven legacy absence and clears stale warning.');
+ok(booking_get($db,$ref)===$legacyRow&&booking_confirmation_get($db,$ref)===$original&&booking_communication_get($db,'lifecycle-1:'.$ref)===$noticeBefore,'Legacy recheck preserves booking, provider identities and notice evidence.');
+$recover=booking_workflow_recover($db,$ref,['calendar'=>$legacy]);
+ok(str_contains($recover['items']['Calendar'],'Cancellation verified'),'Original recovery respects the same verified legacy cancellation.');
+no(fn()=>booking_lifecycle_observe($original,$legacy),'An unverified legacy 404 still cannot release a reservation.');
+$wrong=$original;$wrong['event_uid']='different';ok(!booking_lifecycle_verified_legacy_cancel($db,$wrong),'Saved proof cannot authorize a different event.');
+$denied=static fn($method,$path)=>['status'=>403,'body'=>['error'=>'denied']];
+no(fn()=>booking_lifecycle_observe($original,$denied,true),'Denied event read is never absence.');
+$brokenCalendar=static fn($method,$path)=>str_contains($path,'old@zoho')?['status'=>404,'body'=>['error'=>'missing']]:['status'=>503,'body'=>[]];
+no(fn()=>booking_lifecycle_observe($original,$brokenCalendar,true),'Healthy calendar read remains mandatory.');
+$db->prepare("UPDATE booking_lifecycle_operations SET state='uncertain' WHERE reference=? AND action='cancel'")->execute([$ref]);
+ok(!booking_lifecycle_verified_legacy_cancel($db,$original),'An incomplete cancellation never authorizes absence.');
+$db->prepare("UPDATE booking_lifecycle_operations SET state='applied' WHERE reference=? AND action='cancel'")->execute([$ref]);
+booking_lifecycle_set($db,$ref,['state'=>'active']);ok(!booking_lifecycle_verified_legacy_cancel($db,$original),'Active legacy booking never inherits final cancellation exception.');
+booking_lifecycle_set($db,$ref,['state'=>'cancelled']);
+
 
 putenv('SITESEE_REAL_ESTATE_BOOKING_TEST_ENABLED=0');no(fn()=>booking_lifecycle_change($db,$ref,'cancel',booking_lifecycle_fingerprint($db,$ref),'customer','','',$deps),'Global TEST gate mandatory.');
 $db=null;foreach(glob($tmp.'/*')as$f)unlink($f);rmdir($tmp);echo "Appointment lifecycle: $checks checks passed\n";
