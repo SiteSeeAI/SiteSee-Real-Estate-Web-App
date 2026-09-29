@@ -31,7 +31,9 @@ def scan(obj,files,root,public,uid,gid):
     for path,mode in [(root,0o700),(root/'server',0o700),(root/'views',0o700),(root/'tools',0o700),(root/'pricing-assets',0o700),(root/'payment-assets',0o700),(root/'data',0o700),(public/'portal-assets',0o755)]: directory(path,mode)
     try:
         safe(public);s=public.stat()
-        need(stat.S_ISDIR(s.st_mode) and s.st_uid==uid and not s.st_mode&0o022 and s.st_mode&0o555==0o555,'Website root ownership/permissions require review: '+str(public))
+        # Existing cPanel 0750 roots need not grant other users read/execute.
+        # Preserve the website root metadata; do not chown or broaden permissions.
+        need(stat.S_ISDIR(s.st_mode) and s.st_uid==uid and not s.st_mode&0o022 and s.st_mode&0o500==0o500,'Website root ownership/permissions require review: '+str(public))
     except (Stop,OSError) as e: issue(str(e))
     def inspect(name,accepted=None,expected_blob=None,optional=False,restore=None,private=False):
         path=target(name,root,public)
@@ -210,6 +212,7 @@ def setup_phone(root,uid,gid,php,db):
     return []
 
 def show(report):
+    print('INSTALLER REVISION: r2.1-cpanel')
     print('COMPLETE LOCAL INSPECTION: '+str(len(report['checked_files']))+' files; '+str(report['application_file_count'])+' packaged application files.')
     print('Verified metadata repairs: '+str(len(report['metadata_repairs']))+'. Missing known files to restore: '+str(len(report['missing_files'])))
     for message in report['errors']:print('BLOCKER: '+message)

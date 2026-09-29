@@ -1,3 +1,7 @@
+## Installer Compatibility Update 2026 09 29
+
+Current installer revision is **r2.1-cpanel**; application release remains portal-20260929-r2. The first aggregate server run stopped before changes. Its four blockers were installer recognition gaps: website-root mode 0750 and three existing, hash-matched calendar maintenance scripts. Corrected without changing application payload or website-root metadata. Local suite now passes 32 tests. Deliver the updated full ZIP and rerun the same --deploy command; no individual application upload is required.
+
 # Current Consolidated Delivery Checkpoint — 2026 09 29
 
 The user requires one complete package, not repeated single-file fixes. Delivery window is **2½–5 days from 2026 09 28**, without restarting the clock. Phone-number login is mandatory; email login is rejected.

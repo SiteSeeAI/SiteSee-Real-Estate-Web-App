@@ -1,6 +1,8 @@
 # SiteSee Phone-Login Portal — One-Package Installation
 
-Release: portal-20260929-r2. Updated 2026 09 29.
+Release: portal-20260929-r2. Installer revision: r2.1-cpanel. Updated 2026 09 29.
+
+This revision recognizes the verified cPanel website-root mode 0750 and the three existing calendar maintenance scripts. It preserves website-root ownership, group and permissions. The application payload is unchanged. The terminal must begin with INSTALLER REVISION: r2.1-cpanel; otherwise the old installer is still uploaded.
 This guide replaces the earlier r1/email-login instructions and individual path fixes.
 Delivery window: 2½–5 days from the original 2026 09 28 start; do not restart the clock.
 

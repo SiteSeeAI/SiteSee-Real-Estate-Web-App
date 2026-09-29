@@ -29,6 +29,7 @@
     "assets/fonts/Poppins-Regular.ttf": "0bda228ade88b0bb5aac7da2c881d0c3f64d0817",
     "assets/fonts/Poppins-SemiBold.ttf": "c30ad104723a0e6e00e54768626cb02c5fdf6aee"
   },
+  "installer_revision": "r2.1-cpanel",
   "known": {
     "private/payment-assets/booking-payment.css": [
       "125e6763c5659c8835aef66d75299692d50b2c148f0ce2aef578bf5a67af4f7c",
@@ -245,6 +246,18 @@
     "private/server/quote-submit.php": [
       "fbd006a051950f9e8b1be61dd7f711e240c414556d434661f3992b755a692492",
       "34c1ef59c3f682ea86fda611db604d3d43a5be670ca1d0a25f4b8e64a8f6b686"
+    ],
+    "private/tools/check-calendar-confirmation.php": [
+      "bcb0bc733d1e85a4118ab67c1589376fb31538420a6e70bffcea990bd6944c1f",
+      "0a83d984901c405e02bd491efeab0cd6b3c2eec9a83027c77ea7470ebd08860c"
+    ],
+    "private/tools/setup-zoho-calendar.py": [
+      "cc971758309a58123827c1b3fa3d9b5f3eb842e4f09996bf9da715ff963fe98f",
+      "5a0a50cb2af510ccc915345072477be98bafba15fbc878d3e8e305b3b47751a4"
+    ],
+    "private/tools/setup-zoho-confirmation.py": [
+      "3446a5269c3d765574f353d4de54eba65d3a07a5d755cd782232c3dff810890b",
+      "d93ef3b26a2bb92ebc256b12a2172ceff515dfe2a079f8ab3a2bec48e62827c7"
     ],
     "private/views/booking-payment.php": [
       "b9fc01773cb12a08f79f3e58acfcefa0e91b6b7034e256fe12181e21d3ce3b45",

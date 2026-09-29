@@ -64,3 +64,9 @@ staff-verified test number are required for phone-login activation. Missing setu
 leaves the fully installed package disabled. An installed older r1 portal is
 preserved for explicit migration review. The reported r1 attempts failed at
 preflight, before either installation or activation.
+
+## Installer Revision r2.1 cPanel Compatibility
+
+The server's aggregate report exposed a too-strict document-root read/execute test and three omitted maintenance-script hashes. The saved server inventory confirms PUBLIC owner 1009, group 1011, mode 0750, and exact repository-compatible contents for check-calendar-confirmation.php, setup-zoho-calendar.py and setup-zoho-confirmation.py. The website root is now accepted with owner read/execute, the same sitesee owner requirement and rejection of group/other write. Its metadata is never changed. The three tool files are recognized by exact LF/CRLF hashes for metadata-only repair; none is executed or replaced.
+
+All 22 application payloads, 47 retained dependency contents and font identities are byte-for-byte unchanged. 32 local installer tests pass, including a fixture reproducing the 0750 website directory plus all three 0644 maintenance scripts, unchanged website-root metadata, rejection of modified maintenance contents and rejection of group-writable website roots. The same independent auditor rechecked the narrow revision. The Word manual v1.8 remains the application/recovery guide; this appendix records the additional installer checks.

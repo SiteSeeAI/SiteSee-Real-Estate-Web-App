@@ -115,6 +115,17 @@ class CompleteInspectionTests(unittest.TestCase):
  def scan(self):return m.scan(self.obj,self.files,self.root,self.public,self.uid,self.gid)
  def install(self):return m.install(self.obj,self.files,self.root,self.public,self.uid,self.gid)
  def values(self):return m.desired(self.obj,self.files,self.root,self.public,self.uid)
+ def test_cpanel_0750_root_and_three_legacy_scripts_match_server_layout(self):
+  self.public.chmod(0o750)
+  record=json.loads(self.manifest.read_text())
+  for name in ['tools/check-calendar-confirmation.php','tools/setup-zoho-calendar.py','tools/setup-zoho-confirmation.py']:
+   source=ROOT/name;data=source.read_bytes();path=self.root/name;path.parent.mkdir(exist_ok=True,mode=0o700);path.write_bytes(data);path.chmod(0o644);record['files'][name]=m.sha(data)
+  self.manifest.write_bytes(m.encode(record));report=self.scan();self.assertEqual(report['errors'],[]);self.assertNotIn(str(self.public),report['metadata_repairs']);self.assertEqual(len(report['metadata_repairs']),3)
+  before=self.public.stat();m.repair_metadata(report,self.root,self.uid,self.gid);self.install();after=self.public.stat();self.assertEqual((before.st_uid,before.st_gid,before.st_mode),(after.st_uid,after.st_gid,after.st_mode))
+ def test_unrecognized_maintenance_edit_stays_blocked(self):
+  name='tools/setup-zoho-calendar.py';p=self.root/name;p.parent.mkdir(exist_ok=True,mode=0o700);p.write_bytes(b'unreviewed script');p.chmod(0o644);record=json.loads(self.manifest.read_text());record['files'][name]=m.sha(p.read_bytes());self.manifest.write_bytes(m.encode(record));report=self.scan();self.assertTrue(any('Content requires review' in e and name in e for e in report['errors']));self.assertNotIn(str(p),report['metadata_repairs'])
+ def test_group_writable_website_root_still_blocked(self):
+  self.public.chmod(0o775);report=self.scan();self.assertTrue(any('Website root' in e for e in report['errors']));self.assertNotIn(str(self.public),report['metadata_repairs'])
  def test_complete_current_baseline(self):
   report=self.scan();self.assertEqual(report['errors'],[]);self.assertEqual(report['metadata_repairs'],{});self.assertGreaterEqual(len(report['checked_files']),49)
  def test_public_path_uses_website_root(self):
