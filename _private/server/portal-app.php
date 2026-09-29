@@ -9,7 +9,7 @@ header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
 header('X-Robots-Tag: noindex, nofollow, noarchive');
 header('Content-Type: text/html; charset=utf-8');
-header("Content-Security-Policy: default-src 'none'; style-src 'self'; font-src 'self'; script-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");
+header("Content-Security-Policy: default-src 'none'; style-src 'self'; font-src 'self'; script-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");
 // Independent, default-off release gate. Never enables another integration or accepts live keys.
 if (getenv('SITESEE_REAL_ESTATE_PORTAL_TEST_ENABLED') !== '1' || getenv('SITESEE_REAL_ESTATE_BOOKING_TEST_ENABLED') !== '1') {
     http_response_code(503);exit('Account access is not available yet.');

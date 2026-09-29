@@ -107,7 +107,7 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
     const date=new Date(Date.now()+10*86400000).toISOString().slice(0,10);await page.getByLabel('Preferred date',{exact:true}).fill(date);
     await page.locator('[data-key=meetPhotographer][value=No]').check();await page.getByLabel('Lockbox code · 10 digits',{exact:true}).fill('1112223334');
     await page.getByLabel('I agree to the cancellation policy.',{exact:true}).check();
-    const reviewResponse=page.waitForResponse(r=>r.url()===origin+'/account.php'&&r.request().postData()?.includes('review_order'));
+    const reviewResponse=page.waitForResponse(r=>r.url()===origin+'/account.php'&&r.request().postData()?.includes('review_order'),{timeout:10000}).catch(async e=>{throw Error(e.message+' Page: '+await page.locator('main').innerText()+' Errors: '+JSON.stringify(errors));});
     await page.getByRole('button',{name:'Next →',exact:true}).click();const reviewHttp=await reviewResponse;
     assert.equal(reviewHttp.status(),200,await reviewHttp.text());const review=await reviewHttp.json();
     await page.getByRole('heading',{name:'Review your order',exact:true}).waitFor();

@@ -17,9 +17,6 @@
   Object.assign(draft.details,config.details);
   if(config.seed){draft.market=config.seed.market;Object.assign(draft.details,config.seed.details);Object.assign(draft[draft.market],config.seed.state);}
   let step = config.seed ? 1 : 0, review=null, busy=false;
-  const emptyAppointment = structuredClone(draft.appointment);
-  const defaultResidential = structuredClone(draft.residential);
-  const defaultCommercial = structuredClone(draft.commercial);
   const state = () => draft[draft.market];
   const engine = () => draft.market === 'residential' ? SiteSeeQuote : SiteSeeCommercialQuote;
   function quote() { try { return engine().calculate(state()); } catch (_) { return null; } }
@@ -37,7 +34,7 @@
     return `<div class="sp-grid">${items.map(([value,label,detail]) => `<label class="sp-choice"><input type="radio" name="${group}-${key}" data-group="${group}" data-key="${key}" value="${esc(value)}" ${obj[key] === value ? 'checked' : ''}><span><strong>${esc(label)}</strong>${detail ? `<small>${esc(detail)}</small>` : ''}</span></label>`).join('')}</div>`;
   }
   function total() {
-    const q = quote();
+    const q = review?.quote || quote();
     return `<div class="sp-total"><div>Estimated job total<small>Final scope and availability require SiteSee approval.${q?.platformMonthlyCents ? ' Residential platform: '+money(q.platformMonthlyCents)+'/month, separate from this total. No subscription is activated here.' : ''}</small></div><strong>${q ? money(q.totalCents) : '—'}</strong></div>`;
   }
   function lineItems(q) {
@@ -73,7 +70,7 @@
     if (!residential) {
       html += `<fieldset><legend>Media usage license</legend>${choices('price','licenseType',[['term','Fixed term','First six months included'],['unlimited','Unlimited','50% of eligible photography, aerial and video charges']])}</fieldset>`;
       if (s.licenseType==='term') html += `<div class="sp-grid">${field('price','licenseMonths','License term · months','number','min="6" max="18"')}</div>`;
-      if (s.selected.includes('mp') || s.selected.includes('platform')) html += `<div class="sp-review"><h3>Matterport hosting</h3><p>Six months included. Additional months: $6.99 monthly or $4.99 paid in advance. The selected term is included in this estimate.</p>${check('price','hostingPrepaid','Pay hosting in advance')}<div class="sp-grid">${field('price','hostingMonths','Total hosting term · months','number','min="6" max="18"')}</div></div>`;
+      if (s.selected.includes('mp')) html += `<div class="sp-review"><h3>Matterport hosting</h3><p>Six months included. Additional months: $6.99 monthly or $4.99 paid in advance. The selected term is included in this estimate.</p>${check('price','hostingPrepaid','Pay hosting in advance')}<div class="sp-grid">${field('price','hostingMonths','Total hosting term · months','number','min="6" max="18"')}</div></div>`;
     }
     return html + '<p class="sp-note">Platform and hosting selections retain the existing pricing terms. No subscription is activated with this order.</p>';
   }
