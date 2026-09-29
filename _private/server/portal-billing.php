@@ -178,6 +178,7 @@ function portal_billing_customer(PDO $db,string $account,string $reference,calla
 function portal_billing_config_valid(array $c): void
 {
     portal_billing_need(($c['livemode']??null)===false&&($c['active']??null)===true&&(bool)preg_match('/^bpc_[A-Za-z0-9_]+$/D',(string)($c['id']??''))&&($c['login_page']['enabled']??null)===false&&($c['features']['payment_method_update']['enabled']??null)===true);
+    foreach(['customer_update','invoice_history','subscription_update','subscription_cancel'] as $key)portal_billing_need(($c['features'][$key]['enabled']??null)===false);
     foreach($c['features']??[] as $key=>$feature)if($key!=='payment_method_update')portal_billing_need(($feature['enabled']??false)===false);
 }
 function portal_billing_manage(PDO $db,string $account,string $reference,?callable $api=null): string

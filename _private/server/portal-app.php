@@ -58,6 +58,11 @@ try {
             portal_session_login($verified);portal_redirect();
         }
         if(!$account)portal_sign_in('Please sign in to continue.');
+        if(str_starts_with($action,'appointment_')||in_array($action,['balance_checkout','billing_manage'],true)){
+            $recent=array_values(array_filter($_SESSION['portal_service_requests']??[],static fn($t):bool=>is_int($t)&&$t>time()-60));
+            if(count($recent)>=20){if($action==='balance_checkout')portal_json(['error'=>'Please wait a minute before retrying.'],429);portal_page('Please Wait','<p>Please wait a minute before retrying.</p>',$account,429);}
+            $recent[]=time();$_SESSION['portal_service_requests']=$recent;
+        }
         if(str_starts_with($action,'appointment_')){
             $reference=portal_input($_POST,'reference',32);
             if(!portal_owns_order($db,$account['id'],$reference))portal_page('Order Unavailable','<p>This order is not available in your account.</p>',$account,404);
