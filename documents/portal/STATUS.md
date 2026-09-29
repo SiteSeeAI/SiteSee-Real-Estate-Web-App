@@ -22,6 +22,14 @@ The portal source connects sign in → My Orders → owned details → guided Ne
 
 The release remains **not installed** and defaults off behind both portal and booking TEST flags. No live Stripe settings, provider credentials, cron, existing booking rows, calendar events or customer messages were changed.
 
+## Installation Package Checkpoint
+
+Release `portal-20260929-r1` is prepared as one self-contained `tools/install-customer-portal.py`, with `documents/deployment/Customer_Portal_20260929.md` as its operator guide. Final tested source `902f1380bd4fa67a571e3338b570092605f9d3be` passed [run 36592621821](https://github.com/SiteSeeAI/SiteSee-Real-Estate/actions/runs/36592621821), job 109489338713: seven PHP/browser suites, 13 Python installer tests, source syntax and artifact reproduction. The four review passes and independent audit have no unresolved blocking findings; see `INSTALLATION-REVIEW.md` and `installation-source.json`.
+
+The package embeds 19 files and verifies 46 retained dependencies plus existing fonts and release metadata. A private release flag controls account access without editing PHP-FPM. Installation starts disabled, unknown server edits stop replacement, and incomplete attempts can recover from verified backups. Before activation, rollback restores files without touching data. After any activation, disable retains the webhook and ledger and blocks destructive rollback so delayed payment events remain processable. The manual is version 1.7 with installation and recovery instructions.
+
+**Not installed.** No direct server access exists. Next, the operator uploads the one installer through cPanel and runs the documented WHM command block, then verifies the actual TEST journey using a fresh controlled order. Provider/SDK, active PHP-FPM, inbox, Microsoft/CRM and historical reconciliation checks remain outstanding. No real provider operation was performed here. Earlier source checkpoint evidence below is retained for continuity.
+
 ## Checkpoint verification
 
 Verified source/test commit: `5726d6a2a17ba70fa67fa432947b5739a592c010`. Final targeted run: [36583982555](https://github.com/SiteSeeAI/SiteSee-Real-Estate/actions/runs/36583982555). Job 109459250660 completed successfully, with all six explicit PASS markers verified in its logs.
@@ -61,7 +69,7 @@ Stripe remains TEST. Deposit receipt is distinct from staff price approval, rush
 
 The accepted delivery window is **2½–6 days from 2026 09 28**, with **2026 10 04** as the outer date in America/Chicago. The clock does not restart with a session. Target the full integrated TEST journey by **2026 10 01**, reserving the rest for integration fixes, package audit, installation and recovery checks. Apply the Golden Rule at every step: reuse verified foundations, batch complete workflows, minimize user interaction and raise only concrete blockers.
 
-Next package: prepare the complete versioned TEST installation and rollback procedure, verify installed configuration without exposing credentials, and run actual TEST-provider/SDK, inbox and CRM integration checks. Reconcile historical ownership where evidence is available. No direct server access is established; use the existing cPanel upload and WHM procedure as one complete package. Carry forward the completed lifecycle checkpoint and test only changed integration paths. Do not rebuild the completed source packages or assume installation has occurred.
+Next package: execute the prepared complete TEST installer and verify installed configuration without exposing credentials, then run actual TEST-provider/SDK, inbox and CRM integration checks. Reconcile historical ownership where evidence is available. No direct server access is established; use the existing cPanel upload and WHM procedure as one complete package. Carry forward the completed lifecycle checkpoint and test only changed integration paths. Do not rebuild the completed source packages or assume installation has occurred.
 
 Before release: test two isolated customers; expired/reused links and logout/session expiry; both pricing paths and their server parity; durable submission/payment retries; only eligible payment/appointment actions; owned invoice/receipt access; mobile keyboard use; and rollback. Carry forward completed booking evidence and test only changed integration paths. No full booking validation cycle is required because obsolete uploads were quarantined.
 
