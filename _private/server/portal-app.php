@@ -3,7 +3,8 @@ declare(strict_types=1);
 ini_set('display_errors', '0');
 header('Cache-Control: no-store, private, max-age=0');
 header('Pragma: no-cache');
-header('Referrer-Policy: no-referrer');
+// Preserve same-origin form Origin headers while suppressing cross-origin referrers.
+header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
 header('X-Robots-Tag: noindex, nofollow, noarchive');
