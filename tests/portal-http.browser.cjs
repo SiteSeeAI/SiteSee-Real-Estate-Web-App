@@ -85,6 +85,52 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
     if(shots){const name=view.includes('order')?'account-order':view.includes('profile')?'account-profile':'account-orders';await page.evaluate(()=>document.fonts.ready);assert(await page.evaluate(()=>document.fonts.check('16px Inter') && document.fonts.check('21px Poppins')));await page.screenshot({path:path.join(shots,name+'.png'),fullPage:true});console.log('PORTAL_VISUAL_'+name+':'+(await page.screenshot({type:'jpeg',quality:45,fullPage:true})).toString('base64'));}
   }
   await goto(page);await page.setViewportSize({width:390,height:844});if(shots){await page.screenshot({path:path.join(shots,'account-mobile.png'),fullPage:true});console.log('PORTAL_VISUAL_account-mobile:'+(await page.screenshot({type:'jpeg',quality:55,fullPage:true})).toString('base64'));}
+  // Real account wizard: both markets, retained answers, server review, durable submit and owned deposit.
+  await goto(page,'/account.php?view=profile');
+  await post(page,{action:'save_profile',first_name:'Jordan',last_name:'Example',company:'Example Realty',phone:'3125550100'});
+  const apiPost=(p,token,data)=>p.request.post(origin+'/account.php',{form:{csrf:token,...data},headers:{Origin:origin,Accept:'application/json'},maxRedirects:0});
+  let residentialReference;
+  for(const market of ['residential','commercial']){
+    await goto(page,'/account.php?view=new');
+    await page.locator(`[data-key=market][value=${market}]`).check();
+    await page.getByRole('button',{name:'Next →',exact:true}).click();
+    await page.getByLabel('Street address',{exact:true}).fill(market==='residential'?'415 New Example Lane':'700 Example Office');
+    await page.getByLabel('City',{exact:true}).fill('Chicago');await page.getByLabel('ZIP code',{exact:true}).fill('60601');
+    await page.getByRole('button',{name:'Back',exact:true}).click();await page.getByRole('button',{name:'Next →',exact:true}).click();
+    assert.equal(await page.getByLabel('City',{exact:true}).inputValue(),'Chicago','Back keeps answers');
+    await page.getByRole('button',{name:'Next →',exact:true}).click();
+    if(market==='residential')await page.locator('[data-key=package][value=gold]').check();
+    else {await page.locator('[data-service=platform]').check();await page.locator('[data-service=mp]').check();await page.getByLabel('Total hosting term · months',{exact:true}).fill('12');}
+    const estimated=await page.locator('.sp-total strong').textContent();
+    if(shots&&market==='commercial'){await page.setViewportSize({width:1200,height:950});await page.screenshot({path:path.join(shots,'purchase-services.png'),fullPage:true});console.log('PORTAL_VISUAL_purchase-services:'+(await page.screenshot({type:'jpeg',quality:45,fullPage:true})).toString('base64'));}
+    await page.getByRole('button',{name:'Next →',exact:true}).click();
+    const date=new Date(Date.now()+10*86400000).toISOString().slice(0,10);await page.getByLabel('Preferred date',{exact:true}).fill(date);
+    await page.locator('[data-key=meetPhotographer][value=No]').check();await page.getByLabel('Lockbox code · 10 digits',{exact:true}).fill('1112223334');
+    await page.getByLabel('I agree to the cancellation policy.',{exact:true}).check();
+    const reviewResponse=page.waitForResponse(r=>r.url()===origin+'/account.php'&&r.request().postData()?.includes('review_order'));
+    await page.getByRole('button',{name:'Next →',exact:true}).click();const reviewHttp=await reviewResponse;
+    assert.equal(reviewHttp.status(),200,await reviewHttp.text());const review=await reviewHttp.json();
+    await page.getByRole('heading',{name:'Review your order',exact:true}).waitFor();
+    assert.equal('$'+(review.quote.totalCents/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}),estimated,'Actual server and engine price parity');
+    for(const width of [320,390,736,1200]){await page.setViewportSize({width,height:950});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Wizard overflow '+width);}
+    if(shots&&market==='residential'){await page.screenshot({path:path.join(shots,'purchase-review.png'),fullPage:true});console.log('PORTAL_VISUAL_purchase-review:'+(await page.screenshot({type:'jpeg',quality:45,fullPage:true})).toString('base64'));}
+    await page.getByRole('button',{name:'Place order & continue to deposit',exact:true}).click();
+    await page.getByRole('heading',{name:'Your Test Deposit',exact:true}).waitFor();
+    const reference=new URL(page.url()).searchParams.get('reference');assert.match(reference,/^[A-F0-9]{20}$/);
+    if(market==='residential')residentialReference=reference;
+    const mailAfter=fs.readFileSync(mail,'utf8');
+    const retry=await apiPost(page,await csrf(page),{action:'submit_order',review:review.review});assert.equal((await retry.json()).reference,reference);assert.equal(fs.readFileSync(mail,'utf8'),mailAfter,'HTTP retry does not resend notices');
+    const wrong=await apiPost(two,await csrf(two),{action:'submit_order',review:review.review});assert.equal(wrong.status(),422);
+    const deniedPay=await apiPost(two,await csrf(two),{action:'checkout',reference,card_consent:'yes'});assert.equal(deniedPay.status(),404);
+    const noConsent=await apiPost(page,await csrf(page),{action:'checkout',reference});assert.equal(noConsent.status(),422);
+    await goto(two,'/account.php?view=payment&reference='+reference);assert.match(await two.locator('main').textContent(),/not available/);await goto(two,'/account.php?view=profile');
+    await goto(page,'/account.php?view=payment&result=success&reference='+reference);assert.match(await page.locator('main').textContent(),/not been recorded/);assert(!(await page.content()).includes('agent_token'));
+    await goto(page,'/account.php?view=order&reference='+reference);assert.match(await page.locator('main').textContent(),/Deposit Not Recorded/);assert.match(await page.locator('main').textContent(),/Awaiting Staff Review/);
+  }
+  await goto(page,'/account.php?view=new&again='+residentialReference);await page.getByLabel('Street address',{exact:true}).waitFor();assert.equal(await page.getByLabel('Street address',{exact:true}).inputValue(),'415 New Example Lane');
+  await page.getByRole('button',{name:'Next →',exact:true}).click();assert(await page.locator('[data-key=package][value=gold]').isChecked());
+  await page.getByRole('button',{name:'Next →',exact:true}).click();assert.equal(await page.getByLabel('Preferred date',{exact:true}).inputValue(),'');assert(!(await page.getByLabel('I agree to the cancellation policy.',{exact:true}).isChecked()));assert(!(await page.content()).includes('1112223334'));
+  if(shots){await page.setViewportSize({width:390,height:844});await page.screenshot({path:path.join(shots,'purchase-mobile.png'),fullPage:true});console.log('PORTAL_VISUAL_purchase-mobile:'+(await page.screenshot({type:'jpeg',quality:45,fullPage:true})).toString('base64'));}
   await goto(page,'/account.php?view=profile');const retired=(await context.cookies())[0];await page.getByRole('button',{name:'Sign Out',exact:true}).click();await page.getByRole('heading',{name:'Sign In',exact:true}).waitFor();
   await context.addCookies([retired]);await goto(page,'/account.php?view=order&reference=AAAAAAAAAA');assert(!(await page.content()).includes('1234567890'));
   setup('remove-approval');await login(page,'one@example.com');assert((await page.content()).includes('101 Example Lane'),'Approval persists after source removal');
@@ -96,7 +142,7 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   const before=fs.readFileSync(mail,'utf8');await post(page,{action:'request_login',email:'one@example.com'});assert.equal(fs.readFileSync(mail,'utf8'),before,'Disabled account mail suppressed');
   assert.equal(setup('snapshot'),baseline,'Bookings, scheduling, lifecycle and payment evidence unchanged');
   assert.deepEqual(errors,[]);assert(!/PHP (?:Warning|Fatal|Parse)/.test(serverLog),serverLog);
-  console.log('portal-http: PASS (actual HTTPS browser journey; two customers; both existing proof adapters; CSRF/origin; single use; expiry; logout replay; profile isolation; no financial/provider writes; 320/390/736/1200 layout)');
+  console.log('portal-http: PASS (actual HTTPS browser journey; two customers; both existing proof adapters; CSRF/origin; single use; expiry; logout replay; profile isolation; synthetic ordering; no external provider writes; 320/390/736/1200 layout)');
 
  } finally {
   if(browser)await browser.close();if(proxy)await new Promise(r=>proxy.close(r));if(php)php.kill();fs.rmSync(temp,{recursive:true,force:true});

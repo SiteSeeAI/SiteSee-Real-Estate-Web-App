@@ -51,6 +51,9 @@ function portal_order_page(array $order, array $account): never
         }
         $body.='</dl></details>';
     }
+    $body.='<section class="panel"><h2>Next Steps</h2>';
+    if(!empty($order['portal_payment']) && !$order['deposit_paid_cents'] && $order['appointment_status']!=='Cancelled')$body.='<p><a href="/account.php?view=payment&amp;reference='.$e($order['reference']).'">Continue To Test Deposit</a></p>';
+    $body.='<a href="/account.php?view=new&amp;again='.$e($order['reference']).'">Order Again</a><p class="help">Start a new service order. Review current pricing and choose a new date.</p></section>';
     portal_page('Order Details',$body,$account);
 }
 function portal_profile_page(PDO $db, array $account, string $notice = ''): never

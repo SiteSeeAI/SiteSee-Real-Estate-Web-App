@@ -23,7 +23,7 @@ if ($command==='expire-session' || $command==='absolute-session') {
 }
 if ($command==='snapshot') {
     $snapshot=[];
-    foreach(['bookings','booking_scheduling','booking_confirmations','booking_lifecycle','stripe_events'] as $table)$snapshot[$table]=$db->query('SELECT * FROM '.$table)->fetchAll();
+    foreach(['bookings','booking_scheduling','booking_confirmations','booking_lifecycle','stripe_events'] as $table)$snapshot[$table]=$db->query("SELECT * FROM ".$table." WHERE reference IN ('AAAAAAAAAA','BBBBBBBBBB','CCCCCCCCCC')")->fetchAll();
     echo hash('sha256',json_encode($snapshot));exit;
 }
 if ($command==='remove-approval') {

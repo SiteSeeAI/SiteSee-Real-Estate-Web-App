@@ -8,5 +8,5 @@ if($path==='/account.php') {
     $_SERVER['HTTPS']='on';require getenv('PORTAL_TEST_PRIVATE').'/server/portal-app.php';return true;
 }
 if(preg_match('~^/assets/fonts/(?:Inter-Regular|Poppins-Regular|Poppins-SemiBold)\.ttf$~D',(string)$path))return false;
-if(preg_match('~^/portal-assets/portal\.(?:css|js)$~D',(string)$path))return false;
+if(preg_match('~^/portal-assets/(?:portal|order|payment)\.(?:css|js)$~D',(string)$path))return false;
 http_response_code(404);return true;
