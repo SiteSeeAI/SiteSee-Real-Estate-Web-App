@@ -1,0 +1,105 @@
+{
+  "baseline_commit": "e0d160180189573ef4edac0c712daca6b4e12bab",
+  "source_test_commit": "107196ec8e6e50e6a0347da3607bb7f7b0a1fa00",
+  "files": [
+    {
+      "path": ".github/workflows/customer-portal-ci.yml",
+      "change": "modified",
+      "sha256": "1b3c5f17a750990b3851d79b7cb69c4e8b71666b3d5e646ee6767c7fcbb00d47",
+      "prior_sha256": "a3741f6ae2042d2cdf61fccae2951ca5bc5f597f779650cb001f7f803603ee08",
+      "bytes": 2370
+    },
+    {
+      "path": "_private/server/portal-app.php",
+      "change": "modified",
+      "sha256": "8271b0c2ddd050c620a6989631492886e954b60eaef79fb1240dd1f7652c018f",
+      "prior_sha256": "0c108f993d942cbbecc58fa1149135fb525bb6b41d78831f3be716cfbc9876c5",
+      "bytes": 8742
+    },
+    {
+      "path": "_private/server/portal-mail.php",
+      "change": "modified",
+      "sha256": "111aef50b78506cc46b3987eb07778ec9363049762f888f74927a824a382ffa0",
+      "prior_sha256": "95e66c865f044204a4cd859fff61d3216a9ece35db46e991fb5562138e03daf4",
+      "bytes": 2366
+    },
+    {
+      "path": "_private/server/portal-purchase.php",
+      "change": "added",
+      "sha256": "3dd1a529c2dedd491fc99dadac06244172bace7917b91b7baad7427ee5fedcb6",
+      "prior_sha256": null,
+      "bytes": 14819
+    },
+    {
+      "path": "_private/views/portal-purchase.php",
+      "change": "added",
+      "sha256": "22026ff3540ef02d2600327a74bd25fc500e5ef2f198517a2c08cf499bc5272b",
+      "prior_sha256": null,
+      "bytes": 5071
+    },
+    {
+      "path": "_private/views/portal.php",
+      "change": "modified",
+      "sha256": "6cb1beb06300a36e85761e54b234234d6864d7ab68e67eb41596b4735f298553",
+      "prior_sha256": "34fcf990d4fdbdae3a24c3b24e75e515219b5b4a714478d770c767dbe96cd7b1",
+      "bytes": 8902
+    },
+    {
+      "path": "public/portal-assets/order.css",
+      "change": "added",
+      "sha256": "44497f927bd3cfc1abe35270abdc31a2ed3a085f844277a8bc7cfa75c370013e",
+      "prior_sha256": null,
+      "bytes": 8140
+    },
+    {
+      "path": "public/portal-assets/order.js",
+      "change": "added",
+      "sha256": "6e9598959f13f754a30191b0c408115d504af8399490253784aa3b8eb49c9f78",
+      "prior_sha256": null,
+      "bytes": 20021
+    },
+    {
+      "path": "public/portal-assets/payment.js",
+      "change": "added",
+      "sha256": "869540361baf8178de23262485c19d73327c7503c270e95f6b11aa689a894a4f",
+      "prior_sha256": null,
+      "bytes": 2544
+    },
+    {
+      "path": "public/portal-assets/portal.css",
+      "change": "modified",
+      "sha256": "e808548931bd9f030239077234bf761f8c7c48dea70394dc6269946842789f02",
+      "prior_sha256": "82ea8b1eb82d3923b0aac1504f2431e693a5c921829106590d60d977b1b3b551",
+      "bytes": 4855
+    },
+    {
+      "path": "tests/fixtures/portal-http/router.php",
+      "change": "modified",
+      "sha256": "f868751fd1c9115cfc30f9aae07214334fc1337e7088efec246301a4b6e524a4",
+      "prior_sha256": "e91a96790b8874e4afc98fb1735a8f3f76766743db3afe86a6f5d4fc1da6f6a6",
+      "bytes": 800
+    },
+    {
+      "path": "tests/fixtures/portal-http/setup.php",
+      "change": "modified",
+      "sha256": "52b1a50118b76dcd8ee4717c3b3493d5546a62ac8bb7d108b8c15835c02a5f7b",
+      "prior_sha256": "42282b291adf048f2d931f7416d7803a98e0f1eebf1d2c2c4e66b80a17a8e4ab",
+      "bytes": 3609
+    },
+    {
+      "path": "tests/portal-http.browser.cjs",
+      "change": "modified",
+      "sha256": "5fb83e4e69019dd7cad64fc553e4bf43f58687ba3f1343e13f04cc547fde0145",
+      "prior_sha256": "1f1d298b081548fe108af852353e98bf9c8aa5725b1cf44b8136c35116b3cbb8",
+      "bytes": 18875
+    },
+    {
+      "path": "tests/portal-purchase.test.php",
+      "change": "added",
+      "sha256": "87ebbe82be0805b1481984dfd33fea4046bf3862c0946ff1686bc8f72a987616",
+      "prior_sha256": null,
+      "bytes": 9460
+    }
+  ],
+  "original_application_mismatches": []
+}
