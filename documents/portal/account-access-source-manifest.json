@@ -1,0 +1,67 @@
+{
+  "source_commit": "c8327403de3310ef5d4d2f73889bb0ff45324bb3",
+  "deployment_state": "not-installed",
+  "purpose": "Reviewed account source checkpoint; not an upload or installation manifest",
+  "files": {
+    "_private/server/portal-access.php": {
+      "sha256": "b4425d1ea0f4b448403bd3783e628991b3909d61a1a30cbc8cca4d98e7c748f7",
+      "bytes": 8598
+    },
+    "_private/server/portal-app.php": {
+      "sha256": "0c108f993d942cbbecc58fa1149135fb525bb6b41d78831f3be716cfbc9876c5",
+      "bytes": 5715
+    },
+    "_private/server/portal-session.php": {
+      "sha256": "3b61ac29db3d45328eb8cea05af5a91e260e2e23b5065087fc11bbfc9dacaae7",
+      "bytes": 2821
+    },
+    "_private/server/portal-orders.php": {
+      "sha256": "07a9035eb9a97653b0d5a4912ca2ae41f6ceca5e76002016366a019616f4e216",
+      "bytes": 7975
+    },
+    "_private/server/portal-mail.php": {
+      "sha256": "95e66c865f044204a4cd859fff61d3216a9ece35db46e991fb5562138e03daf4",
+      "bytes": 1195
+    },
+    "_private/views/portal.php": {
+      "sha256": "34fcf990d4fdbdae3a24c3b24e75e515219b5b4a714478d770c767dbe96cd7b1",
+      "bytes": 8400
+    },
+    "public/account.php": {
+      "sha256": "2de37829ae0090cd113af5814f50d3de27e0acb167a4f485ef27d96f77845b24",
+      "bytes": 180
+    },
+    "public/portal-assets/portal.css": {
+      "sha256": "82ea8b1eb82d3923b0aac1504f2431e693a5c921829106590d60d977b1b3b551",
+      "bytes": 4660
+    },
+    "public/portal-assets/portal.js": {
+      "sha256": "c1fe665b7f07617bdebfed1b42d4b9778ed8bc4626b72e4ef627c6740cf78adb",
+      "bytes": 651
+    },
+    "tests/portal-access.test.php": {
+      "sha256": "36f6a2088cb5868367bef83e86206dae80ace397a782f212cb468f5e00d5524e",
+      "bytes": 4560
+    },
+    "tests/portal-session.test.php": {
+      "sha256": "2c04ee2df6753dd6214437d070a97a84cfbccb29647706cd07e7f91b99621b57",
+      "bytes": 2223
+    },
+    "tests/portal-http.browser.cjs": {
+      "sha256": "1f1d298b081548fe108af852353e98bf9c8aa5725b1cf44b8136c35116b3cbb8",
+      "bytes": 12194
+    },
+    "tests/fixtures/portal-http/setup.php": {
+      "sha256": "42282b291adf048f2d931f7416d7803a98e0f1eebf1d2c2c4e66b80a17a8e4ab",
+      "bytes": 3119
+    },
+    "tests/fixtures/portal-http/router.php": {
+      "sha256": "e91a96790b8874e4afc98fb1735a8f3f76766743db3afe86a6f5d4fc1da6f6a6",
+      "bytes": 782
+    },
+    ".github/workflows/customer-portal-ci.yml": {
+      "sha256": "a3741f6ae2042d2cdf61fccae2951ca5bc5f597f779650cb001f7f803603ee08",
+      "bytes": 2271
+    }
+  }
+}

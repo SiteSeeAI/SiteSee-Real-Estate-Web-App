@@ -24,7 +24,11 @@ The release remains **not installed**. The new portal gate defaults off and requ
 
 ## Checkpoint verification
 
-Implementation commits and final targeted results are recorded here when the security and browser checks and independent audit finish. PHP 8.2 primitive/session checks passed in the initial run. The initial HTTP test startup failed; its isolated fixture state and safe diagnostics were corrected before rerunning. The test harness captures new login email locally and does not deliver customer mail. Production deployment and real inbox delivery are not yet verified.
+Verified source/test commit: `c8327403de3310ef5d4d2f73889bb0ff45324bb3`. [Targeted CI 36575666333](https://github.com/SiteSeeAI/SiteSee-Real-Estate/actions/runs/36575666333) completed successfully on that exact commit: PHP 8.2 syntax, identity primitives, strict session/CSRF checks, original preview checks and the actual HTTPS browser account journey. Two isolated approved customers proved owned-only history/details, both existing proof adapters, retained approval, profile persistence, expiry, reused-link rejection, logout-cookie replay rejection and four responsive widths. Existing synthetic booking, scheduling, lifecycle and payment rows remained unchanged. Login mail was captured locally; PHP provider transports and nonlocal browser requests were blocked.
+
+The independent audit found no critical/high-severity issue. Its local-font, status-record and harness-isolation findings were corrected and rechecked. Desktop order history/details/profile and mobile order history screenshots from the actual HTTP workflow were visually inspected. The browser suite exposed and verified the correction of a basic-form Origin conflict; test fixture state, response capture and the runner's unrelated JIT startup warning were also corrected. All checks are now green.
+
+The source manifest is `account-access-source-manifest.json`. Production deployment, actual inbox receipt, staff reconciliation of ambiguous history and the remaining purchase/payment integrations are still pending. No partial installation package is supplied.
 
 Four review passes and independent audit findings are in `ACCOUNT-ACCESS-REVIEW.md`. Every recovered existing application file retains its baseline Git blob hash; intentional executable changes to the baseline are limited to the portal CI workflow. New implementation files are additions, not byte-equivalent replacements.
 
