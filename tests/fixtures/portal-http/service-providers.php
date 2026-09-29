@@ -21,6 +21,9 @@ function portal_stripe(string $method,string $path,array $body=[],string $key=''
     if($path==='/checkout/sessions/cs_test_http_deposit')return ['id'=>'cs_test_http_deposit','livemode'=>false,'mode'=>'payment','status'=>'complete','payment_status'=>'paid','currency'=>'usd','amount_total'=>$amount,'client_reference_id'=>$ref,'metadata'=>['booking_reference'=>$ref],'customer'=>'cus_http','payment_intent'=>'pi_http'];
     if($path==='/payment_intents/pi_http')return ['id'=>'pi_http','livemode'=>false,'customer'=>'cus_http','status'=>'succeeded','currency'=>'usd','amount_received'=>$amount,'latest_charge'=>'ch_http'];
     if($path==='/charges/ch_http')return ['id'=>'ch_http','livemode'=>false,'customer'=>'cus_http','payment_intent'=>'pi_http','paid'=>true,'captured'=>true,'currency'=>'usd','amount'=>$amount,'amount_captured'=>$amount,'amount_refunded'=>0,'disputed'=>false,'receipt_url'=>'https://pay.stripe.com/receipts/payment/synthetic-http'];
+    if(str_starts_with($path,'/checkout/sessions?'))return ['has_more'=>false,'data'=>[portal_stripe('GET','/checkout/sessions/cs_test_http_deposit')]];
+    if(str_starts_with($path,'/payment_intents?'))return ['has_more'=>false,'data'=>[['id'=>'pi_http','customer'=>'cus_http','livemode'=>false]]];
+    if(str_starts_with($path,'/invoices?')||str_starts_with($path,'/subscriptions?'))return ['has_more'=>false,'data'=>[]];
     if($path==='/checkout/sessions'&&$method==='POST')return ['id'=>'cs_test_http_balance','livemode'=>false,'mode'=>'payment','status'=>'open','payment_status'=>'unpaid','currency'=>'usd','amount_total'=>(int)$body['line_items[0][price_data][unit_amount]'],'client_reference_id'=>$ref,'metadata'=>['booking_reference'=>$ref,'portal_payment_kind'=>'balance','portal_attempt'=>$body['metadata[portal_attempt]']],'customer'=>'cus_http','url'=>'https://checkout.stripe.com/c/pay/synthetic-http'];
     throw new RuntimeException('Fixture blocked unrecognized provider request');
 }

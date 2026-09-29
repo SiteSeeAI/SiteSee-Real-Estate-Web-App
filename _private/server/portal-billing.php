@@ -33,7 +33,7 @@ function portal_billing_url(string $url,array $hosts): string
 function portal_stripe(string $method,string $path,array $body=[],string $idempotency=''): array
 {
     $key=booking_test_key();
-    $read='~^/(?:checkout/sessions/cs_test_[A-Za-z0-9_]+|payment_intents/pi_[A-Za-z0-9_]+|charges/ch_[A-Za-z0-9_]+|invoices/in_[A-Za-z0-9_]+|billing_portal/configurations/bpc_[A-Za-z0-9_]+|checkout/sessions\?customer=cus_[A-Za-z0-9_]+&limit=100)$~D';
+    $read='~^/(?:checkout/sessions/cs_test_[A-Za-z0-9_]+|payment_intents/pi_[A-Za-z0-9_]+|charges/ch_[A-Za-z0-9_]+|invoices/in_[A-Za-z0-9_]+|billing_portal/configurations/bpc_[A-Za-z0-9_]+|(?:checkout/sessions|payment_intents|invoices)\?customer=cus_[A-Za-z0-9_]+&limit=100|subscriptions\?customer=cus_[A-Za-z0-9_]+&status=all&limit=100)$~D';
     if(!(($method==='GET'&&preg_match($read,$path))||($method==='POST'&&in_array($path,['/checkout/sessions','/billing_portal/configurations','/billing_portal/sessions'],true)&&preg_match('/^[a-zA-Z0-9_-]{1,200}$/D',$idempotency))))throw new RuntimeException('Invalid billing request.');
     $curl=curl_init('https://api.stripe.com/v1'.$path);if($curl===false)throw new RuntimeException('Billing unavailable.');
     $headers=['Authorization: Bearer '.$key,'Stripe-Version: '.BOOKING_CHECKOUT_API_VERSION];
@@ -104,6 +104,7 @@ function portal_balance_checkout(PDO $db,string $account,string $reference,strin
     $latest=portal_billing_latest($db,$reference);if(portal_balance_paid($db,$reference)>0)return ['mode'=>'paid'];
     $current=portal_balance_scope($db,$account,$reference);if(!hash_equals($current['scope'],$scope))throw new InvalidArgumentException('The approved amount changed. Refresh and review it.');
     $api??='portal_stripe';$config??=booking_checkout_config();
+    portal_billing_customer($db,$account,$reference,$api);
     $records=portal_billing_records($db,$account,$reference,$api);
     foreach($records as $payment)if($payment['refunded']||$payment['disputed'])throw new InvalidArgumentException('A payment adjustment needs staff review before any new payment.');
     if($latest&&$latest['state']==='open'){
@@ -153,6 +154,8 @@ function portal_balance_event(PDO $db,array $event): bool
         $q=$db->prepare('SELECT * FROM portal_balance_attempts WHERE reference=? AND attempt=?');$q->execute([$s['metadata']['booking_reference']??'',$s['metadata']['portal_attempt']??'']);$b=$q->fetch(PDO::FETCH_ASSOC);portal_billing_need((bool)$b);portal_balance_validate($s,$b);
         if($event['type']==='checkout.session.expired'){
             portal_billing_need(($s['status']??'')==='expired');$db->prepare("UPDATE portal_balance_attempts SET session_id=?,state='expired' WHERE reference=? AND attempt=? AND paid_at IS NULL")->execute([$s['id'],$b['reference'],$b['attempt']]);
+        }elseif($event['type']==='checkout.session.completed'&&($s['payment_status']??'')==='unpaid'){
+            portal_billing_need(($s['status']??'')==='complete'); // Await a separate signed success event.
         }else{
             portal_billing_need(($s['payment_status']??'')==='paid'&&($s['status']??'')==='complete'&&(bool)preg_match('/^pi_[A-Za-z0-9_]+$/D',(string)($s['payment_intent']??'')));
             if($b['paid_at'])portal_billing_need($b['payment_intent']===$s['payment_intent']);
@@ -168,26 +171,42 @@ function portal_billing_customer(PDO $db,string $account,string $reference,calla
     portal_payment_evidence($row,(int)$row['deposit_cents'],$row['stripe_session_id'],$row['stripe_payment_intent_id'],$row['stripe_customer_id'],$api);
     $customer=$row['stripe_customer_id'];$q=$db->prepare('SELECT reference FROM bookings WHERE stripe_customer_id=?');$q->execute([$customer]);foreach($q->fetchAll(PDO::FETCH_COLUMN) as $ref)portal_billing_need(portal_owns_order($db,$account,$ref));
     $sessions=$api('GET','/checkout/sessions?customer='.$customer.'&limit=100');portal_billing_need(($sessions['has_more']??null)===false&&is_array($sessions['data']??null)&&count($sessions['data'])>0);
+    $intents=[];$invoices=[];
     foreach($sessions['data'] as $s){
+        if(is_string($s['payment_intent']??null))$intents[]=$s['payment_intent'];
+        if(is_string($s['invoice']??null))$invoices[]=$s['invoice'];
         $ref=$s['metadata']['booking_reference']??'';portal_billing_need(is_string($ref)&&portal_owns_order($db,$account,$ref)&&($s['customer']??'')===$customer&&($s['livemode']??null)===false);
         $owned=booking_get($db,$ref);$known=$owned['stripe_session_id']===($s['id']??'');
-        if(!$known){$q=$db->prepare('SELECT 1 FROM portal_balance_attempts WHERE reference=? AND session_id=? AND customer=?');$q->execute([$ref,$s['id']??'',$customer]);$known=(bool)$q->fetchColumn();}portal_billing_need($known);
+        if(!$known){$q=$db->prepare('SELECT 1 FROM portal_balance_attempts WHERE reference=? AND session_id=? AND customer=?');$q->execute([$ref,$s['id']??'',$customer]);$known=(bool)$q->fetchColumn();}
+        // A created session may precede the local response. Recognize only its exact prepared request.
+        if(!$known&&($s['metadata']['portal_payment_kind']??'')==='balance'){
+            $q=$db->prepare("SELECT * FROM portal_balance_attempts WHERE reference=? AND attempt=? AND customer=? AND state='creating'");$q->execute([$ref,$s['metadata']['portal_attempt']??'',$customer]);$prepared=$q->fetch(PDO::FETCH_ASSOC);
+            if($prepared){portal_balance_validate($s,$prepared);$known=true;}
+        }
+        portal_billing_need($known);
     }
+    foreach(['payment_intents'=>$intents,'invoices'=>$invoices] as $resource=>$knownIds){
+        $list=$api('GET','/'.$resource.'?customer='.$customer.'&limit=100');portal_billing_need(($list['has_more']??null)===false&&is_array($list['data']??null));
+        foreach($list['data'] as $item)portal_billing_need(in_array($item['id']??null,$knownIds,true)&&($item['customer']??'')===$customer&&($item['livemode']??null)===false);
+    }
+    $subscriptions=$api('GET','/subscriptions?customer='.$customer.'&status=all&limit=100');portal_billing_need(($subscriptions['has_more']??null)===false&&($subscriptions['data']??null)===[]);
     return $customer;
 }
 function portal_billing_config_valid(array $c): void
 {
     portal_billing_need(($c['livemode']??null)===false&&($c['active']??null)===true&&(bool)preg_match('/^bpc_[A-Za-z0-9_]+$/D',(string)($c['id']??''))&&($c['login_page']['enabled']??null)===false&&($c['features']['payment_method_update']['enabled']??null)===true);
-    foreach(['customer_update','invoice_history','subscription_update','subscription_cancel'] as $key)portal_billing_need(($c['features'][$key]['enabled']??null)===false);
-    foreach($c['features']??[] as $key=>$feature)if($key!=='payment_method_update')portal_billing_need(($feature['enabled']??false)===false);
+    portal_billing_need(($c['features']['customer_update']['enabled']??null)===true);
+    $updates=$c['features']['customer_update']['allowed_updates']??[];sort($updates);portal_billing_need($updates===['address','name','phone']);
+    foreach(['invoice_history','subscription_update','subscription_cancel'] as $key)portal_billing_need(($c['features'][$key]['enabled']??null)===false);
+    foreach($c['features']??[] as $key=>$feature)if(!in_array($key,['payment_method_update','customer_update'],true))portal_billing_need(($feature['enabled']??false)===false);
 }
 function portal_billing_manage(PDO $db,string $account,string $reference,?callable $api=null): string
 {
     $api??='portal_stripe';$customer=portal_billing_customer($db,$account,$reference,$api);
     $id=$db->query('SELECT configuration FROM portal_billing_config WHERE singleton=1')->fetchColumn();
     if($id){$c=$api('GET','/billing_portal/configurations/'.$id);}else{
-        $body=['features[payment_method_update][enabled]'=>'true','features[customer_update][enabled]'=>'false','features[invoice_history][enabled]'=>'false','features[subscription_update][enabled]'=>'false','features[subscription_cancel][enabled]'=>'false','login_page[enabled]'=>'false','business_profile[headline]'=>'SiteSee test payment methods'];
-        $c=$api('POST','/billing_portal/configurations',$body,'sitesee-owned-methods-test-v1');portal_billing_config_valid($c);
+        $body=['features[payment_method_update][enabled]'=>'true','features[customer_update][enabled]'=>'true','features[customer_update][allowed_updates][0]'=>'address','features[customer_update][allowed_updates][1]'=>'name','features[customer_update][allowed_updates][2]'=>'phone','features[invoice_history][enabled]'=>'false','features[subscription_update][enabled]'=>'false','features[subscription_cancel][enabled]'=>'false','login_page[enabled]'=>'false','business_profile[headline]'=>'SiteSee test payment methods'];
+        $c=$api('POST','/billing_portal/configurations',$body,'sitesee-owned-methods-test-v2');portal_billing_config_valid($c);
         $db->prepare('INSERT OR IGNORE INTO portal_billing_config VALUES (1,?)')->execute([$c['id']]);
     }
     portal_billing_config_valid($c);
