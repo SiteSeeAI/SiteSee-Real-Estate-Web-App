@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+ini_set('display_errors', '0');
 header('Cache-Control: no-store, private, max-age=0');
 header('Pragma: no-cache');
 header('Referrer-Policy: no-referrer');
@@ -76,8 +77,8 @@ try {
     $page=portal_input($_GET,'page',5);portal_orders_page($db,$account,ctype_digit($page)?max(1,min(10000,(int)$page)):1);
 } catch(InvalidArgumentException){
     portal_page('Review Your Entry','<p>Please check your entry and try again.</p><p><a href="/account.php">Return To My Orders</a></p>',$account??false,400);
-} catch(Throwable){
+} catch(Throwable $error){
     // Do not log tokens, submitted forms, SQL, provider credentials or customer payloads.
-    error_log('SiteSee portal request failed; inspect private service health.');
+    error_log('SiteSee portal request failed: '.get_class($error).' at '.basename($error->getFile()).':'.$error->getLine());
     portal_page('Please Try Again','<p>Account access is temporarily unavailable. Please try again shortly.</p>',false,503);
 }

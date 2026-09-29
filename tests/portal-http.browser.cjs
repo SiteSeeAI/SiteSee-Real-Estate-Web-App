@@ -6,6 +6,8 @@ const {spawn,execFileSync}=require('node:child_process');const {chromium}=requir
 const repo=path.resolve(__dirname,'..');
 const temp=fs.mkdtempSync(path.join(os.tmpdir(),'sitesee-portal-http-'));
 const privateRoot=path.join(temp,'private');fs.cpSync(path.join(repo,'_private'),privateRoot,{recursive:true});
+// Reuse code only; previous unit-test session directories are not fixture state.
+fs.rmSync(path.join(privateRoot,'data'),{recursive:true,force:true});
 const mail=path.join(temp,'mail.txt');
 const sendmail=path.join(temp,'capture-mail.sh');fs.writeFileSync(sendmail,'#!/bin/sh\ncat >> "'+mail+'"\n',{mode:0o700});
 const reserve=()=>new Promise(resolve=>{const server=net.createServer();server.listen(0,'127.0.0.1',()=>{const port=server.address().port;server.close(()=>resolve(port));});});
