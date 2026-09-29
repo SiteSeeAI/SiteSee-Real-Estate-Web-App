@@ -4,6 +4,10 @@ on:
   pull_request:
     paths:
       - '_private/server/portal-*.php'
+      - '_private/views/portal.php'
+      - 'public/account.php'
+      - 'public/portal-assets/**'
+      - 'tests/fixtures/portal-http/**'
       - 'documents/portal/**'
       - 'tests/portal-*'
       - '.github/workflows/customer-portal-ci.yml'
@@ -11,6 +15,10 @@ on:
     branches: ['feat/calendar-confirmation-20260925']
     paths:
       - '_private/server/portal-*.php'
+      - '_private/views/portal.php'
+      - 'public/account.php'
+      - 'public/portal-assets/**'
+      - 'tests/fixtures/portal-http/**'
       - 'documents/portal/**'
       - 'tests/portal-*'
       - '.github/workflows/customer-portal-ci.yml'
@@ -33,8 +41,11 @@ jobs:
           extensions: pdo_sqlite
       - name: Validate private account primitives
         run: |
-          php -l _private/server/portal-access.php
+          find _private/server -name 'portal-*.php' -print0 | xargs -0 -n1 php -l
+          php -l _private/views/portal.php
+          php -l public/account.php
           php tests/portal-access.test.php
+          php tests/portal-session.test.php
       - name: Install isolated browser test dependencies
         run: |
           npm install --prefix "$RUNNER_TEMP/portal-browser" --no-save playwright@1.58.2
@@ -46,6 +57,7 @@ jobs:
         run: |
           mkdir -p "$PORTAL_SCREENSHOTS"
           node tests/portal-preview.browser.cjs
+          node tests/portal-http.browser.cjs
       - name: Save example-only preview screenshots
         if: always()
         uses: actions/upload-artifact@v4
