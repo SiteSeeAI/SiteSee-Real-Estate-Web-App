@@ -64,10 +64,10 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   await page.getByRole('button',{name:'Sign In',exact:true}).click();await page.getByRole('heading',{name:'My Orders',exact:true}).waitFor();
   assert.notEqual((await context.cookies())[0].value,anonymous);assert(!(await page.content()).includes('101 Example Lane'),'No email-only historical attachment');
   await two.getByRole('button',{name:'Sign In',exact:true}).click();await two.getByRole('alert').waitFor();assert.match(await two.getByRole('alert').textContent(),/invalid or expired/);
-  await claim(page,'AAAAAAAAAA.'+'1'.repeat(64));await page.getByRole('heading',{name:'101 Example Lane Chicago IL 60601'}).waitFor();
+  await claim(page,origin+'/booking-pay.php?reference=AAAAAAAAAA&token='+'1'.repeat(64));await page.getByRole('heading',{name:'101 Example Lane Chicago IL 60601'}).waitFor();
   await login(two,'two@example.com');await claim(two,'BBBBBBBBBB.'+'2'.repeat(64));assert(!(await two.content()).includes('101 Example Lane'));
-  const denied=await goto(two,'/account.php?view=order&reference=AAAAAAAAAA');assert.equal(denied.status(),404);assert(!(await two.content()).includes('1234567890'));
-  const absent=await goto(two,'/account.php?view=order&reference=DDDDDDDDDD');assert.equal(await absent.text(),await denied.text(),'Other and nonexistent order use identical response');
+  const denied=await goto(two,'/account.php?view=order&reference=AAAAAAAAAA');assert.equal(denied.status(),404);assert(!(await two.content()).includes('1234567890'));const deniedBody=await denied.text();
+  const absent=await goto(two,'/account.php?view=order&reference=DDDDDDDDDD');assert.equal(await absent.text(),deniedBody,'Other and nonexistent order use identical response');
   await goto(two);await claim(two,'AAAAAAAAAA.'+'1'.repeat(64));assert.match(await two.getByRole('status').textContent(),/could not be added/);
   await goto(page,'/account.php?view=order&reference=AAAAAAAAAA');assert((await page.content()).includes('1234567890'));
   for(const secret of ['9876543210','cus_private_','pi_private_', 'agent_token_hash', 'request_json'])assert(!(await page.content()).includes(secret),secret);
