@@ -168,6 +168,9 @@ def install(obj,files,root,public,uid,gid,writer=None):
         p=target(name,root,public);before=read(p,uid,True)
         entries[name]={'before':None if before is None else sha(before),'after':sha(data),'mode':stat.S_IMODE(p.stat().st_mode) if before is not None else None}
         if before is not None:atomic(folder/(hashlib.sha256(name.encode()).hexdigest()+'.bin'),before,uid,gid)
+    backup_parent=os.open(str(base),os.O_RDONLY|os.O_DIRECTORY)
+    try:os.fsync(backup_parent)
+    finally:os.close(backup_parent)
     j={'release':RELEASE,'state':'prepared','backup':folder.name,'entries':entries};atomic(root/JOURNAL,encode(j),uid,gid)
     write=writer or write_target
     # Dependencies first, webhook next, account route last. Activation is a separate operation.
