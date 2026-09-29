@@ -59,6 +59,26 @@ class InstallerTests(unittest.TestCase):
  def test_corrupt_backup_refused(self):
   self.install();j=m.journal(self.root,self.uid);p=self.root/'deployment-backups'/j['backup'];next(p.glob('*.bin')).write_bytes(b'corrupt')
   with self.assertRaises(m.Stop):m.recover(self.root,self.public,self.uid,self.gid,self.values(),True)
+ def test_first_install_under_private_umask(self):
+  (self.public/'portal-assets').rmdir();previous=os.umask(0o077)
+  try:self.install()
+  finally:os.umask(previous)
+  self.assertEqual((self.public/'portal-assets').stat().st_mode&0o777,0o755)
+ def test_existing_private_public_asset_directory_refused(self):
+  os.chmod(str(self.public/'portal-assets'),0o700)
+  with self.assertRaises(m.Stop):self.install()
+  self.assertFalse((self.root/m.JOURNAL).exists())
+ def test_checkout_preflight_matches_runtime(self):
+  self.obj['dependencies']={};self.obj['fonts']={}
+  (self.root/'appointment-management-release.json').write_text(json.dumps({'revision':'20260928-r4'}))
+  (self.root/'data').mkdir(mode=0o700)
+  p=self.root/'booking-checkout.json'
+  p.write_text(json.dumps({'stage':'TEST','enabled':True,'publishable_key':'pk_test_abcdefghijklmnop'}));os.chmod(str(p),0o600)
+  m.verify_dependencies(self.obj,self.root,self.public,self.uid)
+  os.chmod(str(p),0o644)
+  with self.assertRaises(m.Stop):m.verify_dependencies(self.obj,self.root,self.public,self.uid)
+  os.chmod(str(p),0o600);p.write_text(json.dumps({'stage':'TEST','enabled':True,'publishable_key':'pk_test_x'}))
+  with self.assertRaises(m.Stop):m.verify_dependencies(self.obj,self.root,self.public,self.uid)
  def test_permissions(self):
   self.install()
   for name in self.files:self.assertEqual(m.target(name,self.root,self.public).stat().st_mode&0o777,0o644 if name.startswith('public/') else 0o600)

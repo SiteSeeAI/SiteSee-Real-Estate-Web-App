@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Single-file, offline TEST portal installation. No provider calls or database writes."""
-import argparse, base64, fcntl, hashlib, json, os, pathlib, pwd, stat, subprocess, sys, tempfile, zlib
+import argparse, base64, fcntl, hashlib, json, os, pathlib, pwd, re, stat, subprocess, sys, tempfile, zlib
 RELEASE = 'portal-20260929-r1'
 ROOT = pathlib.Path('/home/sitesee/.sitesee-real-estate')
 PUBLIC = pathlib.Path('/home/sitesee/public_html/re')
@@ -43,7 +43,7 @@ def target(name,root,public):
 def atomic(path,data,uid,gid,mode=0o600):
     safe(path)
     if not path.parent.exists():
-        path.parent.mkdir(mode=0o755 if mode==0o644 else 0o700);os.chown(str(path.parent),uid,gid)
+        path.parent.mkdir(mode=0o755 if mode==0o644 else 0o700);os.chown(str(path.parent),uid,gid);os.chmod(str(path.parent),0o755 if mode==0o644 else 0o700)
     fd,tmp=tempfile.mkstemp(prefix='.portal-',dir=str(path.parent))
     try:
         os.fchmod(fd,mode);os.fchown(fd,uid,gid)
@@ -55,11 +55,18 @@ def atomic(path,data,uid,gid,mode=0o600):
     finally:
         if os.path.exists(tmp):os.unlink(tmp)
 
+def unlink_durable(path):
+    safe(path)
+    if path.exists():
+        path.unlink();fd=os.open(str(path.parent),os.O_RDONLY|os.O_DIRECTORY)
+        try:os.fsync(fd)
+        finally:os.close(fd)
+
 def write_target(name,data,root,public,uid,gid):
     p=target(name,root,public)
     if data is None:
         safe(p)
-        if p.exists():p.unlink()
+        unlink_durable(p)
     else:atomic(p,data,uid,gid,0o644 if name.startswith('public/') else 0o600)
 
 def journal(root,uid):
@@ -68,7 +75,15 @@ def journal(root,uid):
     j=json.loads(raw);need(j.get('release')==RELEASE and j.get('state') in ('prepared','installed','restored'),'Different installer journal preserved.')
     return j
 
+def verify_directories(root,public,uid):
+    for path,mode in ((root/'server',0o700),(root/'views',0o700),(public/'portal-assets',0o755)):
+        safe(path)
+        if path.exists():
+            info=path.stat();need(stat.S_ISDIR(info.st_mode) and info.st_uid==uid and not info.st_mode&0o022,'Unsafe application directory: '+str(path))
+            if mode==0o755:need(info.st_mode&0o555==0o555,'Public assets directory must be readable and traversable.')
+
 def verify_dependencies(obj,root,public,uid):
+    verify_directories(root,public,uid)
     for name,accepted in obj['dependencies'].items():
         data=read(target(name,root,public),uid)
         need(sha(data) in accepted,'Unreviewed dependency preserved: '+name)
@@ -77,8 +92,11 @@ def verify_dependencies(obj,root,public,uid):
         need(hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest()==expected,'Brand font differs: '+name)
     record=json.loads(read(root/'appointment-management-release.json',uid))
     need(record.get('revision')=='20260928-r4','The verified r4 appointment release is required.')
-    config=json.loads(read(root/'booking-checkout.json',uid))
-    need(config.get('stage')=='TEST' and isinstance(config.get('enabled'),bool) and str(config.get('publishable_key','')).startswith('pk_test_'),'Existing checkout must be TEST.')
+    config_path=root/'booking-checkout.json'
+    config_raw=read(config_path,uid)
+    need(not config_path.stat().st_mode&0o077 and len(config_raw)<=4096,'Private checkout configuration permissions or size differ.')
+    config=json.loads(config_raw)
+    need(config.get('stage')=='TEST' and isinstance(config.get('enabled'),bool) and re.fullmatch(r'pk_test_[A-Za-z0-9]{12,512}',str(config.get('publishable_key',''))),'Existing checkout must be TEST.')
     need((root/'data').is_dir() and not (root/'data').is_symlink(),'Private data directory missing.')
     info=(root/'data').stat();need(info.st_uid==uid and not info.st_mode&0o077,'Private data directory permissions differ.')
 
@@ -119,13 +137,14 @@ def recover(root,public,uid,gid,values,rollback=False):
         need(current in (before,values[name]),'Unknown edit preserved during recovery: '+name)
         restore[name]=before
     # Remove public account entry first. No database or payment records are restored.
-    order=sorted(restore,key=lambda n:0 if n=='public/account.php' else 1)
+    order=sorted(restore,key=lambda n:0 if n=='public/account.php' else (1 if n=='private/server/booking-webhook.php' else 2))
     for name in order:
         write_target(name,restore[name],root,public,uid,gid)
         if restore[name] is not None:os.chmod(str(target(name,root,public)),j['entries'][name]['mode'])
     j['state']='restored';atomic(root/JOURNAL,encode(j),uid,gid)
 
 def install(obj,files,root,public,uid,gid,writer=None):
+    verify_directories(root,public,uid)
     values=desired(obj,files,root,uid)
     j=journal(root,uid)
     if j and j['state']=='prepared':
@@ -191,7 +210,7 @@ def main():
         fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         if args.disable:
             read(ROOT/FLAG,uid,True)
-            if (ROOT/FLAG).exists():(ROOT/FLAG).unlink()
+            unlink_durable(ROOT/FLAG)
             print('Account access disabled. Webhook, order records and payment recovery retained.');return
         obj,files=load();values=desired(obj,files,ROOT,uid)
         if args.rollback:
