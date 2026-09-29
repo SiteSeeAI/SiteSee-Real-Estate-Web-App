@@ -44,7 +44,7 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   for(const c of [context,twoContext])await c.route('**/*',r=>r.request().url().startsWith(origin)?r.continue():r.abort());
   const page=await context.newPage(),two=await twoContext.newPage();const errors=[];
   page.on('pageerror',e=>errors.push(e.message));two.on('pageerror',e=>errors.push(e.message));
-  const goto=async(p,url='/account.php')=>{let r;for(let i=0;i<25;i++){r=await p.goto(origin+url);if(r.status()!==503)return r;await p.waitForTimeout(100);}throw Error('PHP server not ready: '+serverLog);};
+  const goto=async(p,url='/account.php')=>{let r;for(let i=0;i<25;i++){r=await p.goto(origin+url);if(!r)r=await p.reload();if(r.status()!==503)return r;await p.waitForTimeout(100);}throw Error('PHP server not ready: '+serverLog);};
   const csrf=p=>p.locator('input[name=csrf]').first().inputValue();
   const post=async(p,data)=>p.request.post(origin+'/account.php',{form:{csrf:await csrf(p),...data},maxRedirects:0,headers:{Origin:origin}});
   const phones={'one@example.com':'3125550100','two@example.com':'3125550101','cro@sitesee.ai':'3125550102'};
@@ -62,6 +62,7 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
     await p.getByText('Missing A Previous Order?',{exact:true}).click();await p.getByLabel('Private Order Link Or Code').fill(code);await p.getByRole('button',{name:'Add Previous Order',exact:true}).click();
   };
   const first=await goto(page);assert.match(first.headers()['cache-control'],/no-store/);assert.equal(first.headers()['referrer-policy'],'same-origin');
+  if(process.env.PORTAL_SCREENSHOTS)console.log('PORTAL_VISUAL_phone-signin:'+(await page.screenshot({type:'jpeg',quality:65,fullPage:true})).toString('base64'));
   const cookies=await context.cookies();assert(cookies[0].secure&&cookies[0].httpOnly&&cookies[0].sameSite==='Lax');
   assert.equal((await page.request.post(origin+'/account.php',{form:{action:'request_login',email:'one@example.com'}})).status(),403);
   assert.equal((await page.request.post(origin+'/account.php',{form:{action:'request_login',email:'one@example.com',csrf:await csrf(page)},headers:{Origin:'https://evil.example'}})).status(),403);
@@ -69,6 +70,7 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   assert.equal((await post(page,{action:'request_login',email:'one@example.com'})).status(),400,'Email route disabled');
   await goto(page);const unknown=await post(page,{action:'request_sms',phone:'3125550199',sms_consent:'yes'});assert.equal(unknown.status(),303);assert(!fs.existsSync(path.join(privateRoot,'data/sms-fixture.json')));assert(!fs.existsSync(mail));
   const token=await requestLink(page,'one@example.com');const anonymous=(await context.cookies())[0].value;
+  if(process.env.PORTAL_SCREENSHOTS)console.log('PORTAL_VISUAL_phone-code:'+(await page.screenshot({type:'jpeg',quality:65,fullPage:true})).toString('base64'));
   // The code is session bound and never consumed by GET.
   await goto(page,'/account.php?view=verify#'+token);assert.equal(new URL(page.url()).hash,'');
   await goto(two,'/account.php?view=verify#'+token);
@@ -87,8 +89,8 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   fs.writeFileSync(releaseFlag,JSON.stringify({release:'portal-20260929-r1',stage:'TEST',enabled:true}),{mode:0o600});
   await goto(page,'/account.php?view=profile');await page.getByLabel('First Name',{exact:true}).fill('<script>alert(1)</script>');await page.getByLabel('Company',{exact:true}).fill('Saved Company');
   // Untrusted identity and role fields are ignored; only allowlisted contact fields can change.
-  const profile=await post(page,{action:'save_profile',first_name:'<script>alert(1)</script>',company:'Saved Company',account_id:'f'.repeat(32),email:'two@example.com',approved:'1'});assert.equal(profile.status(),303);
-  await goto(page,'/account.php?view=profile');assert.equal(await page.getByLabel('Company',{exact:true}).inputValue(),'Saved Company');assert((await page.content()).includes('&lt;script&gt;'));assert((await page.content()).includes('one@example.com'));
+  const profile=await post(page,{action:'save_profile',first_name:'<script>alert(1)</script>',company:'Saved Company',phone:'3125550199',account_id:'f'.repeat(32),email:'two@example.com',approved:'1'});assert.equal(profile.status(),303);
+  await goto(page,'/account.php?view=profile');assert.equal(await page.getByLabel('Company',{exact:true}).inputValue(),'Saved Company');assert.equal(await page.getByLabel('Contact Phone',{exact:true}).inputValue(),'3125550199');assert((await page.content()).includes('&lt;script&gt;'));assert((await page.content()).includes('one@example.com'));
   await goto(two,'/account.php?view=profile');assert.equal(await two.getByLabel('Company',{exact:true}).inputValue(),'');
   const shots=process.env.PORTAL_SCREENSHOTS;
   if(shots)fs.mkdirSync(shots,{recursive:true});

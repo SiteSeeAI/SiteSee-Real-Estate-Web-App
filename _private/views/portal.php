@@ -64,10 +64,10 @@ function portal_profile_page(PDO $db, array $account, string $notice = ''): neve
     $e='portal_escape';$p=portal_profile($db,$account['id']);
     $body='<p class="lead">Your pricing access stays with your account.</p>';
     if($notice)$body.='<p role="status" class="notice">'.$e($notice).'</p>';
-    $body.='<section class="panel narrow"><p>Verified Email<br><strong>'.$e($account['email']).'</strong></p><form method="post">'.portal_csrf_field().'<input type="hidden" name="action" value="save_profile">';
-    foreach(['first_name'=>['First Name','given-name',100],'last_name'=>['Last Name','family-name',100],'company'=>['Company','organization',140],'phone'=>['Phone','tel',35]] as $key=>[$label,$autocomplete,$max]){
+    $body.='<section class="panel narrow"><p>Contact Email<br><strong>'.$e($account['email']).'</strong></p><form method="post">'.portal_csrf_field().'<input type="hidden" name="action" value="save_profile">';
+    foreach(['first_name'=>['First Name','given-name',100],'last_name'=>['Last Name','family-name',100],'company'=>['Company','organization',140],'phone'=>['Contact Phone','tel',35]] as $key=>[$label,$autocomplete,$max]){
         $body.='<label>'.$label.'<input name="'.$key.'" value="'.$e($p[$key]).'" maxlength="'.$max.'" autocomplete="'.$autocomplete.'"'.($key==='phone'?' type="tel"':'').'></label>';
     }
-    $body.='<button class="primary">Save Profile</button></form></section><form method="post" class="help">'.portal_csrf_field().'<input type="hidden" name="action" value="logout"><button>Sign Out</button></form>';
+    $body.='<p class="help">Your contact phone is used for order communication. To change your sign-in cell number, contact SiteSee for identity verification.</p><button class="primary">Save Profile</button></form></section><form method="post" class="help">'.portal_csrf_field().'<input type="hidden" name="action" value="logout"><button>Sign Out</button></form>';
     portal_page('Account',$body,$account);
 }
