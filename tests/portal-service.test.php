@@ -51,8 +51,8 @@ $stripe=static function($method,$path,$body=[],$key='')use(&$sessions,&$keys,&$r
     if(str_starts_with($path,'/charges/')){$id=basename($path);$amount=$id==='ch_deposit'?$deposit:(int)portal_billing_latest($db,$ref)['amount'];return ['id'=>$id,'livemode'=>false,'customer'=>'cus_owned','payment_intent'=>$id==='ch_deposit'?'pi_deposit':'pi_balance','paid'=>true,'captured'=>true,'currency'=>'usd','amount'=>$amount,'amount_captured'=>$amount,'amount_refunded'=>$refund,'disputed'=>$disputed,'receipt_url'=>'https://pay.stripe.com/receipts/payment/synthetic'];}
     if($method==='POST'&&$path==='/checkout/sessions'){
         $keys[]=$key;check(!isset($body['subscription_data'])&&!isset($body['payment_intent_data[off_session]'])&&$body['mode']==='payment','Explicit one-time payment');
-        if($stripeMode==='lost')throw new RuntimeException('lost creation response');
         $id='cs_test_balance_'.$body['metadata[portal_attempt]'];$s=['id'=>$id,'livemode'=>false,'mode'=>'payment','ui_mode'=>$body['ui_mode']??'hosted_page','client_secret'=>'synthetic-secret','url'=>'https://checkout.stripe.com/c/pay/synthetic','client_reference_id'=>$ref,'metadata'=>['booking_reference'=>$ref,'portal_payment_kind'=>'balance','portal_attempt'=>$body['metadata[portal_attempt]']],'currency'=>'usd','amount_total'=>(int)$body['line_items[0][price_data][unit_amount]'],'customer'=>$body['customer'],'status'=>'open','payment_status'=>'unpaid'];$sessions[$id]=$s;
+        if($stripeMode==='lost')throw new RuntimeException('lost creation response after provider acceptance');
         if($stripeMode==='early_webhook'){$event=['id'=>'evt_early','type'=>'checkout.session.completed','livemode'=>false,'data'=>['object'=>array_replace($s,['status'=>'complete','payment_status'=>'paid','payment_intent'=>'pi_balance'])]];portal_balance_event($db,$event);}
         return $s;
     }

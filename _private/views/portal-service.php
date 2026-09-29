@@ -12,9 +12,11 @@ function portal_appointment_page(PDO $db,array $account,string $reference,array 
     if($notice)$body.='<p class="notice" role="status">'.$e($notice).'</p>';
     try{$row=portal_appointment_guard($db,$account['id'],$reference);}catch(InvalidArgumentException){portal_page('Manage Appointment',$body.'<p>Contact SiteSee for help with this appointment.</p>',$account);}
     $state=booking_lifecycle_state($db,$reference);$pending=booking_lifecycle_pending($db,$reference);$claim=booking_confirmation_get($db,$reference);$a=booking_request($row)['appointment'];
+    $unresolved=$db->prepare("SELECT 1 FROM booking_communications WHERE reference=? AND kind LIKE 'lifecycle-%' AND submission_state<>'sent_observed' LIMIT 1");$unresolved->execute([$reference]);$noticePending=(bool)$unresolved->fetchColumn();
     $body.='<section class="panel"><h2>Your Arrival Window</h2><p>'.$e($a['date'].' '.$a['time'].'–'.$a['windowEnd']).' Central Time</p><p>Cancellation does not automatically issue a refund or determine a fee.</p>';
     if($pending){$body.='<p class="notice">Your last change is awaiting verification. Do not submit another change.</p>'.portal_service_form($reference,'appointment_sync','','Check Saved Change');}
     elseif($state['state']==='cancelled')$body.='<p class="status">Cancelled</p>';
+    elseif($noticePending||in_array($claim['invitation_state'],['sending','uncertain'],true))$body.='<p>SiteSee must verify the previous notice before another appointment change.</p>';
     elseif($state['state']!=='active'||!str_starts_with($claim['calendar_uid'],'microsoft:')||booking_calendar_date($a['date'])->setTime((int)substr($a['time'],0,2),0)->getTimestamp()<=time())$body.='<p>Contact SiteSee for appointment assistance.</p>';
     else{
         $fingerprint='<input type="hidden" name="fingerprint" value="'.$e(booking_lifecycle_fingerprint($db,$reference)).'">';
