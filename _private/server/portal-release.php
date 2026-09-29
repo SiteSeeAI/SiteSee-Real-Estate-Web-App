@@ -7,5 +7,5 @@ function portal_release_enabled(string $path): bool
     if (!is_file($path) || is_link($path) || (fileperms($path) & 0077) !== 0 || filesize($path) > 1024) return false;
     $raw = @file_get_contents($path);
     $config = is_string($raw) ? json_decode($raw, true) : null;
-    return is_array($config) && $config === ['release'=>'portal-20260929-r1', 'stage'=>'TEST', 'enabled'=>true];
+    return is_array($config) && $config === ['release'=>'portal-20260929-r2', 'stage'=>'TEST', 'enabled'=>true];
 }

@@ -62,8 +62,11 @@ jobs:
           php tests/portal-sms.test.php
           php -l tools/portal-enroll-phone.php
           python3 tests/portal-installer.test.py
+          python3 tests/portal-complete.test.py
           python3 tools/build-portal-installer.py
           git diff --exit-code -- tools/install-customer-portal.py
+          python3 tools/build-portal-complete.py
+          git diff --exit-code -- tools/install-portal-complete.py
       - name: Install isolated browser test dependencies
         run: |
           npm install --prefix "$RUNNER_TEMP/portal-browser" --no-save playwright@1.58.2

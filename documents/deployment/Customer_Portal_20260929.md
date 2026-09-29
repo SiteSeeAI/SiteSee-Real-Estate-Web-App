@@ -1,55 +1,58 @@
-# SiteSee Customer Portal TEST Installation
+# SiteSee Phone-Login Portal — One-Package Installation
 
-Release `portal-20260929-r1` adds the complete customer portal to the verified appointment r4 installation. Upload one installer; it contains all 19 portal application files, including the reviewed signed webhook. Existing pricing, scheduling, communication, configuration, credentials, data and cron stay in place. The installer checks their expected source and release hashes and stops on unknown edits.
+Release: portal-20260929-r2. Updated 2026 09 29.
+This guide replaces the earlier r1/email-login instructions and individual path fixes.
+Delivery window: 2½–5 days from the original 2026 09 28 start; do not restart the clock.
 
-The portal is not yet installed. The package provides local preflight, disabled installation, TEST activation and recovery. Actual Stripe SDK/provider, email receipt, Microsoft and CRM behavior require the installed TEST check below. Source tests use synthetic customers and blocked or mocked providers. No live payments are enabled.
+## One Upload, One Command
 
-## Upload And Install
+Extract SiteSee_Portal_Complete_TEST_20260929.zip. Upload only
+`install-portal-complete.py` to `/home/sitesee/` through cPanel, preserving its name.
+Do not upload the enclosed source or test files to the website. Do not rerun the old installer.
 
-Extract `SiteSee_Portal_TEST_20260929.zip` on your computer. In cPanel File Manager, upload `install-customer-portal.py` to `/home/sitesee/`, outside `public_html`. Check that the filename has no added number or suffix. Do not manually replace application files or upload the tests.
+In WHM Terminal as root:
 
-In WHM Terminal as root, run this block. Each step runs only if the preceding step succeeds:
-
-```sh
-python3 -B /home/sitesee/install-customer-portal.py --check &&
-python3 -B /home/sitesee/install-customer-portal.py --install &&
-python3 -B /home/sitesee/install-customer-portal.py --enable-test
+```bash
+python3 -B /home/sitesee/install-portal-complete.py --deploy
 ```
 
-Save the output, particularly the backup directory. If any check stops, return the complete output for review. Do not bypass the check, edit manifests, or use an older installer to overwrite this release. An interrupted installation can be resumed with the same `--install` command: it verifies every backup and current file before restoring the incomplete attempt and installing again.
+This command inspects the entire reviewed dependency set, prints all detected code/path/metadata blockers together, fixes only verified metadata, restores missing reviewed dependencies, backs up the affected files, installs the complete phone-login application, and offers private phone setup. An unknown file edit, unexpected owner, symlink, hardlink, inconsistent journal or unsupported prior release stops replacement. Backups and journals remain available. No credentials or customer records are printed.
 
-The check verifies pinned dependencies, the r4 release, expected existing release records, brand fonts, safe file paths and ownership, and PHP CLI syntax/extensions. It checks the existing checkout file is marked TEST. It does not prove the live PHP-FPM environment, provider credentials, webhook delivery, inbox receipt or CRM behavior. The application continues to require the existing booking TEST flag and TEST-only payment keys at runtime. No PHP-FPM settings are changed.
+## Phone Setup In The Same Command
 
-## Confirm The Installed TEST Journey
+The current SMS adapter uses Twilio Verify. Have the account SID, Verify service SID, auth token, approved test cell number in international format, and the existing approved customer email available. Credentials and identity fields are entered with hidden terminal input and are stored outside public_html with owner-only permissions. The email identifies the existing approved customer for staff enrollment; it is not a customer login method. Staff must explicitly confirm ownership of the number and record verification evidence. Shared or conflicting numbers require staff review, not an automatic reassignment.
 
-Open `https://re.sitesee.ai/account.php`. The sign-in page should load with Poppins and Inter and a visible TEST notice. A 503 means the private activation gate or existing booking TEST environment still needs attention; return the installer output and page result. Do not change Stripe keys or server settings to work around it.
+The installer sends no SMS and makes no Stripe, mail, calendar or CRM request. Twilio's normal Verify credentials are required; the local TEST setting restricts permitted recipients and does not simulate Twilio. An actual text is requested later through the sign-in form, with the customer's text consent.
 
-Use the approved controlled address `cro@sitesee.ai`. Request a sign-in email, confirm it arrives, and open the one-time link. My Orders should open. Historical ownership is never assigned by email alone; use a valid existing private order link only when ownership is established. Keep protected order `D32FFC7458` unchanged.
+If SMS credentials are unavailable, press Enter at the first setup prompt. The complete application stays installed with account access disabled. Finish setup by running the same command again; do not upload more files. Existing valid SMS settings are reused and never silently overwritten. Enrollment can create portal identity tables, an approved portal account, and its verified phone binding in the existing ledger. It does not modify booking, payment, calendar or CRM records.
 
-Place one fresh TEST order with a future eligible window. Review property, services, current price, access details and fresh consent. Complete a Stripe TEST deposit using the established test-payment procedure. A return page alone is insufficient: Check Payment Status must show the saved signed-webhook result. Retry the same order if interrupted; do not create another order to recover it. Record the new reference.
+## What This Package Fixes
 
-Use the established staff review and calendar-confirmation workflow for this fresh reference. Verify the actual customer email receipt and the saved Microsoft/CRM association. Do not resend a notice that already has saved delivery evidence. Complete an approved TEST balance with fresh consent, then inspect Billing & Receipts and restricted payment-method access. Confirm paid/deposit/balance amounts and receipt ownership agree.
+- Public release paths resolve under `/home/sitesee/public_html/re`, including `manage-appointment.php`.
+- Known files such as `pricing-assets/availability.js` receive owner/group and permission repair only after their contents match accepted source hashes. File bytes and line endings are preserved.
+- Missing dependencies are restored from bundled reviewed bytes only when those bytes match the retained release record, including an accepted CRLF variant.
+- Cell-number/code sign-in replaces email login. The complete package includes the SMS adapter, phone identity logic and staff enrollment tool.
+- All independent source and metadata blockers are collected before application writes; a later unsafe edit is preserved.
+- An interrupted install can resume using the same command and verified backups. Repeated successful runs do not duplicate files, orders or payments.
 
-On that fresh eligible order only, check portal appointment controls and saved status. Existing timing, recipient and notice rules remain in force. A cancellation is separate from refund processing. These are changed portal integration checks; the completed booking validation cycle and direct Microsoft calendar editing are not reopened.
+## Result And Focused Browser Check
 
-Sign out and confirm the order is unavailable until sign-in. Mobile layout and two-customer isolation already passed isolated browser checks. Any additional real test inbox requires explicit authorization before sending messages to it. Treat ambiguous historical or Stripe customer records as staff reconciliation cases; never attach them automatically.
+The terminal prints either PHONE-LOGIN PORTAL ENABLED FOR TEST or PACKAGE INSTALLED; ACCESS DISABLED PENDING SETUP, with the remaining setup items. It saves `/home/sitesee/.sitesee-real-estate/portal-complete-report.json`, owned by sitesee and mode 0600. Runtime settings are inspected from the site's PHP-FPM pool; this is not proof of an active worker or external provider connection.
 
-## Disable Or Restore
+After TEST enablement, open https://re.sitesee.ai/account.php. Use the enrolled cell number, request a code and complete sign-in. Confirm My Orders opens; place one fresh controlled TEST order and check its signed-webhook deposit, staff review, appointment integration, approved balance and owned billing controls. Protect D32FFC7458 and do not resend old notices. Carry forward the completed appointment validation; test the changed account integration rather than repeating the entire old booking cycle.
 
-If a problem appears after activation, run:
+An existing public navigation link has not been changed by this package. The direct account address above is the controlled test entry. Actual SMS delivery, active PHP-FPM behavior and TEST payment/calendar/CRM behavior must be observed on the server; isolated tests do not establish them.
 
-```sh
-python3 -B /home/sitesee/install-customer-portal.py --disable
+## Recovery
+
+Rerun `--deploy` after an interrupted installation. Unknown concurrent edits stop recovery rather than being overwritten. To inspect without any change, use `--check` with the same file.
+
+To close account access:
+
+```bash
+python3 -B /home/sitesee/install-portal-complete.py --disable
 ```
 
-This closes account access on subsequent requests, even if an inherited portal environment flag is enabled. It retains orders, sessions, payment records, the signed webhook and its dependencies so delayed payment notifications can finish. An already executing request can finish; disabling does not reverse a submitted action. Existing non-portal booking routes continue to operate.
+Before this release has ever been activated, `--rollback` restores application bytes from verified backups and removes files that this package restored or created. It does not restore the database or undo phone enrollment. Verified permission tightening remains in place; prior metadata is recorded in `portal-complete-metadata.json`. After activation, destructive file rollback is blocked: disable access and repair forward, preserving signed-payment processing and the ledger. No broad recursive chmod/chown, cleanup or deletion is performed.
 
-Before the portal has ever been activated, a complete file rollback is available:
-
-```sh
-python3 -B /home/sitesee/install-customer-portal.py --rollback
-```
-
-Rollback verifies all target bytes and backups before restoring the original webhook and release records and removing the new portal files. It never restores or deletes database records. After activation, the durable activation marker blocks file rollback: disable and fix forward instead. Do not remove that marker to force a rollback. Retain the backup and journal; they are private, owned by `sitesee`, mode 0600 for files.
-
-No merge to main, public navigation promotion, live Stripe activation, credential change, customer bulk message or automatic historical reconciliation is included.
+An already installed r1 portal is reported for migration review instead of silently replaced. The user's reported r1 attempts stopped during --check and therefore did not install or enable that release.
