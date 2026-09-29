@@ -1,0 +1,228 @@
+{
+  "release": "portal-20260929-r1",
+  "baseline": "6a3e5cc32c55b75e110a63e89c8973103fe5a4ee",
+  "sources": {
+    "_private/server/booking-webhook.php": "6876af77a4d543fb146e9eb36d407df8fa1a4297806b57de957331dda8d2e7b1",
+    "_private/server/portal-access.php": "b4425d1ea0f4b448403bd3783e628991b3909d61a1a30cbc8cca4d98e7c748f7",
+    "_private/server/portal-app.php": "1d5c30c526f8898d23fcd7e19349824c16edd5add39dffcdc5e0d2b503474da6",
+    "_private/server/portal-billing.php": "f2eaa5f8d73a0871868928416f6c3d3f2b97c50b3939957ac2455e118aa9f5b2",
+    "_private/server/portal-mail.php": "111aef50b78506cc46b3987eb07778ec9363049762f888f74927a824a382ffa0",
+    "_private/server/portal-orders.php": "07a9035eb9a97653b0d5a4912ca2ae41f6ceca5e76002016366a019616f4e216",
+    "_private/server/portal-purchase.php": "3dd1a529c2dedd491fc99dadac06244172bace7917b91b7baad7427ee5fedcb6",
+    "_private/server/portal-release.php": "68daa31df664d2684bd36487e70bfbb6055c9e2bcf49fb72dbcdde7959fb5278",
+    "_private/server/portal-service.php": "c80427ba253ef4f7f4d57ccc736e4e3413e45f96b42697304268b3a658cb6da7",
+    "_private/server/portal-session.php": "3b61ac29db3d45328eb8cea05af5a91e260e2e23b5065087fc11bbfc9dacaae7",
+    "_private/views/portal-purchase.php": "66a595336b108c6b30a021c413ab41691313b1f84bd966f01b8afca191716e93",
+    "_private/views/portal-service.php": "8fdf11d58292b98320f48ac36d96a3f30f9e216ba6d862059a77d5c767504535",
+    "_private/views/portal.php": "640e0e21459d9aca9f190da2fdd04667f54fb34491f19fa299ba13526f288db2",
+    "public/account.php": "66c49d8bd7095fecd14d0a9dacd3d8db2a47ca7fe7d553a23e2cc53420ceaff0",
+    "public/portal-assets/order.css": "44497f927bd3cfc1abe35270abdc31a2ed3a085f844277a8bc7cfa75c370013e",
+    "public/portal-assets/order.js": "6e9598959f13f754a30191b0c408115d504af8399490253784aa3b8eb49c9f78",
+    "public/portal-assets/payment.js": "1df88c4e07de28b662eb9481dfdac08b6f368bceb8791251babf42160ed0b4f0",
+    "public/portal-assets/portal.css": "e808548931bd9f030239077234bf761f8c7c48dea70394dc6269946842789f02",
+    "public/portal-assets/portal.js": "c1fe665b7f07617bdebfed1b42d4b9778ed8bc4626b72e4ef627c6740cf78adb"
+  },
+  "dependencies": {
+    "private/payment-assets/booking-payment.css": [
+      "125e6763c5659c8835aef66d75299692d50b2c148f0ce2aef578bf5a67af4f7c",
+      "b0463f7095e32e5ea26749cd7390b313b9dbe98d2da5c251e336324adb41f76d"
+    ],
+    "private/payment-assets/booking-payment.js": [
+      "2d051e2119a13862aaaac66c1d07aefaf82903333c448a1e2dc4d404851bf8a2",
+      "88ea2aedc48062dbf3999d87144b3d68588def809d0ad3e43f99d70e08b26fb4"
+    ],
+    "private/pricing-assets/availability.js": [
+      "a341fc6e314f3ce6d071be85532436c06605f146b17818c7d6e9bc183bd35752",
+      "fff508bfeedb49c1d0ab8c9d109ab2d90be5990a29abe890296f474f2955c623"
+    ],
+    "private/pricing-assets/commercial-pricing.js": [
+      "0566a940a162ac3b87ad32821f44e6c5cb9726ff9847965850017b64d29f5146",
+      "94b62f65e226a4d95aba043ebf12b16a5021eca10143b612ebcbfc36c2c6b36c"
+    ],
+    "private/pricing-assets/commercial-quote-engine.js": [
+      "2a06d902685da3ca1d0c46fb99fd3141cefb5d52ef1b011ed17912305d2c932e",
+      "4d389970201d745219cf0644096bd11d0462013fadb837c2425cf78271a8a13b"
+    ],
+    "private/pricing-assets/pricing-market.js": [
+      "33dd1b7ec50d1d8705f0b499aae7812b89a3b2e72b47d1815729be988573c414",
+      "af7e478c52a6c5f214ad0666ae8db980d59ee4188d744f51cc0d836cc6b5a9c9"
+    ],
+    "private/pricing-assets/pricing.js": [
+      "a2885516e3c3305cbb14505b7ddbd206e23b348a6cc66babdb1a17482355fc79",
+      "c19f02669639b4f62ce7c27707d92c279cc51e64c7dd6edb10a1e162b1af4658"
+    ],
+    "private/pricing-assets/quote-engine.js": [
+      "317f21eb87be865218e23d698d01dc8a60a25d905ee71f1a4e77a2dcdb1af8c9",
+      "d103f08921d5b1d516213a0e4902fef699e4dfbe798b1ad853e17f57ed5bf9a6"
+    ],
+    "private/pricing-assets/scheduling.js": [
+      "1e44787ca50eac3342ddfc244db279da1e513de7256eaaf316bfeaabf7c3f685",
+      "8f848c33cbe6279d63a0be800bdb2b3a4c7617281493fca4329f1b680e120c4e"
+    ],
+    "private/real-estate-form-config.php": [
+      "3539b5b9bf008e9f901c526eedb99299a45ca243f9bf42a5994040dc9688fe75",
+      "69617acbeacf9c84e907e69abf507ceb8e3b7c50be2b8b45dc097d8e7517ff12"
+    ],
+    "private/real-estate-pricing.php": [
+      "671848826aa1b4f53c8e15db516ff5aee1ba7d453feb20601bebab7a01779f73",
+      "885eb6c06c7611ead426f022c4cb7fa018d212dc72fcaf9c8a61781c2587cb4a"
+    ],
+    "private/server/booking-availability-check.php": [
+      "2e207ff610b2e57914779ef33dffaa1eb51b375118f8711d56a5ec307ba94b75",
+      "8827e546e0e2c16b1260ee8a4a6f5e2557bdd7db5a79e24db3ff37391c262bda"
+    ],
+    "private/server/booking-availability.php": [
+      "0d994c48ca9b7f4001286efc870481e9a9ca9f1b523d0e5019edb8fd311e48cc",
+      "da8193a4891127a7780b699cc6a9482e72dc90cbbe2de805debe114f7803f8e4"
+    ],
+    "private/server/booking-calendar-client.php": [
+      "0a484183fc503195aa570325e24e1b1517539f00c5eaf17e1af6357a7e7351e2",
+      "e6f80acb03a71a5fc4daf055015fc45b1af62bbdd2700fb080c880bad6e7e0aa"
+    ],
+    "private/server/booking-checkout.php": [
+      "a23237e4e2b77a99579bf9a24f51b45e2dc7b5537b2b1788bcbc0ac446cbb30e",
+      "f818e0e349f79329e816c80587b28fca4c7f2bae31feb77cf1716112348bd41d"
+    ],
+    "private/server/booking-communication.php": [
+      "264dec4ee6705a6d9db807c922aebb4d02122badf4e68993a38b09e7ab7d9186",
+      "7d206e26ba5277b6245d849843e3dd180aa6be2e1a96b82a993b7825e2508c1f"
+    ],
+    "private/server/booking-confirmation.php": [
+      "29a7e86faa21062c0f663d6cf43d314dbd20ed59836b0f6446305941a6cb28d4",
+      "75bcdf00a19a7138fcdc6343624e10e8456cf0698526161d57e839f04af07744"
+    ],
+    "private/server/booking-crm.php": [
+      "acf250ec05945007b7940b09cd57280b9a8baea6ecc7bec81962345f9421bb97",
+      "d2e54bf7f0cb9464ee903e285b177baad585dff773483b0d644e918da39a8d33"
+    ],
+    "private/server/booking-feedback.php": [
+      "1cb4bb08b67278cacce231a8e9da7ef5ab589fed745c50fe8c93339e2fc51e4b",
+      "effb63d70c12c5a05c195ce921ab9464708d231bf85fdbbcee8370bf81740b79"
+    ],
+    "private/server/booking-invitation.php": [
+      "d3593c6892bf799ec3ee9c9b140fe0cbd469ac8dc3956e2f4003e28a93704429",
+      "f082c8794222ed7ff5d658ec6f48ee619a6747c992593650ddbd59528d66d8d7"
+    ],
+    "private/server/booking-lifecycle-reconcile.php": [
+      "1a40bacd8e5ef67fecc31e704aa8413d58dec10541be02c4f12f35ee7c890ec1",
+      "45fd90188feefa78cd0dd88b5a735c601659417f012c603ed6b91a1dd8d1b213"
+    ],
+    "private/server/booking-lifecycle-store.php": [
+      "1b1b74d4bded768e74f3510670adf415c5440f88c7f3e2897135e30e610b25a4",
+      "ad0da85caad0798b7705712b12be8974e7f86ad1ae70fc10e1e8686197aed8d0"
+    ],
+    "private/server/booking-lifecycle-ui.php": [
+      "318edfdcf949ebe78fd288d7bf37460785f2486c0214b32dd75cae3e07ad2c7f",
+      "ff45706a9b96640d403c1af129fbeb6948ae94f2158cea912a6780d21e7e7212"
+    ],
+    "private/server/booking-lifecycle.php": [
+      "40847197b81524775bded8a32ede891dc23dcedd2a60ac85deb89666402a9272",
+      "b2ef2dea8691426b9974854800ee2293c9d32d300c53e02e21e3d368cabcb963"
+    ],
+    "private/server/booking-mail-client.php": [
+      "189e15f44c3c28856765527efdcf25b71f748add07d6e7d31c396d50d3ed5e5b",
+      "ab8def6c11492bb9e7f8b7815ad16733f844d1c0767b5485eec14f9b002bb926"
+    ],
+    "private/server/booking-manage.php": [
+      "68a7db6a39afe2f39182256419a839455c45cd620a6f979af1809449a61c5114",
+      "d1ed8443bc26fa1863a41a465d8a62757eff9e3a774cb10ec69e2f75bde292e6"
+    ],
+    "private/server/booking-microsoft-calendar.php": [
+      "339570de58d28e84b58685fd399ae1168689445b8426ab68ede4061be9104326",
+      "d527f4d0807c5380d96a598a2844644b6873d502fc77af347fc3c63575ab8946"
+    ],
+    "private/server/booking-pay.php": [
+      "88094fa559767ecbfb71d27bcb48c3ee255dda20c1d6cad438152c09d4b5946c",
+      "e2170aeb9e7976abed8e25046d64da046fdfe78831127c914e4ca13731a6899f"
+    ],
+    "private/server/booking-schedule.php": [
+      "1863a4afdf23d8d72aa86ccf3b5edf13f1353d2f6475e10d655072dad76f9153",
+      "abcbb7c4f53a4a8b74e26613790ed9e4ab761d08a9d5410fbefac8572c2a5013"
+    ],
+    "private/server/booking-scheduling-provider.php": [
+      "0d73cef9621539ce0ad2b1fcf2ed0a69259d5eae5f507c99c379aa5dde2ebc45",
+      "9ce3a863abfa611633c2f7df375bd51aaf531d7bc439f61ecc80f8fbe5ae362c"
+    ],
+    "private/server/booking-staff.php": [
+      "05326ad4f6bd4d830e7c3907b99387c2866975a749c031e1d31684730886aa6e",
+      "492f0fa335cfb5af013bd5c245545336d60e902b2483c156c6130cbaf5cac301"
+    ],
+    "private/server/booking-store.php": [
+      "842176a35abcdd7477f6e50ac322a33c971705482db2c94e65668aae0ebe81e4",
+      "96878e4fffd0e49ad3d785aa7eb044f7b6628b12e66c4e06d7cdece445d19bb0"
+    ],
+    "private/server/booking-webhook.php": [
+      "048f6edad4bce977ebd497a49f37313033fe5bdbb4048b6df485108292ef8b23",
+      "6876af77a4d543fb146e9eb36d407df8fa1a4297806b57de957331dda8d2e7b1",
+      "e551b615a8644e701a305e71a38759ef1dcd4e47d78d1eb49afc2de91a8b5245"
+    ],
+    "private/server/booking-workflow.php": [
+      "0e47e11bd38c3829a9911523a2f4b47f5487e284f8442d58169b828b3874be7d",
+      "ad79a7105abb2c2507aaf02ac24bd3ab063e48173126c17470b2dfdfdb876bbc"
+    ],
+    "private/server/check-calendar-feedback.php": [
+      "257a4c0221cb0c95a13633e1e84a6284b991f19d2bdebd5406ae83a2c31c8341",
+      "5c2e7afd0e8c644e4a502678db8cd1cce7df2cea7a54e85319f425188bf9b31e"
+    ],
+    "private/server/contact-submit.php": [
+      "09f7ab5eebc421fb0a431419898462e65f3025acf5c2dd2989459089f8657dd9",
+      "2444dab6d9bcd128f8d2fbc6ddba2d39d411e7905af80c0833479742b9ac9926"
+    ],
+    "private/server/pricing-approve.php": [
+      "0d778153cc9586e514f0667209c6292935c516daff6dc2e651bb88f816c8444f",
+      "37cf07e67d6b41ded1195a8139950692a138aba2a91a2fcacd2e1d236707ffcd"
+    ],
+    "private/server/pricing-asset.php": [
+      "a750f9e31a7813bf2be860814a2b050c81ff996f7469b6af7e2ffc173eb1d43d",
+      "f497f8b4919efa3d37e6ed02b8a6c9692f18c18d6e6bb02691bb232ffd31cfe4"
+    ],
+    "private/server/pricing-confirm.php": [
+      "08e370d38931542efacd05643187069bebd74b06210e4127b305eac9b237a316",
+      "0dbd47fa421bcc5da7999a1ec6b74d3fb10e93f12edb635f063d4ebc6caa3133"
+    ],
+    "private/server/pricing-logout.php": [
+      "62cdd97c7c56c56dad7066baf4529a9c721118f1c0d8eedcacbe779b91baa40e",
+      "7be9a7e074ba24298d83f91b485aa7f8d6a7b485f2787793c819361c5906dd51"
+    ],
+    "private/server/pricing-request.php": [
+      "86e208e729e843536abf6f0cad2cb9dace0743d1e2534c4ce974cdcaf5e6f3a8",
+      "a962572a4822685b53a7438250c73e1a6d63117150396bec2f3ff24a138e0cc5"
+    ],
+    "private/server/quote-receipts.php": [
+      "228327f69f9d0a46482411b78929572727e60e99366b23c491f330305119c883",
+      "742febf436bf04b038a71e5521182899c3a251bb1117423999a73015799cebd5"
+    ],
+    "private/server/quote-submit.php": [
+      "34c1ef59c3f682ea86fda611db604d3d43a5be670ca1d0a25f4b8e64a8f6b686",
+      "fbd006a051950f9e8b1be61dd7f711e240c414556d434661f3992b755a692492"
+    ],
+    "private/views/booking-payment.php": [
+      "65847a6c49bef79df380f5932d6c2448c019b7ee3129c075039476a9493b0031",
+      "b9fc01773cb12a08f79f3e58acfcefa0e91b6b7034e256fe12181e21d3ce3b45"
+    ],
+    "private/views/pricing.php": [
+      "b5dc20292ba5a5707b29bf08ff9c9819f8cf5ff42e5b2d89742338d9affc89f0",
+      "e1322c42c025b268578f360526c3cbaba49f9a299b3aa1044ae6ae7e42b75f06"
+    ],
+    "private/views/scheduling-fields.php": [
+      "647d769a3ed059e71b649ad6e2df144f04a67bb5981d61d6ac60b3194c2ffed8",
+      "ab8b82e95eeea7331a4c2d530ea8d04fcb6e789a7461c4554fe547102aa74ba7"
+    ]
+  },
+  "webhook_before": [
+    "048f6edad4bce977ebd497a49f37313033fe5bdbb4048b6df485108292ef8b23",
+    "e551b615a8644e701a305e71a38759ef1dcd4e47d78d1eb49afc2de91a8b5245"
+  ],
+  "fonts": {
+    "assets/fonts/Inter-Regular.ttf": "72938fd93d26be942ab99ca6a300f68faf6a4e86",
+    "assets/fonts/Poppins-Regular.ttf": "0bda228ade88b0bb5aac7da2c881d0c3f64d0817",
+    "assets/fonts/Poppins-SemiBold.ttf": "c30ad104723a0e6e00e54768626cb02c5fdf6aee"
+  },
+  "manifests": [
+    "calendar-confirmation-release.json",
+    "microsoft-scheduling-release.json",
+    "booking-workflow-release.json",
+    "branded-checkout-release.json",
+    "appointment-management-release.json"
+  ]
+}

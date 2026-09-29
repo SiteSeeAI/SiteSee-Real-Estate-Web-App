@@ -11,6 +11,7 @@ on:
       - 'tests/fixtures/portal-http/**'
       - 'documents/portal/**'
       - 'tests/portal-*'
+      - 'tools/*portal*'
       - '.github/workflows/customer-portal-ci.yml'
   push:
     branches: ['feat/calendar-confirmation-20260925']
@@ -23,6 +24,7 @@ on:
       - 'tests/fixtures/portal-http/**'
       - 'documents/portal/**'
       - 'tests/portal-*'
+      - 'tools/*portal*'
       - '.github/workflows/customer-portal-ci.yml'
 
 permissions:
@@ -53,6 +55,10 @@ jobs:
           php tests/portal-session.test.php
           php tests/portal-purchase.test.php
           php tests/portal-service.test.php
+          php tests/portal-release.test.php
+          python3 tests/portal-installer.test.py
+          python3 tools/build-portal-installer.py
+          git diff --exit-code -- tools/install-customer-portal.py
       - name: Install isolated browser test dependencies
         run: |
           npm install --prefix "$RUNNER_TEMP/portal-browser" --no-save playwright@1.58.2

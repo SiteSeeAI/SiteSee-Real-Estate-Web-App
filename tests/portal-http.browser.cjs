@@ -8,6 +8,10 @@ const temp=fs.mkdtempSync(path.join(os.tmpdir(),'sitesee-portal-http-'));
 const privateRoot=path.join(temp,'private');fs.cpSync(path.join(repo,'_private'),privateRoot,{recursive:true});
 // Reuse code only; previous unit-test session directories are not fixture state.
 fs.rmSync(path.join(privateRoot,'data'),{recursive:true,force:true});
+const accountEntry=path.join(temp,'account.php');
+fs.writeFileSync(accountEntry,fs.readFileSync(path.join(repo,'public/account.php'),'utf8').replaceAll('/home/sitesee/.sitesee-real-estate',privateRoot));
+const releaseFlag=path.join(privateRoot,'portal-test.json');
+fs.writeFileSync(releaseFlag,JSON.stringify({release:'portal-20260929-r1',stage:'TEST',enabled:true}),{mode:0o600});
 // Replace provider boundaries only in the throwaway copy; production has no test override.
 for(const [file,name] of [['portal-billing.php','portal_stripe'],['booking-lifecycle.php','booking_lifecycle_connection']]){
  const target=path.join(privateRoot,'server',file);fs.writeFileSync(target,fs.readFileSync(target,'utf8').replace('function '+name+'(', 'function '+name+'_unused_fixture('));
@@ -20,7 +24,7 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
  let php,browser,proxy;let serverLog='';
  try {
   const phpPort=await reserve(),tlsPort=await reserve(),origin='https://127.0.0.1:'+tlsPort;
-  const env={...process.env,PORTAL_TEST_PRIVATE:privateRoot,SITESEE_REAL_ESTATE_SITE_URL:origin,
+  const env={...process.env,PORTAL_TEST_PRIVATE:privateRoot,PORTAL_TEST_ACCOUNT:accountEntry,SITESEE_REAL_ESTATE_SITE_URL:origin,
     SITESEE_REAL_ESTATE_PRICING_GATE_SECRET:'isolated-test-secret-never-used-in-production-12345',
     SITESEE_REAL_ESTATE_STRIPE_TEST_SECRET:'sk_test_isolated1234567890123456',SITESEE_REAL_ESTATE_BOOKING_TEST_ENABLED:'1',SITESEE_REAL_ESTATE_PORTAL_TEST_ENABLED:'1',
     SITESEE_REAL_ESTATE_BOOKING_DB:path.join(privateRoot,'data','bookings.sqlite'),SITESEE_SMTP_HOST:''};
@@ -76,6 +80,8 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   await goto(page,'/account.php?view=order&reference=AAAAAAAAAA');assert((await page.content()).includes('1234567890'));
   for(const secret of ['9876543210','cus_private_','pi_private_', 'agent_token_hash', 'request_json'])assert(!(await page.content()).includes(secret),secret);
   await goto(page);await claim(page,origin+'/manage-appointment.php#CCCCCCCCCC.'+'4'.repeat(64));assert((await page.content()).includes('303 Unclaimed Road'));
+  fs.unlinkSync(releaseFlag);assert.equal((await page.request.get(origin+'/account.php')).status(),503,'Private disable overrides inherited TEST flag');
+  fs.writeFileSync(releaseFlag,JSON.stringify({release:'portal-20260929-r1',stage:'TEST',enabled:true}),{mode:0o600});
   await goto(page,'/account.php?view=profile');await page.getByLabel('First Name',{exact:true}).fill('<script>alert(1)</script>');await page.getByLabel('Company',{exact:true}).fill('Saved Company');
   // Untrusted identity and role fields are ignored; only allowlisted contact fields can change.
   const profile=await post(page,{action:'save_profile',first_name:'<script>alert(1)</script>',company:'Saved Company',account_id:'f'.repeat(32),email:'two@example.com',approved:'1'});assert.equal(profile.status(),303);
