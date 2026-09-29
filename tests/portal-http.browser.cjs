@@ -23,7 +23,7 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   const setup=(action)=>execFileSync('php',[path.join(__dirname,'fixtures/portal-http/setup.php'),action],{env,encoding:'utf8'});
   setup('seed');const baseline=setup('snapshot');
   execFileSync('openssl',['req','-x509','-newkey','rsa:2048','-nodes','-keyout',path.join(temp,'key.pem'),'-out',path.join(temp,'cert.pem'),'-days','1','-subj','/CN=localhost'],{stdio:'ignore'});
-  php=spawn('php',['-d','sendmail_path='+sendmail,'-S','127.0.0.1:'+phpPort,'-t',path.join(repo,'public'),path.join(__dirname,'fixtures/portal-http/router.php')],{env,stdio:['ignore','pipe','pipe']});
+  php=spawn('php',['-d','sendmail_path='+sendmail,'-d','allow_url_fopen=0','-d','disable_functions=curl_exec,curl_multi_exec,fsockopen,pfsockopen,stream_socket_client,socket_connect','-S','127.0.0.1:'+phpPort,'-t',path.join(repo,'public'),path.join(__dirname,'fixtures/portal-http/router.php')],{env,stdio:['ignore','pipe','pipe']});
   php.stderr.on('data',b=>serverLog+=b.toString());
   proxy=https.createServer({key:fs.readFileSync(path.join(temp,'key.pem')),cert:fs.readFileSync(path.join(temp,'cert.pem'))},(req,res)=>{
     const forward=http.request({hostname:'127.0.0.1',port:phpPort,path:req.url,method:req.method,headers:req.headers},r=>{res.writeHead(r.statusCode,r.headers);r.pipe(res);});
@@ -41,7 +41,7 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   const post=async(p,data)=>p.request.post(origin+'/account.php',{form:{csrf:await csrf(p),...data},maxRedirects:0,headers:{Origin:origin}});
   const requestLink=async(p,email)=>{
     await goto(p);await p.getByLabel('Email Address',{exact:true}).fill(email);await p.getByRole('button',{name:'Email My Sign In Link'}).click();
-    await p.getByRole('status').waitFor();
+    try {await p.getByRole('status').waitFor({timeout:5000});} catch(e) {throw new Error('Login request failed. Page: '+await p.locator('main').innerText()+' Server: '+serverLog);}
     const tokens=[...fs.readFileSync(mail,'utf8').matchAll(/view=verify#([a-f0-9]{64})/g)];return tokens.at(-1)[1];
   };
   const login=async(p,email)=>{
@@ -82,9 +82,9 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   for(const view of ['','?view=order&reference=AAAAAAAAAA','?view=profile']){
     await goto(page,'/account.php'+view);
     for(const width of [320,390,736,1200]) {await page.setViewportSize({width,height:950});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No overflow '+width+' '+view);}
-    if(shots){const name=view.includes('order')?'account-order':view.includes('profile')?'account-profile':'account-orders';await page.screenshot({path:path.join(shots,name+'.png'),fullPage:true});console.log('PORTAL_VISUAL_'+name+':'+Buffer.from(await page.content()).toString('base64'));}
+    if(shots){const name=view.includes('order')?'account-order':view.includes('profile')?'account-profile':'account-orders';await page.evaluate(()=>document.fonts.ready);assert(await page.evaluate(()=>document.fonts.check('16px Inter') && document.fonts.check('21px Poppins')));await page.screenshot({path:path.join(shots,name+'.png'),fullPage:true});console.log('PORTAL_VISUAL_'+name+':'+(await page.screenshot({type:'jpeg',quality:45,fullPage:true})).toString('base64'));}
   }
-  await goto(page);await page.setViewportSize({width:390,height:844});if(shots)await page.screenshot({path:path.join(shots,'account-mobile.png'),fullPage:true});
+  await goto(page);await page.setViewportSize({width:390,height:844});if(shots){await page.screenshot({path:path.join(shots,'account-mobile.png'),fullPage:true});console.log('PORTAL_VISUAL_account-mobile:'+(await page.screenshot({type:'jpeg',quality:55,fullPage:true})).toString('base64'));}
   await goto(page,'/account.php?view=profile');const retired=(await context.cookies())[0];await page.getByRole('button',{name:'Sign Out',exact:true}).click();await page.getByRole('heading',{name:'Sign In',exact:true}).waitFor();
   await context.addCookies([retired]);await goto(page,'/account.php?view=order&reference=AAAAAAAAAA');assert(!(await page.content()).includes('1234567890'));
   setup('remove-approval');await login(page,'one@example.com');assert((await page.content()).includes('101 Example Lane'),'Approval persists after source removal');
