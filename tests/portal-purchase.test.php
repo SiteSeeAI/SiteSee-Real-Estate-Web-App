@@ -1,5 +1,8 @@
 <?php
 declare(strict_types=1);
+$completed=false;
+register_shutdown_function(static function()use(&$completed):void{if(!$completed){fwrite(STDERR,"Purchase assertions did not complete.\n");exit(1);}});
+putenv('SITESEE_REAL_ESTATE_SITE_URL=https://portal-test.example');
 $dir=sys_get_temp_dir().'/sitesee-purchase-'.bin2hex(random_bytes(8));mkdir($dir,0700);
 putenv('SITESEE_REAL_ESTATE_BOOKING_DB='.$dir.'/bookings.sqlite');putenv('SITESEE_REAL_ESTATE_BOOKING_TEST_ENABLED=1');
 putenv('SITESEE_REAL_ESTATE_PRICING_GATE_SECRET=isolated-purchase-test-secret-not-production-12345');
@@ -61,5 +64,6 @@ try{
     $bad=$payload;$bad['details']['street']=['unexpected'];rejects(fn()=>portal_purchase_review($db,$one,$bad),'Nested input');
     $late=$payload;$late['details']['street']='Expired draft';$draft=portal_purchase_review($db,$one,$late);$db->prepare('UPDATE portal_submissions SET created_at=0 WHERE id=?')->execute([$draft['review']]);rejects(fn()=>portal_purchase_submit($db,$one,$draft['review']),'Expired review');
     $db->exec("UPDATE portal_accounts SET disabled=1 WHERE id='$two'");check(portal_purchase_seed($db,$two,$ref2)===false,'Disabled owner');
+    $completed=true;
     echo "portal-purchase: PASS (canonical prices; crash recovery; ownership; consent; mail retries; hosted/embedded idempotency; signed webhook; Order Again; expiry; disabled/cancelled)\n";
 }finally{unset($db);foreach(glob($dir.'/*')?:[] as $file)unlink($file);rmdir($dir);}
