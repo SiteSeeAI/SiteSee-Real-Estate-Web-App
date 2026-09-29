@@ -4,11 +4,11 @@ The user requires one complete package, not repeated single-file fixes. Delivery
 
 `portal-20260929-r2` / `tools/install-portal-complete.py` supersedes the r1 deployment instructions and the standalone path correction. It packages current phone authentication and the complete account/order/payment integration, with aggregate source inspection, hash-qualified metadata repair, missing dependency recovery, transactional backup/recovery, and private SMS setup. The website/public manifest routing defect and the first-error-only metadata behavior are corrected. The retained r1 builder/fixtures remain historical and are not the deployment entry point.
 
-Local consolidated installer tests cover baseline inspection, both reported failures, multiple blockers, missing file/CRLF recovery, metadata preservation, symlink/hardlink rejection, concurrent edits before backup and before replacement, interrupted installations, repeated installation, activation and rollback guards. Independent audit findings were corrected and regression tested. Full current CI result is recorded in COMPLETE-REVIEW.md after verification.
+Local consolidated installer tests cover baseline inspection, both reported failures, multiple blockers, missing file/CRLF recovery, metadata preservation, symlink/hardlink rejection, concurrent edits before backup and before replacement, interrupted installations, repeated installation, activation and rollback guards. Independent audit findings were corrected and regression tested. Full PHP and browser CI passed on f1d97c5f3d2eb7f42ee4d5d93a76a306cdf8d369 (run 36609050555). Evidence is recorded in COMPLETE-REVIEW.md.
 
 **Not installed on the user's server.** No direct server access, provider call, real SMS, email, payment, calendar or CRM write was performed during package preparation. Twilio Verify credentials and verified phone enrollment are activation prerequisites; the one deployment command can collect them privately. Without them, the complete package remains installed but disabled. Browser/provider verification remains outstanding. The package does not change main navigation; the direct account.php URL is the controlled TEST entry.
 
-The canonical Word manual v1.7 contains superseded email-login and r1 installation instructions. Use the r2 installation guide and this current checkpoint for this package. Do not merge main or delete branches. Protect D32FFC7458 and preserve completed appointment evidence.
+The canonical Word manual is updated to v1.8 with phone login, the 2½–5-day window, consolidated deployment and recovery. Use the r2 installation guide and this current checkpoint for this package. Do not merge main or delete branches. Protect D32FFC7458 and preserve completed appointment evidence.
 
 ---
 
