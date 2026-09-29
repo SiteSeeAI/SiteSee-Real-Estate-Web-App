@@ -117,6 +117,7 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
     if(shots&&market==='residential'){await page.screenshot({path:path.join(shots,'purchase-review.png'),fullPage:true});console.log('PORTAL_VISUAL_purchase-review:'+(await page.screenshot({type:'jpeg',quality:45,fullPage:true})).toString('base64'));}
     await page.getByRole('button',{name:'Place order & continue to deposit',exact:true}).click();
     await page.getByRole('heading',{name:'Your Test Deposit',exact:true}).waitFor();
+    if(shots&&market==='residential'){await page.screenshot({path:path.join(shots,'purchase-payment.png'),fullPage:true});console.log('PORTAL_VISUAL_purchase-payment:'+(await page.screenshot({type:'jpeg',quality:45,fullPage:true})).toString('base64'));}
     const reference=new URL(page.url()).searchParams.get('reference');assert.match(reference,/^[A-F0-9]{20}$/);
     if(market==='residential')residentialReference=reference;
     const mailAfter=fs.readFileSync(mail,'utf8');
