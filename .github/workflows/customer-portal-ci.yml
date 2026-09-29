@@ -56,6 +56,9 @@ jobs:
           php tests/portal-purchase.test.php
           php tests/portal-service.test.php
           php tests/portal-release.test.php
+          php tests/portal-phone.test.php
+          php tests/portal-sms.test.php
+          php -l tools/portal-enroll-phone.php
           python3 tests/portal-installer.test.py
           python3 tools/build-portal-installer.py
           git diff --exit-code -- tools/install-customer-portal.py

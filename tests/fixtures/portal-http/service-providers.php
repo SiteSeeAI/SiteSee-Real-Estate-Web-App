@@ -27,3 +27,16 @@ function portal_stripe(string $method,string $path,array $body=[],string $key=''
     if($path==='/checkout/sessions'&&$method==='POST')return ['id'=>'cs_test_http_balance','livemode'=>false,'mode'=>'payment','status'=>'open','payment_status'=>'unpaid','currency'=>'usd','amount_total'=>(int)$body['line_items[0][price_data][unit_amount]'],'client_reference_id'=>$ref,'metadata'=>['booking_reference'=>$ref,'portal_payment_kind'=>'balance','portal_attempt'=>$body['metadata[portal_attempt]']],'customer'=>'cus_http','url'=>'https://checkout.stripe.com/c/pay/synthetic-http'];
     throw new RuntimeException('Fixture blocked unrecognized provider request');
 }
+
+// SMS provider simulation lives only in this test fixture. No external text is sent.
+function portal_sms_send(string $phone): string
+{
+    $path=getenv('PORTAL_TEST_PRIVATE').'/data/sms-fixture.json';$all=is_file($path)?json_decode(file_get_contents($path),true):[];
+    $sid='VE'.bin2hex(random_bytes(16));$all[$sid]=['phone'=>$phone,'code'=>(string)random_int(100000,999999),'used'=>false];file_put_contents($path,json_encode($all));return $sid;
+}
+function portal_sms_check(string $phone,string $sid,string $code): bool
+{
+    $path=getenv('PORTAL_TEST_PRIVATE').'/data/sms-fixture.json';$all=json_decode(file_get_contents($path),true);$row=$all[$sid]??[];
+    if(($row['phone']??'')!==$phone||($row['code']??'')!==$code||($row['used']??true))return false;
+    $all[$sid]['used']=true;file_put_contents($path,json_encode($all));return true;
+}

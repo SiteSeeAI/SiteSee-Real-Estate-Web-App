@@ -13,15 +13,15 @@ function portal_page(string $title, string $body, array|false $account = false, 
 function portal_sign_in(string $notice = ''): never
 {
     portal_page('Sign In', ($notice ? '<p role="status" class="notice">'.portal_escape($notice).'</p>' : '')
-        . '<p class="lead">Use your registered cell phone number to open My Orders. No password needed.</p><section class="panel narrow"><form method="post">'.portal_csrf_field()
-        . '<input type="hidden" name="action" value="request_sms"><label>Cell Phone Number<input name="phone" type="tel" autocomplete="tel" inputmode="tel" maxlength="40" required></label><label class="card-consent"><input type="checkbox" name="sms_consent" value="yes" required><span>Text me a one-time sign-in code. Message and data rates may apply.</span></label><button class="primary">Text My Sign In Code</button></form></section>'
-        . '<p class="help">New number or trouble signing in? <a href="mailto:sales@sitesee.ai">Contact SiteSee</a>. Changing your profile contact number does not change your login number.</p>');
+        . '<p class="lead">Use your approved email address to open My Orders. No password needed.</p><section class="panel narrow"><form method="post">'.portal_csrf_field()
+        . '<input type="hidden" name="action" value="request_login"><label>Email Address<input name="email" type="email" autocomplete="email" maxlength="180" required></label><button class="primary">Email My Sign In Link</button></form></section>'
+        . '<p class="help">Need help with account access? <a href="mailto:sales@sitesee.ai">Contact SiteSee</a>.</p>');
 }
 function portal_verify_page(string $error = ''): never
 {
-    portal_page('Enter Your Text Code', ($error ? '<p role="alert" class="notice">'.portal_escape($error).'</p>' : '')
-        . '<p class="lead" role="status">If your number has account access and text verification is available, a code is on its way. Enter it within 10 minutes.</p><section class="panel narrow"><form method="post" id="verify-form">'.portal_csrf_field()
-        . '<input type="hidden" name="action" value="verify_sms"><label>Sign In Code<input id="login-code" name="code" type="text" autocomplete="one-time-code" inputmode="numeric" minlength="4" maxlength="10" pattern="[0-9]{4,10}" required></label><button class="primary">Sign In</button></form></section><p><a href="/account.php">Request A New Text</a> · Wait one minute before requesting again.</p>');
+    portal_page('Complete Your Sign In', ($error ? '<p role="alert" class="notice">'.portal_escape($error).'</p>' : '')
+        . '<p class="lead">Continue to securely open My Orders.</p><section class="panel narrow"><form method="post" id="verify-form">'.portal_csrf_field()
+        . '<input type="hidden" name="action" value="consume_login"><label id="code-label">Sign In Code<input id="login-code" name="token" autocomplete="off" maxlength="64" pattern="[a-f0-9]{64}" required></label><p id="code-help">Paste the code after # in your sign-in email link.</p><button class="primary">Sign In</button></form></section><p><a href="/account.php">Request A New Link</a></p>');
 }
 function portal_orders_page(PDO $db, array $account, int $page, string $notice = ''): never
 {
@@ -35,7 +35,7 @@ function portal_orders_page(PDO $db, array $account, int $page, string $notice =
     $body.='<nav class="pagination" aria-label="Orders Pages">';
     if($page>1)$body.='<a href="/account.php?page='.($page-1).'">Previous</a>';
     if($result['has_more'])$body.='<a href="/account.php?page='.($page+1).'">Next</a>';
-    $body.='</nav><details class="help"><summary>Missing A Previous Order?</summary><p>Use an unexpired private payment or appointment link from SiteSee to add it. The order contact must match your staff-verified account. If the link has expired, contact SiteSee for help.</p><form method="post">'.portal_csrf_field().'<input type="hidden" name="action" value="claim_order"><label>Private Order Link Or Code<input name="credential" maxlength="2048" autocomplete="off" required></label><button>Add Previous Order</button></form></details>';
+    $body.='</nav><details class="help"><summary>Missing A Previous Order?</summary><p>Use an unexpired private payment or appointment link from SiteSee to add it. The order email must match your verified account. If the link has expired, contact SiteSee for help.</p><form method="post">'.portal_csrf_field().'<input type="hidden" name="action" value="claim_order"><label>Private Order Link Or Code<input name="credential" maxlength="2048" autocomplete="off" required></label><button>Add Previous Order</button></form></details>';
     portal_page('My Orders',$body,$account);
 }
 function portal_order_page(array $order, array $account): never

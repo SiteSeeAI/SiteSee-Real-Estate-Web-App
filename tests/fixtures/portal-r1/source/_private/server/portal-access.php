@@ -158,7 +158,7 @@ function portal_claim_existing_order(PDO $db, string $accountId, string $referen
         $owner = $q->fetchColumn();
         if ($owner !== false) { $db->exec('COMMIT'); return hash_equals($owner,$accountId); }
         $db->prepare('INSERT INTO portal_order_owners VALUES (?,?,?,?)')
-            ->execute([$reference,$accountId,isset($_SESSION['portal_phone'])?'staff-bound-phone-and-existing-token':'verified-email-and-existing-token',$now ?? time()]);
+            ->execute([$reference,$accountId,'verified-email-and-existing-token',$now ?? time()]);
         $db->exec('COMMIT');
         return true;
     } catch (Throwable $error) {

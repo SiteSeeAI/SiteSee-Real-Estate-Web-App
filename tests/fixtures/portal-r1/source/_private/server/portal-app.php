@@ -20,8 +20,6 @@ if (empty($_SERVER['HTTPS']) || $_SERVER['HTTPS'] === 'off') {
 require_once __DIR__ . '/portal-orders.php';
 require_once __DIR__ . '/portal-session.php';
 require_once __DIR__ . '/portal-mail.php';
-require_once __DIR__.'/portal-phone.php';
-require_once __DIR__.'/portal-sms.php';
 require_once __DIR__.'/portal-purchase.php';
 require_once __DIR__.'/portal-billing.php';
 require_once dirname(__DIR__).'/views/portal-service.php';
@@ -36,9 +34,8 @@ function portal_input(array $source, string $key, int $max = 2048): string
     return $v;
 }
 try {
-    $db=booking_db();portal_access_schema($db);portal_profile_schema($db);portal_purchase_schema($db);portal_billing_schema($db);portal_phone_schema($db);portal_session_start();
+    $db=booking_db();portal_access_schema($db);portal_profile_schema($db);portal_purchase_schema($db);portal_billing_schema($db);portal_session_start();
     $account=portal_session_account($db);
-    if($account&&!portal_phone_session_valid($db,$account)){portal_session_clear();$account=false;}
     $method=$_SERVER['REQUEST_METHOD']??'GET';
     if(!in_array($method,['GET','POST'],true)){header('Allow: GET, POST');portal_page('Request Not Available','<p>Use the account links to continue.</p>',$account,405);}
     if($method==='POST'){
@@ -50,20 +47,16 @@ try {
             setcookie(session_name(),'', ['expires'=>time()-3600,'path'=>'/','secure'=>true,'httponly'=>true,'samesite'=>'Lax']);
             portal_redirect('?signed_out=1');
         }
-        if($action==='request_sms'){
-            if(portal_input($_POST,'sms_consent',8)!=='yes')portal_sign_in('Confirm that you want a sign-in code sent by text.');
-            $_SESSION['phone_challenge']=portal_phone_request($db,portal_input($_POST,'phone',40),(string)($_SERVER['REMOTE_ADDR']??''),
-                SITESEE_REAL_ESTATE_PRICING_GATE_SECRET,'portal_sms_send');
-            portal_redirect('?view=verify');
+        if($action==='request_login'){
+            portal_request_login($db,portal_input($_POST,'email',180),(string)($_SERVER['REMOTE_ADDR']??''),
+                SITESEE_REAL_ESTATE_PRICING_GATE_SECRET,'portal_pricing_approved','portal_send_login');
+            portal_redirect('?sent=1');
         }
-        if($action==='verify_sms'){
-            $verified=portal_phone_consume($db,(string)($_SESSION['phone_challenge']??''),portal_input($_POST,'code',10),'portal_sms_check');
-            if(!$verified)portal_verify_page('This code could not be verified. Check it or request a new text after one minute.');
-            portal_session_login($verified);
-            $_SESSION['portal_phone']=['phone'=>$verified['login_phone'],'revision'=>$verified['phone_revision']];
-            portal_redirect();
+        if($action==='consume_login'){
+            $verified=portal_consume_login($db,portal_input($_POST,'token',64));
+            if(!$verified)portal_verify_page('This sign-in link is invalid or expired. Request a new link to continue.');
+            portal_session_login($verified);portal_redirect();
         }
-        if(in_array($action,['request_login','consume_login'],true))portal_page('Sign In With Your Cell Phone','<p>Email sign-in has been replaced. <a href="/account.php">Use your cell phone number</a>.</p>',false,400);
         if(!$account)portal_sign_in('Please sign in to continue.');
         if(str_starts_with($action,'appointment_')||in_array($action,['balance_checkout','billing_manage'],true)){
             $recent=array_values(array_filter($_SESSION['portal_service_requests']??[],static fn($t):bool=>is_int($t)&&$t>time()-60));
@@ -133,8 +126,8 @@ try {
     }
     $view=portal_input($_GET,'view',20);
     if($view==='verify')portal_verify_page();
-    if($view==='session')portal_json($account?['email'=>$account['email'],'csrf'=>$_SESSION['csrf']]:['error'=>'Please sign in again in another tab using the same cell phone number, then retry.'],$account?200:401);
-    if(!$account)portal_sign_in(isset($_GET['signed_out'])?'You are signed out.':'');
+    if($view==='session')portal_json($account?['email'=>$account['email'],'csrf'=>$_SESSION['csrf']]:['error'=>'Please sign in again in another tab using the same email, then retry.'],$account?200:401);
+    if(!$account)portal_sign_in(isset($_GET['sent'])?'If this email has account access, a sign-in link is on its way. Check your inbox.':(isset($_GET['signed_out'])?'You are signed out.':''));
     if($view==='engine'){
         $market=portal_input($_GET,'market',16);
         if(!in_array($market,['residential','commercial'],true))portal_json(['error'=>'Unavailable'],404);

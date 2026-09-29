@@ -13,7 +13,7 @@ fs.writeFileSync(accountEntry,fs.readFileSync(path.join(repo,'public/account.php
 const releaseFlag=path.join(privateRoot,'portal-test.json');
 fs.writeFileSync(releaseFlag,JSON.stringify({release:'portal-20260929-r1',stage:'TEST',enabled:true}),{mode:0o600});
 // Replace provider boundaries only in the throwaway copy; production has no test override.
-for(const [file,name] of [['portal-billing.php','portal_stripe'],['booking-lifecycle.php','booking_lifecycle_connection']]){
+for(const [file,name] of [['portal-billing.php','portal_stripe'],['booking-lifecycle.php','booking_lifecycle_connection'],['portal-sms.php','portal_sms_send'],['portal-sms.php','portal_sms_check']]){
  const target=path.join(privateRoot,'server',file);fs.writeFileSync(target,fs.readFileSync(target,'utf8').replace('function '+name+'(', 'function '+name+'_unused_fixture('));
 }
 const mail=path.join(temp,'mail.txt');
@@ -47,14 +47,16 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   const goto=async(p,url='/account.php')=>{let r;for(let i=0;i<25;i++){r=await p.goto(origin+url);if(r.status()!==503)return r;await p.waitForTimeout(100);}throw Error('PHP server not ready: '+serverLog);};
   const csrf=p=>p.locator('input[name=csrf]').first().inputValue();
   const post=async(p,data)=>p.request.post(origin+'/account.php',{form:{csrf:await csrf(p),...data},maxRedirects:0,headers:{Origin:origin}});
+  const phones={'one@example.com':'3125550100','two@example.com':'3125550101','cro@sitesee.ai':'3125550102'};
   const requestLink=async(p,email)=>{
-    await goto(p);await p.getByLabel('Email Address',{exact:true}).fill(email);await p.getByRole('button',{name:'Email My Sign In Link'}).click();
-    try {await p.getByRole('status').waitFor({timeout:5000});} catch(e) {throw new Error('Login request failed. Page: '+await p.locator('main').innerText()+' Server: '+serverLog);}
-    const tokens=[...fs.readFileSync(mail,'utf8').matchAll(/view=verify#([a-f0-9]{64})/g)];return tokens.at(-1)[1];
+    setup('reset-sms-rate'); // Core suite separately verifies all persistent throttles.
+    await goto(p);await p.getByLabel('Cell Phone Number',{exact:true}).fill(phones[email]);await p.getByLabel('Text me a one-time sign-in code.',{exact:false}).check();await p.getByRole('button',{name:'Text My Sign In Code'}).click();
+    await p.getByRole('heading',{name:'Enter Your Text Code'}).waitFor();
+    return Object.values(JSON.parse(fs.readFileSync(path.join(privateRoot,'data/sms-fixture.json'),'utf8'))).at(-1).code;
   };
   const login=async(p,email)=>{
-    const token=await requestLink(p,email);await goto(p,'/account.php?view=verify#'+token);
-    await p.getByRole('button',{name:'Sign In',exact:true}).click();await p.getByRole('heading',{name:'My Orders',exact:true}).waitFor();return token;
+    const code=await requestLink(p,email);await p.getByLabel('Sign In Code',{exact:true}).fill(code);
+    await p.getByRole('button',{name:'Sign In',exact:true}).click();await p.getByRole('heading',{name:'My Orders',exact:true}).waitFor();return code;
   };
   const claim=async(p,code)=>{
     await p.getByText('Missing A Previous Order?',{exact:true}).click();await p.getByLabel('Private Order Link Or Code').fill(code);await p.getByRole('button',{name:'Add Previous Order',exact:true}).click();
@@ -64,14 +66,15 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   assert.equal((await page.request.post(origin+'/account.php',{form:{action:'request_login',email:'one@example.com'}})).status(),403);
   assert.equal((await page.request.post(origin+'/account.php',{form:{action:'request_login',email:'one@example.com',csrf:await csrf(page)},headers:{Origin:'https://evil.example'}})).status(),403);
   assert.equal((await page.request.put(origin+'/account.php')).status(),405);
-  const unknown=await post(page,{action:'request_login',email:'unknown@example.com'});assert.equal(unknown.status(),303);assert(!fs.existsSync(mail));
+  assert.equal((await post(page,{action:'request_login',email:'one@example.com'})).status(),400,'Email route disabled');
+  await goto(page);const unknown=await post(page,{action:'request_sms',phone:'3125550199',sms_consent:'yes'});assert.equal(unknown.status(),303);assert(!fs.existsSync(path.join(privateRoot,'data/sms-fixture.json')));assert(!fs.existsSync(mail));
   const token=await requestLink(page,'one@example.com');const anonymous=(await context.cookies())[0].value;
-  // GET and email prefetch do not consume login.
+  // The code is session bound and never consumed by GET.
   await goto(page,'/account.php?view=verify#'+token);assert.equal(new URL(page.url()).hash,'');
   await goto(two,'/account.php?view=verify#'+token);
-  await page.getByRole('button',{name:'Sign In',exact:true}).click();await page.getByRole('heading',{name:'My Orders',exact:true}).waitFor();
+  await page.getByLabel('Sign In Code',{exact:true}).fill(token);await page.getByRole('button',{name:'Sign In',exact:true}).click();await page.getByRole('heading',{name:'My Orders',exact:true}).waitFor();
   assert.notEqual((await context.cookies())[0].value,anonymous);assert(!(await page.content()).includes('101 Example Lane'),'No email-only historical attachment');
-  await two.getByRole('button',{name:'Sign In',exact:true}).click();await two.getByRole('alert').waitFor();assert.match(await two.getByRole('alert').textContent(),/invalid or expired/);
+  await two.getByLabel('Sign In Code',{exact:true}).fill(token);await two.getByRole('button',{name:'Sign In',exact:true}).click();await two.getByRole('alert').waitFor();assert.match(await two.getByRole('alert').textContent(),/could not be verified/);
   await claim(page,origin+'/booking-pay.php?reference=AAAAAAAAAA&token='+'1'.repeat(64));await page.getByRole('heading',{name:'101 Example Lane Chicago IL 60601'}).waitFor();
   await login(two,'two@example.com');await claim(two,'BBBBBBBBBB.'+'2'.repeat(64));assert(!(await two.content()).includes('101 Example Lane'));
   const denied=await goto(two,'/account.php?view=order&reference=AAAAAAAAAA');assert.equal(denied.status(),404);assert(!(await two.content()).includes('1234567890'));const deniedBody=await denied.text();
@@ -170,13 +173,13 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   setup('remove-approval');await login(page,'one@example.com');assert((await page.content()).includes('101 Example Lane'),'Approval persists after source removal');
   setup('expire-session');await goto(page,'/account.php?view=order&reference=AAAAAAAAAA');await page.getByRole('heading',{name:'Sign In',exact:true}).waitFor();
   await login(page,'one@example.com');setup('absolute-session');await goto(page);await page.getByRole('heading',{name:'Sign In',exact:true}).waitFor();
-  const expired=await requestLink(page,'one@example.com');setup('expire-link');await goto(page,'/account.php?view=verify#'+expired);await page.getByRole('button',{name:'Sign In',exact:true}).click();await page.getByRole('alert').waitFor();
+  const expired=await requestLink(page,'one@example.com');setup('expire-link');await goto(page,'/account.php?view=verify#'+expired);await page.getByLabel('Sign In Code',{exact:true}).fill(expired);await page.getByRole('button',{name:'Sign In',exact:true}).click();await page.getByRole('alert').waitFor();
   // Existing two's session also expires; make a fresh session before checking disable on one.
   await login(two,'two@example.com');setup('disable-one');
-  const before=fs.readFileSync(mail,'utf8');await post(page,{action:'request_login',email:'one@example.com'});assert.equal(fs.readFileSync(mail,'utf8'),before,'Disabled account mail suppressed');
+  const smsPath=path.join(privateRoot,'data/sms-fixture.json'),before=fs.readFileSync(smsPath,'utf8');await post(page,{action:'request_sms',phone:'3125550100',sms_consent:'yes'});assert.equal(fs.readFileSync(smsPath,'utf8'),before,'Disabled account SMS suppressed');
   assert.equal(setup('snapshot'),baseline,'Bookings, scheduling, lifecycle and payment evidence unchanged');
   assert.deepEqual(errors,[]);assert(!/PHP (?:Warning|Fatal|Parse)/.test(serverLog),serverLog);
-  console.log('portal-http: PASS (actual HTTPS browser journey; two customers; both existing proof adapters; CSRF/origin; single use; expiry; logout replay; profile isolation; synthetic ordering; no external provider writes; 320/390/736/1200 layout)');
+  console.log('portal-http: PASS (actual HTTPS phone-code journey; two customers; email routes disabled; both existing proof adapters; CSRF/origin; single use; expiry; logout replay; profile isolation; synthetic ordering; no external provider writes; 320/390/736/1200 layout)');
 
  } finally {
   if(browser)await browser.close();if(proxy)await new Promise(r=>proxy.close(r));if(php)php.kill();fs.rmSync(temp,{recursive:true,force:true});

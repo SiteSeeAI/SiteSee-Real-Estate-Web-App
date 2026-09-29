@@ -1,0 +1,75 @@
+#portal-wizard{color-scheme:light;--sp-ink:#01111e;--sp-text:#17252e;--sp-muted:#58636b;--sp-line:#d9dfe2;--sp-paper:#fff;--sp-bg:#f7f8f9;font:16px/1.6 Inter,Arial,sans-serif;color:var(--sp-text);background:var(--sp-bg);text-align:left}
+#portal-wizard *{box-sizing:border-box}
+#portal-wizard [hidden]{display:none!important}
+#portal-wizard button,#portal-wizard input,#portal-wizard select,#portal-wizard textarea{font:inherit}
+#portal-wizard button{cursor:pointer;min-height:46px;border:1px solid var(--sp-line);border-radius:6px;background:var(--sp-paper);color:var(--sp-text);padding:10px 18px}
+#portal-wizard button:hover{border-color:var(--sp-ink)}
+#portal-wizard button:disabled{cursor:default;opacity:.55}
+#portal-wizard button.sp-primary{background:var(--sp-ink);border-color:var(--sp-ink);color:white}
+#portal-wizard .sp-header{background:var(--sp-ink);color:white;display:flex;justify-content:space-between;align-items:center;gap:24px;padding:25px 5%}
+#portal-wizard .sp-brand>span{font:600 32px/1.1 Poppins,Arial,sans-serif;letter-spacing:-1px}
+#portal-wizard .sp-dot{color:#ffc107}
+#portal-wizard .sp-brand small{display:block;font-size:10px;letter-spacing:2px;margin-top:7px;color:#e8ebed}
+#portal-wizard nav{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+#portal-wizard nav button{color:white;background:transparent;border-color:transparent}
+#portal-wizard nav button:hover{border-color:#8a959c}
+#portal-wizard nav .sp-new{background:#ffc107;color:#01111e;font-weight:600;padding:12px 22px}
+#portal-wizard .sp-demo{font-size:11px;letter-spacing:1.2px;padding:10px 5%;border-bottom:1px solid var(--sp-line);background:#fff}
+#portal-wizard .sp-demo span{font-size:12px;letter-spacing:0;margin-left:16px;color:var(--sp-muted)}
+#portal-wizard .sp-main{max-width:1060px;margin:auto;padding:44px 5% 54px;min-height:570px}
+#portal-wizard h1,#portal-wizard h2,#portal-wizard h3{font-family:Poppins,Arial,sans-serif;font-weight:500;line-height:1.3;color:var(--sp-ink)}
+#portal-wizard h1{font-size:32px;letter-spacing:-.8px;margin:0 0 12px}
+#portal-wizard h2{font-size:21px;margin:0 0 10px}
+#portal-wizard h3{font-size:17px;margin:0 0 7px}
+#portal-wizard p{margin:0 0 18px}
+#portal-wizard .sp-lead{color:var(--sp-muted);margin-bottom:30px;max-width:660px}
+#portal-wizard .sp-tabs{display:flex;gap:24px;border-bottom:1px solid var(--sp-line);margin:22px 0 0}
+#portal-wizard .sp-tabs button{background:transparent;border:0;border-radius:0;padding:10px 0;color:var(--sp-muted)}
+#portal-wizard .sp-tabs button[aria-pressed=true]{border-bottom:3px solid var(--sp-ink);color:var(--sp-ink)}
+#portal-wizard .sp-order{padding:27px 0;display:grid;grid-template-columns:1fr auto;gap:18px;border-bottom:1px solid var(--sp-line);align-items:center}
+#portal-wizard .sp-order p{font-size:14px;color:var(--sp-muted);margin:5px 0}
+#portal-wizard .sp-order .sp-status{display:inline-block;color:var(--sp-ink);font-size:13px;background:#eaeef0;padding:3px 9px;border-radius:4px;margin:7px 0}
+#portal-wizard .sp-link{border:0;background:transparent;text-decoration:underline;text-underline-offset:4px;padding:8px 0;min-height:44px}
+#portal-wizard .sp-crumb{font-size:14px;color:var(--sp-muted);margin:-13px 0 24px;display:flex;gap:10px;align-items:center}
+#portal-wizard .sp-crumb button{font-size:14px;color:var(--sp-muted)}
+#portal-wizard .sp-progress{display:flex;gap:8px;margin:0 0 12px}
+#portal-wizard .sp-progress span{height:3px;flex:1;background:#dce2e5}
+#portal-wizard .sp-progress span.sp-done{background:var(--sp-ink)}
+#portal-wizard .sp-step{font-size:13px;color:var(--sp-muted);margin-bottom:28px}
+#portal-wizard .sp-work{background:white;border:1px solid var(--sp-line);border-radius:8px;padding:28px;margin-top:24px}
+#portal-wizard .sp-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+#portal-wizard .sp-full{grid-column:1/-1}
+#portal-wizard label.sp-field{display:flex;flex-direction:column;gap:7px;font-size:14px;font-weight:500}
+#portal-wizard input:not([type=radio]):not([type=checkbox]),#portal-wizard select,#portal-wizard textarea{width:100%;min-width:0;min-height:47px;padding:10px 12px;color:var(--sp-text);background:white;border:1px solid #a6afb5;border-radius:5px;font-size:16px}
+#portal-wizard textarea{min-height:85px;resize:vertical}
+#portal-wizard input[type=checkbox],#portal-wizard input[type=radio]{width:19px;height:19px;flex:0 0 19px;margin:3px 0 0;accent-color:var(--sp-ink)}
+#portal-wizard fieldset{border:0;padding:0;margin:0 0 26px;min-width:0}
+#portal-wizard legend{font-weight:500;margin-bottom:12px}
+#portal-wizard .sp-choice{border:1px solid var(--sp-line);border-radius:6px;padding:18px;display:flex;gap:12px;align-items:flex-start;font-size:16px;cursor:pointer}
+#portal-wizard .sp-choice:has(input:checked){border-color:var(--sp-ink);box-shadow:inset 0 0 0 1px var(--sp-ink);background:#f8f9fa}
+#portal-wizard .sp-choice strong{display:block;font-weight:500}
+#portal-wizard .sp-choice small{display:block;color:var(--sp-muted);font-size:13px;font-weight:400;line-height:1.5;margin-top:5px}
+#portal-wizard .sp-check{display:flex;align-items:flex-start;gap:12px;padding:13px 0;font-size:14px;cursor:pointer}
+#portal-wizard .sp-service{border-top:1px solid var(--sp-line);padding:15px 0}
+#portal-wizard .sp-service .sp-check{font-size:16px;padding:0}
+#portal-wizard .sp-service small{display:block;font-size:13px;color:var(--sp-muted);margin-top:5px}
+#portal-wizard .sp-extra{padding:16px 0 0 31px}
+#portal-wizard .sp-actions{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-top:26px}
+#portal-wizard .sp-total{border-top:1px solid var(--sp-line);padding-top:18px;margin-top:26px;display:flex;justify-content:space-between;gap:16px;align-items:flex-start}
+#portal-wizard .sp-total strong{font:500 27px/1.4 Poppins,Arial,sans-serif;white-space:nowrap}
+#portal-wizard .sp-total small{display:block;color:var(--sp-muted);font-size:13px;max-width:570px}
+#portal-wizard .sp-note{font-size:14px;color:var(--sp-muted);margin-top:12px}
+#portal-wizard .sp-review{border-bottom:1px solid var(--sp-line);padding:21px 0}
+#portal-wizard .sp-review:first-child{padding-top:0}
+#portal-wizard .sp-review header{display:flex;align-items:center;justify-content:space-between;gap:14px}
+#portal-wizard .sp-review p{margin:3px 0;color:var(--sp-muted);font-size:14px;white-space:pre-line}
+#portal-wizard .sp-lines{list-style:none;padding:0;margin:10px 0 0}
+#portal-wizard .sp-lines li{display:flex;justify-content:space-between;gap:16px;padding:8px 0;font-size:14px}
+#portal-wizard .sp-lines li span:last-child{white-space:nowrap}
+#portal-wizard .sp-error{color:#9d2020;font-size:14px;margin-top:15px}
+#portal-wizard .sp-footer{font-size:12px;color:var(--sp-muted);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;border-top:1px solid var(--sp-line);padding:20px 5%}
+@media(max-width:600px){#portal-wizard .sp-header{align-items:flex-start;flex-direction:column;gap:18px;padding:23px 6%}#portal-wizard nav{width:100%;gap:4px}#portal-wizard nav button{padding:10px 9px;font-size:14px}#portal-wizard nav .sp-new{margin-left:auto;padding:10px 12px}#portal-wizard .sp-main{padding:28px 6% 36px}#portal-wizard h1{font-size:27px}#portal-wizard .sp-grid{grid-template-columns:1fr;gap:16px}#portal-wizard .sp-order{grid-template-columns:1fr;gap:4px}#portal-wizard .sp-order>button{justify-self:start}#portal-wizard .sp-work{padding:20px}#portal-wizard .sp-demo span{display:block;margin-left:0}#portal-wizard .sp-extra{padding-left:0}#portal-wizard .sp-total strong{font-size:23px}#portal-wizard .sp-step{font-size:12px}}
+
+#portal-wizard .sp-review header{background:transparent;color:inherit;padding:0;max-width:none;border:0;margin:0}#portal-wizard .sp-field input{margin:0}#portal-wizard .sp-choice,#portal-wizard .sp-check{margin:0}#portal-wizard .sp-work{display:block}#portal-wizard{background:transparent}#portal-wizard .sp-crumb{margin-top:12px}#portal-wizard input[type=checkbox],#portal-wizard input[type=radio]{min-height:19px}#portal-wizard .sp-actions{flex-wrap:wrap}
+
+#portal-wizard .sp-grid+h2{margin-top:28px}#portal-wizard .sp-service+fieldset{margin-top:24px}

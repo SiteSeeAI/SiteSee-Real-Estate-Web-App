@@ -7,7 +7,7 @@ def build():
     manifest=json.loads((ROOT/'documents/portal/installation-source.json').read_text())
     files={}
     for source,expected in manifest['sources'].items():
-        b=(ROOT/source).read_bytes()
+        b=(ROOT/'tests/fixtures/portal-r1/source'/source).read_bytes()
         if digest(b)!=expected:raise RuntimeError('Source differs: '+source)
         name=source.replace('_private/','private/',1)
         files[name]=base64.b64encode(b).decode()
