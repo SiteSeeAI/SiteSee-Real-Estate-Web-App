@@ -6,6 +6,14 @@ if (!$root || !str_starts_with($root,sys_get_temp_dir().'/sitesee-portal-http-')
 require $root.'/server/portal-orders.php';
 $db=booking_db();portal_access_schema($db);portal_profile_schema($db);
 $command=$argv[1]??'seed';
+if ($command==='rotate-one-csrf') {
+    $id=$db->query("SELECT id FROM portal_accounts WHERE email='one@example.com'")->fetchColumn();
+    foreach(glob($root.'/data/portal-sessions/sess_*')?:[] as $file){
+        $raw=file_get_contents($file);
+        if(str_contains($raw,(string)$id))file_put_contents($file,preg_replace('/csrf\|s:64:"[a-f0-9]{64}";/', 'csrf|s:64:"'.bin2hex(random_bytes(32)).'";', $raw));
+    }
+    exit;
+}
 if ($command==='expire-link') {
     $db->exec('UPDATE portal_login_challenges SET expires_at=0');exit;
 }

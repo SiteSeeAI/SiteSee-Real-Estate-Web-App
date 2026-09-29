@@ -11,7 +11,7 @@
   const draft = {
     market:'residential', residential:{category:'small',package:'custom',sqft:1500,selected:['photo'],matterportSqft:1500,videoSeconds:60,images:1},
     commercial:{category:'small',selected:['photo'],photoCount:30,aerialImages:5,videos:1,videoSeconds:60,plans:1,views360:1,matterportSqft:5000,platformMonths:6,hostingMonths:6,hostingPrepaid:false,delivery:'files',licenseType:'term',licenseMonths:6},
-    details:{street:'',unit:'',city:'',state:'IL',zip:'',propertyId:'',first:'',last:'',company:'',email:'',phone:'',optOut:'Yes'},
+    details:{street:'',unit:'',city:'',state:'IL',zip:'',propertyId:'',first:'',last:'',company:'',email:'',phone:'',optOut:'No'},
     appointment:{date:'',time:'09:00',rushRequested:false,meetPhotographer:'Yes',accessType:'Lockbox',lockboxCode:'',keyLocation:'',specialRequests:'',mustHaveShots:'',onsiteDifferent:false,onsiteName:'',onsiteEmail:'',onsitePhone:'',additionalDifferent:false,additionalName:'',additionalEmail:'',additionalPhone:'',cancellationAccepted:false}
   };
   Object.assign(draft.details,config.details);
@@ -116,7 +116,15 @@
   }
   async function api(action, data={}) {
     const body=new URLSearchParams({csrf:config.csrf,action,...data});
-    const response=await fetch('/account.php',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'},body});
+    const send=()=>fetch('/account.php',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'},body});
+    let response=await send();
+    if(response.status===403){
+      const refresh=await fetch('/account.php?view=session',{credentials:'same-origin',cache:'no-store'});
+      const session=await refresh.json();
+      if(!refresh.ok)throw Error(session.error);
+      if(session.email!==config.details.email)throw Error('Sign in with the original account in another tab, then retry. Your answers are still here.');
+      config.csrf=session.csrf;body.set('csrf',config.csrf);response=await send();
+    }
     if(!(response.headers.get('content-type')||'').includes('application/json'))throw Error('Please sign in again in another tab, then retry this order.');
     const result=await response.json();if(!response.ok)throw Error(result.error||'Please try again.');return result;
   }
@@ -138,7 +146,7 @@
     review=null;
   }
   draft.details.optOutFlag=draft.details.optOut==='Yes';
-  root.addEventListener('input',event=>saveInput(event.target));
+  root.addEventListener('input',event=>{saveInput(event.target);if(event.target.dataset.group==='price'){const current=screen.querySelector('.sp-total');if(current)current.outerHTML=total();}});
   root.addEventListener('change',event=>{
     const input=event.target;
     if(input.dataset.service){const chosen=new Set(state().selected);input.checked?chosen.add(input.dataset.service):chosen.delete(input.dataset.service);state().selected=[...chosen];if(draft.market==='commercial' && input.dataset.service==='website')state().delivery=input.checked?'website':'files';review=null;render();return;}
@@ -146,7 +154,7 @@
     if(input.dataset.group==='price' && input.dataset.key==='category'){
       const cat=engine().categories[state().category];if(draft.market==='residential')state().sqft=Math.min(cat.max,Math.max(cat.min,state().sqft));else state().photoCount=cat.photosIncluded;
     }
-    if(input.dataset.group==='price'||input.type==='radio'||input.type==='checkbox'){
+    if(input.type==='radio'||input.type==='checkbox'){
       const group=input.dataset.group,key=input.dataset.key;render();
       if(group&&key)screen.querySelector(`[data-group="${group}"][data-key="${key}"]`)?.focus();
     }

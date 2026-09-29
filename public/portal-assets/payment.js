@@ -6,7 +6,13 @@
     event.preventDefault();if(busy||!form.reportValidity())return;busy=true;
     const button=form.querySelector('button'),error=document.getElementById('payment-error');button.disabled=true;error.hidden=true;
     try{
-      const response=await fetch('/account.php',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'},body:new FormData(form)});
+      const send=()=>fetch('/account.php',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'},body:new FormData(form)});
+      let response=await send();
+      if(response.status===403){
+        const refresh=await fetch('/account.php?view=session',{credentials:'same-origin',cache:'no-store'}),session=await refresh.json();
+        if(!refresh.ok)throw Error(session.error);
+        form.elements.csrf.value=session.csrf;response=await send();
+      }
       if(!(response.headers.get('content-type')||'').includes('application/json'))throw Error('Please refresh this payment page and sign in again if needed.');
       const result=await response.json();if(!response.ok)throw Error(result.error||'Payment is temporarily unavailable. Please try again.');
       if(result.mode==='hosted'){

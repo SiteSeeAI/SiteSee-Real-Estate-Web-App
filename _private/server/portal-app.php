@@ -59,6 +59,9 @@ try {
         if(in_array($action,['review_order','submit_order','checkout'],true)){
             try {
                 if($action==='review_order'){
+                    $recent=array_values(array_filter($_SESSION['portal_review_requests']??[],static fn($t):bool=>is_int($t)&&$t>time()-60));
+                    if(count($recent)>=20)portal_json(['error'=>'Please wait a minute before reviewing again.'],429);
+                    $recent[]=time();$_SESSION['portal_review_requests']=$recent;
                     $payload=json_decode(portal_input($_POST,'payload',50000),true,24);
                     if(!is_array($payload))throw new InvalidArgumentException('Complete your order details.');
                     $result=portal_purchase_review($db,$account['id'],$payload);
@@ -89,6 +92,7 @@ try {
     }
     $view=portal_input($_GET,'view',20);
     if($view==='verify')portal_verify_page();
+    if($view==='session')portal_json($account?['email'=>$account['email'],'csrf'=>$_SESSION['csrf']]:['error'=>'Please sign in again in another tab using the same email, then retry.'],$account?200:401);
     if(!$account)portal_sign_in(isset($_GET['sent'])?'If this email has account access, a sign-in link is on its way. Check your inbox.':(isset($_GET['signed_out'])?'You are signed out.':''));
     if($view==='engine'){
         $market=portal_input($_GET,'market',16);
