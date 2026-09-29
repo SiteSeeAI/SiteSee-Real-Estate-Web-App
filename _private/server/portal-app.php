@@ -21,6 +21,8 @@ require_once __DIR__ . '/portal-orders.php';
 require_once __DIR__ . '/portal-session.php';
 require_once __DIR__ . '/portal-mail.php';
 require_once __DIR__.'/portal-purchase.php';
+require_once __DIR__.'/portal-billing.php';
+require_once dirname(__DIR__).'/views/portal-service.php';
 require_once dirname(__DIR__).'/views/portal-purchase.php';
 require_once dirname(__DIR__) . '/views/portal.php';
 function portal_json(array $data,int $status=200): never {http_response_code($status);header('Content-Type: application/json; charset=utf-8');echo json_encode($data,JSON_THROW_ON_ERROR);exit;}
@@ -32,7 +34,7 @@ function portal_input(array $source, string $key, int $max = 2048): string
     return $v;
 }
 try {
-    $db=booking_db();portal_access_schema($db);portal_profile_schema($db);portal_purchase_schema($db);portal_session_start();
+    $db=booking_db();portal_access_schema($db);portal_profile_schema($db);portal_purchase_schema($db);portal_billing_schema($db);portal_session_start();
     $account=portal_session_account($db);
     $method=$_SERVER['REQUEST_METHOD']??'GET';
     if(!in_array($method,['GET','POST'],true)){header('Allow: GET, POST');portal_page('Request Not Available','<p>Use the account links to continue.</p>',$account,405);}
@@ -56,6 +58,33 @@ try {
             portal_session_login($verified);portal_redirect();
         }
         if(!$account)portal_sign_in('Please sign in to continue.');
+        if(str_starts_with($action,'appointment_')){
+            $reference=portal_input($_POST,'reference',32);
+            if(!portal_owns_order($db,$account['id'],$reference))portal_page('Order Unavailable','<p>This order is not available in your account.</p>',$account,404);
+            try{
+                if($action==='appointment_windows'){
+                    $windows=portal_appointment_windows($db,$account['id'],$reference,portal_input($_POST,'date',10));
+                    portal_appointment_page($db,$account,$reference,$windows,$windows?'Choose an available window below.':'No windows are available in this search. Try another starting date.');
+                }
+                if($action==='appointment_sync'){
+                    portal_appointment_guard($db,$account['id'],$reference);
+                    booking_lifecycle_sync($db,$reference);
+                }elseif(in_array($action,['appointment_cancel','appointment_reschedule'],true)){
+                    $window=explode('|',portal_input($_POST,'window',20));
+                    portal_appointment_change($db,$account['id'],$reference,substr($action,12),portal_input($_POST,'fingerprint',64),portal_input($_POST,'agreed',8)==='yes',$window[0]??'',$window[1]??'');
+                }else throw new InvalidArgumentException('Use the appointment controls to continue.');
+                portal_redirect('?view=appointment&reference='.$reference.'&saved=1');
+            }catch(Throwable){portal_appointment_page($db,$account,$reference,[],'This change could not be confirmed. Review the saved status below or contact SiteSee.');}
+        }
+        if($action==='balance_checkout'){
+            try{portal_json(portal_balance_checkout($db,$account['id'],portal_input($_POST,'reference',32),portal_input($_POST,'scope',64),portal_input($_POST,'card_consent',8)==='yes'));}
+            catch(InvalidArgumentException $error){portal_json(['error'=>$error->getMessage()],422);}
+            catch(Throwable){portal_json(['error'=>'Payment could not finish. Retry to recover the same payment, or contact SiteSee.'],503);}
+        }
+        if($action==='billing_manage'){
+            try{$url=portal_billing_manage($db,$account['id'],portal_input($_POST,'reference',32));header('Location: '.$url,true,303);exit;}
+            catch(Throwable){portal_page('Payment Methods Unavailable','<p>Payment method access could not be verified. Please try again or contact SiteSee.</p>',$account,503);}
+        }
         if(in_array($action,['review_order','submit_order','checkout'],true)){
             try {
                 if($action==='review_order'){
@@ -100,11 +129,16 @@ try {
         header('Content-Type: application/javascript; charset=utf-8');
         readfile(dirname(__DIR__).'/pricing-assets/'.($market==='residential'?'quote-engine.js':'commercial-quote-engine.js'));exit;
     }
+    if($view==='appointment')portal_appointment_page($db,$account,portal_input($_GET,'reference',32),[],isset($_GET['saved'])?'Your saved appointment status is shown below.':'');
+    if($view==='billing')portal_billing_page($db,$account,portal_input($_GET,'reference',32));
+    if($view==='balance')portal_balance_page($db,$account,portal_input($_GET,'reference',32),isset($_GET['result']));
     if($view==='payment')portal_payment_page($db,$account,portal_input($_GET,'reference',32),isset($_GET['result']));
     if($view==='order'){
         $order=portal_owned_order($db,$account['id'],portal_input($_GET,'reference',32));
         if(!$order)portal_page('Order Unavailable','<p>This order is not available in your account.</p><p><a href="/account.php">Return To My Orders</a></p>',$account,404);
         $order['portal_payment']=portal_purchase_intent_for_order($db,$account['id'],$order['reference'])!==false;
+        $order['balance_paid_cents']=portal_balance_paid($db,$order['reference']);
+        if($order['remaining_cents']!==null)$order['remaining_cents']=max(0,$order['remaining_cents']-$order['balance_paid_cents']);
         portal_order_page($order,$account);
     }
     if($view==='profile')portal_profile_page($db,$account,isset($_GET['saved'])?'Your profile is saved.':'');

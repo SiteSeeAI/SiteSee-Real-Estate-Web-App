@@ -3,9 +3,23 @@ declare(strict_types=1);
 if (PHP_SAPI !== 'cli') exit(1);
 $root=getenv('PORTAL_TEST_PRIVATE');
 if (!$root || !str_starts_with($root,sys_get_temp_dir().'/sitesee-portal-http-')) throw new RuntimeException('Isolated fixture directory required.');
+require __DIR__.'/service-providers.php';
 require $root.'/server/portal-orders.php';
 $db=booking_db();portal_access_schema($db);portal_profile_schema($db);
 $command=$argv[1]??'seed';
+if($command==='service-notice-observed'){
+    booking_communication_schema($db);booking_communication_update($db,'lifecycle-1:DDDD000001',['submission_state'=>'sent_observed']);exit;
+}
+if($command==='seed-service'){
+    require $root.'/server/portal-billing.php';portal_billing_schema($db);booking_communication_schema($db);
+    file_put_contents($root.'/booking-lifecycle.json',json_encode(['schema'=>1,'stage'=>'test','enabled'=>true,'recipient'=>'cro@sitesee.ai']));chmod($root.'/booking-lifecycle.json',0600);
+    file_put_contents($root.'/real-estate-pricing-pending/'.str_repeat('3',32).'.json',json_encode(['email'=>'cro@sitesee.ai','status'=>'approved','approved_at'=>gmdate('c')]));
+    $id=str_repeat('d',32);$ref='DDDD000001';$db->prepare('INSERT INTO portal_accounts VALUES (?,?,?,0)')->execute([$id,'cro@sitesee.ai',time()]);
+    $s=real_estate_prepare_submission(['version'=>2,'action'=>'request_appointment','market'=>'residential','details'=>['first'=>'Test','last'=>'Customer','company'=>'Example','email'=>'cro@sitesee.ai','phone'=>'3125550100','street'=>'404 Service Example','city'=>'Chicago','state'=>'IL','zip'=>'60601'],'state'=>['category'=>'small','package'=>'gold','sqft'=>1500,'selected'=>['photo','mp'],'matterportSqft'=>1500],'appointment'=>['date'=>(new DateTimeImmutable('+10 days',new DateTimeZone('America/Chicago')))->format('Y-m-d'),'time'=>'09:00','rushRequested'=>false,'meetPhotographer'=>'No','accessType'=>'Lockbox','lockboxCode'=>'1234567890','cancellationAccepted'=>true]]);
+    booking_capture($db,$s,$ref,true);$db->prepare("UPDATE bookings SET status='deposit_paid_test',deposit_paid_at=?,stripe_session_id='cs_test_http_deposit',stripe_payment_intent_id='pi_http',stripe_customer_id='cus_http' WHERE reference=?")->execute([gmdate('c'),$ref]);
+    $db->prepare('INSERT INTO portal_order_owners VALUES (?,?,?,?)')->execute([$ref,$id,'isolated-fixture',time()]);
+    booking_review_paid($db,$ref,95,'Example Photographer',true);booking_confirm_appointment($db,$ref,booking_scheduling_ms_config(),'portal_fixture_calendar',null,$root.'/data/fixture-lock');$db->prepare("UPDATE booking_confirmations SET invitation_state='sent' WHERE reference=?")->execute([$ref]);exit;
+}
 if ($command==='rotate-one-csrf') {
     $id=$db->query("SELECT id FROM portal_accounts WHERE email='one@example.com'")->fetchColumn();
     foreach(glob($root.'/data/portal-sessions/sess_*')?:[] as $file){

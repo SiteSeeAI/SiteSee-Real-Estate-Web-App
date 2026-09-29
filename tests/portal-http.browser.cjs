@@ -8,6 +8,10 @@ const temp=fs.mkdtempSync(path.join(os.tmpdir(),'sitesee-portal-http-'));
 const privateRoot=path.join(temp,'private');fs.cpSync(path.join(repo,'_private'),privateRoot,{recursive:true});
 // Reuse code only; previous unit-test session directories are not fixture state.
 fs.rmSync(path.join(privateRoot,'data'),{recursive:true,force:true});
+// Replace provider boundaries only in the throwaway copy; production has no test override.
+for(const [file,name] of [['portal-billing.php','portal_stripe'],['booking-lifecycle.php','booking_lifecycle_connection']]){
+ const target=path.join(privateRoot,'server',file);fs.writeFileSync(target,fs.readFileSync(target,'utf8').replace('function '+name+'(', 'function '+name+'_unused_fixture('));
+}
 const mail=path.join(temp,'mail.txt');
 const sendmail=path.join(temp,'capture-mail.sh');fs.writeFileSync(sendmail,'#!/bin/sh\ncat >> "'+mail+'"\n',{mode:0o700});
 const reserve=()=>new Promise(resolve=>{const server=net.createServer();server.listen(0,'127.0.0.1',()=>{const port=server.address().port;server.close(()=>resolve(port));});});
@@ -18,7 +22,7 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   const phpPort=await reserve(),tlsPort=await reserve(),origin='https://127.0.0.1:'+tlsPort;
   const env={...process.env,PORTAL_TEST_PRIVATE:privateRoot,SITESEE_REAL_ESTATE_SITE_URL:origin,
     SITESEE_REAL_ESTATE_PRICING_GATE_SECRET:'isolated-test-secret-never-used-in-production-12345',
-    SITESEE_REAL_ESTATE_BOOKING_TEST_ENABLED:'1',SITESEE_REAL_ESTATE_PORTAL_TEST_ENABLED:'1',
+    SITESEE_REAL_ESTATE_STRIPE_TEST_SECRET:'sk_test_isolated1234567890123456',SITESEE_REAL_ESTATE_BOOKING_TEST_ENABLED:'1',SITESEE_REAL_ESTATE_PORTAL_TEST_ENABLED:'1',
     SITESEE_REAL_ESTATE_BOOKING_DB:path.join(privateRoot,'data','bookings.sqlite'),SITESEE_SMTP_HOST:''};
   const setup=(action)=>execFileSync('php',[path.join(__dirname,'fixtures/portal-http/setup.php'),action],{env,encoding:'utf8'});
   setup('seed');const baseline=setup('snapshot');
@@ -87,6 +91,28 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   await goto(page);await page.setViewportSize({width:390,height:844});if(shots){await page.screenshot({path:path.join(shots,'account-mobile.png'),fullPage:true});console.log('PORTAL_VISUAL_account-mobile:'+(await page.screenshot({type:'jpeg',quality:55,fullPage:true})).toString('base64'));}
   // Real account wizard: both markets, retained answers, server review, durable submit and owned deposit.
   await goto(page,'/account.php?view=profile');
+  // Actual controller, HTTPS forms, owned calendar adapter and isolated provider boundaries.
+  setup('seed-service');
+  const serviceContext=await browser.newContext({ignoreHTTPSErrors:true,viewport:{width:390,height:844}});
+  await serviceContext.route('**/*',r=>r.request().url().startsWith(origin)?r.continue():r.abort());
+  const service=await serviceContext.newPage();await login(service,'cro@sitesee.ai');
+  for(const view of ['appointment','billing','balance'])assert.equal((await goto(two,'/account.php?view='+view+'&reference=DDDD000001')).status(),404);
+  await goto(service,'/account.php?view=billing&reference=DDDD000001');assert.equal(await service.getByRole('link',{name:'View Receipt'}).getAttribute('href'),'https://pay.stripe.com/receipts/payment/synthetic-http');
+  if(shots)console.log('PORTAL_VISUAL_service-billing:'+(await service.screenshot({type:'jpeg',quality:45,fullPage:true})).toString('base64'));
+  await goto(service,'/account.php?view=balance&reference=DDDD000001&result=return');assert.match(await service.getByRole('status').textContent(),/not been recorded/);
+  const balanceScope=await service.locator('input[name=scope]').inputValue();
+  assert.equal((await post(service,{action:'balance_checkout',reference:'DDDD000001',scope:balanceScope})).status(),422);
+  const checkout=await post(service,{action:'balance_checkout',reference:'DDDD000001',scope:balanceScope,card_consent:'yes'});assert.equal(checkout.status(),200,await checkout.text());assert.equal((await checkout.json()).mode,'hosted');
+  if(shots)console.log('PORTAL_VISUAL_service-balance:'+(await service.screenshot({type:'jpeg',quality:45,fullPage:true})).toString('base64'));
+  await goto(service,'/account.php?view=appointment&reference=DDDD000001');
+  await service.getByRole('button',{name:'Find Available Windows'}).click();await service.getByRole('heading',{name:'Choose Your New Window'}).waitFor();
+  const options=await service.locator('select[name=window] option').evaluateAll(os=>os.map(o=>o.value));const chosen=options.find(x=>x.endsWith('|13:00'));assert(chosen);await service.getByLabel('Arrival Window',{exact:true}).selectOption(chosen);await service.getByLabel('I want to move my appointment to this window.',{exact:true}).check();
+  await service.getByRole('button',{name:'Confirm New Window'}).click();await service.getByRole('status').waitFor();assert.match(await service.locator('main').textContent(),/13:00–15:00/);
+  if(shots)console.log('PORTAL_VISUAL_service-appointment:'+(await service.screenshot({type:'jpeg',quality:45,fullPage:true})).toString('base64'));
+  assert(await service.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Service mobile overflow');
+  setup('service-notice-observed');await service.getByText('Cancel Appointment',{exact:true}).click();await service.getByLabel('I want to cancel this appointment.',{exact:true}).check();await service.getByRole('button',{name:'Confirm Cancellation'}).click();await service.getByText('Cancelled',{exact:true}).waitFor();
+  await serviceContext.close();
+  await goto(page,'/account.php?view=profile');await goto(two,'/account.php?view=profile');
   await post(page,{action:'save_profile',first_name:'Jordan',last_name:'Example',company:'Example Realty',phone:'3125550100'});
   const apiPost=(p,token,data)=>p.request.post(origin+'/account.php',{form:{csrf:token,...data},headers:{Origin:origin,Accept:'application/json'},maxRedirects:0});
   let residentialReference;

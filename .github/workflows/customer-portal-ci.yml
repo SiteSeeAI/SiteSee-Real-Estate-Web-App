@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - '_private/server/portal-*.php'
+      - '_private/server/booking-webhook.php'
       - '_private/views/portal*.php'
       - 'public/account.php'
       - 'public/portal-assets/**'
@@ -15,6 +16,7 @@ on:
     branches: ['feat/calendar-confirmation-20260925']
     paths:
       - '_private/server/portal-*.php'
+      - '_private/server/booking-webhook.php'
       - '_private/views/portal*.php'
       - 'public/account.php'
       - 'public/portal-assets/**'
@@ -44,10 +46,13 @@ jobs:
           find _private/server -name 'portal-*.php' -print0 | xargs -0 -n1 php -l
           php -l _private/views/portal.php
           php -l _private/views/portal-purchase.php
+          php -l _private/views/portal-service.php
+          php -l _private/server/booking-webhook.php
           php -l public/account.php
           php tests/portal-access.test.php
           php tests/portal-session.test.php
           php tests/portal-purchase.test.php
+          php tests/portal-service.test.php
       - name: Install isolated browser test dependencies
         run: |
           npm install --prefix "$RUNNER_TEMP/portal-browser" --no-save playwright@1.58.2

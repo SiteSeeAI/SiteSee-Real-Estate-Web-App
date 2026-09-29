@@ -24,10 +24,15 @@ function portal_payment_page(PDO $db,array $account,string $reference,bool $retu
     if($intent['staff_notice']!=='sent'||$intent['customer_notice']!=='sent')$body.='<p class="notice">Your order is saved. Email delivery needs a staff check. Contact SiteSee with reference '.$e($reference).' if you need help.</p>';
     $config=booking_checkout_config();
     $body.='<section class="panel"><h2>50% Test Deposit · '.real_estate_money((int)$row['deposit_cents']).'</h2><p>Only the deposit is due today. No live charge or subscription is created.</p><p>Your deposit starts schedule review. Your preferred window is not guaranteed. You must accept any alternative before confirmation. If no mutually acceptable date is available, the deposit is refundable. Any scope or price change requires your agreement.</p>'
-        .'<form id="portal-payment" data-key="'.$e($config['enabled']?$config['publishable_key']:'').'" method="post">'.portal_csrf_field().'<input type="hidden" name="action" value="checkout"><input type="hidden" name="reference" value="'.$e($reference).'"><label class="card-consent"><input type="checkbox" name="card_consent" value="yes" required><span>'.$e(BOOKING_CONSENT_TEXT).'</span></label><button class="primary">Continue To Secure Payment</button></form><p role="alert" id="payment-error" hidden></p><p id="checkout-status" aria-live="polite"></p><div id="stripe-checkout"></div></section><script src="/portal-assets/payment.js" defer></script>';
+        .'<form id="portal-payment" data-email="'.$e($account['email']).'" data-key="'.$e($config['enabled']?$config['publishable_key']:'').'" method="post">'.portal_csrf_field().'<input type="hidden" name="action" value="checkout"><input type="hidden" name="reference" value="'.$e($reference).'"><label class="card-consent"><input type="checkbox" name="card_consent" value="yes" required><span>'.$e(BOOKING_CONSENT_TEXT).'</span></label><button class="primary">Continue To Secure Payment</button></form><p role="alert" id="payment-error" hidden></p><p id="checkout-status" aria-live="polite"></p><div id="stripe-checkout"></div></section><script src="/portal-assets/payment.js" defer></script>';
     if($config['enabled']){
-        header("Content-Security-Policy: default-src 'none'; script-src 'self' https://js.stripe.com https://*.js.stripe.com https://checkout.stripe.com; style-src 'self'; font-src 'self'; img-src 'self' data: https://*.stripe.com https://*.link.com; connect-src 'self' https://api.stripe.com https://checkout.stripe.com https://link.com https://*.link.com; frame-src https://checkout.stripe.com https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com https://link.com https://*.link.com; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");
-        $body.='<script src="https://js.stripe.com/dahlia/stripe.js" defer></script>';
+        $body.=portal_payment_stripe_assets();
     }
     portal_page('Your Test Deposit',$body,$account);
+}
+
+function portal_payment_stripe_assets(): string
+{
+        header("Content-Security-Policy: default-src 'none'; script-src 'self' https://js.stripe.com https://*.js.stripe.com https://checkout.stripe.com; style-src 'self'; font-src 'self'; img-src 'self' data: https://*.stripe.com https://*.link.com; connect-src 'self' https://api.stripe.com https://checkout.stripe.com https://link.com https://*.link.com; frame-src https://checkout.stripe.com https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com https://link.com https://*.link.com; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");
+    return '<script src="https://js.stripe.com/dahlia/stripe.js" defer></script>';
 }

@@ -5,6 +5,7 @@ if (PHP_SAPI!=='cli-server' || !str_starts_with((string)getenv('PORTAL_TEST_PRIV
 $path=parse_url($_SERVER['REQUEST_URI'],PHP_URL_PATH);
 if($path==='/account.php') {
     // The test's local HTTPS proxy terminates TLS; no production proxy headers are trusted.
+    require __DIR__.'/service-providers.php';
     $_SERVER['HTTPS']='on';require getenv('PORTAL_TEST_PRIVATE').'/server/portal-app.php';return true;
 }
 if(preg_match('~^/assets/fonts/(?:Inter-Regular|Poppins-Regular|Poppins-SemiBold)\.ttf$~D',(string)$path))return false;
