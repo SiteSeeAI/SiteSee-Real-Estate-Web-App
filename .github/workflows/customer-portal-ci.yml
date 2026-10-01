@@ -59,6 +59,7 @@ jobs:
           php tests/portal-session.test.php
           php tests/portal-purchase.test.php
           php tests/portal-service.test.php
+          php tests/portal-draft-recovery.test.php
           php tests/portal-release.test.php
           php tests/portal-phone.test.php
           php tests/portal-sms.test.php
@@ -67,10 +68,13 @@ jobs:
           python3 tests/portal-complete.test.py
           python3 tests/portal-re-enrollment.test.py
           python3 tests/portal-re-workflow.test.py
+          python3 tests/portal-draft-installer.test.py
           python3 tools/build-portal-installer.py
           git diff --exit-code -- tools/install-customer-portal.py
           python3 tools/build-portal-complete.py
           git diff --exit-code -- tools/install-portal-complete.py
+          python3 tools/build-re-draft-recovery.py
+          git diff --exit-code -- tools/install-re-draft-recovery-r1.py
           python3 tools/build-re-business-workflow.py
           git diff --exit-code -- tools/install-re-business-workflow.py
       - name: Install isolated browser test dependencies

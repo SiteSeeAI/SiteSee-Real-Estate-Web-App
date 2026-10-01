@@ -47,7 +47,12 @@ function booking_workflow_status(PDO $db, array $row): array
         try { booking_confirmation_gate($config, $row); }
         catch (Throwable) { $canSend = false; }
     }
-    return ['lifecycle'=>booking_lifecycle_state($db,$row['reference']), 'claim'=>$claim, 'mail'=>$mail, 'config'=>$config, 'link'=>$link, 'can_send'=>(bool)$canSend,
+    $canResume = $config && $config['invitations_enabled'] && $mailReady && $link && booking_invitation_draft_resumable($db,$row['reference']);
+    if ($canResume) {
+        try { booking_confirmation_gate($config,$row); }
+        catch (Throwable) { $canResume = false; }
+    }
+    return ['can_resume_draft'=>(bool)$canResume, 'lifecycle'=>booking_lifecycle_state($db,$row['reference']), 'claim'=>$claim, 'mail'=>$mail, 'config'=>$config, 'link'=>$link, 'can_send'=>(bool)$canSend,
         'calendar'=>$config ? (booking_scheduling_is_microsoft($config) ? 'Microsoft — sales@re.sitesee.ai / Calendar' : 'Zoho — existing appointment') : 'Connection unavailable — confirmation and sending blocked',
         'contact'=>$contact, 'mail_ready'=>$mailReady];
 }
@@ -268,6 +273,10 @@ function booking_workflow_html(array $row, array $status, string $csrf, ?array $
     foreach ($values as $label=>$value) $html .= '<dt><strong>' . booking_workflow_escape($label) . '</strong></dt><dd>' . booking_workflow_escape($value) . '</dd>';
     $html .= '</dl>' . booking_workflow_form($csrf, $ref, 'workflow_check', 'Check Booking Readiness');
     if ($claim || $mail) $html .= booking_workflow_form($csrf, $ref, 'workflow_recover', 'Recover Booking Status');
+    if ($status['can_resume_draft'] ?? false) {
+        $fields = '<p>The saved invitation stopped before sending. This action restores missing recipient fields, verifies the same draft and sends it once.</p><label><input type="checkbox" name="verify_recipient" value="yes" required> Send this saved TEST invitation to sales@re.sitesee.ai.</label>';
+        $html .= booking_workflow_form($csrf,$ref,'resume_invitation','Repair & Send Saved Invitation',$fields);
+    }
     if ($report) {
         $html .= '<h3>Check Results</h3><ul>';
         foreach ($report['items'] as $name=>$message) $html .= '<li><strong>' . booking_workflow_escape($name) . ':</strong> ' . booking_workflow_escape($message) . '</li>';

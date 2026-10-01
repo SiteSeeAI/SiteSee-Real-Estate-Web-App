@@ -12,9 +12,14 @@ def build():
   source=name.replace('private/','_private/',1)
   if name.startswith('private/tools/'):source=name[len('private/'):]
   actual=(ROOT/source).read_bytes();pinned=base64.b64decode(encoded)
-  if actual!=pinned:
-   upgrade=upgrades.get(name.removeprefix('private/'))
-   if not upgrade or base64.b64decode(upgrade['before'])!=pinned or base64.b64decode(upgrade['after'])!=actual:raise RuntimeError('Pinned application source differs: '+source)
+  expected=pinned
+  key=name.removeprefix('private/')
+  for changes in [upgrades,json.loads((ROOT/'documents/portal/re-draft-source.json').read_text())['files']]:
+   if key in changes:
+    upgrade=changes[key]
+    if base64.b64decode(upgrade['before'])!=expected:raise RuntimeError('Upgrade baseline differs: '+source)
+    expected=base64.b64decode(upgrade['after'])
+  if actual!=expected:raise RuntimeError('Pinned application source differs: '+source)
  raw=json.dumps(data,sort_keys=True,separators=(',',':')).encode()
  template=(ROOT/'tools/portal-complete-template.py').read_text()
  code=template.replace('__PAYLOAD__',base64.b64encode(zlib.compress(raw,9)).decode()).replace('__PAYLOAD_SHA__',hashlib.sha256(raw).hexdigest())

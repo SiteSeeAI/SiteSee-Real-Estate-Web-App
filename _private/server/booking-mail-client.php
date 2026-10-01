@@ -66,17 +66,39 @@ function booking_graph_client(array $config): callable
             'scope'=>'https://graph.microsoft.com/.default','grant_type'=>'client_credentials']));
     if ($r['status'] !== 200 || empty($r['body']['access_token'])) throw new RuntimeException('Graph authentication failed.');
     $token = $r['body']['access_token'];
-    return static function (string $method, string $path, ?string $body = null) use ($token): array {
+    return static function (string $method, string $path, ?string $body = null, ?string $ifMatch = null) use ($token): array {
         // Only booking sender and the expressly designated test recipient/original sender.
         if (!preg_match('~^/users/(sales%40re\.sitesee\.ai|cro%40sitesee\.ai)/(messages|mailFolders/[^/?]+/messages)(?:[/?].*)?$~D', $path)
-            || !in_array($method, ['GET','POST'], true)
+            || !in_array($method, ['GET','POST','PATCH'], true)
             || ($method === 'POST' && !str_starts_with($path, '/users/sales%40re.sitesee.ai/messages'))) {
             throw new RuntimeException('Graph operation is outside the booking mail path.');
         }
+        if ($method === 'PATCH') {
+            booking_graph_draft_patch_guard($path, $body, $ifMatch);
+        } elseif ($ifMatch !== null) throw new RuntimeException('Conditional header is only supported for draft repair.');
         return booking_provider_http($method, 'https://graph.microsoft.com/v1.0' . $path,
             ['Authorization: Bearer ' . $token, 'Prefer: IdType="ImmutableId"',
-                'Content-Type: text/plain', 'Accept: application/json'], $body);
+                'Content-Type: ' . ($method === 'PATCH' ? 'application/json' : 'text/plain'), 'Accept: application/json',
+                ...($ifMatch !== null ? ['If-Match: ' . $ifMatch] : [])], $body);
     };
+}
+
+/** Only restore missing envelope fields on an individually identified RE draft. */
+function booking_graph_draft_patch_guard(string $path, ?string $body, ?string $ifMatch): void
+{
+    if (!preg_match('~^/users/sales%40re\.sitesee\.ai/messages/[A-Za-z0-9_%=-]+$~D', $path)
+        || !$ifMatch || strlen($ifMatch) > 512 || preg_match('/[\r\n]/', $ifMatch)) {
+        throw new RuntimeException('Draft repair identity or version is unavailable.');
+    }
+    $fields = json_decode((string)$body, true, 8, JSON_THROW_ON_ERROR);
+    if (!is_array($fields) || !$fields || array_diff(array_keys($fields), ['toRecipients','replyTo'])) {
+        throw new RuntimeException('Only missing draft recipients may be repaired.');
+    }
+    foreach ($fields as $value) {
+        if ($value !== [['emailAddress'=>['address'=>BOOKING_MAIL_SENDER]]]) {
+            throw new RuntimeException('Draft repair requires the authorized RE business address.');
+        }
+    }
 }
 
 function booking_crm_config(): array

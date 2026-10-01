@@ -131,7 +131,7 @@ if ($method === 'POST') {
             $error = $exception instanceof InvalidArgumentException ? $exception->getMessage()
                 : 'This workflow action could not finish. Use Check Booking Readiness for the combined results. Existing calendar and invitation attempts are preserved.';
         }
-    } elseif (in_array($action, ['confirm_calendar', 'reconcile_calendar', 'send_invitation', 'recheck_mail', 'associate_crm', 'check_windows', 'select_window'], true)) {
+    } elseif (in_array($action, ['confirm_calendar', 'reconcile_calendar', 'send_invitation', 'resume_invitation', 'recheck_mail', 'associate_crm', 'check_windows', 'select_window'], true)) {
         try {
             $reference = (string)($_POST['reference'] ?? '');
             if ($action === 'recheck_mail' || $action === 'associate_crm') {
@@ -158,6 +158,12 @@ if ($method === 'POST') {
             } elseif ($action === 'reconcile_calendar') {
                 booking_reconcile_confirmation($db, $reference);
                 $notice = 'Existing calendar event verified. No new event or invitation was created.';
+            } elseif ($action === 'resume_invitation') {
+                if (($_POST['verify_recipient'] ?? '') !== 'yes') throw new InvalidArgumentException('Confirm the RE business recipient before sending the saved draft.');
+                booking_workflow_row($db,$reference);
+                booking_resume_invitation($db,$reference);
+                $workflowReport = booking_workflow_recover($db,$reference);
+                $notice = 'Saved invitation submitted once. Review the sent-copy, recipient and CRM results below.';
             } else {
                 if (($_POST['verify_recipient'] ?? '') !== 'yes') throw new InvalidArgumentException('Verify the displayed test recipient before sending.');
                 $sendRow = booking_workflow_row($db, $reference);
