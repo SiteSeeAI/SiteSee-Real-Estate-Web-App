@@ -134,7 +134,7 @@ def lint(obj,php):
     with tempfile.TemporaryDirectory(prefix='re-workflow-lint-') as folder:
         for n,item in obj['files'].items():
             p=pathlib.Path(folder)/pathlib.Path(n).name;p.write_bytes(base64.b64decode(item['after']))
-            r=subprocess.run([php,'-l',str(p)],capture_output=True,timeout=30)
+            r=subprocess.run([php,'-l',str(p)],stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=30)
             need(r.returncode==0,'PHP syntax check failed: '+n)
 
 def appointment_lock(root,uid,gid):
