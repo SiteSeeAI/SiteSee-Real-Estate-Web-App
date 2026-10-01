@@ -2,7 +2,10 @@
 """Consolidated RE TEST workflow update. No database or provider operations."""
 import argparse, base64, fcntl, hashlib, json, os, pathlib, pwd, stat, subprocess, sys, tempfile, zlib
 ROOT=pathlib.Path('/home/sitesee/.sitesee-real-estate')
-REVISION='re-business-workflow-20261001-r1'
+REVISION='re-business-workflow-20261001-r2'
+COMPATIBLE_REVISIONS=('re-business-workflow-20261001-r1',REVISION)
+UPDATE_STARTED=False
+RESUMING=False
 JOURNAL='re-business-workflow-install.json'
 PAYLOAD='__PAYLOAD__'
 PAYLOAD_SHA='__PAYLOAD_SHA__'
@@ -83,19 +86,58 @@ def inspect(root,uid,obj):
         except (Stop,OSError) as e:errors.append(str(e))
     need(not errors,'\n'.join(errors));return before,derived_plan(obj,before)
 
+def backup_parent(root,uid,required=False):
+    # Historical installers create this shared parent as root:root 0700.
+    # It lives beneath the private application root. Never chown/chmod it or
+    # any historical backup to make a new installer fit its own assumptions.
+    safe(root);r=root.stat()
+    need(stat.S_ISDIR(r.st_mode) and r.st_uid==uid and not r.st_mode&0o077,'Private application root differs.')
+    base=root/'deployment-backups';safe(base)
+    if not base.exists():
+        need(not required,'Existing update backup directory is missing.');return base
+    info=base.stat()
+    need(stat.S_ISDIR(info.st_mode) and info.st_uid in (0,uid) and not info.st_mode&0o022 and info.st_mode&0o700==0o700,
+         'Backup parent requires a root- or sitesee-owned directory without group/other write access; existing backups are preserved.')
+    return base
+
+def preflight(root,uid,obj,j=None):
+    errors=[];plan=None
+    try:backup_parent(root,uid,required=j is not None)
+    except (Stop,OSError) as e:errors.append(str(e))
+    for p in sorted({(root/n).parent for n in obj['files']}):
+        try:
+            safe(p);s=p.stat()
+            need(stat.S_ISDIR(s.st_mode) and s.st_uid==uid and not s.st_mode&0o022 and s.st_mode&0o700==0o700,'Application directory requires review: '+str(p))
+        except (Stop,OSError) as e:errors.append(str(e))
+    try:
+        checkout=json.loads(read(root/'booking-checkout.json',uid))
+        need(isinstance(checkout,dict) and checkout.get('stage')=='TEST','Stripe must remain TEST.')
+    except (Stop,OSError,ValueError) as e:errors.append(str(e) if not isinstance(e,ValueError) else 'Invalid checkout configuration.')
+    try:plan=resume_plan(root,uid,obj,j) if j else inspect(root,uid,obj)
+    except (Stop,OSError) as e:errors.append(str(e))
+    need(not errors,'\n'.join(dict.fromkeys(errors)));return plan
+
 def prepare(root,uid,gid,obj,before,after):
-    base=root/'deployment-backups';safe(base);need(base.is_dir(),'Existing backup directory is required.')
-    info=base.stat();need(info.st_uid==uid and not info.st_mode&0o077,'Private backup directory permissions differ.')
+    base=backup_parent(root,uid)
+    if not base.exists():
+        base.mkdir(mode=0o700)
+        fd=os.open(str(root),os.O_RDONLY|os.O_DIRECTORY)
+        try:os.fsync(fd)
+        finally:os.close(fd)
+    backup_parent(root,uid,required=True)
     folder=pathlib.Path(tempfile.mkdtemp(prefix='re-workflow-',dir=str(base)));os.chown(folder,uid,gid);os.chmod(folder,0o700)
     for n,b in before.items():
         need(read(root/n,uid)==b,'Concurrent edit preserved before backup: '+n)
         atomic(folder/(hashlib.sha256(n.encode()).hexdigest()+'.bin'),b,uid,gid)
+    fd=os.open(str(base),os.O_RDONLY|os.O_DIRECTORY)
+    try:os.fsync(fd)
+    finally:os.close(fd)
     record={'revision':REVISION,'payload_sha':PAYLOAD_SHA,'state':'prepared','backup':folder.name,'entries':{n:{'before':sha(b),'after':sha(after[n])} for n,b in before.items()}}
     need(read(root/JOURNAL,uid,True) is None,'Another update journal appeared; preserved.')
     atomic(root/JOURNAL,encode(record),uid,gid);return record
 
 def resume_plan(root,uid,obj,j):
-    need(j.get('revision')==REVISION and j.get('payload_sha')==PAYLOAD_SHA and j.get('state') in ('prepared','installed'),'Different update journal preserved.')
+    need(j.get('revision') in COMPATIBLE_REVISIONS and j.get('payload_sha')==PAYLOAD_SHA and j.get('state') in ('prepared','installed'),'Different update journal preserved.')
     name=j.get('backup','');need(isinstance(name,str) and name.startswith('re-workflow-') and pathlib.Path(name).name==name,'Backup path differs.')
     folder=root/'deployment-backups'/name;safe(folder)
     targets=set(obj['files'])|set(obj['manifests'])|set(CONFIGS)|{FLAG}
@@ -114,6 +156,7 @@ def resume_plan(root,uid,obj,j):
     return before,after
 
 def apply(root,uid,gid,obj,j,before,after,writer=atomic):
+    global UPDATE_STARTED
     if j['state']=='installed':return
     # Disable portal, lifecycle, mail and calendar writes before changing code.
     gates=gate_bytes(before);observed={n:read(root/n,uid) for n in after}
@@ -122,6 +165,7 @@ def apply(root,uid,gid,obj,j,before,after,writer=atomic):
     def write(n,b):
         need(read(root/n,uid)==observed[n],'Concurrent edit preserved during update: '+n)
         writer(root/n,b,uid,gid);observed[n]=b
+    UPDATE_STARTED=True
     for n in [FLAG,'booking-lifecycle.json','booking-mail.json','microsoft-scheduling.json']:write(n,gates[n])
     for n in sorted(set(after)-set(gates)):write(n,after[n])
     # Verify all code/manifests while all provider gates remain disabled.
@@ -151,6 +195,7 @@ def appointment_lock(root,uid,gid):
     except BaseException:os.close(fd);raise
 
 def main():
+    global RESUMING
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--deploy',action='store_true',required=True);parser.parse_args()
     need(os.geteuid()==0,'Run in WHM Terminal as root.');os.umask(0o077)
     account=pwd.getpwnam('sitesee');uid,gid=account.pw_uid,account.pw_gid
@@ -161,9 +206,8 @@ def main():
         booking_lock=appointment_lock(ROOT,uid,gid)
         print('INSTALLER REVISION: '+REVISION,flush=True);obj=load()
         raw=read(ROOT/JOURNAL,uid,True);j=json.loads(raw) if raw else None
-        if j:before,after=resume_plan(ROOT,uid,obj,j)
-        else:before,after=inspect(ROOT,uid,obj)
-        checkout=json.loads(read(ROOT/'booking-checkout.json',uid));need(checkout.get('stage')=='TEST','Stripe must remain TEST.')
+        RESUMING=isinstance(j,dict) and j.get('state')=='prepared'
+        before,after=preflight(ROOT,uid,obj,j)
         php='/opt/cpanel/ea-php82/root/usr/bin/php-cli'
         if not pathlib.Path(php).is_file():php='/opt/cpanel/ea-php82/root/usr/bin/php'
         lint(obj,php)
@@ -182,4 +226,6 @@ if __name__=='__main__':
     except (KeyboardInterrupt,EOFError):print('Interrupted. Rerun this same --deploy command to resume.');sys.exit(1)
     except Exception as e:
         print('STOPPED: '+(str(e) if isinstance(e,Stop) else 'Local operation failed ('+type(e).__name__+').'))
-        print('Unknown edits are preserved. After an interrupted update, TEST gates may remain disabled; rerun this same command.');sys.exit(1)
+        if UPDATE_STARTED or RESUMING:print('Update incomplete; TEST gates may remain disabled. Unknown edits are preserved. Rerun this same command to resume.')
+        else:print('Preflight stopped before application files or TEST gates were changed. All detected blockers are listed above.')
+        sys.exit(1)

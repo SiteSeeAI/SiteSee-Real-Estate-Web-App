@@ -18,6 +18,66 @@ class UpdateTests(unittest.TestCase):
   before,after=m.inspect(self.root,self.uid,self.obj);j=m.prepare(self.root,self.uid,self.gid,self.obj,before,after);return j,before,after
  def resume(self):
   j=json.loads((self.root/m.JOURNAL).read_bytes());before,after=m.resume_plan(self.root,self.uid,self.obj,j);m.apply(self.root,self.uid,self.gid,self.obj,j,before,after);return after
+ def test_historical_root_owned_backup_parent_with_distinct_application_owner(self):
+  from unittest.mock import patch
+  base=self.root/'deployment-backups';original=pathlib.Path.stat
+  def historical(p,*args,**kwargs):
+   info=list(original(p,*args,**kwargs))
+   if p==self.root:info[4]=1009;info[5]=1011;info[0]=m.stat.S_IFDIR|0o700
+   if p==base:info[4]=0;info[5]=0;info[0]=m.stat.S_IFDIR|0o700
+   return os.stat_result(info)
+  with patch.object(pathlib.Path,'stat',historical):self.assertEqual(m.backup_parent(self.root,1009),base)
+ def test_backup_owner_and_mode_matrix(self):
+  from unittest.mock import patch
+  base=self.root/'deployment-backups';original=pathlib.Path.stat
+  for owner,mode,accepted in [(0,0o700,True),(1009,0o700,True),(0,0o750,True),(1009,0o755,True),(999,0o700,False),(0,0o770,False),(1009,0o777,False),(0,0o600,False)]:
+   with self.subTest(owner=owner,mode=mode):
+    def fixture(p,*args,**kwargs):
+     info=list(original(p,*args,**kwargs))
+     if p==self.root:info[4]=1009;info[0]=m.stat.S_IFDIR|0o700
+     if p==base:info[4]=owner;info[0]=m.stat.S_IFDIR|mode
+     return os.stat_result(info)
+    with patch.object(pathlib.Path,'stat',fixture):
+     if accepted:self.assertEqual(m.backup_parent(self.root,1009),base)
+     else:
+      with self.assertRaises(m.Stop):m.backup_parent(self.root,1009)
+ def test_parent_and_historical_backups_are_preserved(self):
+  base=self.root/'deployment-backups';base.chmod(0o755);old=base/'historic';old.mkdir(mode=0o700);p=old/'saved.bin';p.write_bytes(b'historical bytes');p.chmod(0o600)
+  metadata=[x.stat() for x in [base,old,p]];j,before,after=self.begin();m.apply(self.root,self.uid,self.gid,self.obj,j,before,after);self.resume()
+  for x,info in zip([base,old,p],metadata):self.assertEqual((x.stat().st_uid,x.stat().st_gid,x.stat().st_mode),(info.st_uid,info.st_gid,info.st_mode))
+  self.assertEqual(p.read_bytes(),b'historical bytes');new=base/j['backup'];self.assertEqual(new.stat().st_mode&0o777,0o700)
+  self.assertTrue(all(x.stat().st_mode&0o777==0o600 for x in new.iterdir()))
+ def test_all_environment_and_content_blockers_reported_before_writes(self):
+  (self.root/'deployment-backups').chmod(0o777);(self.root/'server/booking-workflow.php').write_bytes(b'unknown');self.put('booking-checkout.json',{'stage':'LIVE'})
+  before=(self.root/m.FLAG).read_bytes()
+  with self.assertRaises(m.Stop) as e:m.preflight(self.root,self.uid,self.obj)
+  for text in ['Backup parent','Stripe must remain TEST','Unrecognized code']:self.assertIn(text,str(e.exception))
+  self.assertEqual((self.root/m.FLAG).read_bytes(),before);self.assertFalse((self.root/m.JOURNAL).exists())
+ def test_server_0755_directories_pass_preflight(self):
+  (self.root/'server').chmod(0o755);(self.root/'views').chmod(0o755);self.put('booking-checkout.json',{'stage':'TEST'})
+  m.preflight(self.root,self.uid,self.obj)
+ def test_backup_parent_symlink_and_regular_file_refused(self):
+  base=self.root/'deployment-backups';base.rmdir();base.symlink_to(self.root/'server')
+  with self.assertRaises(m.Stop):m.backup_parent(self.root,self.uid)
+  base.unlink();base.write_bytes(b'keep')
+  with self.assertRaises(m.Stop):m.backup_parent(self.root,self.uid)
+  self.assertEqual(base.read_bytes(),b'keep')
+ def test_missing_backup_parent_is_created_privately(self):
+  base=self.root/'deployment-backups';base.rmdir();j,before,after=self.begin();self.assertEqual(base.stat().st_mode&0o777,0o700)
+  m.apply(self.root,self.uid,self.gid,self.obj,j,before,after);self.resume()
+ def test_legacy_r1_prepared_and_installed_journal_resume(self):
+  j,before,after=self.begin();j['revision']='re-business-workflow-20261001-r1';self.put(m.JOURNAL,j);self.resume();self.resume()
+  j=json.loads((self.root/m.JOURNAL).read_bytes());j['payload_sha']='0'*64
+  with self.assertRaises(m.Stop):m.resume_plan(self.root,self.uid,self.obj,j)
+ def test_backup_directory_fsync_precedes_journal(self):
+  from unittest.mock import patch
+  base=self.root/'deployment-backups';inode=base.stat().st_ino;before,after=m.inspect(self.root,self.uid,self.obj);original=m.os.fsync
+  def interrupted(fd):
+   if os.fstat(fd).st_ino==inode:raise OSError('backup parent fsync interrupted')
+   original(fd)
+  with patch.object(m.os,'fsync',side_effect=interrupted):
+   with self.assertRaises(OSError):m.prepare(self.root,self.uid,self.gid,self.obj,before,after)
+  self.assertFalse((self.root/m.JOURNAL).exists());self.assertEqual((self.root/m.FLAG).read_bytes(),before[m.FLAG])
  def test_complete_business_update_and_rerun(self):
   j,before,after=self.begin();m.apply(self.root,self.uid,self.gid,self.obj,j,before,after);self.resume()
   for n,b in after.items():self.assertEqual((self.root/n).read_bytes(),b)
