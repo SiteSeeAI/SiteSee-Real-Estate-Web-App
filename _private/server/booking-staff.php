@@ -163,6 +163,7 @@ if ($method === 'POST') {
                 booking_workflow_row($db,$reference);
                 booking_resume_invitation($db,$reference);
                 $workflowReport = booking_workflow_recover($db,$reference);
+                $_SESSION['history_selection'] = ['reference'=>$reference,'expires'=>time()+900,'ids'=>array_column($workflowReport['history'], 'id')];
                 $notice = 'Saved invitation submitted once. Review the sent-copy, recipient and CRM results below.';
             } else {
                 if (($_POST['verify_recipient'] ?? '') !== 'yes') throw new InvalidArgumentException('Verify the displayed test recipient before sending.');
@@ -332,6 +333,8 @@ if ($row) {
             $body .= '<p class="note"><strong>Test Appointment Confirmed</strong><br>Internal planned shoot: ' . staff_escape($plannedStart->format('Y-m-d g:i A') . '–' . $plannedEnd->format('g:i A')) . ' Central Time.<br>The customer invitation retains the agreed two-hour arrival window.</p>';
             if ($confirmation['invitation_state'] === 'sent') {
                 $body .= '<p>Invitation accepted by the mail server for ' . staff_escape((string)$confirmation['invitation_recipient']) . '. Mailbox receipt and calendar acceptance must be checked separately.</p>';
+            } elseif ($workflowStatus['can_resume_draft'] ?? false) {
+                $body .= '<p class="note">The saved invitation draft stopped before sending. Use Repair &amp; Send Saved Invitation above to verify and submit that same draft.</p>';
             } elseif ($confirmation['invitation_state'] !== 'none') {
                 $body .= '<p class="note">Invitation delivery is uncertain. Check the recipient mailbox before any manual resend. Automatic retries are blocked.</p>';
             } elseif ($canConfirm && $confirmationConfig['invitations_enabled'] && ($workflowStatus['can_send'] ?? false)) {

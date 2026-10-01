@@ -151,7 +151,7 @@ function booking_send_invitation_locked(PDO $db, string $reference, ?array $conf
     }
 }
 
-/** Only the original, recent invitation draft, with no submission evidence, is repairable. */
+/** Only the original invitation draft, with a valid link and no submission evidence, is repairable. */
 function booking_invitation_draft_resumable(PDO $db, string $reference): bool
 {
     $mail = booking_communication_get($db,'invitation:'.$reference);
