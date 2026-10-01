@@ -15,7 +15,7 @@ function booking_workflow_row(PDO $db, string $reference): array
 {
     $row = booking_get($db, $reference);
     if (!booking_test_enabled() || !$row || $row['status'] !== 'deposit_paid_test' || !$row['deposit_paid_at']
-        || strcasecmp($row['email'], 'cro@sitesee.ai') !== 0) {
+        || strcasecmp($row['email'], 'sales@re.sitesee.ai') !== 0) {
         throw new InvalidArgumentException('This workflow requires a recorded TEST deposit and the authorized test recipient.');
     }
     return $row;

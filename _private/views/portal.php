@@ -7,7 +7,7 @@ function portal_page(string $title, string $body, array|false $account = false, 
     http_response_code($status);
     $e='portal_escape';
     $nav=$account ? '<nav aria-label="Customer Navigation"><a href="/account.php">My Orders</a><a href="/account.php?view=profile">Account</a><a class="new-order" href="/account.php?view=new">New Order</a></nav>' : '';
-    echo '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><title>'.$e($title).' | SiteSee</title><link rel="stylesheet" href="/portal-assets/portal.css"><script src="/portal-assets/portal.js" defer></script></head><body><a class="skip" href="#content">Skip To Content</a><header><a class="brand" href="/account.php" aria-label="SiteSee My Orders">SiteSee<span>.</span><small>Show More. Decide Faster.</small></a>'.$nav.'</header><div class="test-notice">TEST ACCESS <span>Orders and payments remain in test mode.</span></div><main id="content"><h1>'.$e($title).'</h1>'.$body.'</main><footer><span>SiteSee Real Estate</span><a href="mailto:sales@sitesee.ai">sales@sitesee.ai</a></footer></body></html>';
+    echo '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><title>'.$e($title).' | SiteSee</title><link rel="stylesheet" href="/portal-assets/portal.css"><script src="/portal-assets/portal.js" defer></script></head><body><a class="skip" href="#content">Skip To Content</a><header><a class="brand" href="/account.php" aria-label="SiteSee My Orders">SiteSee<span>.</span><small>Show More. Decide Faster.</small></a>'.$nav.'</header><div class="test-notice">TEST ACCESS <span>Orders and payments remain in test mode.</span></div><main id="content"><h1>'.$e($title).'</h1>'.$body.'</main><footer><span>SiteSee Real Estate</span><a href="mailto:sales@re.sitesee.ai">sales@re.sitesee.ai</a></footer></body></html>';
     exit;
 }
 function portal_sign_in(string $notice = ''): never
@@ -15,7 +15,7 @@ function portal_sign_in(string $notice = ''): never
     portal_page('Sign In', ($notice ? '<p role="status" class="notice">'.portal_escape($notice).'</p>' : '')
         . '<p class="lead">Use your registered cell phone number to open My Orders. No password needed.</p><section class="panel narrow"><form method="post">'.portal_csrf_field()
         . '<input type="hidden" name="action" value="request_sms"><label>Cell Phone Number<input name="phone" type="tel" autocomplete="tel" inputmode="tel" maxlength="40" required></label><label class="card-consent"><input type="checkbox" name="sms_consent" value="yes" required><span>Text me a one-time sign-in code. Message and data rates may apply.</span></label><button class="primary">Text My Sign In Code</button></form></section>'
-        . '<p class="help">New number or trouble signing in? <a href="mailto:sales@sitesee.ai">Contact SiteSee</a>. Changing your profile contact number does not change your login number.</p>');
+        . '<p class="help">New number or trouble signing in? <a href="mailto:sales@re.sitesee.ai">Contact SiteSee</a>. Changing your profile contact number does not change your login number.</p>');
 }
 function portal_verify_page(string $error = ''): never
 {

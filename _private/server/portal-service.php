@@ -13,7 +13,7 @@ function portal_appointment_guard(PDO $db,string $account,string $reference): ar
     portal_service_owned($db,$account,$reference);
     if(!booking_test_enabled()||!booking_lifecycle_enabled())throw new InvalidArgumentException('Contact SiteSee for appointment assistance.');
     booking_communication_schema($db);
-    return booking_lifecycle_row($db,$reference); // Retains the existing cro@sitesee.ai TEST restriction.
+    return booking_lifecycle_row($db,$reference); // Retains the existing sales@re.sitesee.ai TEST restriction.
 }
 function portal_appointment_windows(PDO $db,string $account,string $reference,string $date,array $deps=[]): array
 {

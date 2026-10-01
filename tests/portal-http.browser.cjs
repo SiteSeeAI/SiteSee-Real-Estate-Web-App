@@ -47,7 +47,7 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   const goto=async(p,url='/account.php')=>{let r;for(let i=0;i<25;i++){r=await p.goto(origin+url);if(!r)r=await p.reload();if(r.status()!==503)return r;await p.waitForTimeout(100);}throw Error('PHP server not ready: '+serverLog);};
   const csrf=p=>p.locator('input[name=csrf]').first().inputValue();
   const post=async(p,data)=>p.request.post(origin+'/account.php',{form:{csrf:await csrf(p),...data},maxRedirects:0,headers:{Origin:origin}});
-  const phones={'one@example.com':'3125550100','two@example.com':'3125550101','cro@sitesee.ai':'3125550102'};
+  const phones={'one@example.com':'3125550100','two@example.com':'3125550101','sales@re.sitesee.ai':'3125550102'};
   const requestLink=async(p,email)=>{
     setup('reset-sms-rate'); // Core suite separately verifies all persistent throttles.
     await goto(p);await p.getByLabel('Cell Phone Number',{exact:true}).fill(phones[email]);await p.getByLabel('Text me a one-time sign-in code.',{exact:false}).check();await p.getByRole('button',{name:'Text My Sign In Code'}).click();
@@ -106,7 +106,7 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   setup('seed-service');
   const serviceContext=await browser.newContext({ignoreHTTPSErrors:true,viewport:{width:390,height:844}});
   await serviceContext.route('**/*',r=>r.request().url().startsWith(origin)?r.continue():r.abort());
-  const service=await serviceContext.newPage();await login(service,'cro@sitesee.ai');
+  const service=await serviceContext.newPage();await login(service,'sales@re.sitesee.ai');
   for(const view of ['appointment','billing','balance'])assert.equal((await goto(two,'/account.php?view='+view+'&reference=DDDD000001')).status(),404);
   await goto(service,'/account.php?view=billing&reference=DDDD000001');assert.equal(await service.getByRole('link',{name:'View Receipt'}).getAttribute('href'),'https://pay.stripe.com/receipts/payment/synthetic-http');
   if(shots)console.log('PORTAL_VISUAL_service-billing:'+(await service.screenshot({type:'jpeg',quality:45,fullPage:true})).toString('base64'));

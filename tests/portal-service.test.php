@@ -4,13 +4,13 @@ $completed=false;register_shutdown_function(static function()use(&$completed):vo
 $dir=sys_get_temp_dir().'/sitesee-service-'.bin2hex(random_bytes(8));mkdir($dir,0700);$tmp=$dir;$private=$dir.'/private';mkdir($private,0700);mkdir($private.'/server',0700);
 foreach(glob(__DIR__.'/../_private/server/*.php') as $file)copy($file,$private.'/server/'.basename($file));
 foreach(glob(__DIR__.'/../_private/*.php') as $file)copy($file,$private.'/'.basename($file));
-file_put_contents($private.'/booking-lifecycle.json',json_encode(['schema'=>1,'stage'=>'test','enabled'=>true,'recipient'=>'cro@sitesee.ai']));chmod($private.'/booking-lifecycle.json',0600);
+file_put_contents($private.'/booking-lifecycle.json',json_encode(['schema'=>1,'stage'=>'test','enabled'=>true,'recipient'=>'sales@re.sitesee.ai']));chmod($private.'/booking-lifecycle.json',0600);
 putenv('SITESEE_REAL_ESTATE_SITE_URL=https://portal-test.example');putenv('SITESEE_REAL_ESTATE_BOOKING_DB='.$dir.'/bookings.sqlite');putenv('SITESEE_REAL_ESTATE_BOOKING_TEST_ENABLED=1');putenv('SITESEE_REAL_ESTATE_PRICING_GATE_SECRET=isolated-service-test-secret-1234567890');putenv('SITESEE_REAL_ESTATE_STRIPE_TEST_SECRET=sk_test_1234567890123456');putenv('SITESEE_REAL_ESTATE_STRIPE_TEST_WEBHOOK_SECRET=whsec_1234567890123456');
 require $private.'/server/portal-billing.php';require $private.'/server/portal-purchase.php';
 function check(bool $ok,string $label):void{if(!$ok)throw new RuntimeException($label);}
 function rejects(callable $fn,string $label):void{try{$fn();}catch(Throwable){return;}throw new RuntimeException('Accepted: '.$label);}
 $db=booking_db();portal_access_schema($db);portal_purchase_schema($db);portal_billing_schema($db);booking_communication_schema($db);$now=time();
-$one=str_repeat('a',32);$two=str_repeat('b',32);foreach([[$one,'cro@sitesee.ai'],[$two,'two@example.com']] as [$id,$email])$db->prepare('INSERT INTO portal_accounts VALUES (?,?,?,0)')->execute([$id,$email,time()]);
+$one=str_repeat('a',32);$two=str_repeat('b',32);foreach([[$one,'sales@re.sitesee.ai'],[$two,'two@example.com']] as [$id,$email])$db->prepare('INSERT INTO portal_accounts VALUES (?,?,?,0)')->execute([$id,$email,time()]);
 $payload=['market'=>'residential','details'=>['first'=>'Test','last'=>'Customer','company'=>'Synthetic','phone'=>'3125550100','street'=>'101 Example','city'=>'Chicago','state'=>'IL','zip'=>'60601'],'state'=>['category'=>'small','package'=>'gold','sqft'=>1500,'selected'=>['photo','mp'],'matterportSqft'=>1500],'appointment'=>['date'=>(new DateTimeImmutable('+10 days',new DateTimeZone('America/Chicago')))->format('Y-m-d'),'time'=>'09:00','rushRequested'=>false,'meetPhotographer'=>'No','accessType'=>'Lockbox','lockboxCode'=>'1234567890','cancellationAccepted'=>true]];
 $review=portal_purchase_review($db,$one,$payload);$ref=portal_purchase_submit($db,$one,$review['review']);
 $db->prepare("UPDATE bookings SET status='deposit_paid_test',deposit_paid_at=?,stripe_session_id='cs_test_deposit',stripe_payment_intent_id='pi_deposit',stripe_customer_id='cus_owned' WHERE reference=?")->execute([gmdate('c'),$ref]);booking_review_paid($db,$ref,95,'David',true);
@@ -78,5 +78,26 @@ $bad=$verified;$bad['id']='evt_wrong_amount';$bad['data']['object']['amount_tota
 check(count(portal_billing_records($db,$one,$ref,$stripe))===2,'Owned balance receipt');
 // Interruption recovery through the new adapter must not repeat the calendar write.
 $fingerprint=booking_lifecycle_fingerprint($db,$ref);$mode='lost';rejects(fn()=>portal_appointment_change($db,$one,$ref,'cancel',$fingerprint,true,'','',$deps),'Lost calendar response');$n=$writes;$mode='ok';portal_appointment_guard($db,$one,$ref);booking_lifecycle_sync($db,$ref,$deps);check($writes===$n&&booking_lifecycle_state($db,$ref)['state']==='cancelled','Read-only recovered cancellation');portal_appointment_change($db,$one,$ref,'cancel',$fingerprint,true,'','',$deps);check($writes===$n,'Repeated cancellation no write');rejects(fn()=>portal_balance_scope($db,$one,$ref),'Cancelled balance');
+// The RE business address is the only active workflow test recipient.
+$db->prepare('UPDATE bookings SET email=? WHERE reference=?')->execute(['cro@sitesee.ai',$ref]);
+rejects(fn()=>booking_workflow_row($db,$ref),'Old personal recipient cannot use RE workflow');
+$db->prepare('UPDATE bookings SET email=? WHERE reference=?')->execute(['sales@re.sitesee.ai',$ref]);
+check(booking_workflow_row($db,$ref)['email']==='sales@re.sitesee.ai','RE business recipient is eligible');
+check(booking_scheduling_ms_config()['test_recipient_email']==='sales@re.sitesee.ai','Scheduling recipient');
+$mailConfig=['sender'=>'sales@re.sitesee.ai','stage'=>'test','enabled'=>true,'graph_credentials'=>'/home/sitesee/.sitesee-graph-mail.json','test_recipient_email'=>'cro@sitesee.ai'];
+file_put_contents($private.'/booking-mail.json',json_encode($mailConfig));chmod($private.'/booking-mail.json',0600);
+rejects(fn()=>booking_mail_config(true),'Old mail recipient blocked');
+$mailConfig['test_recipient_email']='sales@re.sitesee.ai';file_put_contents($private.'/booking-mail.json',json_encode($mailConfig));
+check(booking_mail_config(true)['test_recipient_email']==='sales@re.sitesee.ai','RE mail configuration accepted');
+$message=['from'=>'sales@re.sitesee.ai','to'=>'sales@re.sitesee.ai','subject'=>'Synthetic RE receipt','headers'=>[],'body'=>'Synthetic'];
+$key=booking_communication_enqueue($db,$ref,'probe',$message);
+booking_communication_update($db,$key,['internet_message_id'=>'<re-receipt@example.test>','submission_state'=>'sent_observed']);
+$copy=['id'=>'inbox-copy','internetMessageId'=>'<re-receipt@example.test>','isDraft'=>false,'receivedDateTime'=>gmdate('c'),'subject'=>'Synthetic RE receipt','from'=>['emailAddress'=>['address'=>'sales@re.sitesee.ai']],'parentFolderId'=>'inbox'];
+$onlySent=static function($method,$path)use($copy){check($method==='GET','Delivery check is read only');return ['status'=>200,'body'=>['value'=>str_contains($path,'/mailFolders/inbox/messages?')?[]:[$copy]]];};
+rejects(fn()=>booking_communication_delivery($db,$key,$onlySent),'Sent Items alone is not receipt');
+$received=static function($method,$path)use($copy){check($method==='GET'&&str_contains($path,'/users/sales%40re.sitesee.ai/mailFolders/inbox/messages?'),'Exact RE inbox required');return ['status'=>200,'body'=>['value'=>[$copy]]];};
+booking_communication_delivery($db,$key,$received);check(booking_communication_get($db,$key)['delivery_state']==='recipient_copy_observed','Distinct inbox receipt verified');
+$oldMessage=$message;$oldMessage['to']='cro@sitesee.ai';$oldKey=booking_communication_enqueue($db,'EEEE000001','probe',$oldMessage);$graphCalls=0;
+rejects(fn()=>booking_communication_submit($db,$oldKey,static function()use(&$graphCalls){++$graphCalls;return [];}),'Old recipient cannot send');check($graphCalls===0,'Rejected recipient causes no Graph calls');
 $db->prepare('UPDATE portal_accounts SET disabled=1 WHERE id=?')->execute([$one]);rejects(fn()=>portal_billing_records($db,$one,$ref,$stripe),'Disabled billing owner');rejects(fn()=>portal_appointment_guard($db,$one,$ref),'Disabled appointment owner');
 $completed=true;echo "portal-service: PASS (owned lifecycle; no staff controls; recovery; payment evidence; consent; approved scope; refunds/disputes; same-key retry; expiry; webhook race/replay; restricted methods; disabled ownership)\n";

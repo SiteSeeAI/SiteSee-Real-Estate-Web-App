@@ -4,7 +4,7 @@ on:
   pull_request:
     paths:
       - '_private/server/portal-*.php'
-      - '_private/server/booking-webhook.php'
+      - '_private/server/booking-*.php'
       - '_private/views/portal*.php'
       - 'public/account.php'
       - 'public/portal-assets/**'
@@ -13,12 +13,13 @@ on:
       - 'documents/portal/**'
       - 'tests/portal-*'
       - 'tools/*portal*'
+      - 'tools/*re-business*'
       - '.github/workflows/customer-portal-ci.yml'
   push:
     branches: ['feat/calendar-confirmation-20260925']
     paths:
       - '_private/server/portal-*.php'
-      - '_private/server/booking-webhook.php'
+      - '_private/server/booking-*.php'
       - '_private/views/portal*.php'
       - 'public/account.php'
       - 'public/portal-assets/**'
@@ -27,6 +28,7 @@ on:
       - 'documents/portal/**'
       - 'tests/portal-*'
       - 'tools/*portal*'
+      - 'tools/*re-business*'
       - '.github/workflows/customer-portal-ci.yml'
 
 permissions:
@@ -47,7 +49,7 @@ jobs:
           extensions: pdo_sqlite
       - name: Validate private account primitives
         run: |
-          find _private/server -name 'portal-*.php' -print0 | xargs -0 -n1 php -l
+          find _private/server -name '*.php' -print0 | xargs -0 -n1 php -l
           php -l _private/views/portal.php
           php -l _private/views/portal-purchase.php
           php -l _private/views/portal-service.php
@@ -63,10 +65,14 @@ jobs:
           php -l tools/portal-enroll-phone.php
           python3 tests/portal-installer.test.py
           python3 tests/portal-complete.test.py
+          python3 tests/portal-re-enrollment.test.py
+          python3 tests/portal-re-workflow.test.py
           python3 tools/build-portal-installer.py
           git diff --exit-code -- tools/install-customer-portal.py
           python3 tools/build-portal-complete.py
           git diff --exit-code -- tools/install-portal-complete.py
+          python3 tools/build-re-business-workflow.py
+          git diff --exit-code -- tools/install-re-business-workflow.py
       - name: Install isolated browser test dependencies
         run: |
           npm install --prefix "$RUNNER_TEMP/portal-browser" --no-save playwright@1.58.2

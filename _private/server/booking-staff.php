@@ -273,7 +273,7 @@ if ($row) {
         $body .= '<p class="note">Waiting for the test deposit. Schedule review becomes available only after the verified payment notification.</p>';
     }
     $workflowStatus = null;
-    if ($row['status'] === 'deposit_paid_test' && $row['deposit_paid_at'] && strcasecmp($row['email'], 'cro@sitesee.ai') === 0) {
+    if ($row['status'] === 'deposit_paid_test' && $row['deposit_paid_at'] && strcasecmp($row['email'], 'sales@re.sitesee.ai') === 0) {
         $workflowStatus = booking_workflow_status($db, $row);
         $body .= booking_workflow_html($row, $workflowStatus, staff_csrf(), $workflowReport ?? null);
         $lifecycleClaim=booking_confirmation_get($db,$reference);

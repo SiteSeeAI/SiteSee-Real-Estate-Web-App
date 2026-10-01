@@ -173,46 +173,84 @@ def runtime_settings(root,uid):
     need(not issues,'; '.join(issues))
     return db
 
+RE_ACCOUNT = 'sales@re.sitesee.ai'
+# One-time business-account provisioning explicitly authorized by the site owner
+# on 2026-10-01. This is not a public signup or a general approval bypass.
+# Run under the existing application owner; no customer records are reassigned.
+RE_ENROLL_WORKER = r'''
+import json, os, pathlib, re, secrets, sqlite3, stat, sys, time
+class EnrollmentError(Exception): pass
+def require(ok, code):
+    if not ok: raise EnrollmentError(code)
+def main():
+    os.umask(0o077)
+    request=json.loads(sys.stdin.buffer.read(4097))
+    root=pathlib.Path(request['root']); path=pathlib.Path(request['database_path'])
+    phone=request['phone']; email='sales@re.sitesee.ai'
+    require(os.geteuid()!=0, 'OWNER_REQUIRED')
+    require(root.is_absolute() and root.resolve()==root and path.resolve()==path and path.parent==root/'data', 'DATABASE_PATH')
+    info=path.stat()
+    require(stat.S_ISREG(info.st_mode) and info.st_nlink==1 and info.st_uid==os.geteuid() and not info.st_mode&0o077, 'DATABASE_PERMISSIONS')
+    require(isinstance(phone,str) and re.fullmatch(r'\+[1-9][0-9]{7,14}',phone), 'PHONE_FORMAT')
+    db=sqlite3.connect(path.as_uri()+'?mode=rw',uri=True,timeout=5,isolation_level=None)
+    db.row_factory=sqlite3.Row
+    try:
+        db.execute('BEGIN IMMEDIATE')
+        db.execute('CREATE TABLE IF NOT EXISTS portal_accounts (id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE COLLATE NOCASE, created_at INTEGER NOT NULL, disabled INTEGER NOT NULL DEFAULT 0)')
+        db.execute('CREATE TABLE IF NOT EXISTS portal_phone_identities (phone TEXT PRIMARY KEY, account_id TEXT NOT NULL UNIQUE, evidence TEXT NOT NULL, revision TEXT NOT NULL, created_at INTEGER NOT NULL)')
+        account=db.execute('SELECT * FROM portal_accounts WHERE email=? COLLATE NOCASE',(email,)).fetchone()
+        require(account is None or account['disabled']==0, 'ACCOUNT_DISABLED')
+        existing=db.execute('SELECT * FROM portal_phone_identities WHERE phone=? OR account_id=?',(phone,account['id'] if account else '')).fetchall()
+        if existing:
+            require(len(existing)==1 and account is not None and existing[0]['phone']==phone and existing[0]['account_id']==account['id'], 'IDENTITY_CONFLICT')
+            db.execute('COMMIT'); print('ALREADY_ENROLLED'); return
+        account_id=account['id'] if account else secrets.token_hex(16)
+        now=int(time.time())
+        if account is None:
+            db.execute('INSERT INTO portal_accounts (id,email,created_at) VALUES (?,?,?)',(account_id,email,now))
+        evidence='Site owner explicitly authorized sales@re.sitesee.ai for RE Division TEST setup on 2026-10-01; ownership of the saved test cell was previously confirmed by YES and a personal ownership statement.'
+        db.execute('INSERT INTO portal_phone_identities (phone,account_id,evidence,revision,created_at) VALUES (?,?,?,?,?)',(phone,account_id,evidence,secrets.token_hex(16),now))
+        db.execute('COMMIT'); print('ENROLLED')
+    except BaseException:
+        if db.in_transaction: db.execute('ROLLBACK')
+        raise
+    finally: db.close()
+try: main()
+except EnrollmentError as e: print(str(e),file=sys.stderr); sys.exit(1)
+except sqlite3.OperationalError as e:
+    code=getattr(e,'sqlite_errorcode',None)
+    print('DATABASE_BUSY' if code in (5,6) else 'DATABASE_UNAVAILABLE',file=sys.stderr); sys.exit(1)
+except Exception: print('ENROLLMENT_UNAVAILABLE',file=sys.stderr); sys.exit(1)
+'''
+
+def enroll_re_business(root,db,phone):
+    runuser=shutil.which('runuser');need(runuser is not None,'runuser is required for owner-scoped phone enrollment.')
+    request={'root':str(root),'database_path':str(db),'phone':phone}
+    result=subprocess.run([runuser,'-u','sitesee','--',sys.executable,'-c',RE_ENROLL_WORKER],input=json.dumps(request).encode(),stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=30)
+    messages={
+        'OWNER_REQUIRED':'Enrollment must run as the sitesee application owner.',
+        'DATABASE_PATH':'The existing booking database path could not be verified.',
+        'DATABASE_PERMISSIONS':'The existing booking database permissions prevent owner-scoped enrollment.',
+        'PHONE_FORMAT':'The saved test cell number has an invalid format.',
+        'ACCOUNT_DISABLED':'The RE business account is disabled; it was not reactivated.',
+        'IDENTITY_CONFLICT':'The saved test cell or RE account already has a different login identity; no identity was reassigned.',
+        'DATABASE_BUSY':'The booking database is busy; rerun this same deployment command.',
+        'DATABASE_UNAVAILABLE':'The application owner could not write the existing booking database; check its directory access and SQLite schema.',
+        'ENROLLMENT_UNAVAILABLE':'Owner-scoped enrollment could not finish; credentials remain saved.'}
+    need(result.returncode==0 and result.stdout.strip() in (b'ENROLLED',b'ALREADY_ENROLLED'),messages.get(result.stderr.decode(errors='replace').strip(),'The application-owner enrollment process could not start or complete; credentials remain saved.'))
+    print('RE business phone identity ready: '+RE_ACCOUNT)
+
 def setup_phone(root,uid,gid,php,db):
     config=root/'portal-sms.json';raw=read(config,uid,True)
     if raw is None:
-        if not sys.stdin.isatty():return ['SMS credentials and verified test cell number have not been configured.']
-        print('Phone sign-in uses Twilio Verify. No text is sent by this installer.')
-        account=getpass.getpass('Twilio Account SID (Enter to finish installation disabled): ').strip()
-        if not account:return ['SMS credentials and verified test cell number have not been configured.']
-        service=getpass.getpass('Twilio Verify Service SID: ').strip();token=getpass.getpass('Twilio Auth Token (hidden): ').strip()
-        phone=getpass.getpass('Approved test cell number, e.g. +13125550100 (hidden): ').strip()
-        c={'provider':'twilio-verify','stage':'TEST','enabled':True,'account_sid':account,'service_sid':service,'auth_token':token,'allowed_numbers':[phone]};validate_sms(c)
-        need(not config.exists() and not config.is_symlink(),'SMS configuration appeared concurrently; preserved.')
-        atomic(config,encode(c),uid,gid)
-    else:c=json.loads(raw);validate_sms(c)
-    # Read-only identity check does not initialize or alter the booking ledger.
-    import sqlite3
-    connection=sqlite3.connect(db.as_uri()+'?mode=ro',uri=True)
-    try:
-        tables={r[0] for r in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-        enrolled=[]
-        if {'portal_accounts','portal_phone_identities'}<=tables:
-            enrolled=[r[0] for r in connection.execute('SELECT p.phone FROM portal_phone_identities p JOIN portal_accounts a ON a.id=p.account_id WHERE a.disabled=0') if r[0] in c['allowed_numbers']]
-    finally:connection.close()
-    if enrolled:return []
-    if not sys.stdin.isatty():return ['Staff verification and phone enrollment are required.']
-    print('Link one approved test customer to their cell number. Email identifies the existing account; customers sign in only by cell number.')
-    email=getpass.getpass('Approved account email (Enter to leave disabled): ').strip()
-    if not email:return ['Staff verification and phone enrollment are required.']
-    phone=getpass.getpass('Verified login cell number (international format): ').strip()
-    need(phone in c['allowed_numbers'],'Enrollment number must match the saved SMS TEST allowlist.')
-    confirmed=input('Have you verified that this customer owns this cell number? Type YES: ').strip()
-    if confirmed!='YES':return ['Staff phone ownership verification remains required.']
-    evidence=input('Brief staff verification evidence (12–500 characters): ').strip()
-    request={'email':email,'phone':phone,'evidence':evidence,'ownership_verified':True,'database_path_verified':True,'database_path':str(db)}
-    runuser=shutil.which('runuser');need(runuser is not None,'runuser is required for owner-scoped phone enrollment.')
-    result=subprocess.run([runuser,'-u','sitesee','--',php,str(root/'tools/portal-enroll-phone.php')],input=json.dumps(request).encode(),stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=30)
-    need(result.returncode==0,'Phone enrollment requires review; credentials and installed files are retained. No SMS sent.')
+        return ['Saved Twilio settings and the previously verified test cell are required for this RE business correction.']
+    c=json.loads(raw);validate_sms(c)
+    need(len(c['allowed_numbers'])==1,'RE business setup requires exactly one saved test cell number; existing settings are preserved.')
+    enroll_re_business(root,db,c['allowed_numbers'][0])
     return []
 
 def show(report):
-    print('INSTALLER REVISION: r2.1-cpanel')
+    print('INSTALLER REVISION: r2.2-re-business')
     print('COMPLETE LOCAL INSPECTION: '+str(len(report['checked_files']))+' files; '+str(report['application_file_count'])+' packaged application files.')
     print('Verified metadata repairs: '+str(len(report['metadata_repairs']))+'. Missing known files to restore: '+str(len(report['missing_files'])))
     for message in report['errors']:print('BLOCKER: '+message)

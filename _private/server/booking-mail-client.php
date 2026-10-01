@@ -44,7 +44,7 @@ function booking_mail_config(bool $sending = false): array
     $c = booking_private_json(dirname(__DIR__) . '/booking-mail.json');
     if (($c['sender'] ?? '') !== BOOKING_MAIL_SENDER || ($c['stage'] ?? '') !== 'test'
         || ($c['graph_credentials'] ?? '') !== '/home/sitesee/.sitesee-graph-mail.json'
-        || ($c['test_recipient_email'] ?? '') !== 'cro@sitesee.ai'
+        || ($c['test_recipient_email'] ?? '') !== 'sales@re.sitesee.ai'
         || !is_bool($c['enabled'] ?? null) || ($sending && !$c['enabled'])) {
         throw new InvalidArgumentException('The dedicated booking mail path is not enabled or verified.');
     }

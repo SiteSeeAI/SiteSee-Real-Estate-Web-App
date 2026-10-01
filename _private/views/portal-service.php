@@ -10,6 +10,12 @@ function portal_appointment_page(PDO $db,array $account,string $reference,array 
     if(!portal_owns_order($db,$account['id'],$reference))portal_page('Order Unavailable','<p>This order is not available in your account.</p>',$account,404);
     $body=portal_service_back($reference);$e='portal_escape';
     if($notice)$body.='<p class="notice" role="status">'.$e($notice).'</p>';
+    $owned=booking_get($db,$reference);
+    if($owned && $owned['status']==='deposit_paid_test' && $owned['deposit_paid_at']){
+        $confirmation=booking_confirmation_get($db,$reference);
+        if(!$owned['approved_at'])portal_page('Manage Appointment',$body.'<p>Your payment is recorded. SiteSee is reviewing your requested appointment. Reschedule and cancellation options will appear after the appointment is confirmed.</p>',$account);
+        if(!$confirmation || $confirmation['state']!=='confirmed' || !$confirmation['event_uid'])portal_page('Manage Appointment',$body.'<p>SiteSee has reviewed your request. Calendar confirmation is pending. Reschedule and cancellation options will appear after the appointment is confirmed.</p>',$account);
+    }
     try{$row=portal_appointment_guard($db,$account['id'],$reference);}catch(InvalidArgumentException){portal_page('Manage Appointment',$body.'<p>Contact SiteSee for help with this appointment.</p>',$account);}
     $state=booking_lifecycle_state($db,$reference);$pending=booking_lifecycle_pending($db,$reference);$claim=booking_confirmation_get($db,$reference);$a=booking_request($row)['appointment'];
     $unresolved=$db->prepare("SELECT 1 FROM booking_communications WHERE reference=? AND kind LIKE 'lifecycle-%' AND submission_state<>'sent_observed' LIMIT 1");$unresolved->execute([$reference]);$noticePending=(bool)$unresolved->fetchColumn();

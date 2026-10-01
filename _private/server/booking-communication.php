@@ -53,7 +53,7 @@ function booking_communication_submit(PDO $db, string $key, callable $graph): vo
     $s->execute([$key]);
     if ($s->rowCount() !== 1) throw new InvalidArgumentException('This communication was already attempted. Recheck the saved message; do not resend.');
     $row = booking_communication_get($db,$key);
-    if ($row['sender'] !== BOOKING_MAIL_SENDER || $row['recipient'] !== 'cro@sitesee.ai' || $row['kind'] === 'original') {
+    if ($row['sender'] !== BOOKING_MAIL_SENDER || $row['recipient'] !== 'sales@re.sitesee.ai' || $row['kind'] === 'original') {
         throw new InvalidArgumentException('Only the dedicated sender and configured test recipient may submit.');
     }
     $m = json_decode($row['message_json'], true, 32, JSON_THROW_ON_ERROR);
@@ -118,9 +118,9 @@ function booking_communication_reconcile(PDO $db, string $key, callable $graph):
 function booking_communication_delivery(PDO $db, string $key, callable $graph): void
 {
     $row = booking_communication_get($db,$key);
-    if (!$row || !$row['internet_message_id'] || $row['recipient'] !== 'cro@sitesee.ai') throw new InvalidArgumentException('Exact test message identity is required.');
+    if (!$row || !$row['internet_message_id'] || $row['recipient'] !== 'sales@re.sitesee.ai') throw new InvalidArgumentException('Exact test message identity is required.');
     $filter = "internetMessageId eq '" . str_replace("'","''",$row['internet_message_id']) . "'";
-    $r = $graph('GET','/users/'.rawurlencode($row['recipient']).($row['kind'] === 'original' ? '/mailFolders/deleteditems/messages?' : '/messages?').http_build_query([
+    $r = $graph('GET','/users/'.rawurlencode($row['recipient']).($row['kind'] === 'original' ? '/mailFolders/deleteditems/messages?' : '/mailFolders/inbox/messages?').http_build_query([
         '$filter'=>$filter,'$select'=>'id,internetMessageId,from,toRecipients,subject,receivedDateTime,parentFolderId,isDraft','$top'=>10],'','&',PHP_QUERY_RFC3986));
     if ($r['status'] !== 200 || !isset($r['body']['value']) || isset($r['body']['@odata.nextLink'])) throw new RuntimeException('Recipient evidence is incomplete.');
     $matches = array_values(array_filter($r['body']['value'],static fn($m)=>($m['internetMessageId'] ?? '') === $row['internet_message_id']

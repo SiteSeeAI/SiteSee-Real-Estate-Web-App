@@ -7,7 +7,7 @@ function booking_lifecycle_enabled(): bool
     $p=dirname(__DIR__).'/booking-lifecycle.json';
     if(!is_file($p))return false;
     $c=booking_ms_private_json($p);
-    $expected=['schema'=>1,'stage'=>'test','enabled'=>true,'recipient'=>'cro@sitesee.ai'];
+    $expected=['schema'=>1,'stage'=>'test','enabled'=>true,'recipient'=>'sales@re.sitesee.ai'];
     return count($c)===count($expected) && array_replace($expected,$c)===$expected;
 }
 function booking_lifecycle_row(PDO $db,string $reference): array

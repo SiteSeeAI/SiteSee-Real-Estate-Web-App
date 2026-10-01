@@ -8,7 +8,7 @@ function booking_scheduling_ms_config(): array
 {
     return ['schema'=>1, 'stage'=>'test', 'provider'=>'microsoft', 'enabled'=>true,
         'confirmation_stage'=>'test', 'confirmation_enabled'=>true, 'invitations_enabled'=>true,
-        'test_recipient_email'=>'cro@sitesee.ai', 'calendar_uid'=>'microsoft:' . BOOKING_MS_CALENDAR];
+        'test_recipient_email'=>'sales@re.sitesee.ai', 'calendar_uid'=>'microsoft:' . BOOKING_MS_CALENDAR];
 }
 function booking_scheduling_valid_config(array $config): bool
 {

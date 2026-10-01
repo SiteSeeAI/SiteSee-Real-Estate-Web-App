@@ -31,7 +31,7 @@ $workerStage='schema';booking_communication_schema($db);
 $started=microtime(true);$count=0;$errors=0;
 $sql="SELECT c.reference FROM booking_confirmations c JOIN bookings b ON b.reference=c.reference
  LEFT JOIN booking_lifecycle l ON l.reference=c.reference
- WHERE c.state='confirmed' AND c.event_uid IS NOT NULL AND b.email='cro@sitesee.ai' AND b.status='deposit_paid_test'
+ WHERE c.state='confirmed' AND c.event_uid IS NOT NULL AND b.email='sales@re.sitesee.ai' AND b.status='deposit_paid_test'
  AND b.reference <> 'D32FFC7458'
  AND (c.planned_end > strftime('%s','now')-86400 OR EXISTS (SELECT 1 FROM booking_lifecycle_operations o WHERE o.reference=c.reference AND o.state IN ('prepared','uncertain')))
  ORDER BY COALESCE(l.checked_at,0) ASC LIMIT 20";
