@@ -1,3 +1,36 @@
+## Current TEST checkpoint — 2026 10 02
+
+The customer portal is installed and operating in TEST. This checkpoint supersedes the older deployment and recipient statements below. Source branch: `feat/calendar-confirmation-20260925`; application head inspected before this documentation update: `2fee6fd57e101d5d75f379ddf02aa62a75972296`. No application changes were needed for this billing validation.
+
+### Verified installed behavior
+
+Phone-number sign-in, new portal orders, TEST deposits, staff review, Microsoft calendar confirmation, invitation evidence, Zoho history, rescheduling and cancellation were verified by the operator. Order `8D20B4EBFCD0BADC4DE5` remains cancelled; its calendar event disappeared. Both lifecycle notices reached `sent_observed`, `recipient_copy_observed` and CRM `associated`. Preserve this evidence and protected booking `D32FFC7458`; do not resend notices.
+
+The operator reported successful installation of `install-re-calendar-notice-20261002-r1.py`. Residential, Commercial and portal date inputs use server time and America/Chicago to dim dates with no eligible arrival window. The 72-hour standard and 12-hour requested-rush limits retain partially eligible boundary dates. Existing server validation, staff approval and rush pricing remain authoritative. Calendar and portal source/browser CI and the independent installer audit passed before delivery; see `documents/calendar-notice-source.json` and the calendar tests.
+
+On 2026 10 02, the operator verified the actual Stripe TEST billing journey:
+
+| Check | Evidence and result |
+| --- | --- |
+| Deposit receipt | Cancelled order `8D20B4EBFCD0BADC4DE5`: $75 receipt opened successfully. |
+| Saved payment-method access | Stripe Sandbox management page opened without errors and displayed the existing test card ending 4242. Adding or editing a method was not claimed as tested. |
+| Fresh Order Again | New order `5D99D336572661A00885`, requested 2026 10 09, 09:00–11:00 Central Time; TEST deposit recorded. |
+| Approved rush balance | Staff review approved the $150 job and $59 rush fee. Subtracting the $75 deposit produced the expected $134 balance. |
+| Balance collection | Operator completed the TEST payment; portal showed “Test balance recorded: $134.00” and removed the balance-payment link. |
+| Paid order and documents | Operator confirmed $0 remaining and successful access to the balance receipt, invoice and invoice PDF. |
+
+These are operator screenshots and confirmations of the installed provider flow. Existing isolated tests separately cover ownership, consent, approved amount, recovery with the same payment attempt, verified expiry, signed-event replay/races and refund/dispute guards. They are not evidence that every failure case was repeated against Stripe. The agent did not complete a production login or submit a payment. The new order was left active; its last appointment screenshot showed Awaiting Confirmation. This billing result does not assert calendar confirmation for that order.
+
+### Remaining work and controls
+
+Next is the final customer-portal usability pass, followed by the Staff Booking Review redesign. Consolidate interface changes into one reviewed installer. The balance action is currently labelled “Review Test Balance”; the operator initially had difficulty finding it. The order-list/payment badge still says “Test Deposit Recorded” after balance payment, although the detail balance is correctly reduced to zero. The staff page's old statement that final balance collection is disabled is stale. Address these presentation issues together without changing payment authority or requiring a repeat of the completed appointment lifecycle.
+
+Only `sales@re.sitesee.ai` is approved for real test messages. The Deleted Items issue remains deliberately deferred. Before go-live, obtain approval for a second business address and retest distinct sender/recipient addresses; do not select an address, alter mailbox settings or investigate email processing as part of this checkpoint. Stripe remains TEST; no live activation or merge to main is authorized. Preserve credentials, phone login, orders, deposits, calendar records, CRM links and provider settings. Installation must not change databases or call providers, and must retain backups, locks, interrupted-update recovery and unknown-edit preservation without changing ownership of historical root-owned backup directories.
+
+The older checkpoints below are retained as history and do not describe the current installation or approved recipient.
+
+---
+
 ## Installer Compatibility Update 2026 09 29
 
 Current installer revision is **r2.1-cpanel**; application release remains portal-20260929-r2. The first aggregate server run stopped before changes. Its four blockers were installer recognition gaps: website-root mode 0750 and three existing, hash-matched calendar maintenance scripts. Corrected without changing application payload or website-root metadata. Local suite now passes 32 tests. Deliver the updated full ZIP and rerun the same --deploy command; no individual application upload is required.
