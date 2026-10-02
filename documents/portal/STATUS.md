@@ -1,8 +1,8 @@
-## Account email verification prepared — 2026 10 02
+## Account email verification ready for installation — 2026 10 02
 
 `install-re-email-change-20261002-r1.py` adds Account → Change Email with a code sent to the requested address. Phone login, account identity, pricing access and linked order history are retained. Old order recipients and existing invitations stay as recorded. Stale unsubmitted drafts require review; captured orders retain safe retry behavior.
 
-The application, concurrency and 23 installer fixture tests passed locally, and the independent audit found no blockers. Browser verification is pending CI. Installation has not been performed. See `EMAIL-CHANGE-REVIEW.md` for four review passes, scope, recovery and the single WHM command. The user must provide the second test address before any actual email delivery test. No real messages or provider actions were taken; Stripe stays TEST.
+Four review passes and the independent audit found no blockers. The application/concurrency suites, all 23 new installer tests, existing regression suites, immutable historical builders and actual HTTPS browser checks passed in [CI run 37032836110](https://github.com/SiteSeeAI/SiteSee-Real-Estate/actions/runs/37032836110) on `92c430aad4f231ce657174c924ec644bd0b96d70`. Desktop/mobile screenshots were reviewed, including long-address wrapping. Installation has not been performed. See `EMAIL-CHANGE-REVIEW.md` for four review passes, scope, recovery and the single WHM command. The user must provide the second test address before any actual email delivery test. No real messages or provider actions were taken; Stripe stays TEST.
 
 ---
 
