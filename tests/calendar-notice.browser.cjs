@@ -39,6 +39,12 @@ const server=http.createServer((req,res)=>{
       serverNow=Date.parse('2026-10-01T14:30:00Z')/1000;await page.goto(origin+'/quote');
       for(const [market,prefix] of [['residential',''],['commercial','c-']]) {
         await page.locator('[name="property-type"][value="'+market+'"]').check();
+        await page.locator('#'+prefix+'listing-street').fill('101 Example Street');
+        await page.locator('#'+prefix+'listing-city').fill('Chicago');
+        await page.locator('#'+prefix+'listing-state').selectOption('IL');
+        await page.locator('#'+prefix+'listing-zip').fill('60601');
+        await page.locator('#'+prefix+'open-estimate').click();
+        await page.locator('#'+prefix+'review-estimate').click();
         const date=page.locator('#'+prefix+'shoot-date'),time=page.locator('#'+prefix+'shoot-time');
         await page.waitForFunction(id=>document.getElementById(id).min==='2026-10-04',prefix+'shoot-date');
         await date.fill('2026-10-03');assert(await date.evaluate(el=>el.validity.rangeUnderflow));
