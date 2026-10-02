@@ -17,6 +17,14 @@
   Object.assign(draft.details,config.details);
   if(config.seed){draft.market=config.seed.market;Object.assign(draft.details,config.seed.details);Object.assign(draft[draft.market],config.seed.state);}
   let step = config.seed ? 1 : 0, review=null, busy=false;
+  const notice = window.SiteSeeBookingNotice;
+  let clock = null, serverNow = config.serverNow;
+  const noticeLimit = () => notice && serverNow !== null ? notice.cutoff(clock ? clock.now() : serverNow, draft.appointment.rushRequested) : null;
+  function syncNotice() {
+    const date = screen.querySelector('[data-group="appointment"][data-key="date"]');
+    const time = screen.querySelector('[data-group="appointment"][data-key="time"]');
+    if (notice && date && time) notice.apply(date, time, noticeLimit());
+  }
   const state = () => draft[draft.market];
   const engine = () => draft.market === 'residential' ? SiteSeeQuote : SiteSeeCommercialQuote;
   function quote() { try { return engine().calculate(state()); } catch (_) { return null; } }
@@ -106,7 +114,13 @@
     if(step===1 && (!d.street.trim()||!d.city.trim()||!(/^[A-Za-z]{2}$/).test(d.state)||!(/^\d{5}(?:-\d{4})?$/).test(d.zip))) throw Error('Enter the street, city, two-letter state, and ZIP code.');
     if(step===2) engine().calculate(state());
     if(step===3) {
+      syncNotice();
       if(!a.date) throw Error('Choose a preferred date.');
+      if(notice) {
+        const limit = noticeLimit();
+        if(!limit) throw Error('Calendar timing is refreshing. Please try again in a moment.');
+        if(!notice.allowed(a.date,a.time,limit)) throw Error('Choose an arrival window with at least '+(a.rushRequested ? '12' : '72')+' hours’ notice.');
+      }
       if(!d.first.trim()||!d.last.trim()||!d.company.trim()||d.phone.replace(/\D/g,'').length<10) throw Error('Complete your name, company, and phone number.');
       if(a.meetPhotographer==='No' && (a.accessType==='Lockbox' ? !(/^\d{10}$/).test(a.lockboxCode) : !a.keyLocation.trim())) throw Error(a.accessType==='Lockbox'?'Enter the 10-digit lockbox code.':'Enter the key pickup location.');
       if(a.onsiteDifferent && (!a.onsiteName.trim()||!a.onsiteEmail.includes('@')||a.onsitePhone.replace(/\D/g,'').length<10)) throw Error('Complete the on-site contact information.');
@@ -130,6 +144,7 @@
   }
   function render(focus=false) {
     screen.innerHTML=renderNew();
+    syncNotice();
     if(focus)screen.querySelector('#wizard-heading').focus();
   }
   function error(message){const el=screen.querySelector('#sp-error');el.textContent=message;el.hidden=false;el.tabIndex=-1;el.focus();}
@@ -146,11 +161,12 @@
     review=null;
   }
   draft.details.optOutFlag=draft.details.optOut==='Yes';
-  root.addEventListener('input',event=>{saveInput(event.target);if(event.target.dataset.group==='price'){const current=screen.querySelector('.sp-total');if(current)current.outerHTML=total();}});
+  root.addEventListener('input',event=>{saveInput(event.target);syncNotice();if(event.target.dataset.group==='price'){const current=screen.querySelector('.sp-total');if(current)current.outerHTML=total();}});
   root.addEventListener('change',event=>{
     const input=event.target;
     if(input.dataset.service){const chosen=new Set(state().selected);input.checked?chosen.add(input.dataset.service):chosen.delete(input.dataset.service);state().selected=[...chosen];if(draft.market==='commercial' && input.dataset.service==='website')state().delivery=input.checked?'website':'files';review=null;render();return;}
     saveInput(input);
+    syncNotice();
     if(input.dataset.group==='price' && input.dataset.key==='category'){
       const cat=engine().categories[state().category];if(draft.market==='residential')state().sqft=Math.min(cat.max,Math.max(cat.min,state().sqft));else state().photoCount=cat.photosIncluded;
     }
@@ -176,5 +192,6 @@
     }catch(e){error(e.message);}
     finally{busy=false;screen.querySelectorAll('button').forEach(b=>b.disabled=false);}
   });
+  if (notice) clock = notice.watch(config.serverNow, now => { serverNow = now; syncNotice(); });
   render();
 })();

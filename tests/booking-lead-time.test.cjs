@@ -31,7 +31,7 @@ test('72-hour and 12-hour cutoffs derive from the server timestamp', () => {
   const f=fixture();
   assert.equal(f.get('shoot-date').min, '2026-09-28');
   f.get('rush-requested').checked=true; f.change('rush-requested');
-  assert.equal(f.get('shoot-date').min, '2026-09-25');
+  assert.equal(f.get('shoot-date').min, '2026-09-26'); // 21:00 cutoff leaves no arrival window that day.
   assert.match(f.get('lead-time-help').textContent, /21:00 Central/);
 });
 test('boundary window expires as server-relative elapsed time advances', () => {
@@ -59,3 +59,4 @@ test('cutoffs use elapsed hours across spring and fall clock changes', () => {
   const fall=f.cutoff(Date.parse('2027-11-04T14:00:00Z')/1000,false);
   assert.equal(fall.date,'2027-11-07'); assert.equal(fall.time,'08:00:00');
 });
+

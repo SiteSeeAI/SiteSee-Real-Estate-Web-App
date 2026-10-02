@@ -4,10 +4,10 @@ function portal_new_order_page(PDO $db,array $account,string $again=''): never
 {
     $p=portal_profile($db,$account['id']);$seed=$again!==''?portal_purchase_seed($db,$account['id'],$again):null;
     if($again!==''&&!$seed)portal_page('Order Unavailable','<p>This order is not available in your account.</p>',$account,404);
-    $config=['csrf'=>$_SESSION['csrf'],'details'=>['first'=>$p['first_name'],'last'=>$p['last_name'],'company'=>$p['company'],'phone'=>$p['phone'],'email'=>$account['email']],'seed'=>$seed];
+    $config=['serverNow'=>time(),'csrf'=>$_SESSION['csrf'],'details'=>['first'=>$p['first_name'],'last'=>$p['last_name'],'company'=>$p['company'],'phone'=>$p['phone'],'email'=>$account['email']],'seed'=>$seed];
     $body=($seed?'<p class="notice">This is a new service order. Review the property, service quantities and current pricing, then choose a new date and provide fresh access instructions.</p>':'')
         .'<div id="portal-wizard" data-config="'.portal_escape(json_encode($config,JSON_THROW_ON_ERROR)).'"><div id="sp-screen"></div><noscript>Enable JavaScript to complete the guided order form.</noscript></div>'
-        .'<link rel="stylesheet" href="/portal-assets/order.css"><script src="/account.php?view=engine&amp;market=residential" defer></script><script src="/account.php?view=engine&amp;market=commercial" defer></script><script src="/portal-assets/order.js" defer></script>';
+        .'<link rel="stylesheet" href="/portal-assets/order.css"><script src="/account.php?view=engine&amp;market=residential" defer></script><script src="/account.php?view=engine&amp;market=commercial" defer></script><script src="/portal-assets/booking-notice.js?v=20261002-r1" defer></script><script src="/portal-assets/order.js?v=20261002-r1" defer></script>';
     portal_page('New Order',$body,$account);
 }
 function portal_payment_page(PDO $db,array $account,string $reference,bool $return): never

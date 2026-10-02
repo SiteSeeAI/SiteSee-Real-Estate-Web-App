@@ -1,0 +1,43 @@
+name: Calendar Notice Checks
+on:
+  push:
+    branches: ['feat/calendar-confirmation-20260925']
+    paths: ['**calendar-notice**', 'public/booking-clock.php', 'public/portal-assets/booking-notice.js', '_private/pricing-assets/scheduling.js', '_private/views/pricing.php', '_private/views/portal-purchase.php', 'public/portal-assets/order.js', 'tests/booking-lead-time.test.cjs']
+  pull_request:
+    paths: ['**calendar-notice**', 'public/booking-clock.php', 'public/portal-assets/booking-notice.js', '_private/pricing-assets/scheduling.js', '_private/views/pricing.php', '_private/views/portal-purchase.php', 'public/portal-assets/order.js']
+permissions:
+  contents: read
+jobs:
+  calendar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_sqlite
+      - name: Notice boundaries, backend parity and installer recovery
+        run: |
+          php -l public/booking-clock.php
+          php -l _private/views/pricing.php
+          php -l _private/views/portal-purchase.php
+          php tests/calendar-notice.test.php
+          php tests/booking-availability.test.php
+          node --test tests/calendar-notice.test.cjs tests/booking-lead-time.test.cjs tests/availability-client.test.cjs
+          python3 tests/calendar-notice-installer.test.py
+          python3 tools/build-calendar-notice.py
+          git diff --exit-code -- tools/install-re-calendar-notice-20261002-r1.py
+          python3 tools/build-portal-complete.py
+          git diff --exit-code -- tools/install-portal-complete.py
+      - name: Install isolated browser test dependencies
+        run: |
+          npm install --prefix "$RUNNER_TEMP/notice-browser" --no-save playwright@1.58.2
+          "$RUNNER_TEMP/notice-browser/node_modules/.bin/playwright" install --with-deps chromium --only-shell
+      - name: Actual native date inputs with incorrect device clocks
+        env:
+          NODE_PATH: ${{ runner.temp }}/notice-browser/node_modules
+        run: node tests/calendar-notice.browser.cjs

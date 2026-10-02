@@ -19,6 +19,10 @@ def build():
     upgrade=changes[key]
     if base64.b64decode(upgrade['before'])!=expected:raise RuntimeError('Upgrade baseline differs: '+source)
     expected=base64.b64decode(upgrade['after'])
+  notice=json.loads((ROOT/'documents/calendar-notice-source.json').read_text())['files'].get(name)
+  if notice:
+   if base64.b64decode(notice['before'])!=expected:raise RuntimeError('Calendar notice baseline differs: '+source)
+   expected=base64.b64decode(notice['after'])
   if actual!=expected:raise RuntimeError('Pinned application source differs: '+source)
  raw=json.dumps(data,sort_keys=True,separators=(',',':')).encode()
  template=(ROOT/'tools/portal-complete-template.py').read_text()

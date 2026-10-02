@@ -67,18 +67,33 @@
       const time = get('shoot-time'), summary = get('arrival-window');
       const date = get('shoot-date'), rush = get('rush-requested'), leadHelp = get('lead-time-help');
       const serverEpoch = Number(form.dataset.serverNow), loadedAt = performance.now();
-      const currentCutoff = () => cutoff(serverEpoch + Math.max(0, performance.now() - loadedAt) / 1000, rush.checked);
+      const notice = window.SiteSeeBookingNotice;
+      let clock = null, serverNow = serverEpoch;
+      const currentCutoff = () => notice ? (serverNow === null ? null : notice.cutoff(clock ? clock.now() : serverNow, rush.checked))
+        : cutoff(serverEpoch + Math.max(0, performance.now() - loadedAt) / 1000, rush.checked);
       const syncLimits = () => {
         const limit = currentCutoff();
+        if (notice) {
+          notice.apply(date, time, limit);
+          if (!limit) return;
+        } else {
+        // Compatibility for a pricing page opened just before this update.
         date.min = limit.date;
+        if (limit.time > '17:00:00') {
+          const next = new Date(limit.date + 'T12:00:00Z');
+          next.setUTCDate(next.getUTCDate() + 1);
+          date.min = next.toISOString().slice(0, 10);
+        }
         for (const option of time.options) option.disabled = option.dataset?.calendarBusy === 'true' || (Boolean(option.value) && Boolean(date.value)
           && (date.value < limit.date || (date.value === limit.date && option.value + ':00' < limit.time)));
+        }
         leadHelp.textContent = (rush.checked ? 'Rush: at least 12 hours’ notice, subject to approval.' : 'Standard: at least 72 hours’ notice.')
           + ' Earliest window must start on or after ' + limit.date + ' at ' + limit.time.slice(0, 5) + ' Central Time, using the server clock.';
       };
       const validateWindow = () => {
         syncLimits();
         date.setCustomValidity(''); time.setCustomValidity('');
+        if (!currentCutoff()) { time.setCustomValidity('Calendar timing is refreshing. Please try again in a moment.'); window.SiteSeeValidation.show(time); return false; }
         if (!date.checkValidity()) { window.SiteSeeValidation.show(date); return false; }
         const limit = currentCutoff();
         if (date.value < limit.date || (date.value === limit.date && time.value + ':00' < limit.time))
@@ -93,6 +108,7 @@
       date.addEventListener('change', syncLimits);
       rush.addEventListener('change', () => { date.setCustomValidity(''); time.setCustomValidity(''); syncLimits(); });
       window.addEventListener('pageshow', syncLimits);
+      if (notice) clock = notice.watch(serverEpoch, now => { serverNow = now; syncLimits(); });
       syncLimits();
       const showWindow = () => {
         const [hours, minutes] = time.value.split(':').map(Number);
