@@ -18,8 +18,8 @@ const server=http.createServer((req,res)=>{
   const u=new URL(req.url,'http://localhost');
   res.setHeader('Cache-Control','no-store');
   if(u.pathname==='/booking-clock.php'){res.setHeader('Content-Type','application/json');res.end(JSON.stringify({now:serverNow,timezone:'America/Chicago'}));return;}
-  if(u.pathname==='/quote'){res.setHeader('Content-Type','text/html');res.end(pricing());return;}
-  if(u.pathname==='/portal'){res.setHeader('Content-Type','text/html');res.end(portal());return;}
+  if(u.pathname==='/quote'){res.setHeader('Content-Type','text/html; charset=utf-8');res.end(pricing());return;}
+  if(u.pathname==='/portal'){res.setHeader('Content-Type','text/html; charset=utf-8');res.end(portal());return;}
   let file;
   if(u.pathname==='/pricing-asset.php')file='_private/pricing-assets/'+assets[u.searchParams.get('asset')];
   if(u.pathname==='/portal-assets/booking-notice.js')file='public'+u.pathname;
@@ -34,7 +34,7 @@ const server=http.createServer((req,res)=>{
     for(const timezoneId of ['Asia/Tokyo','Pacific/Honolulu']) {
       const context=await browser.newContext({timezoneId});
       await context.addInitScript(()=>{const Original=Date;window.Date=class extends Original {constructor(...args){super(...(args.length?args:['2099-01-01T00:00:00Z']));}static now(){return Original.parse('2099-01-01T00:00:00Z');}};});
-      const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+      const page=await context.newPage(),errors=[];page.on('pageerror',e=>{errors.push(e.message);console.error('Page error:',e.message);});
       await context.route('**/*',r=>r.request().url().startsWith(origin)?r.continue():r.abort());
       serverNow=Date.parse('2026-10-01T14:30:00Z')/1000;await page.goto(origin+'/quote');
       for(const [market,prefix] of [['residential',''],['commercial','c-']]) {
