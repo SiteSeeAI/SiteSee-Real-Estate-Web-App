@@ -12,15 +12,23 @@ if($command==='reset-sms-rate'){$db->exec('DELETE FROM portal_phone_attempts');e
 if($command==='service-notice-observed'){
     booking_communication_schema($db);booking_communication_update($db,'lifecycle-1:DDDD000001',['submission_state'=>'sent_observed']);exit;
 }
+if($command==='service-balance-paid'){
+    require $root.'/server/portal-billing.php';portal_billing_schema($db);
+    $ref='DDDD000001';$b=portal_billing_latest($db,$ref);
+    if(!$b || $b['state']!=='open')throw new RuntimeException('An existing fixture checkout is required.');
+    $session=['id'=>$b['session_id'],'livemode'=>false,'mode'=>'payment','status'=>'complete','payment_status'=>'paid','currency'=>'usd','amount_total'=>(int)$b['amount'],'client_reference_id'=>$ref,'metadata'=>['booking_reference'=>$ref,'portal_payment_kind'=>'balance','portal_attempt'=>(string)$b['attempt']],'customer'=>$b['customer'],'payment_intent'=>'pi_http_balance'];
+    portal_balance_event($db,['id'=>'evt_http_balance','livemode'=>false,'type'=>'checkout.session.completed','data'=>['object'=>$session]]);exit;
+}
 if($command==='seed-service'){
     require $root.'/server/portal-billing.php';portal_billing_schema($db);booking_communication_schema($db);
     file_put_contents($root.'/booking-lifecycle.json',json_encode(['schema'=>1,'stage'=>'test','enabled'=>true,'recipient'=>'sales@re.sitesee.ai']));chmod($root.'/booking-lifecycle.json',0600);
     file_put_contents($root.'/real-estate-pricing-pending/'.str_repeat('3',32).'.json',json_encode(['email'=>'sales@re.sitesee.ai','status'=>'approved','approved_at'=>gmdate('c')]));
     $id=str_repeat('d',32);$ref='DDDD000001';$db->prepare('INSERT INTO portal_accounts VALUES (?,?,?,0)')->execute([$id,'sales@re.sitesee.ai',time()]);portal_phone_enroll($db,'sales@re.sitesee.ai','3125550102','Synthetic staff verification',static fn()=>true);
-    $s=real_estate_prepare_submission(['version'=>2,'action'=>'request_appointment','market'=>'residential','details'=>['first'=>'Test','last'=>'Customer','company'=>'Example','email'=>'sales@re.sitesee.ai','phone'=>'3125550100','street'=>'404 Service Example','city'=>'Chicago','state'=>'IL','zip'=>'60601'],'state'=>['category'=>'small','package'=>'gold','sqft'=>1500,'selected'=>['photo','mp'],'matterportSqft'=>1500],'appointment'=>['date'=>(new DateTimeImmutable('+10 days',new DateTimeZone('America/Chicago')))->format('Y-m-d'),'time'=>'09:00','rushRequested'=>false,'meetPhotographer'=>'No','accessType'=>'Lockbox','lockboxCode'=>'1234567890','cancellationAccepted'=>true]]);
+    $s=real_estate_prepare_submission(['version'=>2,'action'=>'request_appointment','market'=>'residential','details'=>['first'=>'Test','last'=>'Customer','company'=>'Example','email'=>'sales@re.sitesee.ai','phone'=>'3125550100','street'=>'404 Service Example','city'=>'Chicago','state'=>'IL','zip'=>'60601'],'state'=>['category'=>'small','package'=>'gold','sqft'=>1500,'selected'=>['photo','mp'],'matterportSqft'=>1500],'appointment'=>['date'=>(new DateTimeImmutable('+10 days',new DateTimeZone('America/Chicago')))->format('Y-m-d'),'time'=>'09:00','rushRequested'=>true,'meetPhotographer'=>'No','accessType'=>'Lockbox','lockboxCode'=>'1234567890','cancellationAccepted'=>true]]);
     booking_capture($db,$s,$ref,true);$db->prepare("UPDATE bookings SET status='deposit_paid_test',deposit_paid_at=?,stripe_session_id='cs_test_http_deposit',stripe_payment_intent_id='pi_http',stripe_customer_id='cus_http' WHERE reference=?")->execute([gmdate('c'),$ref]);
     $db->prepare('INSERT INTO portal_order_owners VALUES (?,?,?,?)')->execute([$ref,$id,'isolated-fixture',time()]);
-    booking_review_paid($db,$ref,95,'David',true);booking_confirm_appointment($db,$ref,booking_scheduling_ms_config(),'portal_fixture_calendar',null,$root.'/data/fixture-lock');$db->prepare("UPDATE booking_confirmations SET invitation_state='sent' WHERE reference=?")->execute([$ref]);exit;
+    // Explicitly requested and approved rush exercises the displayed price breakdown.
+    booking_review_paid($db,$ref,95,'David',true,'approve');booking_confirm_appointment($db,$ref,booking_scheduling_ms_config(),'portal_fixture_calendar',null,$root.'/data/fixture-lock');$db->prepare("UPDATE booking_confirmations SET invitation_state='sent' WHERE reference=?")->execute([$ref]);exit;
 }
 if ($command==='rotate-one-csrf') {
     $id=$db->query("SELECT id FROM portal_accounts WHERE email='one@example.com'")->fetchColumn();

@@ -9,6 +9,10 @@ def build():
   if n in upgrades:
    if base64.b64decode(upgrades[n]['before'])!=expected:raise RuntimeError('Draft update baseline changed: '+n)
    expected=base64.b64decode(upgrades[n]['after'])
+  polish=json.loads((ROOT/'documents/portal/polish-source.json').read_text())['files'].get('private/'+n)
+  if polish:
+   if base64.b64decode(polish['before'])!=expected:raise RuntimeError('Portal polish baseline changed: '+n)
+   expected=base64.b64decode(polish['after'])
   if (ROOT/'_private'/n).read_bytes()!=expected:raise RuntimeError('Reviewed source changed: '+n)
  calendar=(ROOT/'_private/server/booking-microsoft-calendar.php').read_text()
  data['calendar_uid']='microsoft:'+re.search(r"const BOOKING_MS_CALENDAR = '([^']+)'",calendar)[1]

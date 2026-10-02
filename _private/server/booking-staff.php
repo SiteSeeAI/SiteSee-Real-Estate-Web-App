@@ -367,7 +367,7 @@ if ($row) {
         $body .= '<p>Locked price: ' . staff_money((int)$row['approved_cents'])
             . '; test deposit: ' . staff_money((int)$row['deposit_cents'])
             . '; photographer: ' . staff_escape((string)$row['photographer'])
-            . '; payment: ' . staff_escape($row['checkout_state']) . '.</p><p>Remaining balance including any approved rush fee: <strong>' . staff_money(booking_remaining_cents($row)) . '</strong>. Final balance collection is not enabled in this test phase.</p>';
+            . '; payment: ' . staff_escape($row['checkout_state']) . '.</p><p>Approved balance after deposit, including any approved rush fee: <strong>' . staff_money(booking_remaining_cents($row)) . '</strong>. Customers can review eligible TEST balance payments in their portal. No automatic charge is made.</p>';
         if (in_array($row['status'], ['approved_test', 'awaiting_deposit_test'], true) && in_array($row['checkout_state'], ['ready', 'expired'], true)) {
             $body .= '<form method="post"><input type="hidden" name="csrf" value="' . $csrf
                 . '"><input type="hidden" name="action" value="rotate"><input type="hidden" name="reference" value="'

@@ -2,12 +2,17 @@
 declare(strict_types=1);
 function portal_escape(mixed $value): string { return htmlspecialchars((string)$value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
 function portal_csrf_field(): string { return '<input type="hidden" name="csrf" value="'.portal_escape($_SESSION['csrf']).'">'; }
+function portal_payment_label(array $order, int $balancePaid): string
+{
+    // Describe the recorded payment; refunds and disputes remain in Billing & Receipts.
+    return $balancePaid > 0 ? 'Test Balance Recorded' : $order['payment_status'];
+}
 function portal_page(string $title, string $body, array|false $account = false, int $status = 200): never
 {
     http_response_code($status);
     $e='portal_escape';
     $nav=$account ? '<nav aria-label="Customer Navigation"><a href="/account.php">My Orders</a><a href="/account.php?view=profile">Account</a><a class="new-order" href="/account.php?view=new">New Order</a></nav>' : '';
-    echo '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><title>'.$e($title).' | SiteSee</title><link rel="stylesheet" href="/portal-assets/portal.css"><script src="/portal-assets/portal.js" defer></script></head><body><a class="skip" href="#content">Skip To Content</a><header><a class="brand" href="/account.php" aria-label="SiteSee My Orders">SiteSee<span>.</span><small>Show More. Decide Faster.</small></a>'.$nav.'</header><div class="test-notice">TEST ACCESS <span>Orders and payments remain in test mode.</span></div><main id="content"><h1>'.$e($title).'</h1>'.$body.'</main><footer><span>SiteSee Real Estate</span><a href="mailto:sales@re.sitesee.ai">sales@re.sitesee.ai</a></footer></body></html>';
+    echo '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><title>'.$e($title).' | SiteSee</title><link rel="stylesheet" href="/portal-assets/portal.css?v=20261002-polish-r1"><script src="/portal-assets/portal.js" defer></script></head><body><a class="skip" href="#content">Skip To Content</a><header><a class="brand" href="/account.php" aria-label="SiteSee My Orders">SiteSee<span>.</span><small>Show More. Decide Faster.</small></a>'.$nav.'</header><div class="test-notice">TEST ACCESS <span>Orders and payments remain in test mode.</span></div><main id="content"><h1>'.$e($title).'</h1>'.$body.'</main><footer><span>SiteSee Real Estate</span><a href="mailto:sales@re.sitesee.ai">sales@re.sitesee.ai</a></footer></body></html>';
     exit;
 }
 function portal_sign_in(string $notice = ''): never
@@ -30,7 +35,8 @@ function portal_orders_page(PDO $db, array $account, int $page, string $notice =
     if ($notice) $body.='<p role="status" class="notice">'.$e($notice).'</p>';
     if (!$result['orders']) $body.='<section class="panel"><h2>No Orders To Show Yet</h2><p>Your verified orders will appear here.</p></section>';
     foreach ($result['orders'] as $order) {
-        $body.='<article class="order"><div><p class="eyebrow">'.$e(ucfirst($order['market'])).' · '.$e($order['reference']).'</p><h2>'.$e($order['property']).'</h2><p>'.$e($order['appointment_status']).' · '.$e($order['payment_status']).'</p></div><a class="view-order" href="/account.php?view=order&amp;reference='.$e($order['reference']).'">View Order<span class="sr-only"> '.$e($order['reference']).'</span> →</a></article>';
+        $paymentStatus=portal_payment_label($order,portal_balance_paid($db,$order['reference']));
+        $body.='<article class="order"><div><p class="eyebrow">'.$e(ucfirst($order['market'])).' · '.$e($order['reference']).'</p><h2>'.$e($order['property']).'</h2><p>'.$e($order['appointment_status']).' · '.$e($paymentStatus).'</p></div><a class="view-order" href="/account.php?view=order&amp;reference='.$e($order['reference']).'">View Order<span class="sr-only"> '.$e($order['reference']).'</span> →</a></article>';
     }
     $body.='<nav class="pagination" aria-label="Orders Pages">';
     if($page>1)$body.='<a href="/account.php?page='.($page-1).'">Previous</a>';
@@ -41,7 +47,15 @@ function portal_orders_page(PDO $db, array $account, int $page, string $notice =
 function portal_order_page(array $order, array $account): never
 {
     $e='portal_escape';$money='real_estate_money';
-    $body='<p><a href="/account.php">← My Orders</a></p><p class="lead">'.$e($order['property']).'</p><p class="eyebrow">Order '.$e($order['reference']).'</p><div class="columns"><section class="panel"><h2>Appointment</h2><p class="status">'.$e($order['appointment_status']).'</p><dl><dt>Requested Arrival Window</dt><dd>'.$e($order['date'].' '.$order['time'].($order['window_end'] ? '–'.$order['window_end'] : '')).' Central Time</dd><dt>Staff Review</dt><dd>'.$e($order['review_status']).'</dd><dt>Rush Service</dt><dd>'.$e(match($order['rush_status']){'approved'=>'Approved','declined'=>'Declined','pending'=>'Awaiting Approval',default=>'Not Requested'}).'</dd></dl><p class="help">Payment does not confirm your appointment.</p></section><section class="panel"><h2>Payment</h2><p class="status">'.$e($order['payment_status']).'</p><dl><dt>Original Estimate</dt><dd>'.$money($order['quote_cents']).'</dd><dt>Approved Job Amount</dt><dd>'.($order['approved_cents']===null?'Awaiting Staff Review':$money($order['approved_cents'])).'</dd><dt>Test Deposit Recorded</dt><dd>'.$money($order['deposit_paid_cents']).'</dd><dt>Remaining Job Balance</dt><dd>'.($order['remaining_cents']===null?'Confirmed After Staff Review':$money($order['remaining_cents'])).'</dd></dl><p class="help">Cancellation does not automatically mean a refund. Refunds and disputes appear in Billing &amp; Receipts.</p></section></div><section class="panel"><h2>Services</h2>';
+    $balancePaid=(int)($order['balance_paid_cents']??0);
+    $body='<p><a href="/account.php">← My Orders</a></p><p class="lead">'.$e($order['property']).'</p><p class="eyebrow">Order '.$e($order['reference']).'</p><div class="columns"><section class="panel"><h2>Appointment</h2><p class="status">'.$e($order['appointment_status']).'</p><dl><dt>Requested Arrival Window</dt><dd>'.$e($order['date'].' '.$order['time'].($order['window_end'] ? '–'.$order['window_end'] : '')).' Central Time</dd><dt>Staff Review</dt><dd>'.$e($order['review_status']).'</dd><dt>Rush Service</dt><dd>'.$e(match($order['rush_status']){'approved'=>'Approved','declined'=>'Declined','pending'=>'Awaiting Approval',default=>'Not Requested'}).'</dd></dl><p class="help">Payment does not confirm your appointment.</p></section><section class="panel"><h2>Payment</h2><p class="status">'.$e(portal_payment_label($order,$balancePaid)).'</p><dl><dt>Original Estimate</dt><dd>'.$money($order['quote_cents']).'</dd><dt>Approved Job Amount</dt><dd>'.($order['approved_cents']===null?'Awaiting Staff Review':$money($order['approved_cents'])).'</dd>';
+    if(($order['rush_fee_cents']??0)>0)$body.='<dt>Approved Rush Fee</dt><dd>'.$money($order['rush_fee_cents']).'</dd>';
+    $body.='<dt>Test Deposit Recorded</dt><dd>'.$money($order['deposit_paid_cents']).'</dd>';
+    if($balancePaid>0)$body.='<dt>Test Balance Recorded</dt><dd>'.$money($balancePaid).'</dd>';
+    $body.='<dt>Remaining Job Balance</dt><dd>'.($order['remaining_cents']===null?'Confirmed After Staff Review':$money($order['remaining_cents'])).'</dd></dl>';
+    if(!empty($order['portal_payment']) && !$order['deposit_paid_cents'] && $order['appointment_status']!=='Cancelled')$body.='<a class="payment-action" href="/account.php?view=payment&amp;reference='.$e($order['reference']).'">Pay Test Deposit</a>';
+    elseif($order['remaining_cents']!==null && $order['remaining_cents']>0 && $order['appointment_status']!=='Cancelled')$body.='<a class="payment-action" href="/account.php?view=balance&amp;reference='.$e($order['reference']).'">Pay Test Balance</a>';
+    $body.='<p class="help">Cancellation does not automatically mean a refund. Refunds and disputes appear in Billing &amp; Receipts.</p></section></div><section class="panel"><h2>Services</h2>';
     if($order['package'] && $order['package']!=='À La Carte')$body.='<p>'.$e($order['package']).'</p>';
     $body.='<ul>';foreach($order['services'] as $service)$body.='<li>'.$e($service).'</li>';$body.='</ul></section>';
     if($order['access']) {
@@ -52,10 +66,7 @@ function portal_order_page(array $order, array $account): never
         $body.='</dl></details>';
     }
     $body.='<section class="panel"><h2>Next Steps</h2>';
-    if(!empty($order['portal_payment']) && !$order['deposit_paid_cents'] && $order['appointment_status']!=='Cancelled')$body.='<p><a href="/account.php?view=payment&amp;reference='.$e($order['reference']).'">Continue To Test Deposit</a></p>';
     $body.='<p><a href="/account.php?view=appointment&amp;reference='.$e($order['reference']).'">Manage Appointment</a></p><p><a href="/account.php?view=billing&amp;reference='.$e($order['reference']).'">Billing &amp; Receipts</a></p>';
-    if($order['remaining_cents']!==null && $order['remaining_cents']>0 && $order['appointment_status']!=='Cancelled')$body.='<p><a href="/account.php?view=balance&amp;reference='.$e($order['reference']).'">Review Test Balance</a></p>';
-    if(!empty($order['balance_paid_cents']))$body.='<p>Test balance recorded: '.real_estate_money($order['balance_paid_cents']).'</p>';
     $body.='<a href="/account.php?view=new&amp;again='.$e($order['reference']).'">Order Again</a><p class="help">Start a new service order. Review current pricing and choose a new date.</p></section>';
     portal_page('Order Details',$body,$account);
 }

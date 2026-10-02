@@ -108,6 +108,16 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   await serviceContext.route('**/*',r=>r.request().url().startsWith(origin)?r.continue():r.abort());
   const service=await serviceContext.newPage();await login(service,'sales@re.sitesee.ai');
   for(const view of ['appointment','billing','balance'])assert.equal((await goto(two,'/account.php?view='+view+'&reference=DDDD000001')).status(),404);
+  await goto(service,'/account.php?view=order&reference=DDDD000001');
+  const paymentPanel=service.locator('section.panel').filter({has:service.getByRole('heading',{name:'Payment',exact:true})});
+  assert.match(await paymentPanel.innerText(),/Approved Rush Fee\s+\$59\.00/);
+  assert.equal(await paymentPanel.getByRole('link',{name:'Pay Test Balance',exact:true}).count(),1);
+  assert.equal(await service.locator('.payment-action').count(),1,'One payment action, beside the amount due');
+  for(const width of [320,390,736,1200]){await service.setViewportSize({width,height:950});assert(await service.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Unpaid order overflow '+width);}
+  if(shots)console.log('PORTAL_VISUAL_polish-unpaid:'+(await service.screenshot({type:'jpeg',quality:65,fullPage:true})).toString('base64'));
+  await paymentPanel.getByRole('link',{name:'Pay Test Balance',exact:true}).press('Enter');
+  await service.getByRole('heading',{name:'Your Test Balance',exact:true}).waitFor();
+  assert.equal(await service.locator('input[name=card_consent]').isChecked(),false,'Payment action retains fresh consent');
   await goto(service,'/account.php?view=billing&reference=DDDD000001');assert.equal(await service.getByRole('link',{name:'View Receipt'}).getAttribute('href'),'https://pay.stripe.com/receipts/payment/synthetic-http');
   if(shots)console.log('PORTAL_VISUAL_service-billing:'+(await service.screenshot({type:'jpeg',quality:45,fullPage:true})).toString('base64'));
   await goto(service,'/account.php?view=balance&reference=DDDD000001&result=return');assert.match(await service.getByRole('status').textContent(),/not been recorded/);
@@ -115,6 +125,18 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   assert.equal((await post(service,{action:'balance_checkout',reference:'DDDD000001',scope:balanceScope})).status(),422);
   const checkout=await post(service,{action:'balance_checkout',reference:'DDDD000001',scope:balanceScope,card_consent:'yes'});assert.equal(checkout.status(),200,await checkout.text());assert.equal((await checkout.json()).mode,'hosted');
   if(shots)console.log('PORTAL_VISUAL_service-balance:'+(await service.screenshot({type:'jpeg',quality:45,fullPage:true})).toString('base64'));
+  await goto(service,'/account.php?view=order&reference=DDDD000001');
+  assert.match(await paymentPanel.innerText(),/Test Deposit Recorded/);
+  assert.equal(await service.getByRole('link',{name:'Pay Test Balance',exact:true}).count(),1,'Open checkout does not imply paid');
+  setup('service-balance-paid');await goto(service,'/account.php?view=order&reference=DDDD000001');
+  assert.equal(await paymentPanel.locator('.status').innerText(),'Test Balance Recorded');
+  assert.match(await paymentPanel.innerText(),/Remaining Job Balance\s+\$0\.00/);
+  assert.equal(await service.locator('.payment-action').count(),0,'Paid order cannot offer another payment');
+  for(const width of [320,390,736,1200]){await service.setViewportSize({width,height:950});assert(await service.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Paid order overflow '+width);}
+  await service.setViewportSize({width:390,height:950});
+  if(shots)console.log('PORTAL_VISUAL_polish-paid:'+(await service.screenshot({type:'jpeg',quality:65,fullPage:true})).toString('base64'));
+  await goto(service);assert.match(await service.locator('article.order').innerText(),/Test Balance Recorded/);
+  await goto(two);assert(!(await two.locator('main').innerText()).includes('DDDD000001'),'Paid status stays with its owner');
   await goto(service,'/account.php?view=appointment&reference=DDDD000001');
   await service.getByRole('button',{name:'Find Available Windows'}).click();await service.getByRole('heading',{name:'Choose Your New Window'}).waitFor();
   const options=await service.locator('select[name=window] option').evaluateAll(os=>os.map(o=>o.value));const chosen=options.find(x=>x.endsWith('|13:00'));assert(chosen);await service.getByLabel('Arrival Window',{exact:true}).selectOption(chosen);await service.getByLabel('I want to move my appointment to this window.',{exact:true}).check();
@@ -122,6 +144,7 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   if(shots)console.log('PORTAL_VISUAL_service-appointment:'+(await service.screenshot({type:'jpeg',quality:45,fullPage:true})).toString('base64'));
   assert(await service.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Service mobile overflow');
   setup('service-notice-observed');await goto(service,'/account.php?view=appointment&reference=DDDD000001');await service.getByText('Cancel Appointment',{exact:true}).click();await service.getByLabel('I want to cancel this appointment.',{exact:true}).check();await service.getByRole('button',{name:'Confirm Cancellation'}).click();await service.getByText('Cancelled',{exact:true}).waitFor();
+  await goto(service,'/account.php?view=order&reference=DDDD000001');assert.equal(await service.locator('.payment-action').count(),0,'Cancelled order does not offer payment');
   await serviceContext.close();
   await goto(page,'/account.php?view=profile');await goto(two,'/account.php?view=profile');
   await post(page,{action:'save_profile',first_name:'Jordan',last_name:'Example',company:'Example Realty',phone:'3125550100'});
@@ -165,6 +188,8 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
     await goto(two,'/account.php?view=payment&reference='+reference);assert.match(await two.locator('main').textContent(),/not available/);await goto(two,'/account.php?view=profile');
     await goto(page,'/account.php?view=payment&result=success&reference='+reference);assert.match(await page.locator('main').textContent(),/not been recorded/);assert(!(await page.content()).includes('agent_token'));
     await goto(page,'/account.php?view=order&reference='+reference);assert.match(await page.locator('main').textContent(),/Deposit Not Recorded/);assert.match(await page.locator('main').textContent(),/Awaiting Staff Review/);
+    assert.equal(await page.locator('.payment-action').count(),1,'One deposit action for '+market);
+    await page.getByRole('link',{name:'Pay Test Deposit',exact:true}).press('Enter');await page.getByRole('heading',{name:'Your Test Deposit',exact:true}).waitFor();
   }
   await goto(page,'/account.php?view=new&again='+residentialReference);await page.getByLabel('Street address',{exact:true}).waitFor();assert.equal(await page.getByLabel('Street address',{exact:true}).inputValue(),'415 New Example Lane');
   await page.getByRole('button',{name:'Next →',exact:true}).click();assert(await page.locator('[data-key=package][value=gold]').isChecked());

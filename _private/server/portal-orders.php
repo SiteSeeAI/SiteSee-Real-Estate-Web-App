@@ -85,6 +85,7 @@ function portal_owned_order(PDO $db, string $accountId, string $reference): arra
         'quote_cents'=>(int)$row['quote_cents'], 'approved_cents'=>$row['approved_at'] ? (int)$row['approved_cents'] : null,
         'deposit_paid_cents'=>$paid, 'remaining_cents'=>$row['approved_at'] ? max(0,(int)$row['approved_cents'] + (int)$row['rush_fee_cents'] - $paid) : null,
         'rush_status'=>(string)($row['rush_status'] ?? 'not_requested'),
+        'rush_fee_cents'=>(int)($row['rush_fee_cents'] ?? 0),
         'access'=>array_intersect_key($appointment,array_flip(['meetPhotographer','accessType','lockboxCode','keyLocation','specialRequests'])),
     ];
 }

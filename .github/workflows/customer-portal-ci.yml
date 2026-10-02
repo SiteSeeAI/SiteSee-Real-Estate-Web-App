@@ -69,6 +69,7 @@ jobs:
           python3 tests/portal-re-enrollment.test.py
           python3 tests/portal-re-workflow.test.py
           python3 tests/portal-draft-installer.test.py
+          python3 tests/portal-polish-installer.test.py
           python3 tools/build-portal-installer.py
           git diff --exit-code -- tools/install-customer-portal.py
           python3 tools/build-portal-complete.py
@@ -77,6 +78,8 @@ jobs:
           git diff --exit-code -- tools/install-re-draft-recovery-r1.py
           python3 tools/build-re-business-workflow.py
           git diff --exit-code -- tools/install-re-business-workflow.py
+          python3 tools/build-portal-polish.py
+          git diff --exit-code -- tools/install-re-portal-polish-20261002-r1.py
       - name: Install isolated browser test dependencies
         run: |
           npm install --prefix "$RUNNER_TEMP/portal-browser" --no-save playwright@1.58.2

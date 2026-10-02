@@ -23,6 +23,10 @@ def build():
   if notice:
    if base64.b64decode(notice['before'])!=expected:raise RuntimeError('Calendar notice baseline differs: '+source)
    expected=base64.b64decode(notice['after'])
+  polish=json.loads((ROOT/'documents/portal/polish-source.json').read_text())['files'].get(name)
+  if polish:
+   if base64.b64decode(polish['before'])!=expected:raise RuntimeError('Portal polish baseline differs: '+source)
+   expected=base64.b64decode(polish['after'])
   if actual!=expected:raise RuntimeError('Pinned application source differs: '+source)
  raw=json.dumps(data,sort_keys=True,separators=(',',':')).encode()
  template=(ROOT/'tools/portal-complete-template.py').read_text()
