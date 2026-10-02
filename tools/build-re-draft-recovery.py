@@ -4,7 +4,12 @@ ROOT=pathlib.Path(__file__).resolve().parents[1]
 def build():
  data=json.loads((ROOT/'documents/portal/re-draft-source.json').read_text())
  for n,item in data['files'].items():
-  if (ROOT/'_private'/n).read_bytes()!=base64.b64decode(item['after']):raise RuntimeError('Reviewed source changed: '+n)
+  expected=base64.b64decode(item['after'])
+  polish=json.loads((ROOT/'documents/portal/polish-source.json').read_text())['files'].get('private/'+n)
+  if polish:
+   if base64.b64decode(polish['before'])!=expected:raise RuntimeError('Portal polish baseline changed: '+n)
+   expected=base64.b64decode(polish['after'])
+  if (ROOT/'_private'/n).read_bytes()!=expected:raise RuntimeError('Reviewed source changed: '+n)
  calendar=(ROOT/'_private/server/booking-microsoft-calendar.php').read_text()
  data['calendar_uid']='microsoft:'+re.search(r"const BOOKING_MS_CALENDAR = '([^']+)'",calendar)[1]
  raw=json.dumps(data,sort_keys=True,separators=(',',':')).encode()
