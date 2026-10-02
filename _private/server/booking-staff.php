@@ -5,7 +5,7 @@ require_once __DIR__ . '/booking-lifecycle-ui.php';
 header('Cache-Control: no-store, private, max-age=0');
 header('X-Robots-Tag: noindex, nofollow, noarchive');
 header('X-Frame-Options: DENY');
-header('Referrer-Policy: no-referrer');
+header('Referrer-Policy: same-origin');
 header('Content-Security-Policy: default-src \'none\'; style-src \'unsafe-inline\'; font-src \'self\'; form-action \'self\'; base-uri \'none\'');
 header('Content-Type: text/html; charset=utf-8');
 

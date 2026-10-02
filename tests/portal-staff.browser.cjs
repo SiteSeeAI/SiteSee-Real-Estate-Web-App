@@ -19,7 +19,7 @@ const reserve=()=>new Promise(resolve=>{const s=net.createServer();s.listen(0,'1
   for(const root of [current,before]){const p=path.join(root,'server/booking-mail-client.php');fs.writeFileSync(p,fs.readFileSync(p,'utf8').replace('function booking_provider_http(', 'function booking_provider_http_fixture_unused('));}
   execFileSync('openssl',['req','-x509','-newkey','rsa:2048','-nodes','-keyout',path.join(temp,'key.pem'),'-out',path.join(temp,'cert.pem'),'-days','1','-subj','/CN=localhost'],{stdio:'ignore'});
   fs.mkdirSync(path.join(temp,'sessions'),{mode:0o700});
-  php=spawn('php',['-d','opcache.enable_cli=0','-d','session.save_path='+path.join(temp,'sessions'),'-d','allow_url_fopen=0','-d','disable_functions=curl_exec,curl_multi_exec,fsockopen,pfsockopen,stream_socket_client,socket_connect,mail','-S','127.0.0.1:'+port,'-t',path.join(repo,'public'),path.join(__dirname,'fixtures/staff-http/router.php')],{env,stdio:['ignore','pipe','pipe']});php.stderr.on('data',b=>logs+=b.toString());
+  php=spawn('php',['-d','opcache.enable_cli=0','-d','opcache.jit_buffer_size=0','-d','opcache.jit=0','-d','session.save_path='+path.join(temp,'sessions'),'-d','allow_url_fopen=0','-d','disable_functions=curl_exec,curl_multi_exec,fsockopen,pfsockopen,stream_socket_client,socket_connect,mail','-S','127.0.0.1:'+port,'-t',path.join(repo,'public'),path.join(__dirname,'fixtures/staff-http/router.php')],{env,stdio:['ignore','pipe','pipe']});php.stderr.on('data',b=>logs+=b.toString());
   proxy=https.createServer({key:fs.readFileSync(path.join(temp,'key.pem')),cert:fs.readFileSync(path.join(temp,'cert.pem'))},(req,res)=>{const f=http.request({hostname:'127.0.0.1',port,path:req.url,method:req.method,headers:req.headers},r=>{res.writeHead(r.statusCode,r.headers);r.pipe(res);});f.on('error',()=>{res.writeHead(503);res.end();});req.pipe(f);});
   await new Promise(resolve=>proxy.listen(tls,'127.0.0.1',resolve));
   browser=await chromium.launch({headless:true,args:['--no-sandbox']});
@@ -31,13 +31,15 @@ const reserve=()=>new Promise(resolve=>{const s=net.createServer();s.listen(0,'1
   const csrf=()=>page.locator('input[name=csrf]').first().inputValue();
   const post=async(data,extra={})=>page.request.post(origin+'/staff-bookings.php',{form:{csrf:await csrf(),...data},headers:{Origin:origin},maxRedirects:0,...extra});
   const first=await goto();assert.match(first.headers()['cache-control'],/no-store/);assert.match(first.headers()['content-security-policy'],/default-src 'none'/);
-  assert.match(first.headers()['content-security-policy'],/font-src 'self'/);assert.equal(await page.getByRole('button',{name:'Sign In',exact:true}).count(),1);
+  assert.equal(first.headers()['referrer-policy'],'same-origin');assert.match(first.headers()['content-security-policy'],/font-src 'self'/);assert.equal(await page.getByRole('button',{name:'Sign In',exact:true}).count(),1);
   assert.equal((await page.request.post(origin+'/staff-bookings.php',{form:{action:'review_paid',reference:refs.paid}})).status(),403);
   await page.getByLabel('Password',{exact:true}).fill('isolated-staff-password');await page.getByRole('button',{name:'Sign In',exact:true}).click();await page.getByRole('heading',{name:'Recent Requests',exact:true}).waitFor({timeout:5000}).catch(async e=>{throw Error(e.message+' Page: '+await page.locator('body').innerText()+' Trace: '+JSON.stringify(requestTrace)+' Server: '+logs);});
   const cookies=await context.cookies();assert(cookies[0].secure&&cookies[0].httpOnly&&cookies[0].sameSite==='Strict');
   assert.match(await page.locator('.request-list').innerText(),/2026-10-02 9:00 AM Central/);
   const shots=process.env.PORTAL_SCREENSHOTS;
   const screenshot=async name=>{if(shots){fs.mkdirSync(shots,{recursive:true});await page.screenshot({path:path.join(shots,'staff-'+name+'.png'),fullPage:true});console.log('STAFF_VISUAL_'+name+':'+(await page.screenshot({type:'jpeg',quality:65,fullPage:true})).toString('base64'));}};
+  for(const width of [320,390,736,1200]){await page.setViewportSize({width,height:1000});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Request list overflow '+width);}
+  await page.evaluate(()=>document.fonts.ready);assert(await page.evaluate(()=>document.fonts.check('16px Inter')&&document.fonts.check('22px Poppins')));
   await screenshot('list');
   const contracts=()=>page.locator('form').evaluateAll(forms=>forms.map(f=>({method:f.method,fields:[...f.querySelectorAll('input,select,textarea')].map(e=>({tag:e.tagName,type:e.type,name:e.name,value:e.value,required:e.required,min:e.getAttribute('min'),max:e.getAttribute('max'),maxLength:e.getAttribute('maxlength'),step:e.getAttribute('step'),checked:e.checked,options:e.tagName==='SELECT'?[...e.options].map(o=>o.value):null})),buttons:[...f.querySelectorAll('button')].map(e=>e.textContent.trim())})).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b))));
   const snapshot=setup('snapshot');
@@ -71,6 +73,7 @@ const reserve=()=>new Promise(resolve=>{const s=net.createServer();s.listen(0,'1
   await goto('/staff-bookings.php?reference='+refs.confirmed);assert.notEqual(await page.locator('#readiness').getAttribute('open'),null);assert.match(await page.locator('#readiness').innerText(),/prerequisite needs attention/);assert(await page.getByRole('button',{name:'Check Booking Readiness',exact:true}).isVisible());assert.equal(await page.locator('input[name=action][value=send_invitation]').count(),0);
   // Rejected POSTs stay rejected and keep their working section open with visible feedback.
   await goto('/staff-bookings.php?reference='+refs.reviewed);assert.equal((await post({action:'confirm_calendar',reference:refs.reviewed},{headers:{Origin:'https://untrusted.example'}})).status(),403);
+  assert.equal((await post({action:'confirm_calendar',reference:refs.reviewed},{headers:{Origin:'null'}})).status(),403,'Opaque origin still rejected');
   const rejected=await post({action:'confirm_calendar',reference:refs.reviewed});assert.equal(rejected.status(),200);await page.goto(origin+'/staff-bookings.php?reference='+refs.reviewed);
   // Use a real browser POST so the returned error presentation can be inspected.
   await page.locator('form').filter({has:page.locator('input[name=action][value=confirm_calendar]')}).evaluate(f=>f.submit());
