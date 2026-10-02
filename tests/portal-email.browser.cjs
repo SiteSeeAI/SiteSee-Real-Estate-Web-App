@@ -16,6 +16,7 @@ fs.writeFileSync(releaseFlag,JSON.stringify({release:'portal-20260929-r2',stage:
 for(const [file,name] of [['portal-billing.php','portal_stripe'],['booking-lifecycle.php','booking_lifecycle_connection'],['portal-sms.php','portal_sms_send'],['portal-sms.php','portal_sms_check'],['portal-mail.php','portal_send_email_code']]){
  const target=path.join(privateRoot,'server',file);fs.writeFileSync(target,fs.readFileSync(target,'utf8').replace('function '+name+'(', 'function '+name+'_unused_fixture('));
 }
+const longEmail='a'.repeat(60)+'@'+'b'.repeat(60)+'.example';
 const emailCapture=path.join(privateRoot,'data/email-fixture.json');
 fs.writeFileSync(path.join(temp,'email-provider.php'),`<?php
 function portal_send_email_code(string $email,string $code):bool {file_put_contents(getenv('PORTAL_TEST_PRIVATE').'/data/email-fixture.json',json_encode(['email'=>$email,'code'=>$code]));return true;}
@@ -74,8 +75,8 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   await page.getByRole('heading',{name:'Change Email',exact:true}).waitFor();assert.equal(await page.locator('main button').count(),1);
   const bad=await page.request.post(origin+'/account.php',{form:{action:'email_request',email:'new@example.com',csrf:'wrong'},headers:{Origin:origin}});assert.equal(bad.status(),403);assert(!fs.existsSync(emailCapture));
   const foreign=await page.request.post(origin+'/account.php',{form:{action:'email_request',email:'new@example.com',csrf:await csrf(page)},headers:{Origin:'https://other.example'}});assert.equal(foreign.status(),403);assert(!fs.existsSync(emailCapture));
-  await page.getByLabel('New Email Address',{exact:true}).fill('verified@example.com');await page.getByRole('button',{name:'Send Verification Code'}).click();
-  await page.getByLabel('Verification Code',{exact:true}).waitFor();let sent=JSON.parse(fs.readFileSync(emailCapture,'utf8'));assert.equal(sent.email,'verified@example.com');
+  await page.getByLabel('New Email Address',{exact:true}).fill(longEmail);await page.getByRole('button',{name:'Send Verification Code'}).click();
+  await page.getByLabel('Verification Code',{exact:true}).waitFor();let sent=JSON.parse(fs.readFileSync(emailCapture,'utf8'));assert.equal(sent.email,longEmail);
   const html=await page.content();assert(!html.includes(sent.code),'Code absent from HTML');assert(!/[a-f0-9]{64}/.test(html.replaceAll(await csrf(page),'')),'Challenge capability absent from HTML');
   assert.match(await page.locator('main').innerText(),/one@example.com/);
   const beforeGet=setup('snapshot');await goto(page,'/account.php?view=email&action=email_confirm&code='+sent.code);assert.equal(setup('snapshot'),beforeGet,'GET does not activate');
@@ -89,11 +90,12 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   if(shots){await page.screenshot({path:path.join(shots,'email-code-desktop.png'),fullPage:true});console.log('EMAIL_VISUAL_code-desktop:'+(await page.screenshot({type:'jpeg',quality:60,fullPage:true})).toString('base64'));}
   await page.setViewportSize({width:390,height:844});if(shots){await page.screenshot({path:path.join(shots,'email-code-mobile.png'),fullPage:true});console.log('EMAIL_VISUAL_code-mobile:'+(await page.screenshot({type:'jpeg',quality:60,fullPage:true})).toString('base64'));}
   await page.getByLabel('Verification Code',{exact:true}).fill(sent.code);await page.getByRole('button',{name:'Verify & Change Email'}).press('Enter');await page.getByRole('heading',{name:'Account',exact:true}).waitFor();
-  assert.match(await page.getByRole('status').innerText(),/verified and updated/);assert.match(await page.locator('main').innerText(),/verified@example.com/);
+  assert.match(await page.getByRole('status').innerText(),/verified and updated/);assert((await page.locator('main').innerText()).includes(longEmail));
+  for(const width of [320,390]){await page.setViewportSize({width,height:950});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Long account email wraps '+width);}
   const replay=await post(page,{action:'email_confirm',code:sent.code});assert.match(await replay.text(),/could not be verified/);
   await goto(page);assert.match(await page.locator('main').innerText(),/101 Example Lane/);assert.equal(setup('snapshot'),baselineAfterClaim,'Existing booking/calendar/payment rows untouched');
-  await goto(page,'/account.php?view=new');assert.match(await page.content(),/verified@example.com/,'New-order email uses verified address');
-  await goto(page,'/account.php?view=profile');await page.getByRole('button',{name:'Sign Out',exact:true}).click();await login(page,'one@example.com');await goto(page,'/account.php?view=profile');assert.match(await page.locator('main').innerText(),/verified@example.com/,'Original phone still signs in');
+  await goto(page,'/account.php?view=new');assert((await page.content()).includes(longEmail),'New-order email uses verified address');
+  await goto(page,'/account.php?view=profile');await page.getByRole('button',{name:'Sign Out',exact:true}).click();await login(page,'one@example.com');await goto(page,'/account.php?view=profile');assert((await page.locator('main').innerText()).includes(longEmail),'Original phone still signs in');
   await page.getByRole('link',{name:'Change Email',exact:true}).click();assert.equal(await page.getByLabel('New Email Address',{exact:true}).count(),1);
   if(shots)await page.screenshot({path:path.join(shots,'email-request-mobile.png'),fullPage:true});
   assert.equal(errors.length,0,JSON.stringify(errors));assert(!/Fatal error|Warning:|Notice:/.test(serverLog),serverLog);assert(!fs.existsSync(mail),'No native mail called');

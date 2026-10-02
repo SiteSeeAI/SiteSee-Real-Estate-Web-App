@@ -75,7 +75,7 @@ function portal_profile_page(PDO $db, array $account, string $notice = ''): neve
     $e='portal_escape';$p=portal_profile($db,$account['id']);
     $body='<p class="lead">Your pricing access stays with your account.</p>';
     if($notice)$body.='<p role="status" class="notice">'.$e($notice).'</p>';
-    $body.='<section class="panel narrow"><p>Contact Email<br><strong>'.$e($account['email']).'</strong><br><a href="/account.php?view=email">Change Email</a></p><form method="post">'.portal_csrf_field().'<input type="hidden" name="action" value="save_profile">';
+    $body.='<section class="panel narrow"><dl><dt>Contact Email</dt><dd><strong>'.$e($account['email']).'</strong><br><a href="/account.php?view=email">Change Email</a></dd></dl><form method="post">'.portal_csrf_field().'<input type="hidden" name="action" value="save_profile">';
     foreach(['first_name'=>['First Name','given-name',100],'last_name'=>['Last Name','family-name',100],'company'=>['Company','organization',140],'phone'=>['Contact Phone','tel',35]] as $key=>[$label,$autocomplete,$max]){
         $body.='<label>'.$label.'<input name="'.$key.'" value="'.$e($p[$key]).'" maxlength="'.$max.'" autocomplete="'.$autocomplete.'"'.($key==='phone'?' type="tel"':'').'></label>';
     }
@@ -89,9 +89,9 @@ function portal_email_page(PDO $db, array $account, string $notice = ''): never
     $pending=portal_email_pending($db,$account['id'],$id);
     $body='<p><a href="/account.php?view=profile">← Account</a></p><p class="lead">Verify your new contact email. Your cell-phone sign-in, pricing access and orders stay with your account.</p>';
     if($notice)$body.='<p role="alert" class="notice">'.$e($notice).'</p>';
-    $body.='<section class="panel narrow"><p>Current Email<br><strong>'.$e($account['email']).'</strong></p>';
+    $body.='<section class="panel narrow"><dl><dt>Current Email</dt><dd><strong>'.$e($account['email']).'</strong></dd></dl>';
     if($pending){
-        $body.='<p role="status">Check <strong>'.$e($pending['new_email']).'</strong> for your eight-digit code. Enter it here within 15 minutes of your request.</p><form method="post">'.portal_csrf_field()
+        $body.='<dl role="status"><dt>Check Your New Email</dt><dd><strong>'.$e($pending['new_email']).'</strong></dd></dl><p>Enter your eight-digit code within 15 minutes of your request.</p><form method="post">'.portal_csrf_field()
             .'<input type="hidden" name="action" value="email_confirm"><label>Verification Code<input name="code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{8}" minlength="8" maxlength="8" required></label><button class="primary">Verify &amp; Change Email</button></form>'
             .'<details class="help"><summary>Wrong Address Or Need A New Code?</summary><p>Cancel this request, then enter your address again. Wait at least one minute between code requests.</p><form method="post">'.portal_csrf_field().'<input type="hidden" name="action" value="email_cancel"><button>Cancel Email Change</button></form></details>';
     }else{
