@@ -44,8 +44,9 @@ const reserve=()=>new Promise(resolve=>{const s=net.createServer();s.listen(0,'1
   const contracts=()=>page.locator('form').evaluateAll(forms=>forms.map(f=>({method:f.method,fields:[...f.querySelectorAll('input,select,textarea')].map(e=>({tag:e.tagName,type:e.type,name:e.name,value:e.value,required:e.required,min:e.getAttribute('min'),max:e.getAttribute('max'),maxLength:e.getAttribute('maxlength'),step:e.getAttribute('step'),checked:e.checked,options:e.tagName==='SELECT'?[...e.options].map(o=>o.value):null})),buttons:[...f.querySelectorAll('button')].map(e=>e.textContent.trim())})).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b))));
   const snapshot=setup('snapshot');
   for(const [name,ref]of Object.entries(refs)){
-    await goto('/staff-before.php?reference='+ref);const original=await contracts();
-    const response=await goto('/staff-bookings.php?reference='+ref);assert.equal(response.status(),200,name);assert.deepEqual(await contracts(),original,'All original forms, fields, amounts, fingerprints, required consent and button labels: '+name);
+    const agentCase=name.startsWith('agent-');
+    if(!agentCase)await goto('/staff-before.php?reference='+ref);const original=agentCase?null:await contracts();
+    const response=await goto('/staff-bookings.php?reference='+ref);assert.equal(response.status(),200,name);if(!agentCase)assert.deepEqual(await contracts(),original,'All original forms, fields, amounts, fingerprints, required consent and button labels: '+name);
     assert.match(await page.locator('.facts').innerText(),/Central Time/);
     assert.equal(await page.locator('#request-details').getAttribute('open'),null,'Private access stays folded: '+name);
     for(const width of [320,390,736,1200]){await page.setViewportSize({width,height:1000});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No overflow '+name+' '+width);}
@@ -59,6 +60,24 @@ const reserve=()=>new Promise(resolve=>{const s=net.createServer();s.listen(0,'1
     if(['pending-change','moved','cancelled-notice'].includes(name))assert(open.includes('manage-appointment'));
     if(['complete','cancelled'].includes(name))assert.equal(open.length,0,'Completed records start compact');
     if(['pending-change','moved','cancelled-notice','cancelled'].includes(name))assert.equal(await page.locator('input[name=action][value=confirm_calendar],input[name=action][value=send_invitation],input[name=action][value=resume_invitation]').count(),0,'No new original actions after lifecycle work');
+    if(agentCase){
+      assert.match(await page.locator('.facts').innerText(),/info@1789media\.com/);
+      assert.equal(await page.locator('#readiness').count(),1,'Agent readiness remains available');
+      if(name==='agent-reviewed')assert(open.includes('calendar-confirmation'));
+      if(name==='agent-draft'){
+        assert(open.includes('readiness'));
+        assert.match(await page.locator('#readiness').innerText(),/Send this saved TEST invitation to info@1789media\.com/);
+        assert.doesNotMatch(await page.locator('#readiness').innerText(),/Send this saved TEST invitation to sales@/);
+      }
+      if(name==='agent-complete'){
+        assert.equal(open.length,0,'Unavailable external mailbox checks do not force recovery open');
+        await page.locator('#readiness>summary').click();
+        await page.getByText('Saved Integration Status',{exact:true}).click();
+        assert.match(await page.locator('#readiness').innerText(),/Unverified — confirm receipt directly with info@1789media\.com/);
+        assert.equal(await page.locator('input[name=action][value=resume_invitation],input[name=action][value=send_invitation]').count(),0,'No send action for sent agent invitation');
+        await page.setViewportSize({width:390,height:1000});await screenshot('agent-complete-mobile');
+      }
+    }
     if(['paid','complete','draft'].includes(name))await screenshot(name);
     if(name==='rush'){await page.setViewportSize({width:390,height:1000});await screenshot('rush-mobile');}
   }
@@ -81,6 +100,6 @@ const reserve=()=>new Promise(resolve=>{const s=net.createServer();s.listen(0,'1
   assert.equal(setup('snapshot'),snapshot,'Rejected consent/origin requests leave all bookings unchanged');
   assert(!fs.existsSync(path.join(current,'provider-blocked.txt')),'Rejected actions call no providers');
   assert.deepEqual(errors,[]);assert(!/PHP (?:Fatal error|Warning|Notice)/.test(logs),logs);
-  console.log('portal-staff: PASS (19 baseline form contracts; unchanged ledgers; no GET/provider calls; real HTTPS login/CSRF/origin/consent; staged controls; recovery; Central Time; keyboard; 320/390/736/1200 layout)');
+  console.log('portal-staff: PASS (19 baseline form contracts + 3 external-agent cases; unchanged ledgers; no GET/provider calls; real HTTPS login/CSRF/origin/consent; staged controls; recovery; Central Time; keyboard; 320/390/736/1200 layout)');
  }finally{if(browser)await browser.close();if(proxy)await new Promise(r=>proxy.close(r));if(php){php.kill();await new Promise(r=>php.once('exit',r));}fs.rmSync(temp,{recursive:true,force:true});}
 })().catch(e=>{console.error(e);process.exit(1);});

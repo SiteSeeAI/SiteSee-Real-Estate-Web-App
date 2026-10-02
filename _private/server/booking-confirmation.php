@@ -3,6 +3,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/booking-store.php';
 require_once __DIR__ . '/booking-calendar-client.php';
 require_once __DIR__ . '/booking-scheduling-provider.php';
+require_once __DIR__ . '/booking-test-recipients.php';
 
 /** The existing read-only connection remains untouched. Writes use separate credentials. */
 function booking_confirmation_config(): array
@@ -35,7 +36,9 @@ function booking_confirmation_gate(array $config, array $row): void
         throw new InvalidArgumentException('Test appointment confirmation is disabled.');
     }
     if (!filter_var($row['email'], FILTER_VALIDATE_EMAIL)
-        || strcasecmp($row['email'], (string)($config['test_recipient_email'] ?? '')) !== 0) {
+        || !(booking_scheduling_is_microsoft($config)
+            ? booking_test_recipient_matches($row['email'], (string)($config['test_recipient_email'] ?? ''))
+            : strcasecmp($row['email'], (string)($config['test_recipient_email'] ?? '')) === 0)) {
         throw new InvalidArgumentException('This stage permits only the configured test recipient.');
     }
     if ($row['status'] !== 'deposit_paid_test' || !$row['deposit_paid_at'] || !$row['approved_at']

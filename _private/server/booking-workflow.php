@@ -15,7 +15,7 @@ function booking_workflow_row(PDO $db, string $reference): array
 {
     $row = booking_get($db, $reference);
     if (!booking_test_enabled() || !$row || $row['status'] !== 'deposit_paid_test' || !$row['deposit_paid_at']
-        || strcasecmp($row['email'], 'sales@re.sitesee.ai') !== 0) {
+        || !booking_test_recipient_allowed($row['email'])) {
         throw new InvalidArgumentException('This workflow requires a recorded TEST deposit and the authorized test recipient.');
     }
     return $row;
@@ -213,7 +213,9 @@ function booking_workflow_recover(PDO $db, string $reference, array $deps = []):
         $report['items']['Delivery / CRM'] = 'Waiting for verified sent-message evidence. No CRM sent history was inserted.';
         return $report;
     }
-    try {
+    if (!booking_communication_receipt_available($mail)) {
+        $report['items']['Recipient mailbox'] = booking_communication_receipt_status($mail) . ' CRM recovery continues independently.';
+    } else try {
         if ($mail['delivery_state'] !== 'recipient_copy_observed') {
             if (!$graph) throw new RuntimeException();
             booking_communication_delivery($db, $key, $graph);
@@ -267,7 +269,7 @@ function booking_workflow_html(array $row, array $status, string $csrf, ?array $
         'Calendar appointment'=>($status['lifecycle']['state']??'active') !== 'active' ? $status['lifecycle']['state'] : ($claim ? $claim['state'] : 'Not confirmed'),
         'Invitation'=>$claim ? $claim['invitation_state'] : 'Not attempted',
         'Saved message'=>$mail ? $mail['submission_state'] : 'No communication record',
-        'Recipient evidence'=>$mail ? $mail['delivery_state'] : 'Not verified',
+        'Recipient evidence'=>$mail ? booking_communication_receipt_status($mail) : 'Not verified',
         'Zoho email history'=>$mail ? $mail['crm_state'] : 'Not yet applicable'];
     $html = '<section aria-labelledby="workflow"><h2 id="workflow">Booking Readiness &amp; Recovery</h2><p>' . ($claim || $mail ? 'Recover the saved calendar, invitation and CRM status without sending another invitation.' : 'Check readiness to verify connections and find the CRM contact. Nothing is sent or reserved.') . '</p><details><summary>Saved Integration Status</summary><p>Saved evidence only. Use the checks below for current verification.</p><dl>';
     foreach ($values as $label=>$value) $html .= '<dt><strong>' . booking_workflow_escape($label) . '</strong></dt><dd>' . booking_workflow_escape($value) . '</dd>';
@@ -277,7 +279,7 @@ function booking_workflow_html(array $row, array $status, string $csrf, ?array $
         $html .= '<details' . (!$status['link'] || ($claim && $claim['invitation_state'] === 'none' && !$status['can_send']) ? ' open' : '') . '><summary>Recheck Connections &amp; CRM Contact</summary>' . booking_workflow_form($csrf, $ref, 'workflow_check', 'Check Booking Readiness') . '</details>';
     } else $html .= booking_workflow_form($csrf, $ref, 'workflow_check', 'Check Booking Readiness');
     if ($status['can_resume_draft'] ?? false) {
-        $fields = '<p>The saved invitation stopped before sending. This action restores missing recipient fields, verifies the same draft and sends it once.</p><label><input type="checkbox" name="verify_recipient" value="yes" required> Send this saved TEST invitation to sales@re.sitesee.ai.</label>';
+        $fields = '<p>The saved invitation stopped before sending. This action restores missing recipient fields, verifies the same draft and sends it once.</p><label><input type="checkbox" name="verify_recipient" value="yes" required> Send this saved TEST invitation to ' . booking_workflow_escape($row['email']) . '.</label>';
         $html .= booking_workflow_form($csrf,$ref,'resume_invitation','Repair & Send Saved Invitation',$fields);
     }
     if ($report) {

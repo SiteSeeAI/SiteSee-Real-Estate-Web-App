@@ -30,7 +30,7 @@ function booking_lifecycle_html(PDO $db,array $row,string $csrf,bool $staff,arra
     }
     $mail=booking_communication_get($db,'lifecycle-'.$s['revision'].':'.$ref);
     if($mail){
-        $html.='<p>Change notice: '.$e($mail['submission_state']).'<br>Receipt evidence: '.$e($mail['delivery_state']).'<br>Zoho history: '.$e($mail['crm_state']).'</p>';
+        $html.='<p>Change notice: '.$e($mail['submission_state']).'<br>Receipt evidence: '.$e(booking_communication_receipt_status($mail)).'<br>Zoho history: '.$e($mail['crm_state']).'</p>';
         if($staff){if($mail['submission_state']==='prepared')$html.=$form('notice','Send Saved Change Notice');
             $html.=$form('recover_notice','Recover Notice &amp; Zoho History');}
     }

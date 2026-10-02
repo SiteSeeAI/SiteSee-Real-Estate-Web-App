@@ -17,6 +17,7 @@ on:
       - 'tools/*re-business*'
       - 'tools/*re-draft*'
       - 'tools/*staff-review*'
+      - 'tools/*test-recipient*'
       - '.github/workflows/customer-portal-ci.yml'
   push:
     branches: ['feat/calendar-confirmation-20260925']
@@ -35,6 +36,7 @@ on:
       - 'tools/*re-business*'
       - 'tools/*re-draft*'
       - 'tools/*staff-review*'
+      - 'tools/*test-recipient*'
       - '.github/workflows/customer-portal-ci.yml'
 
 permissions:
@@ -68,6 +70,8 @@ jobs:
           php tests/portal-purchase.test.php
           php tests/portal-service.test.php
           php tests/portal-draft-recovery.test.php
+          PORTAL_FIXTURE_AGENT_EMAIL=info@1789media.com php tests/portal-draft-recovery.test.php
+          php tests/portal-test-recipient.test.php
           php tests/portal-release.test.php
           php tests/portal-phone.test.php
           php tests/portal-sms.test.php
@@ -79,6 +83,7 @@ jobs:
           python3 tests/portal-draft-installer.test.py
           python3 tests/portal-polish-installer.test.py
           python3 tests/portal-email-installer.test.py
+          python3 tests/portal-test-recipient-installer.test.py
           python3 tests/portal-staff-installer.test.py
           python3 tests/portal-staff-source.test.py
           python3 tools/build-portal-installer.py
@@ -91,6 +96,8 @@ jobs:
           git diff --exit-code -- tools/install-re-business-workflow.py
           python3 tools/build-portal-polish.py
           git diff --exit-code -- tools/install-re-portal-polish-20261002-r1.py
+          python3 tools/build-test-recipient.py
+          git diff --exit-code -- tools/install-re-test-recipient-20261002-r1.py
           python3 tools/build-portal-email.py
           git diff --exit-code -- tools/install-re-email-change-20261002-r1.py
           python3 tools/build-staff-review.py

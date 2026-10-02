@@ -53,7 +53,7 @@ function booking_communication_submit(PDO $db, string $key, callable $graph): vo
     $s->execute([$key]);
     if ($s->rowCount() !== 1) throw new InvalidArgumentException('This communication was already attempted. Recheck the saved message; do not resend.');
     $row = booking_communication_get($db,$key);
-    if ($row['sender'] !== BOOKING_MAIL_SENDER || $row['recipient'] !== 'sales@re.sitesee.ai' || $row['kind'] === 'original') {
+    if ($row['sender'] !== BOOKING_MAIL_SENDER || !booking_test_recipient_allowed($row['recipient']) || $row['kind'] === 'original') {
         throw new InvalidArgumentException('Only the dedicated sender and configured test recipient may submit.');
     }
     $m = json_decode($row['message_json'], true, 32, JSON_THROW_ON_ERROR);
@@ -81,7 +81,7 @@ function booking_communication_unsent_draft(array $row): bool
 {
     if (!in_array($row['submission_state'] ?? '', ['draft','draft_blocked'], true)
         || empty($row['provider_message_id']) || ($row['sender'] ?? '') !== BOOKING_MAIL_SENDER
-        || ($row['recipient'] ?? '') !== BOOKING_MAIL_SENDER || ($row['kind'] ?? '') === 'original') return false;
+        || !booking_test_recipient_allowed($row['recipient'] ?? '') || ($row['kind'] ?? '') === 'original') return false;
     foreach (['submission_attempted_at','provider_accepted_at','sent_observed_at','sent_at'] as $field) {
         if (!empty($row[$field])) return false;
     }
@@ -180,6 +180,18 @@ function booking_communication_reconcile(PDO $db, string $key, callable $graph):
             ->execute([$m['sentDateTime'],$row['reference']]);
     }
     return booking_communication_get($db,$key);
+}
+
+/** Sending to an external test address does not grant access to that mailbox. */
+function booking_communication_receipt_available(array $row): bool
+{
+    return ($row['recipient'] ?? '') === BOOKING_MAIL_SENDER;
+}
+
+function booking_communication_receipt_status(array $row): string
+{
+    return booking_communication_receipt_available($row) ? $row['delivery_state']
+        : 'Unverified — confirm receipt directly with ' . $row['recipient'] . '.';
 }
 
 /** Read only the expressly configured test recipient's mailbox for this exact message. */

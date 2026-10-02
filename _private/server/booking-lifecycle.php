@@ -373,7 +373,8 @@ function booking_lifecycle_notice(PDO $db,string $reference,bool $send,array $de
             booking_communication_submit($db,$key,$graph);
         }
         try{booking_communication_reconcile($db,$key,$graph);$result['notice']='Sent copy verified.';}catch(Throwable){$result['notice']='Sent copy not yet verified. No resend attempted.';}
-        try{booking_communication_delivery($db,$key,$graph);$result['delivery']='Recipient copy verified.';}catch(Throwable){$result['delivery']='Receipt is not yet verified.';}
+        if(!booking_communication_receipt_available($m))$result['delivery']=booking_communication_receipt_status($m);
+        else try{booking_communication_delivery($db,$key,$graph);$result['delivery']='Recipient copy verified.';}catch(Throwable){$result['delivery']='Receipt is not yet verified.';}
         try{$config=$deps['crm_config']??booking_crm_config();$crm=$deps['crm']??booking_crm_client($config);booking_communication_crm($db,$key,$config,$crm);
             $result['crm']='CRM: '.booking_communication_get($db,$key)['crm_state'];}catch(Throwable){$result['crm']='CRM history needs recovery. Calendar and mail results remain saved.';}
         $current=booking_communication_get($db,$key);

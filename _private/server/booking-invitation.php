@@ -87,7 +87,7 @@ function booking_send_invitation_locked(PDO $db, string $reference, ?array $conf
     $graph = null; $crm = null; $crmConfig = null;
     if ($send === null) {
         $mailConfig = $mailDependencies['config'] ?? booking_mail_config(true);
-        if (strcasecmp($before['email'],$mailConfig['test_recipient_email']) !== 0) throw new InvalidArgumentException('Dedicated mail test recipient mismatch.');
+        if (!booking_test_recipient_matches($before['email'],$mailConfig['test_recipient_email'])) throw new InvalidArgumentException('Dedicated mail test recipient mismatch.');
         $crmConfig = $mailDependencies['crm_config'] ?? booking_crm_config(); $crm = $mailDependencies['crm'] ?? booking_crm_client($crmConfig);
         booking_crm_verify_org($crmConfig,$crm);
         $link = booking_crm_linked($db,$reference,$before['email'],$crmConfig);

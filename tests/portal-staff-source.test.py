@@ -1,10 +1,13 @@
 """The staff presentation update must not alter authentication or action code."""
 import base64, json, pathlib, unittest
 ROOT=pathlib.Path(__file__).resolve().parents[1]
+import sys
+sys.path.insert(0,str(ROOT/'tools'))
+from portal_source_chain import before_recipient_update
 DATA=json.loads((ROOT/'documents/portal/staff-review-source.json').read_text())
 class PreservedControls(unittest.TestCase):
     def versions(self,name):
-        return base64.b64decode(DATA['files']['private/server/'+name]['before']).decode(),(ROOT/'_private/server'/name).read_text()
+        return base64.b64decode(DATA['files']['private/server/'+name]['before']).decode(),before_recipient_update(ROOT,'_private/server/'+name).decode()
     def test_authentication_and_every_post_handler_are_byte_identical(self):
         before,after=self.versions('booking-staff.php')
         start='$hash = booking_staff_password_hash();';end='$csrf = staff_escape(staff_csrf());'

@@ -1,8 +1,18 @@
-## Account email verification ready for installation — 2026 10 02
+## Separate TEST agent recipient update — 2026 10 02
+
+The user wants a fresh TEST booking using `info@1789media.com`, with the existing staff-request route retained and calendar invitations sent from `sales@re.sitesee.ai`. The exact address was confirmed twice; `info@1789meidia.com` was a typo and is not approved. The existing code restricted the modern appointment/invitation workflow to sales. `install-re-test-recipient-20261002-r1.py` adds only the approved agent address under the existing sales TEST configuration. No deployment or real booking test has been performed for this update. CI and final review are pending.
+
+CRM readiness still checks primary `Email`, not `Secondary_Email`. Use a separate test-agent contact with primary email `info@1789media.com`; preserve the historical sales contact and its links. The user can prepare that contact and then explicitly select it in staff readiness. No contact is created or changed by this release. Initial request routing remains unchanged (`SITESEE_REAL_ESTATE_SALES_EMAIL`); the development session has not inspected runtime environment settings.
+
+External inbox receipt remains unverified in the application and must be confirmed by the recipient. This update does not add Graph access to the external mailbox. Test only a fresh booking after installation, retaining phone login, pricing and existing orders; do not repeat completed lifecycle/payment tests or reuse protected orders `5D99D336572661A00885`, `8D20B4EBFCD0BADC4DE5` or booking `D32FFC7458`. See `TEST-RECIPIENT-REVIEW.md` for scope and the single WHM command. This checkpoint supersedes older recipient limits below.
+
+---
+
+## Account email verification installed; separate test address approved — 2026 10 02
 
 `install-re-email-change-20261002-r1.py` adds Account → Change Email with a code sent to the requested address. Phone login, account identity, pricing access and linked order history are retained. Old order recipients and existing invitations stay as recorded. Stale unsubmitted drafts require review; captured orders retain safe retry behavior.
 
-Four review passes and the independent audit found no blockers. The application/concurrency suites, all 23 new installer tests, existing regression suites, immutable historical builders and actual HTTPS browser checks passed in [CI run 37032836110](https://github.com/SiteSeeAI/SiteSee-Real-Estate/actions/runs/37032836110) on `92c430aad4f231ce657174c924ec644bd0b96d70`. Desktop/mobile screenshots were reviewed, including long-address wrapping. Installation has not been performed. See `EMAIL-CHANGE-REVIEW.md` for four review passes, scope, recovery and the single WHM command. The user must provide the second test address before any actual email delivery test. No real messages or provider actions were taken; Stripe stays TEST.
+Four review passes and the independent audit found no blockers. The application/concurrency suites, all 23 new installer tests, existing regression suites, immutable historical builders and actual HTTPS browser checks passed in [CI run 37032836110](https://github.com/SiteSeeAI/SiteSee-Real-Estate/actions/runs/37032836110) on `92c430aad4f231ce657174c924ec644bd0b96d70`. Desktop/mobile screenshots were reviewed, including long-address wrapping. The operator confirmed installation; backup: `/home/sitesee/.sitesee-real-estate/deployment-backups/email-change-pl1t0yzw`. They supplied and reconfirmed `info@1789media.com` and reported that the verification message arrived in the actual Inbox, not spam. This confirms verification-mail receipt only; account activation and a new calendar invitation have not been independently observed. `sales@re.sitesee.ai` remains the invitation sender and original approved recipient. No mailbox investigation or settings change is authorized. Stripe stays TEST.
 
 ---
 

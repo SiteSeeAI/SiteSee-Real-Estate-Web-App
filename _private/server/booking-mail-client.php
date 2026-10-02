@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__ . '/booking-test-recipients.php';
 
 const BOOKING_MAIL_SENDER = 'sales@re.sitesee.ai';
 
@@ -94,9 +95,11 @@ function booking_graph_draft_patch_guard(string $path, ?string $body, ?string $i
     if (!is_array($fields) || !$fields || array_diff(array_keys($fields), ['toRecipients','replyTo'])) {
         throw new RuntimeException('Only missing draft recipients may be repaired.');
     }
-    foreach ($fields as $value) {
-        if ($value !== [['emailAddress'=>['address'=>BOOKING_MAIL_SENDER]]]) {
-            throw new RuntimeException('Draft repair requires the authorized RE business address.');
+    foreach ($fields as $field=>$value) {
+        $address = $value[0]['emailAddress']['address'] ?? null;
+        if (!is_string($address) || $value !== [['emailAddress'=>['address'=>$address]]]
+            || ($field === 'replyTo' ? $address !== BOOKING_MAIL_SENDER : !booking_test_recipient_allowed($address))) {
+            throw new RuntimeException('Draft repair requires an approved recipient and the fixed RE reply address.');
         }
     }
 }

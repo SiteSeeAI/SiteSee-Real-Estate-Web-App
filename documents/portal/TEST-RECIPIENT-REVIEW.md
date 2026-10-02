@@ -1,0 +1,28 @@
+# Separate TEST agent recipient review — 2026 10 02
+
+Release: `test-recipient-20261002-r1`. Remote baseline `d5913df1f321218f92dd589fa9b0e0e11abd0389` was checked before editing. Branch remains `feat/calendar-confirmation-20260925`; main is not merged. The partial local checkout must be published only as selected paths on the existing remote tree.
+
+## Four review passes
+
+1. **Dependencies and scope.** Inspected calendar confirmation, Microsoft/legacy routing, invitation send/resume, communication identity, draft PATCH, staff readiness/recovery, customer service, lifecycle notices and the scheduled reconciliation worker. Exactly nine existing PHP files plus one policy module change. All nine before payloads match the current remote blobs; the new module is absent from that tree. Configurations, credentials, CRM adapter, portal identity/order ownership, initial staff/customer notice routing and historical source packages remain unchanged. The Account email installer is recorded as installed, with the operator's backup and confirmed Inbox receipt.
+2. **Recipient and evidence boundaries.** The modern RE workflow permits exact case-insensitive sales and info addresses only. The second recipient is enabled only under the existing sales primary setting; legacy calendar exact matching is retained. Draft repair requires a single approved To and fixed sales Reply-To, with saved-message identity rechecked before and after repair. Saved attempts cannot be resent or silently switched to the other approved recipient. Sender/organizer remains sales. Graph mailbox paths are unchanged and do not include info. External receipt stays unverified and is labeled for direct recipient confirmation; it no longer forces an impossible automated mailbox recovery. CRM continues exact primary-email comparison and explicit staff contact selection. The cron query uses bound approved recipients and retains the protected `D32FFC7458` exclusion.
+3. **Installer and preservation.** Reused the email installer's exact filesystem operations, locks, durable backup/journal, metadata checks and forward recovery. The unique journal also rejects an interrupted email installation. Source policy and mail guards install before staff workflow exposure. All 23 installer tests passed: interruption at every write, rerun, unknown/concurrent edits, permissions, symlinks/hardlinks, corrupt backup/journal, LF/CRLF sources, affected manifest consistency, TEST-only Stripe, dependency blockers, and root-owned historical backup preservation. The installer runs PHP only with `-l`; no database, provider, message or configuration operation occurs. Historical builders validate and reverse the exact new source delta and reproduce the original immutable installers.
+4. **Isolated behavior and release evidence.** Local PHP 8.3 recipient/draft tests passed for both sales and info. Tests include wrong approved recipient, unapproved addresses, malformed PATCH and fixed Reply-To, failed draft repair, current calendar/CRM checks, lost-send ambiguity, replay prevention, external receipt without mailbox reads, primary-vs-secondary CRM matching, and protected cron selection. Existing portal service, purchase, email verification and relevant installer/source regression suites passed. The new browser cases cover info-address reviewed, stopped-draft and sent bookings while retaining all 19 existing form contracts. CI PHP 8.2/browser execution is pending. Local historical r1 build could not run because this partial snapshot lacks an old fixture; the full remote CI checkout contains it.
+
+## Independent audit
+
+The independent `email_audit` agent reviewed the full application diff and exact source/dependency payloads, ran recipient behavior, both recipient variants of the draft suite, portal service and all 23 installer tests. It verified unchanged Graph scope/config/CRM/initial notification boundaries and six byte-identical historical builders with writes intercepted. No blocking finding was reported. Its final browser-case review is pending.
+
+## Delivery and next test
+
+Installer: `tools/install-re-test-recipient-20261002-r1.py` (168076 bytes). SHA-256: `6aa0e352348915df60032359ff490e00b415649c7ae75b45ffc68324b17a6a4f`. Upload the one file to `/home/sitesee/`, then run in root WHM Terminal:
+
+```sh
+python3 -B /home/sitesee/install-re-test-recipient-20261002-r1.py --deploy
+```
+
+The same command resumes an interruption or validates an installed copy. Installation is not yet reported. Existing email-install backup: `/home/sitesee/.sitesee-real-estate/deployment-backups/email-change-pl1t0yzw`.
+
+After installation, confirm Account shows `info@1789media.com`, create a fresh TEST booking, and use a separate agent CRM contact with that exact primary Email. Preserve the existing sales contact: replacing its primary email would prevent later exact-match verification for historical sales bookings. Staff readiness must explicitly link the new order to the agent contact before sending its invitation. Verify the fresh staff request and agent invitation manually; do not invent a property/date or resend historical invitations. Initial staff requests keep their existing environment-selected route; no runtime environment was inspected or changed here. Verification-mail Inbox receipt does not prove invitation delivery or explain the historical Deleted Items behavior.
+
+No real account login, provider request, message, payment, booking/calendar/CRM mutation or completed live lifecycle test was performed during this development. Stripe remains TEST. Protect orders `5D99D336572661A00885`, `8D20B4EBFCD0BADC4DE5` and booking `D32FFC7458`, all credentials, data and existing backups.

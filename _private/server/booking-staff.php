@@ -303,17 +303,17 @@ if ($row) {
     }
     $workflowStatus = null;
     $workflowHtml = $lifecycleHtml = '';
-    if ($row['status'] === 'deposit_paid_test' && $row['deposit_paid_at'] && strcasecmp($row['email'], 'sales@re.sitesee.ai') === 0) {
+    if ($row['status'] === 'deposit_paid_test' && $row['deposit_paid_at'] && booking_test_recipient_allowed($row['email'])) {
         $workflowStatus = booking_workflow_status($db, $row);
         $needsRecovery = $staffClaim && ($staffClaim['state'] !== 'confirmed' || !in_array($staffClaim['invitation_state'], ['none', 'sent'], true));
-        $needsEvidence = $staffMail ? ($staffMail['submission_state'] !== 'sent_observed' || $staffMail['delivery_state'] !== 'recipient_copy_observed' || $staffMail['crm_state'] !== 'associated') : ($staffClaim && $staffClaim['invitation_state'] !== 'none');
+        $needsEvidence = $staffMail ? ($staffMail['submission_state'] !== 'sent_observed' || (booking_communication_receipt_available($staffMail) && $staffMail['delivery_state'] !== 'recipient_copy_observed') || $staffMail['crm_state'] !== 'associated') : ($staffClaim && $staffClaim['invitation_state'] !== 'none');
         $blockedUnsent = $staffClaim && $staffClaim['state'] === 'confirmed' && $staffClaim['invitation_state'] === 'none' && !$workflowStatus['can_send'] && $staffLife['state'] === 'active' && (int)$staffLife['revision'] === 0 && !$staffPending;
         $workflowOpen = isset($workflowReport) || str_starts_with($postedAction, 'workflow_') || $postedAction === 'resume_invitation' || ($workflowStatus['can_resume_draft'] ?? false) || ($row['approved_at'] && (!$workflowStatus['link'] || $needsRecovery || $needsEvidence || $blockedUnsent));
         $workflowHtml = staff_disclosure('readiness', 'Booking Readiness & Recovery', ($blockedUnsent ? '<p class="note">The invitation has not been sent. A prerequisite needs attention; check readiness before sending.</p>' : '') . booking_workflow_html($row, $workflowStatus, staff_csrf(), $workflowReport ?? null), $workflowOpen);
         $lifecycleClaim=booking_confirmation_get($db,$reference);
         if(booking_lifecycle_enabled() && $lifecycleClaim && $lifecycleClaim['state']==='confirmed') {
             $changeMail = booking_communication_get($db, 'lifecycle-' . $staffLife['revision'] . ':' . $reference);
-            $manageOpen = str_starts_with($postedAction, 'lifecycle_') || $staffPending || $staffLife['diagnostic'] || in_array($staffLife['state'], ['calendar_missing', 'calendar_changed'], true) || ($changeMail && ($changeMail['submission_state'] !== 'sent_observed' || $changeMail['delivery_state'] !== 'recipient_copy_observed' || $changeMail['crm_state'] !== 'associated'));
+            $manageOpen = str_starts_with($postedAction, 'lifecycle_') || $staffPending || $staffLife['diagnostic'] || in_array($staffLife['state'], ['calendar_missing', 'calendar_changed'], true) || ($changeMail && ($changeMail['submission_state'] !== 'sent_observed' || (booking_communication_receipt_available($changeMail) && $changeMail['delivery_state'] !== 'recipient_copy_observed') || $changeMail['crm_state'] !== 'associated'));
             $lifecycleHtml = staff_disclosure('manage-appointment', 'Manage Appointment', booking_lifecycle_html($db,$row,staff_csrf(),true,$lifecycleWindows??[],$lifecycleHistory??[]), (bool)$manageOpen);
         }
     }
