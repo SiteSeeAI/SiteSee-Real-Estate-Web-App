@@ -1,4 +1,14 @@
-## Current TEST checkpoint — 2026 10 02
+## Portal polish ready for installation — 2026 10 02
+
+`install-re-portal-polish-20261002-r1.py` consolidates the remaining customer payment presentation changes: one clear payment button beside the amount due, recorded balance status in My Orders and Order Details, the approved rush fee and recorded payment breakdown, and corrected staff text about TEST balance collection. Exactly four application files change. Payment authority, phone login, calendar rules, database contents and provider settings are preserved.
+
+Four review passes and the independent agent audit found no remaining blockers. All 22 installer tests, PHP suites, historical builder checks and actual HTTPS desktop/mobile browser checks passed on source commit `1648041604ce4b43c0f0c4a94ba659929bdbedf2` ([CI run 37019286163](https://github.com/SiteSeeAI/SiteSee-Real-Estate/actions/runs/37019286163)). Full evidence and the one WHM command are in `POLISH-REVIEW.md`. Installer SHA-256: `d6babf04d83da0a27c9e6ec79700ed3613dd0361c90e51617f9106c99e87b905`.
+
+The polish installer has not been run on the user's server by the agent. It requires the verified installed baseline, preserves historical root-owned backups and unknown edits, and makes no database changes or provider calls. The next separate design task is Staff Booking Review. The existing TEST billing and appointment evidence below remains valid; no real login, message, payment or calendar operation was performed for this presentation update. Email processing remains deferred, only `sales@re.sitesee.ai` is approved, Stripe remains TEST, and main has not been merged.
+
+---
+
+## Verified installed TEST checkpoint — 2026 10 02
 
 The customer portal is installed and operating in TEST. This checkpoint supersedes the older deployment and recipient statements below. Source branch: `feat/calendar-confirmation-20260925`; application head inspected before this documentation update: `2fee6fd57e101d5d75f379ddf02aa62a75972296`. No application changes were needed for this billing validation.
 
