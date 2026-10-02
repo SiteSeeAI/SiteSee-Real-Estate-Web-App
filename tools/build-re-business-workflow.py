@@ -13,6 +13,10 @@ def build():
   if polish:
    if base64.b64decode(polish['before'])!=expected:raise RuntimeError('Portal polish baseline changed: '+n)
    expected=base64.b64decode(polish['after'])
+  staff=json.loads((ROOT/'documents/portal/staff-review-source.json').read_text())['files'].get('private/'+n)
+  if staff:
+   if base64.b64decode(staff['before'])!=expected:raise RuntimeError('Staff review baseline changed: '+n)
+   expected=base64.b64decode(staff['after'])
   if (ROOT/'_private'/n).read_bytes()!=expected:raise RuntimeError('Reviewed source changed: '+n)
  calendar=(ROOT/'_private/server/booking-microsoft-calendar.php').read_text()
  data['calendar_uid']='microsoft:'+re.search(r"const BOOKING_MS_CALENDAR = '([^']+)'",calendar)[1]

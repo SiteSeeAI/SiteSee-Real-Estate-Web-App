@@ -269,10 +269,13 @@ function booking_workflow_html(array $row, array $status, string $csrf, ?array $
         'Saved message'=>$mail ? $mail['submission_state'] : 'No communication record',
         'Recipient evidence'=>$mail ? $mail['delivery_state'] : 'Not verified',
         'Zoho email history'=>$mail ? $mail['crm_state'] : 'Not yet applicable'];
-    $html = '<section aria-labelledby="workflow"><h2 id="workflow">Booking Readiness &amp; Recovery</h2><p>Saved status is shown below. Check readiness to verify connections and find the CRM contact. Recovery verifies existing work and finishes its CRM history without sending another invitation.</p><dl>';
+    $html = '<section aria-labelledby="workflow"><h2 id="workflow">Booking Readiness &amp; Recovery</h2><p>' . ($claim || $mail ? 'Recover the saved calendar, invitation and CRM status without sending another invitation.' : 'Check readiness to verify connections and find the CRM contact. Nothing is sent or reserved.') . '</p><details><summary>Saved Integration Status</summary><p>Saved evidence only. Use the checks below for current verification.</p><dl>';
     foreach ($values as $label=>$value) $html .= '<dt><strong>' . booking_workflow_escape($label) . '</strong></dt><dd>' . booking_workflow_escape($value) . '</dd>';
-    $html .= '</dl>' . booking_workflow_form($csrf, $ref, 'workflow_check', 'Check Booking Readiness');
-    if ($claim || $mail) $html .= booking_workflow_form($csrf, $ref, 'workflow_recover', 'Recover Booking Status');
+    $html .= '</dl></details>';
+    if ($claim || $mail) {
+        $html .= booking_workflow_form($csrf, $ref, 'workflow_recover', 'Recover Booking Status');
+        $html .= '<details' . (!$status['link'] || ($claim && $claim['invitation_state'] === 'none' && !$status['can_send']) ? ' open' : '') . '><summary>Recheck Connections &amp; CRM Contact</summary>' . booking_workflow_form($csrf, $ref, 'workflow_check', 'Check Booking Readiness') . '</details>';
+    } else $html .= booking_workflow_form($csrf, $ref, 'workflow_check', 'Check Booking Readiness');
     if ($status['can_resume_draft'] ?? false) {
         $fields = '<p>The saved invitation stopped before sending. This action restores missing recipient fields, verifies the same draft and sends it once.</p><label><input type="checkbox" name="verify_recipient" value="yes" required> Send this saved TEST invitation to sales@re.sitesee.ai.</label>';
         $html .= booking_workflow_form($csrf,$ref,'resume_invitation','Repair & Send Saved Invitation',$fields);

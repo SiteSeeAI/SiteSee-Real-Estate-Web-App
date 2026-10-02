@@ -27,6 +27,10 @@ def build():
   if polish:
    if base64.b64decode(polish['before'])!=expected:raise RuntimeError('Portal polish baseline differs: '+source)
    expected=base64.b64decode(polish['after'])
+  staff=json.loads((ROOT/'documents/portal/staff-review-source.json').read_text())['files'].get(name)
+  if staff:
+   if base64.b64decode(staff['before'])!=expected:raise RuntimeError('Staff review baseline changed: '+source)
+   expected=base64.b64decode(staff['after'])
   if actual!=expected:raise RuntimeError('Pinned application source differs: '+source)
  raw=json.dumps(data,sort_keys=True,separators=(',',':')).encode()
  template=(ROOT/'tools/portal-complete-template.py').read_text()

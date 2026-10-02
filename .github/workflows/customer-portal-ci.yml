@@ -9,12 +9,14 @@ on:
       - 'public/account.php'
       - 'public/portal-assets/**'
       - 'tests/fixtures/portal-http/**'
+      - 'tests/fixtures/staff-http/**'
       - 'tests/fixtures/portal-r1/**'
       - 'documents/portal/**'
       - 'tests/portal-*'
       - 'tools/*portal*'
       - 'tools/*re-business*'
       - 'tools/*re-draft*'
+      - 'tools/*staff-review*'
       - '.github/workflows/customer-portal-ci.yml'
   push:
     branches: ['feat/calendar-confirmation-20260925']
@@ -25,12 +27,14 @@ on:
       - 'public/account.php'
       - 'public/portal-assets/**'
       - 'tests/fixtures/portal-http/**'
+      - 'tests/fixtures/staff-http/**'
       - 'tests/fixtures/portal-r1/**'
       - 'documents/portal/**'
       - 'tests/portal-*'
       - 'tools/*portal*'
       - 'tools/*re-business*'
       - 'tools/*re-draft*'
+      - 'tools/*staff-review*'
       - '.github/workflows/customer-portal-ci.yml'
 
 permissions:
@@ -72,6 +76,8 @@ jobs:
           python3 tests/portal-re-workflow.test.py
           python3 tests/portal-draft-installer.test.py
           python3 tests/portal-polish-installer.test.py
+          python3 tests/portal-staff-installer.test.py
+          python3 tests/portal-staff-source.test.py
           python3 tools/build-portal-installer.py
           git diff --exit-code -- tools/install-customer-portal.py
           python3 tools/build-portal-complete.py
@@ -82,6 +88,8 @@ jobs:
           git diff --exit-code -- tools/install-re-business-workflow.py
           python3 tools/build-portal-polish.py
           git diff --exit-code -- tools/install-re-portal-polish-20261002-r1.py
+          python3 tools/build-staff-review.py
+          git diff --exit-code -- tools/install-re-staff-review-20261002-r1.py
       - name: Install isolated browser test dependencies
         run: |
           npm install --prefix "$RUNNER_TEMP/portal-browser" --no-save playwright@1.58.2
@@ -94,6 +102,7 @@ jobs:
           mkdir -p "$PORTAL_SCREENSHOTS"
           node tests/portal-preview.browser.cjs
           node tests/portal-http.browser.cjs
+          node tests/portal-staff.browser.cjs
       - name: Save example-only preview screenshots
         if: always()
         uses: actions/upload-artifact@v4
