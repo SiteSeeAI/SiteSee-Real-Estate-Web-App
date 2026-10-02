@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
-"""Reproduce the pinned file-only staff review installer."""
+"""Reproduce the pinned file-only verified email change installer."""
 import base64, hashlib, json, pathlib, zlib
-from portal_source_chain import before_email_update
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 def build():
-    data=json.loads((ROOT/'documents/portal/staff-review-source.json').read_text())
+    data=json.loads((ROOT/'documents/portal/email-change-source.json').read_text())
     for n,item in data['files'].items():
         source=n.replace('private/','_private/',1) if n.startswith('private/') else n
-        if before_email_update(ROOT,source)!=base64.b64decode(item['after']):raise RuntimeError('Reviewed source changed: '+source)
+        if (ROOT/source).read_bytes()!=base64.b64decode(item['after']):raise RuntimeError('Reviewed source changed: '+source)
     for n,accepted in data['dependencies'].items():
         source=n.replace('private/','_private/',1) if n.startswith('private/') else n
-        if hashlib.sha256(before_email_update(ROOT,source)).hexdigest() not in accepted:raise RuntimeError('Reviewed dependency changed: '+source)
+        if hashlib.sha256((ROOT/source).read_bytes()).hexdigest() not in accepted:raise RuntimeError('Reviewed dependency changed: '+source)
     raw=json.dumps(data,sort_keys=True,separators=(',',':')).encode()
-    template=(ROOT/'tools/staff-review-template.py').read_text()
+    template=(ROOT/'tools/portal-email-template.py').read_text()
     code=template.replace('__PAYLOAD__',base64.b64encode(zlib.compress(raw,9)).decode()).replace('__PAYLOAD_SHA__',hashlib.sha256(raw).hexdigest())
-    (ROOT/'tools/install-re-staff-review-20261002-r1.py').write_text(code)
+    (ROOT/'tools/install-re-email-change-20261002-r1.py').write_text(code)
 if __name__=='__main__':build()

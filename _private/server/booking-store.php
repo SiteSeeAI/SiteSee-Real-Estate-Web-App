@@ -71,7 +71,7 @@ function booking_db(): PDO
     return $db;
 }
 
-function booking_capture(PDO $db, array $submission, string $reference, bool $depositFirst = false): ?string
+function booking_capture(PDO $db, array $submission, string $reference, bool $depositFirst = false, ?callable $captureGuard = null): ?string
 {
     if ($submission['action'] !== 'request_appointment' || !preg_match('/^[A-F0-9]{10,32}$/D', $reference)) {
         throw new InvalidArgumentException('Invalid booking request.');
@@ -90,6 +90,8 @@ function booking_capture(PDO $db, array $submission, string $reference, bool $de
     $token = $depositFirst ? bin2hex(random_bytes(32)) : null;
     $db->exec('BEGIN IMMEDIATE');
     try {
+    // Trusted callers may revalidate mutable account identity under this write lock.
+    if ($captureGuard !== null) $captureGuard();
     $stmt = $db->prepare('INSERT INTO bookings (reference,created_at,status,market,email,request_json,requested_utc,quote_cents,platform_monthly_cents,
         approved_cents,deposit_cents,agent_token_hash,agent_token_expires)
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)');
@@ -401,5 +403,4 @@ function booking_process_stripe_event(PDO $db, array $event): string
         throw $error;
     }
 }
-
 

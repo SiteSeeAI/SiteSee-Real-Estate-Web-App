@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Build the complete pinned TEST phone-login package, offline and reproducibly."""
 import base64, hashlib, json, pathlib, zlib
+from portal_source_chain import before_email_update
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 def build():
  data=json.loads((ROOT/'documents/portal/complete-source.json').read_text())
@@ -11,7 +12,7 @@ def build():
  for name,encoded in data['files'].items():
   source=name.replace('private/','_private/',1)
   if name.startswith('private/tools/'):source=name[len('private/'):]
-  actual=(ROOT/source).read_bytes();pinned=base64.b64decode(encoded)
+  actual=before_email_update(ROOT,source);pinned=base64.b64decode(encoded)
   expected=pinned
   key=name.removeprefix('private/')
   for changes in [upgrades,json.loads((ROOT/'documents/portal/re-draft-source.json').read_text())['files']]:

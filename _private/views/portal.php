@@ -75,10 +75,29 @@ function portal_profile_page(PDO $db, array $account, string $notice = ''): neve
     $e='portal_escape';$p=portal_profile($db,$account['id']);
     $body='<p class="lead">Your pricing access stays with your account.</p>';
     if($notice)$body.='<p role="status" class="notice">'.$e($notice).'</p>';
-    $body.='<section class="panel narrow"><p>Contact Email<br><strong>'.$e($account['email']).'</strong></p><form method="post">'.portal_csrf_field().'<input type="hidden" name="action" value="save_profile">';
+    $body.='<section class="panel narrow"><p>Contact Email<br><strong>'.$e($account['email']).'</strong><br><a href="/account.php?view=email">Change Email</a></p><form method="post">'.portal_csrf_field().'<input type="hidden" name="action" value="save_profile">';
     foreach(['first_name'=>['First Name','given-name',100],'last_name'=>['Last Name','family-name',100],'company'=>['Company','organization',140],'phone'=>['Contact Phone','tel',35]] as $key=>[$label,$autocomplete,$max]){
         $body.='<label>'.$label.'<input name="'.$key.'" value="'.$e($p[$key]).'" maxlength="'.$max.'" autocomplete="'.$autocomplete.'"'.($key==='phone'?' type="tel"':'').'></label>';
     }
     $body.='<p class="help">Your contact phone is used for order communication. To change your sign-in cell number, contact SiteSee for identity verification.</p><button class="primary">Save Profile</button></form></section><form method="post" class="help">'.portal_csrf_field().'<input type="hidden" name="action" value="logout"><button>Sign Out</button></form>';
     portal_page('Account',$body,$account);
+}
+
+function portal_email_page(PDO $db, array $account, string $notice = ''): never
+{
+    $e='portal_escape';$id=(string)($_SESSION['portal_email_change']??'');
+    $pending=portal_email_pending($db,$account['id'],$id);
+    $body='<p><a href="/account.php?view=profile">← Account</a></p><p class="lead">Verify your new contact email. Your cell-phone sign-in, pricing access and orders stay with your account.</p>';
+    if($notice)$body.='<p role="alert" class="notice">'.$e($notice).'</p>';
+    $body.='<section class="panel narrow"><p>Current Email<br><strong>'.$e($account['email']).'</strong></p>';
+    if($pending){
+        $body.='<p role="status">Check <strong>'.$e($pending['new_email']).'</strong> for your eight-digit code. Enter it here within 15 minutes of your request.</p><form method="post">'.portal_csrf_field()
+            .'<input type="hidden" name="action" value="email_confirm"><label>Verification Code<input name="code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{8}" minlength="8" maxlength="8" required></label><button class="primary">Verify &amp; Change Email</button></form>'
+            .'<details class="help"><summary>Wrong Address Or Need A New Code?</summary><p>Cancel this request, then enter your address again. Wait at least one minute between code requests.</p><form method="post">'.portal_csrf_field().'<input type="hidden" name="action" value="email_cancel"><button>Cancel Email Change</button></form></details>';
+    }else{
+        if($id!=='' && $notice==='')$body.='<p role="status">The previous request is no longer available. Your current email is shown above.</p>';
+        $body.='<form method="post">'.portal_csrf_field().'<input type="hidden" name="action" value="email_request"><label>New Email Address<input name="email" type="email" autocomplete="email" maxlength="180" required></label><button class="primary">Send Verification Code</button></form>';
+    }
+    $body.='</section><p class="help">Your current email stays active until you verify the new address. New orders will use your verified address. Existing appointments and recipients stay as recorded. To add an older order sent to a previous address, contact SiteSee.</p>';
+    portal_page('Change Email',$body,$account);
 }

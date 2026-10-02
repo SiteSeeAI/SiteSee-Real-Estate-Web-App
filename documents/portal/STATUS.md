@@ -1,10 +1,18 @@
-## Staff Booking Review ready for installation — 2026 10 02
+## Account email verification prepared — 2026 10 02
+
+`install-re-email-change-20261002-r1.py` adds Account → Change Email with a code sent to the requested address. Phone login, account identity, pricing access and linked order history are retained. Old order recipients and existing invitations stay as recorded. Stale unsubmitted drafts require review; captured orders retain safe retry behavior.
+
+The application, concurrency and 23 installer fixture tests passed locally, and the independent audit found no blockers. Browser verification is pending CI. Installation has not been performed. See `EMAIL-CHANGE-REVIEW.md` for four review passes, scope, recovery and the single WHM command. The user must provide the second test address before any actual email delivery test. No real messages or provider actions were taken; Stripe stays TEST.
+
+---
+
+## Staff Booking Review installed and accepted — 2026 10 02
 
 `install-re-staff-review-20261002-r1.py` simplifies the staff page into a booking summary, the current review or recovery action, and expandable detail sections. Exactly two application files change. Existing forms, consent, authentication, POST handlers, business rules and provider settings are preserved. A browser-confirmed staff sign-in header incompatibility is corrected with `Referrer-Policy: same-origin`; password, CSRF and origin checks remain unchanged.
 
 Four review passes and the independent agent audit found no remaining blockers. All 22 staff installer tests, two source-preservation tests, existing PHP and portal suites, historical builder checks, and the new actual HTTPS staff browser suite passed on `11cf85cbfebf72f24b1934eae667d9c0faf7895d` ([CI run 37023461598](https://github.com/SiteSeeAI/SiteSee-Real-Estate/actions/runs/37023461598)). The browser compares 19 saved-state form contracts and checks native login, rejected CSRF/origin/consent, unchanged ledgers, no provider calls, recovery visibility, Central Time, keyboard access and four responsive widths. Evidence and the one WHM command are in `STAFF-REVIEW.md`.
 
-Installer SHA-256: `427cb1b274364eeabcc7190fc285027d5a7a41893ffa5c8ea09cd3795a114d0f`. This staff update is ready for operator installation, not yet reported installed. It reuses durable backups, locks, interrupted-update recovery and unknown-edit preservation, accepts historical root-owned backup directories without changing ownership, and makes no database changes or provider calls. No real account login, message, payment or calendar action was performed for this update. Stripe remains TEST, only `sales@re.sitesee.ai` is approved, email processing remains deferred, and main has not been merged.
+Installer SHA-256: `427cb1b274364eeabcc7190fc285027d5a7a41893ffa5c8ea09cd3795a114d0f`. The operator confirmed installation and accepted the staff layout. Backup: `/home/sitesee/.sitesee-real-estate/deployment-backups/staff-review-wgbtajhu`. It reuses durable backups, locks, interrupted-update recovery and unknown-edit preservation, accepts historical root-owned backup directories without changing ownership, and makes no database changes or provider calls. No real account login, message, payment or calendar action was performed for this update. Stripe remains TEST, only `sales@re.sitesee.ai` is approved, email processing remains deferred, and main has not been merged.
 
 ---
 
@@ -14,7 +22,7 @@ Installer SHA-256: `427cb1b274364eeabcc7190fc285027d5a7a41893ffa5c8ea09cd3795a11
 
 Four review passes and the independent agent audit found no remaining blockers. All 22 installer tests, PHP suites, historical builder checks and actual HTTPS desktop/mobile browser checks passed on source commit `1648041604ce4b43c0f0c4a94ba659929bdbedf2` ([CI run 37019286163](https://github.com/SiteSeeAI/SiteSee-Real-Estate/actions/runs/37019286163)). Full evidence and the one WHM command are in `POLISH-REVIEW.md`. Installer SHA-256: `d6babf04d83da0a27c9e6ec79700ed3613dd0361c90e51617f9106c99e87b905`.
 
-The operator reported successful installation of `portal-polish-20261002-r1`: clear portal payment buttons, recorded balance status and price breakdown. Its backup is `/home/sitesee/.sitesee-real-estate/deployment-backups/portal-polish-t1kz5az7`. Existing payment, phone login, calendar and rush approval rules were preserved; no database changes, provider calls, messages or configuration changes were made. The Staff Booking Review update is now prepared above. The existing TEST billing and appointment evidence below remains valid; email processing remains deferred, only `sales@re.sitesee.ai` is approved, Stripe remains TEST, and main has not been merged.
+The operator reported successful installation of `portal-polish-20261002-r1`: clear portal payment buttons, recorded balance status and price breakdown. Its backup is `/home/sitesee/.sitesee-real-estate/deployment-backups/portal-polish-t1kz5az7`. Existing payment, phone login, calendar and rush approval rules were preserved; no database changes, provider calls, messages or configuration changes were made. The Staff Booking Review update is now installed and accepted as recorded above. The existing TEST billing and appointment evidence below remains valid; email processing remains deferred, only `sales@re.sitesee.ai` is approved, Stripe remains TEST, and main has not been merged.
 
 ---
 

@@ -21,6 +21,7 @@ require_once __DIR__ . '/portal-orders.php';
 require_once __DIR__ . '/portal-session.php';
 require_once __DIR__ . '/portal-mail.php';
 require_once __DIR__.'/portal-phone.php';
+require_once __DIR__.'/portal-email.php';
 require_once __DIR__.'/portal-sms.php';
 require_once __DIR__.'/portal-purchase.php';
 require_once __DIR__.'/portal-billing.php';
@@ -65,6 +66,23 @@ try {
         }
         if(in_array($action,['request_login','consume_login'],true))portal_page('Sign In With Your Cell Phone','<p>Email sign-in has been replaced. <a href="/account.php">Use your cell phone number</a>.</p>',false,400);
         if(!$account)portal_sign_in('Please sign in to continue.');
+        if(in_array($action,['email_request','email_confirm','email_cancel'],true)){
+            portal_email_schema($db);
+            try{
+                if($action==='email_request'){
+                    $_SESSION['portal_email_change']=portal_email_request($db,$account['id'],$account['email'],portal_input($_POST,'email',180),
+                        (string)($_SERVER['REMOTE_ADDR']??''),SITESEE_REAL_ESTATE_PRICING_GATE_SECRET,'portal_send_email_code');
+                    portal_redirect('?view=email');
+                }
+                $id=(string)($_SESSION['portal_email_change']??'');
+                if($action==='email_cancel'){
+                    portal_email_cancel($db,$account['id'],$id);unset($_SESSION['portal_email_change']);portal_redirect('?view=profile');
+                }
+                if(!portal_email_confirm($db,$account['id'],$id,portal_input($_POST,'code',32),SITESEE_REAL_ESTATE_PRICING_GATE_SECRET))
+                    portal_email_page($db,$account,'This code could not be verified. Check it or request a new code.');
+                unset($_SESSION['portal_email_change']);portal_redirect('?view=profile&email_changed=1');
+            }catch(InvalidArgumentException $error){portal_email_page($db,$account,$error->getMessage());}
+        }
         if(str_starts_with($action,'appointment_')||in_array($action,['balance_checkout','billing_manage'],true)){
             $recent=array_values(array_filter($_SESSION['portal_service_requests']??[],static fn($t):bool=>is_int($t)&&$t>time()-60));
             if(count($recent)>=20){if($action==='balance_checkout')portal_json(['error'=>'Please wait a minute before retrying.'],429);portal_page('Please Wait','<p>Please wait a minute before retrying.</p>',$account,429);}
@@ -153,7 +171,8 @@ try {
         if($order['remaining_cents']!==null)$order['remaining_cents']=max(0,$order['remaining_cents']-$order['balance_paid_cents']);
         portal_order_page($order,$account);
     }
-    if($view==='profile')portal_profile_page($db,$account,isset($_GET['saved'])?'Your profile is saved.':'');
+    if($view==='email'){portal_email_schema($db);portal_email_page($db,$account);}
+    if($view==='profile')portal_profile_page($db,$account,isset($_GET['email_changed'])?'Your contact email is verified and updated.':(isset($_GET['saved'])?'Your profile is saved.':''));
     if($view==='new')portal_new_order_page($db,$account,portal_input($_GET,'again',32));
     if($view!=='')portal_page('Page Unavailable','<p><a href="/account.php">Return To My Orders</a></p>',$account,404);
     $page=portal_input($_GET,'page',5);portal_orders_page($db,$account,ctype_digit($page)?max(1,min(10000,(int)$page)):1);

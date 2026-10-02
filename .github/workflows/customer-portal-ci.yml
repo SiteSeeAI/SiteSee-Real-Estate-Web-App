@@ -61,6 +61,8 @@ jobs:
           php -l _private/views/portal-service.php
           php -l _private/server/booking-webhook.php
           php -l public/account.php
+          php -d sendmail_path=/bin/false tests/portal-email.test.php
+          php tests/portal-email-concurrency.test.php
           php tests/portal-access.test.php
           php tests/portal-session.test.php
           php tests/portal-purchase.test.php
@@ -76,6 +78,7 @@ jobs:
           python3 tests/portal-re-workflow.test.py
           python3 tests/portal-draft-installer.test.py
           python3 tests/portal-polish-installer.test.py
+          python3 tests/portal-email-installer.test.py
           python3 tests/portal-staff-installer.test.py
           python3 tests/portal-staff-source.test.py
           python3 tools/build-portal-installer.py
@@ -88,6 +91,8 @@ jobs:
           git diff --exit-code -- tools/install-re-business-workflow.py
           python3 tools/build-portal-polish.py
           git diff --exit-code -- tools/install-re-portal-polish-20261002-r1.py
+          python3 tools/build-portal-email.py
+          git diff --exit-code -- tools/install-re-email-change-20261002-r1.py
           python3 tools/build-staff-review.py
           git diff --exit-code -- tools/install-re-staff-review-20261002-r1.py
       - name: Install isolated browser test dependencies
@@ -103,6 +108,7 @@ jobs:
           node tests/portal-preview.browser.cjs
           node tests/portal-http.browser.cjs
           node tests/portal-staff.browser.cjs
+          node tests/portal-email.browser.cjs
       - name: Save example-only preview screenshots
         if: always()
         uses: actions/upload-artifact@v4

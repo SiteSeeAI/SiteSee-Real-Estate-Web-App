@@ -2,7 +2,7 @@
 
 Release: `staff-review-20261002-r1`.
 
-The branch `feat/calendar-confirmation-20260925` was inspected before editing at `cbc6035812c7875dbc073903c1a421052d910c88`. The final application, package and browser-test commit is `11cf85cbfebf72f24b1934eae667d9c0faf7895d`. Installation on the user's server has not been asserted.
+The branch `feat/calendar-confirmation-20260925` was inspected before editing at `cbc6035812c7875dbc073903c1a421052d910c88`. The final application, package and browser-test commit is `11cf85cbfebf72f24b1934eae667d9c0faf7895d`. The user confirmed successful installation and accepted the staff layout. Backup: `/home/sitesee/.sitesee-real-estate/deployment-backups/staff-review-wgbtajhu`.
 
 ## Four review passes
 
@@ -28,7 +28,7 @@ The first actual staff browser run exposed an inherited header incompatibility: 
 - Fixture ledgers remained unchanged through page reads, disclosure navigation and rejected submissions. External browser requests were blocked; PHP network functions were disabled and the isolated provider boundary rejected/logged calls. No provider call was observed.
 - Fonts loaded; no PHP warnings/fatals or browser page errors were observed. Desktop paid, complete, draft-recovery and request-list screenshots and the mobile rush screenshot were visually inspected. Primary review and recovery controls are visible when needed; completed detail sections are compact and mobile content remains readable without clipping.
 
-The browser uses synthetic records in throwaway databases and a local HTTPS server. These results do not assert fresh real-provider verification, a login to the user's staff account, or server installation. The user-confirmed billing and appointment evidence in `STATUS.md` remains authoritative; no real lifecycle operation was repeated.
+The browser uses synthetic records in throwaway databases and a local HTTPS server. These fixture results do not assert fresh real-provider verification or a login to the user's staff account. Server installation was separately confirmed by the user. The user-confirmed billing and appointment evidence in `STATUS.md` remains authoritative; no real lifecycle operation was repeated.
 
 ## Delivery
 
@@ -42,6 +42,6 @@ Upload the single installer to `/home/sitesee/` and run in root WHM Terminal:
 python3 -B /home/sitesee/install-re-staff-review-20261002-r1.py --deploy
 ```
 
-The same command resumes an interrupted update or verifies an already installed copy. Refresh Staff Booking Review after installation. The prior portal-polish installation was confirmed by the operator; this installer requires that reviewed source baseline.
+The same command resumes an interrupted update or verifies an already installed copy. The user has refreshed and approved Staff Booking Review after installation. The prior portal-polish installation was confirmed by the operator; this installer requires that reviewed source baseline.
 
 Preserve active order `5D99D336572661A00885`, cancelled order `8D20B4EBFCD0BADC4DE5`, protected booking `D32FFC7458` and all existing credentials, data and provider settings. Only `sales@re.sitesee.ai` is approved for real test messages. Email processing and the Deleted Items issue remain deferred. Stripe remains TEST; no merge to main or live activation occurred.

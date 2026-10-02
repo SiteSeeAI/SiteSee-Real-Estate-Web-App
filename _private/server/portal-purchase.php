@@ -40,6 +40,8 @@ function portal_purchase_review(PDO $db, string $accountId, array $payload): arr
     $hash=hash('sha256',$json);
     $db->exec('BEGIN IMMEDIATE');
     try {
+        $current=portal_active_account($db,$accountId);
+        if (!$current || !hash_equals($current['email'],$account['email'])) throw new InvalidArgumentException('Your contact email changed. Review this order again.');
         // Repeated Review requests reuse the exact same recent draft.
         $q=$db->prepare('SELECT id FROM portal_submissions WHERE account_id=? AND submission_hash=? AND bound_at IS NULL AND created_at>? ORDER BY created_at DESC LIMIT 1');
         $q->execute([$accountId,$hash,time()-1800]);$id=$q->fetchColumn();
@@ -80,7 +82,12 @@ function portal_purchase_submit(PDO $db,string $accountId,string $id,?callable $
         // Recheck the server clock and canonical price immediately before capture.
         $fresh=real_estate_prepare_submission(json_decode($intent['payload_json'],true,32,JSON_THROW_ON_ERROR));
         if(!hash_equals($intent['submission_hash'],hash('sha256',json_encode($fresh,JSON_THROW_ON_ERROR|JSON_UNESCAPED_SLASHES))))throw new InvalidArgumentException('Pricing changed. Review your services again.');
-        try {($capture??'booking_capture')($db,$submission,$intent['reference'],true);}
+        $guard=static function()use($db,$accountId,$submission):void{
+            $current=portal_active_account($db,$accountId);
+            if (!$current || !hash_equals($current['email'],$submission['details']['email']))
+                throw new InvalidArgumentException('Your contact email changed. Review this order again.');
+        };
+        try {($capture??'booking_capture')($db,$submission,$intent['reference'],true,$guard);}
         catch(PDOException $error){if(!booking_get($db,$intent['reference']))throw $error;}
     }
     $db->exec('BEGIN IMMEDIATE');

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import base64,hashlib,json,pathlib,re,zlib
+from portal_source_chain import before_email_update
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 def build():
  data=json.loads((ROOT/'documents/portal/re-workflow-source.json').read_text())
@@ -17,7 +18,7 @@ def build():
   if staff:
    if base64.b64decode(staff['before'])!=expected:raise RuntimeError('Staff review baseline changed: '+n)
    expected=base64.b64decode(staff['after'])
-  if (ROOT/'_private'/n).read_bytes()!=expected:raise RuntimeError('Reviewed source changed: '+n)
+  if before_email_update(ROOT,'_private/'+n)!=expected:raise RuntimeError('Reviewed source changed: '+n)
  calendar=(ROOT/'_private/server/booking-microsoft-calendar.php').read_text()
  data['calendar_uid']='microsoft:'+re.search(r"const BOOKING_MS_CALENDAR = '([^']+)'",calendar)[1]
  raw=json.dumps(data,sort_keys=True,separators=(',',':')).encode()

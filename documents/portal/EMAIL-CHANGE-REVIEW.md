@@ -1,0 +1,34 @@
+# Account email verification review — 2026 10 02
+
+Release: `email-change-20261002-r1`. Baseline remote head: `45b936f65949763e13a5df89bf7cf46227c81744`, checked before editing. Work stays on `feat/calendar-confirmation-20260925`; main is not merged. The local checkout is partial: publication must use the existing remote tree as its base and add only the reviewed paths.
+
+## Behavior
+
+Account → Change Email requests an eight-digit code at the new address. The signed-in customer enters the code in the same browser to activate the address. Codes expire after 15 minutes, permit five guesses, and work once. Requests have persistent account/IP/target throttling and a one-minute minimum interval. A newer request replaces older requests, and cancellation invalidates the pending code. Failed or ambiguous mail handoff leaves the current address active.
+
+Cell-phone sign-in, account ID, existing pricing access, profiles and linked order history remain attached to the same account. The new address applies to newly reviewed/submitted orders. An unsubmitted draft reviewed under an older address must be reviewed again. Already captured submissions, including recovery after an interrupted capture, retain their saved recipient and recover the same order. No historical booking, payment, calendar, CRM record or invitation is rewritten or resent. Historical unlinked claims still require both a matching current account email and an existing valid order token; orders sent to a previous address require staff help. No permanent email aliases or automatic historical claims are introduced.
+
+The mail adapter requires the existing `/usr/local/bin/sitesee-graph-sendmail` PHP transport (optionally `-t`/`-i`) and fixes From and Reply-To to `sales@re.sitesee.ai`. An unknown transport fails closed. It makes no SMTP fallback, new provider configuration, booking-message record or CRM association. A successful PHP handoff is not evidence of receipt.
+
+## Four review passes
+
+1. **Source and dependency scope.** Inspected all seven requested files, every account email reference, pricing approval/enrollment, ownership queries, draft capture/recovery, mail transport and active release records. All six changed existing PHP files match the exact remote baseline bytes recorded in `email-change-source.json`; the new email module was absent there. The installer changes only those seven PHP files, affected hashes in the five existing integration manifests, and its backup/journal records. Unrelated remote paths must be preserved.
+2. **Identity and concurrency.** Email actions follow existing phone-session authentication, origin and CSRF checks. Account ID and challenge capability come solely from server session state. Only HMAC-protected codes and hashed session capabilities are stored. Phone revision, active-account state and original email are rechecked under SQLite write locks. Duplicate emails, including disabled accounts, are rejected at request and activation. Activation and challenge consumption are atomic. Historical claiming now rechecks email under the write lock. An optional trusted guard in `booking_capture` checks current account email inside its existing transaction; other callers retain their original behavior. Separate-process tests prove one winner for simultaneous duplicate activation and one success for concurrent replay.
+3. **Installer and recovery.** Reused the prior audited staff installer operations, with a unique revision, exact before/after payload, dependency pins, directory and appointment locks, durable backup writes/journal, metadata preservation, and forward recovery. Historical root-owned backup parents remain untouched. The capture guard and email module/mail adapter install before the purchase path, view and controller. Unknown files/edits, links, changed permissions, broken manifests, incomplete prior updates and non-TEST Stripe configuration stop safely. PHP runs only with `-l`; no runtime database, provider or configuration operation occurs during installation. New verification tables are created lazily by the application when Change Email is used, never by the installer.
+4. **Behavior and packaging.** The new PHP behavior and concurrency suites, 23 installer tests, existing access/phone/session/purchase suites, prior installer suites and staff source-preservation tests passed locally. Syntax checks passed for all seven changed PHP modules. Historical builders validate the exact new upgrade then reproduce their original installers without changing historical payloads. Browser fixtures cover native HTTPS forms, CSRF/origin rejection, account and same-account session isolation, GET/replay rejection, retained orders, new-order email, phone login after changing email, and widths 320/390/736/1200. Browser execution is pending the CI runner because local Chromium downloads failed; no browser pass is claimed yet.
+
+## Independent audit
+
+The independent `email_audit` agent reviewed the application diff, installer/payload/source chain and browser fixture boundaries. It independently ran the new behavior and separate-process concurrency suites, all 23 installer tests, and existing access, phone, session and purchase suites successfully. It found no blocking issue. A test that assumed the native mail transport was unconfigured was corrected to assert an isolated transport before exercising the adapter. The browser source passed its audit; browser execution is still a separate pending gate.
+
+## Delivery and protected state
+
+Installer: `tools/install-re-email-change-20261002-r1.py`. Upload the one file to `/home/sitesee/`, then run in root WHM Terminal:
+
+```sh
+python3 -B /home/sitesee/install-re-email-change-20261002-r1.py --deploy
+```
+
+The command also resumes an interrupted update or validates an already installed copy. Installation has not been performed by this development session. The preceding staff update is installed and accepted by the user; backup: `/home/sitesee/.sitesee-real-estate/deployment-backups/staff-review-wgbtajhu`.
+
+Protect orders `5D99D336572661A00885`, `8D20B4EBFCD0BADC4DE5` and booking `D32FFC7458`, existing credentials, settings and data. Fixtures are disposable synthetic databases. No real user login, mail, provider request or completed lifecycle test was performed. Stripe remains TEST. Only `sales@re.sitesee.ai` is approved for real test mail; the user must supply their chosen second address before any actual delivery test. The Deleted Items explanation remains unconfirmed, and mailbox investigation/settings are deferred.

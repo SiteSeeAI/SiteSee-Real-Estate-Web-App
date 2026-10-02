@@ -1,5 +1,25 @@
 <?php
 declare(strict_types=1);
+/** Only the installed Graph bridge may hand off verification mail; no SMTP fallback. */
+function portal_send_email_code(string $email, string $code): bool
+{
+    $email=portal_normalize_email($email);
+    if (!preg_match('/^[0-9]{8}$/D',$code)
+        || !preg_match('~^/usr/local/bin/sitesee-graph-sendmail(?:\s+-(?:t|i))*$~D',trim((string)ini_get('sendmail_path')))) return false;
+    $message=portal_email_message($email,$code);
+    return @mail($email,$message['subject'],$message['body'],implode("\r\n",$message['headers']));
+}
+
+function portal_email_message(string $email, string $code): array
+{
+    $email=portal_normalize_email($email);
+    if (!preg_match('/^[0-9]{8}$/D',$code)) throw new InvalidArgumentException('Invalid verification code.');
+    return ['subject'=>'Verify Your SiteSee Contact Email',
+        'headers'=>['From: SiteSee Real Estate <sales@re.sitesee.ai>','Reply-To: sales@re.sitesee.ai',
+            'MIME-Version: 1.0','Content-Type: text/plain; charset=UTF-8'],
+        'body'=>"Your SiteSee verification code is: ".$code."\r\n\r\nReturn to Account > Change Email in the same signed-in browser and enter this code within 15 minutes.\r\n\r\nYour contact email will change to ".$email." only after verification. Your cell-phone sign-in stays the same.\r\n\r\nIf you did not request this change, ignore this email. Do not share the code.\r\n\r\nSiteSee Real Estate\r\nShow More. Decide Faster."];
+}
+
 /** Login mail uses the existing pricing mail transport; it never replays booking notices. */
 function portal_send_login(string $email, string $token): bool
 {

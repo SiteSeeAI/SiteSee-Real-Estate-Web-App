@@ -151,8 +151,9 @@ function portal_claim_existing_order(PDO $db, string $accountId, string $referen
     if (!hash_equals($account['email'],$bookingEmail)) return false;
     $db->exec('BEGIN IMMEDIATE');
     try {
-        // Recheck inside the write lock in case an account was disabled meanwhile.
-        if (!portal_active_account($db,$accountId)) { $db->exec('COMMIT'); return false; }
+        // Email activation and historical claiming serialize on the same write lock.
+        $current=portal_active_account($db,$accountId);
+        if (!$current || !hash_equals($current['email'],$bookingEmail)) { $db->exec('COMMIT'); return false; }
         $q = $db->prepare('SELECT account_id FROM portal_order_owners WHERE reference=?');
         $q->execute([$reference]);
         $owner = $q->fetchColumn();
