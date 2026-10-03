@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/booking-lifecycle-ui.php';
+require_once __DIR__ . '/booking-job-ui.php';
 header('Cache-Control: no-store, private, max-age=0');
 header('X-Robots-Tag: noindex, nofollow, noarchive');
 header('X-Frame-Options: DENY');
@@ -20,7 +21,8 @@ function staff_page(string $body, int $status = 200): never
 :root{color-scheme:light;font:16px/1.6 Inter,Arial,sans-serif;color:#17252e;background:#f7f8f9}*{box-sizing:border-box}body{margin:0}header{background:#01111e;color:#fff;padding:24px max(6%,calc((100% - 1080px)/2));border-bottom:4px solid #ffc107}.brand{font:600 30px/1.2 Poppins,Arial,sans-serif}.brand span{color:#ffc107}header small{display:block;font-size:12px;margin-top:5px}main{max-width:1080px;margin:auto;padding:32px 24px 60px}h1,h2,h3{font-family:Poppins,Arial,sans-serif;color:#01111e;line-height:1.3;font-weight:500}h1{font-size:30px;margin:0 0 20px}h2{font-size:22px}h3{font-size:18px}p{margin:0 0 18px}a{color:#07517d;text-underline-offset:4px}a,button,summary,input,select{touch-action:manipulation}button,input,select{font:inherit}label{display:grid;gap:7px;margin:18px 0;max-width:680px}label:has(input[type=checkbox]){display:flex;gap:12px;align-items:flex-start}input:not([type=checkbox]),select{padding:10px 12px;border:1px solid #9faab1;border-radius:5px;min-height:46px;max-width:100%;width:100%;min-width:0}input[type=checkbox]{width:20px;height:20px;flex:0 0 20px;margin:3px 0}button{background:#01111e;color:#fff;padding:12px 18px;border:1px solid #01111e;border-radius:6px;min-height:46px;max-width:100%;cursor:pointer;text-align:left}button:hover{background:#163142}.quiet button{background:#fff;color:#17252e;border-color:#a6afb5}form{margin:16px 0}.topline{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:24px}.topline form{margin:0}.test-label{font-size:13px;font-weight:600;letter-spacing:1px}.help,.eyebrow{color:#58636b;font-size:14px}.eyebrow{font-size:12px;letter-spacing:.6px}.note,.error{padding:16px 20px;border-left:4px solid #ba8b00;background:#fff8dd;margin:20px 0}.error{background:#fff0f0;border-color:#9a1825;color:#9a1825}.card,.staff-fold{background:#fff;border:1px solid #d9dfe2;border-radius:8px;margin:20px 0;padding:24px}.next-step{border-left:4px solid #ffc107}.facts,.progress{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 28px;margin:18px 0}.progress{grid-template-columns:repeat(4,minmax(0,1fr));padding-top:18px;border-top:1px solid #d9dfe2}.progress dt{font-size:12px}.progress dd{font-size:14px;font-weight:600}dt{font-size:13px;color:#58636b}dd{margin:3px 0 0;overflow-wrap:anywhere}summary{cursor:pointer;min-height:44px;padding:8px 0;color:#01111e;font-weight:600}details[open]>summary{margin-bottom:16px}.staff-fold{padding:12px 24px}.staff-fold>summary{font-family:Poppins,Arial,sans-serif;font-size:18px}.section-body>h2:first-child,.section-body>section>h2:first-child{display:none}.section-body{padding:0 0 8px}details details{border-top:1px solid #d9dfe2;padding-top:8px;margin-top:20px}pre{overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;background:#f4f6f7;padding:16px;font:14px/1.6 Inter,Arial,sans-serif}li{margin:10px 0}.request-list{display:grid;gap:14px}.request-item{background:#fff;border:1px solid #d9dfe2;border-radius:8px;padding:20px 24px;display:grid;grid-template-columns:1fr auto;gap:10px 24px;align-items:center}.request-item h3{margin:4px 0 8px;overflow-wrap:anywhere}.request-item p{margin:4px 0;overflow-wrap:anywhere}.request-link{padding:10px 0;min-height:44px;white-space:nowrap}footer{border-top:1px solid #d9dfe2;padding:24px;color:#58636b;font-size:13px;text-align:center}:focus-visible{outline:3px solid #147eb3;outline-offset:4px}.skip{position:absolute;left:12px;top:-100px;background:#fff;padding:12px;z-index:1}.skip:focus{top:12px}
 @media(max-width:650px){main{padding:26px 6% 44px}h1{font-size:25px}h2{font-size:20px}.card,.staff-fold{padding:18px}.staff-fold{padding:10px 18px}.facts{grid-template-columns:1fr}.progress{grid-template-columns:1fr 1fr;gap:16px}.request-item{grid-template-columns:1fr;padding:18px}.request-link{justify-self:start}.topline{align-items:flex-start}button{font-size:14px}header{padding:22px 6%}}
 CSS;
-    echo '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SiteSee | Booking Review</title><style>' . $style . '</style></head><body><a class="skip" href="#content">Skip To Content</a><header><div class="brand">SiteSee<span>.</span></div><small>Show More. Decide Faster.</small></header><main id="content"><h1>Booking Review</h1>'
+    $staffTitle=defined('SITESEE_PRODUCTION_PAGE')&&SITESEE_PRODUCTION_PAGE?'Production':'Booking Review';
+    echo '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SiteSee | '.staff_escape($staffTitle).'</title><style>' . $style . '</style></head><body><a class="skip" href="#content">Skip To Content</a><header><div class="brand">SiteSee<span>.</span></div><small>Show More. Decide Faster.</small></header><main id="content"><h1>'.staff_escape($staffTitle).'</h1>'
         . $body . '</main><footer>SiteSee Real Estate · Staff access · TEST</footer></body></html>';
     exit;
 }
@@ -51,6 +53,7 @@ $issuedLink = '';
 $notice = '';
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 if ($method === 'POST') {
+    if((int)($_SERVER['CONTENT_LENGTH']??0)>65536)staff_page('<p>Request too large.</p>',413);
     if (!real_estate_same_origin() || !hash_equals(staff_csrf(), (string)($_POST['csrf'] ?? ''))) {
         staff_page('<p>Review session expired. Reload the page.</p>', 403);
     }
@@ -67,7 +70,7 @@ if ($method === 'POST') {
             session_regenerate_id(true);
             $_SESSION['staff_until'] = time() + 7200;
             $_SESSION['csrf'] = bin2hex(random_bytes(24));
-            header('Location: staff-bookings.php', true, 303);
+            header('Location: '.(defined('SITESEE_PRODUCTION_PAGE')&&SITESEE_PRODUCTION_PAGE?'staff-production.php':'staff-bookings.php'), true, 303);
             exit;
         }
         $db->prepare('INSERT INTO staff_login_attempts (ip_hash,at) VALUES (?,?)')->execute([$ipHash, time()]);
@@ -75,10 +78,13 @@ if ($method === 'POST') {
     } elseif ($action === 'logout') {
         $_SESSION = [];
         session_destroy();
-        header('Location: staff-bookings.php', true, 303);
+        header('Location: '.(defined('SITESEE_PRODUCTION_PAGE')&&SITESEE_PRODUCTION_PAGE?'staff-production.php':'staff-bookings.php'), true, 303);
         exit;
     } elseif (empty($_SESSION['staff_until']) || (int)$_SESSION['staff_until'] < time()) {
         staff_page('<p>Your staff session has expired. Reload and sign in again.</p>', 403);
+    } elseif (str_starts_with($action, 'job_')) {
+        try { $notice=staff_job_action($db,$action); }
+        catch(Throwable $exception){$error=$exception instanceof InvalidArgumentException?$exception->getMessage():'The job action needs recovery. Review the saved status before retrying.';}
     } elseif (str_starts_with($action, 'lifecycle_')) {
         try {
             if (!booking_lifecycle_enabled()) throw new InvalidArgumentException('Appointment management is not enabled.');
@@ -272,6 +278,8 @@ if ($issuedLink) {
     $body .= '<h2>Private Booking Link</h2><p>Copy this private link to the authorized test customer. It appears only once; save it before leaving this page.</p><p><input type="text" readonly aria-label="Private booking link" value="' . staff_escape($issuedLink) . '" style="width:100%"></p><p><a href="' . staff_escape($issuedLink) . '" target="_blank" rel="noopener noreferrer">Open Booking Page ↗</a></p>';
 }
 $reference = (string)($_POST['reference'] ?? $_GET['reference'] ?? '');
+$body.='<nav aria-label="Staff Navigation"><a href="staff-bookings.php">Bookings</a> · <a href="staff-production.php">Production</a></nav>';
+if(defined('SITESEE_PRODUCTION_PAGE')&&SITESEE_PRODUCTION_PAGE)staff_page($body.staff_job_production_page($db,$reference));
 $row = booking_get($db, $reference);
 if ($row) {
     $request = booking_request($row);
@@ -294,6 +302,7 @@ if ($row) {
         . '<br>Estimated on site: ' . staff_escape((string)($quote['knownMinutes'] ?? 0)) . '–' . staff_escape((string)($quote['knownMinutesMax'] ?? $quote['knownMinutes'] ?? 0)) . ' minutes, plus any capture that requires confirmation.</p>'
         . '<p class="help">Staff only. Includes the customer’s property access instructions.</p><pre>' . staff_escape($request['salesPlain']) . '</pre>';
     $body .= staff_disclosure('request-details', 'Services & Property Access', $requestHtml);
+    $body .= staff_job_panel($db,$reference);
     if ($row['reschedule_required']) {
         $body .= '<p class="note">Rush declined. No rush fee is charged. The agent must request another standard window at least 72 hours ahead. Their existing deposit remains credited; do not create a new booking.</p>'
             . '<form method="post"><input type="hidden" name="csrf" value="' . $csrf . '"><input type="hidden" name="action" value="reschedule_link"><input type="hidden" name="reference" value="' . staff_escape($reference) . '"><button>Create Rescheduling Link</button></form>';

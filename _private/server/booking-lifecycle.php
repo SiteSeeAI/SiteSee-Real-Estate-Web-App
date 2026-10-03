@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__.'/booking-workflow.php';
+require_once __DIR__.'/booking-job.php';
 
 function booking_lifecycle_enabled(): bool
 {
@@ -281,6 +282,7 @@ function booking_lifecycle_recover_locked(PDO $db,string $reference,callable $ap
 }
 function booking_lifecycle_change(PDO $db,string $reference,string $action,string $fingerprint,string $actor,string $date='',string $time='',array $deps=[]): array
 {
+    if(booking_job_get($db,$reference))throw new InvalidArgumentException('Onsite work is complete. Contact SiteSee for help with this completed job.');
     if(!in_array($action,['cancel','reschedule','adopt'],true)||!in_array($actor,['customer','staff'],true)||($action==='adopt'&&$actor!=='staff'))throw new InvalidArgumentException('Invalid appointment action.');
     $lock=booking_confirmation_lock($deps['lock_path']??null);
     try{
@@ -332,6 +334,7 @@ function booking_lifecycle_change(PDO $db,string $reference,string $action,strin
         $op=['operation_id'=>bin2hex(random_bytes(16)),'reference'=>$reference,'revision'=>(int)$s['revision']+1,'action'=>$action,'actor'=>$actor,'state'=>'prepared','payload_json'=>json_encode($p,JSON_THROW_ON_ERROR)];
         $db->exec('BEGIN IMMEDIATE');
         try{
+            if(booking_job_get($db,$reference))throw new InvalidArgumentException('Onsite work was completed. The appointment cannot be changed.');
             if(!hash_equals(booking_lifecycle_fingerprint($db,$reference),$fingerprint))throw new InvalidArgumentException('Appointment changed during the check. Reload.');
             $db->prepare('INSERT INTO booking_lifecycle_operations(operation_id,reference,revision,action,actor,state,payload_json,created_at) VALUES(?,?,?,?,?,?,?,?)')->execute([...array_values($op),gmdate('c')]);
             $db->exec('COMMIT');

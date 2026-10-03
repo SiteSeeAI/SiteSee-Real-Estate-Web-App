@@ -111,11 +111,13 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   await goto(service,'/account.php?view=order&reference=DDDD000001');
   const paymentPanel=service.locator('section.panel').filter({has:service.getByRole('heading',{name:'Payment',exact:true})});
   assert.match(await paymentPanel.innerText(),/Approved Rush Fee\s+\$59\.00/);
-  assert.equal(await paymentPanel.getByRole('link',{name:'Pay Test Balance',exact:true}).count(),1);
+  assert.equal(await paymentPanel.getByRole('link',{name:'Job Status & Final Payment',exact:true}).count(),1);
   assert.equal(await service.locator('.payment-action').count(),1,'One payment action, beside the amount due');
   for(const width of [320,390,736,1200]){await service.setViewportSize({width,height:950});assert(await service.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Unpaid order overflow '+width);}
   if(shots)console.log('PORTAL_VISUAL_polish-unpaid:'+(await service.screenshot({type:'jpeg',quality:65,fullPage:true})).toString('base64'));
-  await paymentPanel.getByRole('link',{name:'Pay Test Balance',exact:true}).press('Enter');
+  await paymentPanel.getByRole('link',{name:'Job Status & Final Payment',exact:true}).press('Enter');
+  assert.match(await service.locator('h1').innerText(),/Job Status/);
+  await goto(service,'/account.php?view=balance&reference=DDDD000001');
   await service.getByRole('heading',{name:'Your Test Balance',exact:true}).waitFor();
   assert.equal(await service.locator('input[name=card_consent]').isChecked(),false,'Payment action retains fresh consent');
   await goto(service,'/account.php?view=billing&reference=DDDD000001');assert.equal(await service.getByRole('link',{name:'View Receipt'}).getAttribute('href'),'https://pay.stripe.com/receipts/payment/synthetic-http');
@@ -127,7 +129,7 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   if(shots)console.log('PORTAL_VISUAL_service-balance:'+(await service.screenshot({type:'jpeg',quality:45,fullPage:true})).toString('base64'));
   await goto(service,'/account.php?view=order&reference=DDDD000001');
   assert.match(await paymentPanel.innerText(),/Test Deposit Recorded/);
-  assert.equal(await service.getByRole('link',{name:'Pay Test Balance',exact:true}).count(),1,'Open checkout does not imply paid');
+  assert.equal(await service.getByRole('link',{name:'Job Status & Final Payment',exact:true}).count(),1,'Open checkout does not imply paid');
   setup('service-balance-paid');await goto(service,'/account.php?view=order&reference=DDDD000001');
   assert.equal(await paymentPanel.locator('.status').innerText(),'Test Balance Recorded');
   assert.match(await paymentPanel.innerText(),/Remaining Job Balance\s+\$0\.00/);

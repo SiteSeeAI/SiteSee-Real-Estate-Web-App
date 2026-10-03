@@ -23,7 +23,7 @@ try {
     booking_test_key();
     $event = booking_verify_stripe_event((string)$raw, (string)($_SERVER['HTTP_STRIPE_SIGNATURE'] ?? ''));
     $db = booking_db();
-    if (!portal_balance_event($db, $event)) booking_process_stripe_event($db, $event);
+    if (!booking_job_event($db,$event) && !portal_balance_event($db, $event)) booking_process_stripe_event($db, $event);
     echo 'ok';
 } catch (InvalidArgumentException | JsonException $error) {
     http_response_code(400);

@@ -26,6 +26,7 @@ require_once __DIR__.'/portal-sms.php';
 require_once __DIR__.'/portal-purchase.php';
 require_once __DIR__.'/portal-billing.php';
 require_once dirname(__DIR__).'/views/portal-service.php';
+require_once dirname(__DIR__).'/views/portal-job.php';
 require_once dirname(__DIR__).'/views/portal-purchase.php';
 require_once dirname(__DIR__) . '/views/portal.php';
 function portal_json(array $data,int $status=200): never {http_response_code($status);header('Content-Type: application/json; charset=utf-8');echo json_encode($data,JSON_THROW_ON_ERROR);exit;}
@@ -83,9 +84,9 @@ try {
                 unset($_SESSION['portal_email_change']);portal_redirect('?view=profile&email_changed=1');
             }catch(InvalidArgumentException $error){portal_email_page($db,$account,$error->getMessage());}
         }
-        if(str_starts_with($action,'appointment_')||in_array($action,['balance_checkout','billing_manage'],true)){
+        if(str_starts_with($action,'appointment_')||str_starts_with($action,'job_')||in_array($action,['balance_checkout','billing_manage'],true)){
             $recent=array_values(array_filter($_SESSION['portal_service_requests']??[],static fn($t):bool=>is_int($t)&&$t>time()-60));
-            if(count($recent)>=20){if($action==='balance_checkout')portal_json(['error'=>'Please wait a minute before retrying.'],429);portal_page('Please Wait','<p>Please wait a minute before retrying.</p>',$account,429);}
+            if(count($recent)>=20){if(in_array($action,['balance_checkout','job_payment'],true))portal_json(['error'=>'Please wait a minute before retrying.'],429);portal_page('Please Wait','<p>Please wait a minute before retrying.</p>',$account,429);}
             $recent[]=time();$_SESSION['portal_service_requests']=$recent;
         }
         if(str_starts_with($action,'appointment_')){
@@ -105,6 +106,16 @@ try {
                 }else throw new InvalidArgumentException('Use the appointment controls to continue.');
                 portal_redirect('?view=appointment&reference='.$reference.'&saved=1');
             }catch(Throwable){portal_appointment_page($db,$account,$reference,[],'This change could not be confirmed. Review the saved status below or contact SiteSee.');}
+        }
+        if($action==='job_approve'){
+            $reference=portal_input($_POST,'reference',32);
+            try{booking_job_approve_extras($db,$account['id'],$reference,portal_input($_POST,'scope',64),portal_input($_POST,'agreed',8)==='yes');portal_redirect('?view=job&reference='.$reference.'&saved=1');}
+            catch(InvalidArgumentException $error){portal_job_page($db,$account,$reference,$error->getMessage());}
+        }
+        if($action==='job_payment'){
+            try{portal_json(booking_job_customer_payment($db,$account['id'],portal_input($_POST,'reference',32),portal_input($_POST,'scope',64),portal_input($_POST,'agreed',8)==='yes'));}
+            catch(InvalidArgumentException $error){portal_json(['error'=>$error->getMessage()],422);}
+            catch(Throwable){portal_json(['error'=>'Final payment could not be verified. Refresh Job Status or contact SiteSee.'],503);}
         }
         if($action==='balance_checkout'){
             try{portal_json(portal_balance_checkout($db,$account['id'],portal_input($_POST,'reference',32),portal_input($_POST,'scope',64),portal_input($_POST,'card_consent',8)==='yes'));}
@@ -161,6 +172,7 @@ try {
     }
     if($view==='appointment')portal_appointment_page($db,$account,portal_input($_GET,'reference',32),[],isset($_GET['saved'])?'Your saved appointment status is shown below.':'');
     if($view==='billing')portal_billing_page($db,$account,portal_input($_GET,'reference',32));
+    if($view==='job')portal_job_page($db,$account,portal_input($_GET,'reference',32),isset($_GET['saved'])?'Your additional-services approval is recorded.':'');
     if($view==='balance')portal_balance_page($db,$account,portal_input($_GET,'reference',32),isset($_GET['result']));
     if($view==='payment')portal_payment_page($db,$account,portal_input($_GET,'reference',32),isset($_GET['result']));
     if($view==='order'){
@@ -169,6 +181,14 @@ try {
         $order['portal_payment']=portal_purchase_intent_for_order($db,$account['id'],$order['reference'])!==false;
         $order['balance_paid_cents']=portal_balance_paid($db,$order['reference']);
         if($order['remaining_cents']!==null)$order['remaining_cents']=max(0,$order['remaining_cents']-$order['balance_paid_cents']);
+        $job=booking_job_get($db,$order['reference']);$order['job_closed']=(bool)$job;
+        if($job){
+            $order['remaining_cents']=$job['paid_at']?0:(int)$job['amount'];
+            $order['payment_review']=(bool)$job['paid_at']&&$job['payment_state']!=='paid';
+            $order['balance_paid_cents']+=$job['paid_at']?(int)$job['amount']:0;
+            $bill=json_decode($job['bill_json'],true,16,JSON_THROW_ON_ERROR);$order['extras_cents']=array_sum(array_column($bill['extras'],'cents'));
+            $order['job_status']=$job['production_complete_at']?'Production Complete':'Production';
+        }
         portal_order_page($order,$account);
     }
     if($view==='email'){portal_email_schema($db);portal_email_page($db,$account);}

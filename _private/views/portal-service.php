@@ -58,6 +58,7 @@ function portal_billing_page(PDO $db,array $account,string $reference): never
 function portal_balance_page(PDO $db,array $account,string $reference,bool $return): never
 {
     if(!portal_owns_order($db,$account['id'],$reference))portal_page('Order Unavailable','<p>This order is not available in your account.</p>',$account,404);
+    if(booking_job_get($db,$reference))portal_job_page($db,$account,$reference);
     $body=portal_service_back($reference);$e='portal_escape';
     $paid=portal_balance_paid($db,$reference);
     if($paid>0)portal_page('Test Balance Recorded',$body.'<section class="panel"><h2>'.real_estate_money($paid).' Received</h2><p>Your balance payment is recorded.</p><a href="/account.php?view=billing&amp;reference='.$e($reference).'">Billing &amp; Receipts</a></section>',$account);

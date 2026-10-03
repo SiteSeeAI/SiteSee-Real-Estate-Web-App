@@ -69,11 +69,17 @@ function portal_billing_records(PDO $db,string $account,string $reference,?calla
     if($row['deposit_paid_at'])$out[]=portal_payment_evidence($row,(int)$row['deposit_cents'],$row['stripe_session_id'],$row['stripe_payment_intent_id'],$row['stripe_customer_id'],$api);
     $q=$db->prepare("SELECT * FROM portal_balance_attempts WHERE reference=? AND paid_at IS NOT NULL ORDER BY attempt");$q->execute([$reference]);
     foreach($q->fetchAll(PDO::FETCH_ASSOC) as $b)$out[]=portal_payment_evidence($row,(int)$b['amount'],$b['session_id'],$b['payment_intent'],$b['customer'],$api,'balance',(int)$b['attempt']);
+    $job=booking_job_get($db,$reference);
+    if($job&&($job['payment_intent']||!(int)$job['amount'])){
+        $job=booking_job_refresh($db,$reference,$api,true);
+        if($job['paid_at']&&(int)$job['amount']>0)$out[]=['kind'=>'job_closeout','amount'=>(int)$job['amount'],'refunded'=>(int)$job['refunded'],'disputed'=>(bool)$job['disputed'],'receipt'=>$job['receipt_url'],'invoice'=>null,'pdf'=>null];
+    }
     return $out;
 }
 function portal_balance_scope(PDO $db,string $account,string $reference): array
 {
     $row=portal_service_owned($db,$account,$reference);$s=$row;$life=booking_lifecycle_state($db,$reference);
+    if(booking_job_get($db,$reference))throw new InvalidArgumentException('The onsite final bill now controls this balance. Open Job Status in Order Details.');
     if(!booking_test_enabled()||!$row['deposit_paid_at']||!$row['approved_at']||$row['status']!=='deposit_paid_test'||!$s||($s['reschedule_required']??0)||($s['rush_status']??'')==='pending'||$life['state']!=='active'||booking_lifecycle_pending($db,$reference))throw new InvalidArgumentException('Your order needs staff review before balance payment.');
     $amount=(int)$row['approved_cents']+(int)$s['rush_fee_cents']-(int)$row['deposit_cents'];
     if($amount<=0)throw new InvalidArgumentException('No balance payment is due.');
@@ -185,6 +191,8 @@ function portal_billing_customer(PDO $db,string $account,string $reference,calla
         }
         portal_billing_need($known);
     }
+    booking_job_schema($db);$jobs=$db->prepare('SELECT reference,payment_intent FROM booking_jobs WHERE customer=? AND payment_intent IS NOT NULL');$jobs->execute([$customer]);
+    foreach($jobs->fetchAll(PDO::FETCH_ASSOC) as $job){portal_billing_need(portal_owns_order($db,$account,$job['reference']));$intents[]=$job['payment_intent'];}
     foreach(['payment_intents'=>$intents,'invoices'=>$invoices] as $resource=>$knownIds){
         $list=$api('GET','/'.$resource.'?customer='.$customer.'&limit=100');portal_billing_need(($list['has_more']??null)===false&&is_array($list['data']??null));
         foreach($list['data'] as $item)portal_billing_need(in_array($item['id']??null,$knownIds,true)&&($item['customer']??'')===$customer&&($item['livemode']??null)===false);

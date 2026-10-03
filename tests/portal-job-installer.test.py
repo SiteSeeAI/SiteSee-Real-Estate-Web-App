@@ -3,8 +3,8 @@ from unittest.mock import patch
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 import sys
 sys.path.insert(0,str(ROOT/'tools'))
-from portal_source_chain import before_email_update, before_recipient_update, before_job_update
-spec=importlib.util.spec_from_file_location('test_recipient',ROOT/'tools/install-re-test-recipient-20261002-r1.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+from portal_source_chain import before_email_update, before_recipient_update
+spec=importlib.util.spec_from_file_location('job_closeout',ROOT/'tools/install-re-job-closeout-20261002-r1.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 class InstallerTests(unittest.TestCase):
  def setUp(self):
   self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup);base=pathlib.Path(self.tmp.name)
@@ -15,7 +15,7 @@ class InstallerTests(unittest.TestCase):
    if item['before'] is not None:p.write_bytes(base64.b64decode(item['before']));p.chmod(0o644 if n.startswith('public/') else 0o600)
   for n in self.obj['dependencies']:
    source=n.replace('private/','_private/',1) if n.startswith('private/') else n
-   p=self.path(n);p.parent.mkdir(exist_ok=True,parents=True);p.write_bytes(before_job_update(ROOT,source));p.chmod(0o600)
+   p=self.path(n);p.parent.mkdir(exist_ok=True,parents=True);p.write_bytes((ROOT/source).read_bytes());p.chmod(0o600)
   for name in self.obj['manifests']:
    self.put('private/'+name,{'revision':'preserve','files':{n.removeprefix('private/'):m.sha(self.path(n).read_bytes()) for n,v in self.obj['files'].items() if v['before'] is not None},'retain':['unknown historical metadata']})
   self.put('private/booking-checkout.json',{'stage':'TEST','enabled':True,'private':'unchanged'})
@@ -66,24 +66,24 @@ class InstallerTests(unittest.TestCase):
    with self.assertRaises(RuntimeError):self.apply(j,b,a)
   self.assertEqual(json.loads((self.root/m.JOURNAL).read_bytes())['state'],'prepared');self.resume()
  def test_unknown_existing_file_and_new_file_are_preserved(self):
-  for n in ['private/server/booking-mail-client.php','private/server/booking-staff.php']:
+  for n in ['private/server/portal-billing.php','private/server/booking-staff.php']:
    self.path(n).write_bytes(b'unknown');self.path(n).chmod(0o600)
   with self.assertRaises(m.Stop) as e:self.begin()
-  self.assertIn('booking-mail-client.php',str(e.exception));self.assertIn('booking-staff.php',str(e.exception));self.assertFalse((self.root/m.JOURNAL).exists())
+  self.assertIn('portal-billing.php',str(e.exception));self.assertIn('booking-staff.php',str(e.exception));self.assertFalse((self.root/m.JOURNAL).exists())
  def test_unknown_new_module_is_preserved(self):
-  p=self.path('private/server/booking-test-recipients.php');p.write_bytes(b'unknown new module');p.chmod(0o600)
+  p=self.path('private/server/booking-job.php');p.write_bytes(b'unknown new module');p.chmod(0o600)
   with self.assertRaises(m.Stop):self.begin()
   self.assertEqual(p.read_bytes(),b'unknown new module');self.assertFalse((self.root/m.JOURNAL).exists())
  def test_concurrent_edit_before_backup(self):
-  b,a=m.inspect(self.root,self.public,self.uid,self.obj);p=self.path('private/server/booking-mail-client.php');p.write_bytes(b'concurrent')
+  b,a=m.inspect(self.root,self.public,self.uid,self.obj);p=self.path('private/server/portal-billing.php');p.write_bytes(b'concurrent')
   with self.assertRaises(m.Stop):m.prepare(self.root,self.public,self.uid,self.gid,self.obj,b,a)
   self.assertEqual(p.read_bytes(),b'concurrent');self.assertFalse((self.root/m.JOURNAL).exists())
  def test_concurrent_edit_before_apply(self):
   j,b,a=self.begin();p=self.path('private/server/booking-staff.php');p.write_bytes(b'concurrent')
   with self.assertRaises(m.Stop):self.apply(j,b,a)
-  self.assertEqual(p.read_bytes(),b'concurrent');self.assertEqual(self.path('private/server/booking-mail-client.php').read_bytes(),b['private/server/booking-mail-client.php'])
+  self.assertEqual(p.read_bytes(),b'concurrent');self.assertEqual(self.path('private/server/portal-billing.php').read_bytes(),b['private/server/portal-billing.php'])
  def test_concurrent_edit_during_apply_and_resume_preserved(self):
-  j,b,a=self.begin();p=self.path('private/server/booking-mail-client.php');changed=[False]
+  j,b,a=self.begin();p=self.path('private/server/portal-billing.php');changed=[False]
   def writer(*args):
    m.atomic(*args)
    if not changed[0]:p.write_bytes(b'concurrent');changed[0]=True
@@ -105,7 +105,7 @@ class InstallerTests(unittest.TestCase):
   with self.assertRaises(m.Stop):self.begin()
   self.assertEqual(p.read_bytes(),b'5D99D336572661A00885 8D20B4EBFCD0BADC4DE5 D32FFC7458 orders deposits CRM calendar links')
  def test_manifest_mismatch_stops_before_writes(self):
-  name='private/'+self.obj['manifests'][0];d=json.loads(self.path(name).read_bytes());d['files']['server/booking-mail-client.php']='0'*64;self.put(name,d)
+  name='private/'+self.obj['manifests'][0];d=json.loads(self.path(name).read_bytes());d['files']['server/portal-billing.php']='0'*64;self.put(name,d)
   with self.assertRaises(m.Stop):self.begin()
   self.assertFalse((self.root/m.JOURNAL).exists())
  def test_unaffected_manifest_is_byte_identical(self):
@@ -159,7 +159,7 @@ class InstallerTests(unittest.TestCase):
   with self.assertRaises(m.Stop) as e:self.begin()
   self.assertIn('Stripe must remain TEST',str(e.exception));self.assertIn('dependency',str(e.exception));self.assertFalse((self.root/m.JOURNAL).exists())
  def test_prior_interrupted_update_stops(self):
-  for name in ['email-change-20261002-r1-install.json','staff-review-20261002-r1-install.json','portal-polish-20261002-r1-install.json','calendar-notice-20261002-r1-install.json','re-draft-recovery-install.json','re-business-workflow-install.json','portal-complete-install.json']:
+  for name in ['test-recipient-20261002-r1-install.json','email-change-20261002-r1-install.json','staff-review-20261002-r1-install.json','portal-polish-20261002-r1-install.json','calendar-notice-20261002-r1-install.json','re-draft-recovery-install.json','re-business-workflow-install.json','portal-complete-install.json']:
    with self.subTest(name=name):
     self.put('private/'+name,{'state':'prepared'})
     with self.assertRaises(m.Stop):self.begin()
@@ -172,9 +172,12 @@ class InstallerTests(unittest.TestCase):
   p=self.root/'booking-confirmation.lock';p.unlink();p.symlink_to(self.root/'bookings.sqlite')
   with self.assertRaises(m.Stop):m.appointment_lock(self.root,self.uid,self.gid)
  def test_deployment_order_and_lint_never_execute_application(self):
-  self.assertEqual(self.obj['order'],['private/server/booking-test-recipients.php', 'private/server/booking-mail-client.php', 'private/server/booking-communication.php', 'private/server/booking-confirmation.php', 'private/server/booking-invitation.php', 'private/server/booking-lifecycle.php', 'private/server/booking-lifecycle-ui.php', 'private/server/booking-lifecycle-reconcile.php', 'private/server/booking-workflow.php', 'private/server/booking-staff.php'])
+  order=self.obj['order']
+  self.assertLess(order.index('private/server/booking-job.php'),order.index('private/server/booking-lifecycle.php'))
+  self.assertLess(order.index('private/server/portal-billing.php'),order.index('private/server/booking-staff.php'))
+  self.assertEqual(order[-1],'public/staff-production.php')
   with patch.object(m.subprocess,'run') as run:
    run.return_value.returncode=0;m.lint(self.obj,'/test/php')
-   self.assertEqual(run.call_count,10)
+   self.assertEqual(run.call_count,sum(n.endswith('.php') for n in self.obj['files']))
    for call in run.call_args_list:self.assertEqual(call.args[0][:2],['/test/php','-l'])
 if __name__=='__main__':unittest.main()

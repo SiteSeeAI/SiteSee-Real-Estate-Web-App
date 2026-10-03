@@ -41,13 +41,14 @@ const reserve=()=>new Promise(resolve=>{const s=net.createServer();s.listen(0,'1
   for(const width of [320,390,736,1200]){await page.setViewportSize({width,height:1000});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Request list overflow '+width);}
   await page.evaluate(()=>document.fonts.ready);assert(await page.evaluate(()=>document.fonts.check('16px Inter')&&document.fonts.check('22px Poppins')));
   await screenshot('list');
-  const contracts=()=>page.locator('form').evaluateAll(forms=>forms.map(f=>({method:f.method,fields:[...f.querySelectorAll('input,select,textarea')].map(e=>({tag:e.tagName,type:e.type,name:e.name,value:e.value,required:e.required,min:e.getAttribute('min'),max:e.getAttribute('max'),maxLength:e.getAttribute('maxlength'),step:e.getAttribute('step'),checked:e.checked,options:e.tagName==='SELECT'?[...e.options].map(o=>o.value):null})),buttons:[...f.querySelectorAll('button')].map(e=>e.textContent.trim())})).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b))));
+  // Keep all 19 original form contracts exact; new job forms have their own end-to-end suite.
+  const contracts=()=>page.locator('form').evaluateAll(forms=>forms.filter(f=>!f.querySelector('input[name=action][value^=job_]')).map(f=>({method:f.method,fields:[...f.querySelectorAll('input,select,textarea')].map(e=>({tag:e.tagName,type:e.type,name:e.name,value:e.value,required:e.required,min:e.getAttribute('min'),max:e.getAttribute('max'),maxLength:e.getAttribute('maxlength'),step:e.getAttribute('step'),checked:e.checked,options:e.tagName==='SELECT'?[...e.options].map(o=>o.value):null})),buttons:[...f.querySelectorAll('button')].map(e=>e.textContent.trim())})).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b))));
   const snapshot=setup('snapshot');
   for(const [name,ref]of Object.entries(refs)){
     const agentCase=name.startsWith('agent-');
     if(!agentCase)await goto('/staff-before.php?reference='+ref);const original=agentCase?null:await contracts();
     const response=await goto('/staff-bookings.php?reference='+ref);assert.equal(response.status(),200,name);if(!agentCase)assert.deepEqual(await contracts(),original,'All original forms, fields, amounts, fingerprints, required consent and button labels: '+name);
-    assert.match(await page.locator('.facts').innerText(),/Central Time/);
+    assert.match(await page.locator('.facts').first().innerText(),/Central Time/);
     assert.equal(await page.locator('#request-details').getAttribute('open'),null,'Private access stays folded: '+name);
     for(const width of [320,390,736,1200]){await page.setViewportSize({width,height:1000});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No overflow '+name+' '+width);}
     const open=await page.locator('details.staff-fold[open]').evaluateAll(ds=>ds.map(d=>d.id));
@@ -61,7 +62,7 @@ const reserve=()=>new Promise(resolve=>{const s=net.createServer();s.listen(0,'1
     if(['complete','cancelled'].includes(name))assert.equal(open.length,0,'Completed records start compact');
     if(['pending-change','moved','cancelled-notice','cancelled'].includes(name))assert.equal(await page.locator('input[name=action][value=confirm_calendar],input[name=action][value=send_invitation],input[name=action][value=resume_invitation]').count(),0,'No new original actions after lifecycle work');
     if(agentCase){
-      assert.match(await page.locator('.facts').innerText(),/info@1789media\.com/);
+      assert.match(await page.locator('.facts').first().innerText(),/info@1789media\.com/);
       assert.equal(await page.locator('#readiness').count(),1,'Agent readiness remains available');
       if(name==='agent-reviewed')assert(open.includes('calendar-confirmation'));
       if(name==='agent-draft'){
