@@ -4,6 +4,8 @@ The active task is the user's onsite final-billing and Production request, beyon
 
 The application and installer are saved on isolated branch `feat/job-closeout-production-20261002`, based on the latest recovered `4a658e8408dd1fee9d4282eb6f6d9d0928f7c359`. First recoverable checkpoint: `0237c4d7ea50ef2f2508fc1d56050352e391819e`. The original feature branch and main remain unchanged. Core closeout tests, all 23 installer cases and the new and existing real HTTPS browser suites passed using isolated synthetic providers. An independent audit's three findings were fixed and retested. See `JOB-CLOSEOUT-REVIEW.md` for review evidence, limitations and the one WHM command.
 
+Final Customer Portal Checks, including all five browser suites, passed on `501a37dab3384202d5cd1679e0b926e1fad9c957` ([run 37081501487](https://github.com/SiteSeeAI/SiteSee-Real-Estate/actions/runs/37081501487)); Calendar Notice Checks passed too. [Draft PR 39](https://github.com/SiteSeeAI/SiteSee-Real-Estate/pull/39) contains the saved implementation and review record. Repository-wide Server Form CI still fails on historical recipient/integrity fixtures; the identical failures were reproduced on the untouched recovered baseline and are documented without weakening guards or skipping assertions.
+
 This is a prepared TEST release, not a reported server installation or a provider-connected payment test. Do not repeat completed email/calendar/CRM setup as the next task. Install this one reviewed package, then validate a fresh authorized TEST job from onsite extras through final collection and Production delivery. The historical checkpoints below remain preserved; they do not describe the current remaining task.
 
 ---
