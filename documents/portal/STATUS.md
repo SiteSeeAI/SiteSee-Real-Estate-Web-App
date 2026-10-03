@@ -1,3 +1,13 @@
+## Onsite closeout and Production prepared — 2026 10 03
+
+The active task is the user's onsite final-billing and Production request, beyond the previously completed email-change work. `install-re-job-closeout-20261002-r1.py` adds approved onsite services, a fixed final bill, photographer **Job Complete**, automatic TEST saved-card collection with recovery of the same payment, a **Production** queue and delivery-link editing, and payment-gated delivery in the customer portal. Phone login, original booking/deposit records, calendar/invitation history, CRM links and provider settings are preserved.
+
+The application and installer are saved on isolated branch `feat/job-closeout-production-20261002`, based on the latest recovered `4a658e8408dd1fee9d4282eb6f6d9d0928f7c359`. First recoverable checkpoint: `0237c4d7ea50ef2f2508fc1d56050352e391819e`. The original feature branch and main remain unchanged. Core closeout tests, all 23 installer cases and the new and existing real HTTPS browser suites passed using isolated synthetic providers. An independent audit's three findings were fixed and retested. See `JOB-CLOSEOUT-REVIEW.md` for review evidence, limitations and the one WHM command.
+
+This is a prepared TEST release, not a reported server installation or a provider-connected payment test. Do not repeat completed email/calendar/CRM setup as the next task. Install this one reviewed package, then validate a fresh authorized TEST job from onsite extras through final collection and Production delivery. The historical checkpoints below remain preserved; they do not describe the current remaining task.
+
+---
+
 ## Separate TEST agent recipient update — 2026 10 02
 
 The user wants a fresh TEST booking using `info@1789media.com`, with the existing staff-request route retained and calendar invitations sent from `sales@re.sitesee.ai`. The exact address was confirmed twice; `info@1789meidia.com` was a typo and is not approved. The existing code restricted the modern appointment/invitation workflow to sales. `install-re-test-recipient-20261002-r1.py` adds only the approved agent address under the existing sales TEST configuration. Four review passes, the independent audit and [CI run 37054475044](https://github.com/SiteSeeAI/SiteSee-Real-Estate/actions/runs/37054475044) passed on source commit `18ca4fee63342213fe9e9b9af9e986ae2d2c0510`. All 23 installer tests and the actual HTTPS browser checks passed, including three external-agent cases and all 19 prior form contracts. The mobile receipt-status screenshot was visually reviewed. The single file-only installer is ready; no deployment or real booking test has been performed for this update.

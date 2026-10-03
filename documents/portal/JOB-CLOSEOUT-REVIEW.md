@@ -1,0 +1,39 @@
+# Onsite closeout and Production review — 2026 10 03
+
+Release: `job-closeout-20261002-r1`. Recovered baseline: `4a658e8408dd1fee9d4282eb6f6d9d0928f7c359` on `feat/calendar-confirmation-20260925`. Work is isolated on `feat/job-closeout-production-20261002`; neither the existing feature branch nor main is changed. The first recoverable application checkpoint is `0237c4d7ea50ef2f2508fc1d56050352e391819e`. No saved closeout code was present in the recovered baseline; this release implements the user's pasted requirements.
+
+## What happens
+
+1. Staff opens the existing booking, adds any onsite services and their prices. The customer approves that exact list in My Orders → Order Details → Job Status. Editing the list clears its approval.
+2. The photographer reviews the final amount and presses **Job Complete**. A separate, fixed final bill records the original approved amount, approved rush fee, approved extras and previous payments. The onsite work is complete and the job enters **Production**.
+3. SiteSee attempts the remaining TEST payment using the saved deposit card and recorded reuse consent. Successful collection requires provider verification; a declined card, missing card or required bank authentication leaves the job in Production with visible payment recovery. The customer then completes the same PaymentIntent in Job Status. Repeated staff actions cannot create a second final bill or repeatedly charge a declined card.
+4. Staff opens **Production** from Booking Review. The queue links to five delivery fields: Independent Website, Photo Download, Video Download, SiteSee Platform and Floor Plan Download, plus named additional deliverables. **Save Progress** keeps drafts private. **Production Complete** publishes a checked delivery set only after full payment verification. Later draft edits retain the previously published set until completed.
+
+The order list and Job Status show Production or Production Complete. The original booking, payment evidence, appointment, invitations and CRM records remain intact. Closed jobs cannot use the older balance checkout or change their appointment. Billing & Receipts retains previous receipts/invoices and adds the verified final payment receipt. This direct final payment does not create a separate Stripe invoice. Existing phone login, email-change capability, order ownership and TEST recipient rules remain in place.
+
+## Four review passes
+
+1. **Source and dependencies.** Recovered 393 text source files and verified each against its Git blob hash. There are 12 application files in the update (seven existing and five new), plus a pinned manifest of 32 unchanged dependencies. Original records/configuration are not reconstructed. Historical installer builders validate and reverse the exact closeout delta before rebuilding their original source.
+2. **Payment and authorization.** Verified exact customer ownership, current extras approval, photographer consent, fixed amounts, TEST-only keys and livemode checks. Intent creation is durable and idempotent; its ID is saved before confirmation. Creation and confirmation ambiguity, card decline/removal, missing reuse consent, concurrent legacy checkout, zero balance, stale approval, signed-event mismatch/replay, refunds/disputes, and production publication are covered by isolated behavioral tests. Old ambiguous creation is recovered by exact matching metadata; it never blindly creates another payment.
+3. **Installer and preservation.** All 23 new installer tests pass: baseline/rerun, interruption at every write, durable recovery, unknown/concurrent edits, invalid permissions, symlinks/hardlinks, corrupt journals/backups, LF/CRLF source, affected manifest consistency, dependencies, TEST configuration and historical root-owned backup directories. File guards are installed before staff exposure. The installer performs PHP lint only; it does not execute application code, open databases, call providers, send messages or change settings. Two private job tables are created lazily when the updated application is used.
+4. **Browser and regression evidence.** The new real HTTPS browser suite passes staff password login and customer phone-code login, unavailable-order isolation, extras approval without charging, Job Complete, repeated clicks, declined-card recovery with the same secret, draft privacy, completed-but-unpaid withholding, paid delivery, later draft preservation, refund review and receipt availability. It checks 320/390/736/1200 widths and unchanged booking/calendar/CRM/mail snapshots. All providers are synthetic and outbound network functions are disabled. The existing staff suite retains all 19 original form contracts plus three external-agent cases; the existing customer HTTPS suite passes. Mobile closeout, Production and delivered-link screenshots were visually reviewed. Application/installer regression and reproducible-builder results are recorded with the saved release checkpoint.
+
+## Independent review
+
+The `closeout_audit` agent reviewed the complete application and installer, independently ran the closeout behavior and all 23 installer tests, and checked the exact before/after/dependency payloads. Three findings were fixed and regression tested: published links must survive subsequent draft saves; a refunded/disputed payment must not reappear as a new full balance; and prior billing history must remain visible during an adjustment review. Its subsequent application/installer review reported no remaining blocker. The browser fixtures and CI additions received a final follow-up review.
+
+## Delivery
+
+Upload `tools/install-re-job-closeout-20261002-r1.py` to `/home/sitesee/`, then run in root WHM Terminal:
+
+```sh
+python3 -B /home/sitesee/install-re-job-closeout-20261002-r1.py --deploy
+```
+
+The same command safely resumes an interruption or validates an already installed copy. The installer requires the reviewed current source; an unknown server edit is a blocker, not something to overwrite. Size: 172110 bytes. SHA-256: `afbae61eedd609707c9c0617ed9f25328913e345147e19906e0555deefaedb88`.
+
+After installation, use one fresh, authorized TEST booking with saved-card consent and a verified deposit. Check an approved onsite extra, Job Complete, the exact final TEST amount, Production draft saving and paid link release. If the customer's saved card lacks reuse consent, use the visible customer recovery route. Do not reuse protected historical orders `5D99D336572661A00885`, `8D20B4EBFCD0BADC4DE5` or booking `D32FFC7458`.
+
+This release has not been installed on the user's server or exercised against real Stripe TEST credentials. The isolated tests are not evidence of a provider-connected payment. No real message, charge, invitation, booking or CRM change was made during development. Stripe remains TEST; no live activation or merge to main is part of this release.
+
+An optional legacy test, `tests/booking-lifecycle.test.php`, fails on the unchanged recovered baseline because its old `cro@sitesee.ai` recipient fixture is no longer permitted. The identical baseline failure was reproduced separately; recipient policy was not weakened. Current portal-service, closeout and preserved staff/browser suites cover the affected current workflow.
