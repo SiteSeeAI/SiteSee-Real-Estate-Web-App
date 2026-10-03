@@ -1,3 +1,11 @@
+## Approved direction — 2026 10 02 (Central)
+
+The user has directed us to finish the current build first, then build a replacement web application in Codex. Complete installation and a fresh TEST closeout/payment/Production delivery check before beginning that replacement. The current installer is prepared; server installation has not yet been reported.
+
+Carry the existing repository, working integrations, business rules, review evidence and automated tests into the Codex project. Reuse completed verification and focus new testing on changed behavior and the eventual migration. Preserve phone-number login, pricing, payment consent, booking ownership and recorded calendar/CRM history. Plan the replacement and migration after the current release is accepted; the replacement's architecture has not yet been selected. Stripe remains TEST during this completion phase.
+
+---
+
 ## Onsite closeout and Production prepared — 2026 10 03
 
 The active task is the user's onsite final-billing and Production request, beyond the previously completed email-change work. `install-re-job-closeout-20261002-r1.py` adds approved onsite services, a fixed final bill, photographer **Job Complete**, automatic TEST saved-card collection with recovery of the same payment, a **Production** queue and delivery-link editing, and payment-gated delivery in the customer portal. Phone login, original booking/deposit records, calendar/invitation history, CRM links and provider settings are preserved.
