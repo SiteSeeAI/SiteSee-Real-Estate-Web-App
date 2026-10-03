@@ -14,5 +14,5 @@ def build():
         if accepted!=variants:raise RuntimeError('Reviewed dependency or line-ending compatibility changed: '+source)
     raw=json.dumps(data,sort_keys=True,separators=(',',':')).encode()
     code=(ROOT/'tools/job-closeout-template.py').read_text().replace('__PAYLOAD__',base64.b64encode(zlib.compress(raw,9)).decode()).replace('__PAYLOAD_SHA__',hashlib.sha256(raw).hexdigest())
-    (ROOT/'tools/install-re-job-closeout-20261002-r1.py').write_text(code)
+    (ROOT/'tools/install-re-job-closeout-20261003-r1_1.py').write_text(code)
 if __name__=='__main__':build()

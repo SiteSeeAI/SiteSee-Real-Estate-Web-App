@@ -109,7 +109,7 @@ jobs:
           python3 tools/build-test-recipient.py
           git diff --exit-code -- tools/install-re-test-recipient-20261002-r1.py
           python3 tools/build-job-closeout.py
-          git diff --exit-code -- tools/install-re-job-closeout-20261002-r1.py
+          git diff --exit-code -- tools/install-re-job-closeout-20261003-r1_1.py
           python3 tools/build-portal-email.py
           git diff --exit-code -- tools/install-re-email-change-20261002-r1.py
           python3 tools/build-staff-review.py

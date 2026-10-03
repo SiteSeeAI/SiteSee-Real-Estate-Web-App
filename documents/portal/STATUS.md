@@ -1,3 +1,9 @@
+## Distinct corrected installer filename — 2026 10 03 (Central)
+
+The operator's second output still says `INSTALLER REVISION: job-closeout-20261002-r1` and shows the original diagnostics, so the executed file was the original package. Deliver the byte-identical, reviewed r1.1 correction as `install-re-job-closeout-20261003-r1_1.py` and run that exact filename. Its SHA-256 remains `b8abe2d55101176082e0497013a112650228cc96721ae9e40934f1687ba21378`. The distinct path avoids accidentally rerunning the old upload; no installer logic or application bytes change. Installation is still not confirmed.
+
+---
+
 ## Closeout installer preflight corrected — 2026 10 03 (Central)
 
 The operator ran the closeout r1 installer; it stopped before application writes on three dependency hashes. The package had omitted previously reviewed Windows/CRLF variants for the form configuration, pricing module and public staff route. Exact CRLF fixture copies reproduce the reported stop. Installer revision **job-closeout-20261002-r1.1** restores exact LF/CRLF recognition for all 32 dependencies while leaving all application payloads, dependency files, settings and data unchanged. The same installer filename and WHM command apply.

@@ -4,13 +4,13 @@ Release: `job-closeout-20261002-r1`. Recovered baseline: `4a658e8408dd1fee9d4282
 
 ## Installer compatibility correction — 2026 10 03
 
-Current installer revision: **job-closeout-20261002-r1.1**. Application release, installer filename and WHM command remain unchanged. The operator's r1 attempt stopped in preflight before any application write, rejecting `private/real-estate-form-config.php`, `private/real-estate-pricing.php` and `public/staff-bookings.php`. Earlier reviewed installers accepted exact LF and CRLF variants; the closeout manifest accidentally retained only LF hashes. Converting exactly these three synthetic fixture files to their previously reviewed CRLF bytes reproduces the reported stop exactly. The actual server bytes have not been read; any different content continues to stop safely with a checksum-only diagnostic.
+Current installer revision: **job-closeout-20261002-r1.1**. Application release is unchanged. Delivery now uses the distinct filename `install-re-job-closeout-20261003-r1_1.py` to prevent the original r1 upload from being selected again. The operator's r1 attempt stopped in preflight before any application write, rejecting `private/real-estate-form-config.php`, `private/real-estate-pricing.php` and `public/staff-bookings.php`. Earlier reviewed installers accepted exact LF and CRLF variants; the closeout manifest accidentally retained only LF hashes. Converting exactly these three synthetic fixture files to their previously reviewed CRLF bytes reproduces the reported stop exactly. The actual server bytes have not been read; any different content continues to stop safely with a checksum-only diagnostic.
 
 The correction restores exact LF/CRLF hash pairs for all 32 dependencies. It does not normalize, overwrite or change permissions on any dependency. All 12 application before/after payloads, deployment order, release manifests and application revision are byte-identical to r1. The original r1 journal remains recoverable only when reconstructing the entire original payload produces its pinned SHA-256; future application changes cannot inherit that allowance.
 
 Four focused review passes completed: (1) historical source/line-ending proof and exact reproduction of the three errors; (2) unchanged application/dependency bytes and strictly bounded compatibility; (3) backup, metadata, journal and interruption behavior; (4) all 31 installer tests and exact package/historical-builder reproduction. The independent `installer_compat_audit` agent confirmed these checks and additionally created journals with the actual original r1 installer, interrupted at all 18 application/manifest write or completion boundaries, then successfully resumed them with r1.1. Unknown content, mixed line endings, changed application plans and unknown journal payloads remain blocked. No application behavior or provider workflow changed, so the earlier application/browser evidence remains applicable.
 
-Replace the uploaded installer with this corrected file and rerun the same command below. The first output line must show `INSTALLER REVISION: job-closeout-20261002-r1.1`. No server installation or real TEST payment has yet been reported.
+Upload the distinctly named corrected installer and run the new command below. The first output line must show `INSTALLER REVISION: job-closeout-20261002-r1.1`. No server installation or real TEST payment has yet been reported.
 
 ## What happens
 
@@ -34,10 +34,10 @@ The `closeout_audit` agent reviewed the complete application and installer, inde
 
 ## Delivery
 
-Upload `tools/install-re-job-closeout-20261002-r1.py` to `/home/sitesee/`, then run in root WHM Terminal:
+Upload `tools/install-re-job-closeout-20261003-r1_1.py` to `/home/sitesee/`, then run in root WHM Terminal:
 
 ```sh
-python3 -B /home/sitesee/install-re-job-closeout-20261002-r1.py --deploy
+python3 -B /home/sitesee/install-re-job-closeout-20261003-r1_1.py --deploy
 ```
 
 The same command safely resumes an interruption or validates an already installed copy. The installer requires the reviewed current source; an unknown server edit is a blocker, not something to overwrite. Current r1.1 size: 174724 bytes. SHA-256: `b8abe2d55101176082e0497013a112650228cc96721ae9e40934f1687ba21378`.

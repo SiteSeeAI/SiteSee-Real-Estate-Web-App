@@ -4,7 +4,7 @@ ROOT=pathlib.Path(__file__).resolve().parents[1]
 import sys
 sys.path.insert(0,str(ROOT/'tools'))
 from portal_source_chain import before_email_update, before_recipient_update
-spec=importlib.util.spec_from_file_location('job_closeout',ROOT/'tools/install-re-job-closeout-20261002-r1.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+spec=importlib.util.spec_from_file_location('job_closeout',ROOT/'tools/install-re-job-closeout-20261003-r1_1.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 class InstallerTests(unittest.TestCase):
  def setUp(self):
   self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup);base=pathlib.Path(self.tmp.name)
