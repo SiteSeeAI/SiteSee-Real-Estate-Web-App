@@ -9,7 +9,9 @@ def build():
         if (ROOT/source).read_bytes()!=base64.b64decode(item['after']):raise RuntimeError('Reviewed source changed: '+source)
     for name,accepted in data['dependencies'].items():
         source=name.replace('private/','_private/',1) if name.startswith('private/') else name
-        if hashlib.sha256((ROOT/source).read_bytes()).hexdigest() not in accepted:raise RuntimeError('Reviewed dependency changed: '+source)
+        current=(ROOT/source).read_bytes()
+        variants=list(dict.fromkeys(hashlib.sha256(b).hexdigest() for b in [current,current.replace(b'\r\n',b'\n').replace(b'\n',b'\r\n')]))
+        if accepted!=variants:raise RuntimeError('Reviewed dependency or line-ending compatibility changed: '+source)
     raw=json.dumps(data,sort_keys=True,separators=(',',':')).encode()
     code=(ROOT/'tools/job-closeout-template.py').read_text().replace('__PAYLOAD__',base64.b64encode(zlib.compress(raw,9)).decode()).replace('__PAYLOAD_SHA__',hashlib.sha256(raw).hexdigest())
     (ROOT/'tools/install-re-job-closeout-20261002-r1.py').write_text(code)

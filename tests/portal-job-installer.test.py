@@ -154,6 +154,69 @@ class InstallerTests(unittest.TestCase):
   for name in self.obj['manifests']:
    d=json.loads((self.root/name).read_bytes());d['files']={n.removeprefix('private/'):m.sha(self.path(n).read_bytes()) for n,i in self.obj['files'].items() if i['before'] is not None};self.put('private/'+name,d)
   j,b,a=self.begin();self.apply(j,b,a);self.resume()
+ def test_reported_three_crlf_dependencies_install_without_rewriting(self):
+  names=['private/real-estate-form-config.php','private/real-estate-pricing.php','public/staff-bookings.php']
+  expected={}
+  for n in names:
+   p=self.path(n);data=p.read_bytes().replace(b'\n',b'\r\n');p.write_bytes(data)
+   expected[n]=(data,m.metadata(p))
+  j,b,a=self.begin();self.apply(j,b,a);self.resume()
+  for n,(data,meta) in expected.items():
+   self.assertEqual(self.path(n).read_bytes(),data);self.assertEqual(m.metadata(self.path(n)),meta)
+  self.assertTrue(set(names).isdisjoint(m.targets(self.obj)))
+ def test_all_reviewed_dependency_line_endings_are_preserved(self):
+  expected={}
+  for n in self.obj['dependencies']:
+   p=self.path(n);data=p.read_bytes().replace(b'\n',b'\r\n');p.write_bytes(data)
+   expected[n]=(data,m.metadata(p))
+  j,b,a=self.begin();self.apply(j,b,a);self.resume()
+  for n,(data,meta) in expected.items():
+   self.assertEqual(self.path(n).read_bytes(),data);self.assertEqual(m.metadata(self.path(n)),meta)
+  self.assertTrue(set(expected).isdisjoint(m.targets(self.obj)))
+ def test_real_edits_to_reported_dependencies_still_stop_without_writes(self):
+  names=['private/real-estate-form-config.php','private/real-estate-pricing.php','public/staff-bookings.php']
+  for n in names:self.path(n).write_bytes(self.path(n).read_bytes().replace(b'\n',b'\r\n')+b'// unreviewed private sentinel\r\n')
+  before={n:self.path(n).read_bytes() if self.path(n).exists() else None for n in m.targets(self.obj)|set(names)}
+  with self.assertRaises(m.Stop) as error:self.begin()
+  for n in names:
+   self.assertIn(n,str(error.exception));self.assertIn(m.sha(self.path(n).read_bytes()),str(error.exception))
+  self.assertNotIn('unreviewed private sentinel',str(error.exception))
+  for n,data in before.items():self.assertEqual(self.path(n).read_bytes() if self.path(n).exists() else None,data)
+  self.assertFalse((self.root/m.JOURNAL).exists())
+ def test_mixed_line_endings_are_not_a_blanket_normalization_bypass(self):
+  p=self.path('private/real-estate-form-config.php');data=p.read_bytes().replace(b'\n',b'\r\n',1);p.write_bytes(data)
+  with self.assertRaises(m.Stop):self.begin()
+  self.assertEqual(p.read_bytes(),data);self.assertFalse((self.root/m.JOURNAL).exists())
+ def original_payload(self):
+  old=dict(self.obj);old['dependencies']={n:accepted[:1] for n,accepted in self.obj['dependencies'].items()}
+  self.assertEqual(m.sha(json.dumps(old,sort_keys=True,separators=(',',':')).encode()),m.PREVIOUS_PAYLOAD_SHA)
+  return old
+ def test_original_r1_application_payload_is_identical(self):
+  old=self.original_payload()
+  for n,accepted in self.obj['dependencies'].items():
+   source=n.replace('private/','_private/',1) if n.startswith('private/') else n;data=(ROOT/source).read_bytes()
+   self.assertEqual(accepted,list(dict.fromkeys([m.sha(data),m.sha(data.replace(b'\n',b'\r\n'))])))
+   self.assertEqual(old['dependencies'][n],[m.sha(data)])
+  self.assertEqual(m.REVISION,'job-closeout-20261002-r1');self.assertEqual(m.INSTALLER_REVISION,'job-closeout-20261002-r1.1')
+ def test_prepared_r1_journal_resumes_after_partial_write(self):
+  self.original_payload();j,b,a=self.begin();j['payload_sha']=m.PREVIOUS_PAYLOAD_SHA
+  self.put('private/'+m.JOURNAL,j)
+  n=self.obj['order'][0];meta=j['entries'][n]['metadata'];m.atomic(self.path(n),a[n],meta['uid'],meta['gid'],meta['mode'])
+  self.resume()
+  for n,data in a.items():self.assertEqual(self.path(n).read_bytes(),data)
+  self.assertEqual(json.loads((self.root/m.JOURNAL).read_bytes())['state'],'installed')
+ def test_installed_r1_journal_validates_without_application_writes(self):
+  self.original_payload();j,b,a=self.begin();self.apply(j,b,a);j['payload_sha']=m.PREVIOUS_PAYLOAD_SHA
+  self.put('private/'+m.JOURNAL,j)
+  with patch.object(m,'atomic',side_effect=AssertionError('Installed r1 must not be rewritten')):self.resume()
+  for n,data in a.items():self.assertEqual(self.path(n).read_bytes(),data)
+ def test_old_journal_cannot_authorize_changed_payload_or_an_unknown_hash(self):
+  j,b,a=self.begin();j['payload_sha']=m.PREVIOUS_PAYLOAD_SHA
+  changed=json.loads(json.dumps(self.obj));changed['order']=list(reversed(changed['order']))
+  with self.assertRaises(m.Stop):m.preflight(self.root,self.public,self.uid,changed,j)
+  j['payload_sha']='0'*64
+  with self.assertRaises(m.Stop):m.preflight(self.root,self.public,self.uid,self.obj,j)
+  for n,data in b.items():self.assertEqual(self.path(n).read_bytes() if self.path(n).exists() else None,data)
  def test_stripe_and_dependency_blockers_report_together(self):
   self.put('private/booking-checkout.json',{'stage':'LIVE'});n=next(iter(self.obj['dependencies']));self.path(n).write_bytes(b'unknown')
   with self.assertRaises(m.Stop) as e:self.begin()

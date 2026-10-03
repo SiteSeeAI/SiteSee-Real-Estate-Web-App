@@ -2,6 +2,16 @@
 
 Release: `job-closeout-20261002-r1`. Recovered baseline: `4a658e8408dd1fee9d4282eb6f6d9d0928f7c359` on `feat/calendar-confirmation-20260925`. Work is isolated on `feat/job-closeout-production-20261002`; neither the existing feature branch nor main is changed. The first recoverable application checkpoint is `0237c4d7ea50ef2f2508fc1d56050352e391819e`. No saved closeout code was present in the recovered baseline; this release implements the user's pasted requirements.
 
+## Installer compatibility correction — 2026 10 03
+
+Current installer revision: **job-closeout-20261002-r1.1**. Application release, installer filename and WHM command remain unchanged. The operator's r1 attempt stopped in preflight before any application write, rejecting `private/real-estate-form-config.php`, `private/real-estate-pricing.php` and `public/staff-bookings.php`. Earlier reviewed installers accepted exact LF and CRLF variants; the closeout manifest accidentally retained only LF hashes. Converting exactly these three synthetic fixture files to their previously reviewed CRLF bytes reproduces the reported stop exactly. The actual server bytes have not been read; any different content continues to stop safely with a checksum-only diagnostic.
+
+The correction restores exact LF/CRLF hash pairs for all 32 dependencies. It does not normalize, overwrite or change permissions on any dependency. All 12 application before/after payloads, deployment order, release manifests and application revision are byte-identical to r1. The original r1 journal remains recoverable only when reconstructing the entire original payload produces its pinned SHA-256; future application changes cannot inherit that allowance.
+
+Four focused review passes completed: (1) historical source/line-ending proof and exact reproduction of the three errors; (2) unchanged application/dependency bytes and strictly bounded compatibility; (3) backup, metadata, journal and interruption behavior; (4) all 31 installer tests and exact package/historical-builder reproduction. The independent `installer_compat_audit` agent confirmed these checks and additionally created journals with the actual original r1 installer, interrupted at all 18 application/manifest write or completion boundaries, then successfully resumed them with r1.1. Unknown content, mixed line endings, changed application plans and unknown journal payloads remain blocked. No application behavior or provider workflow changed, so the earlier application/browser evidence remains applicable.
+
+Replace the uploaded installer with this corrected file and rerun the same command below. The first output line must show `INSTALLER REVISION: job-closeout-20261002-r1.1`. No server installation or real TEST payment has yet been reported.
+
 ## What happens
 
 1. Staff opens the existing booking, adds any onsite services and their prices. The customer approves that exact list in My Orders → Order Details → Job Status. Editing the list clears its approval.
@@ -30,7 +40,7 @@ Upload `tools/install-re-job-closeout-20261002-r1.py` to `/home/sitesee/`, then 
 python3 -B /home/sitesee/install-re-job-closeout-20261002-r1.py --deploy
 ```
 
-The same command safely resumes an interruption or validates an already installed copy. The installer requires the reviewed current source; an unknown server edit is a blocker, not something to overwrite. Size: 172110 bytes. SHA-256: `afbae61eedd609707c9c0617ed9f25328913e345147e19906e0555deefaedb88`.
+The same command safely resumes an interruption or validates an already installed copy. The installer requires the reviewed current source; an unknown server edit is a blocker, not something to overwrite. Current r1.1 size: 174724 bytes. SHA-256: `b8abe2d55101176082e0497013a112650228cc96721ae9e40934f1687ba21378`.
 
 After installation, use one fresh, authorized TEST booking with saved-card consent and a verified deposit. Check an approved onsite extra, Job Complete, the exact final TEST amount, Production draft saving and paid link release. If the customer's saved card lacks reuse consent, use the visible customer recovery route. Do not reuse protected historical orders `5D99D336572661A00885`, `8D20B4EBFCD0BADC4DE5` or booking `D32FFC7458`.
 

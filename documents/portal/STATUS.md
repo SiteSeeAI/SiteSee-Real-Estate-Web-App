@@ -1,3 +1,11 @@
+## Closeout installer preflight corrected — 2026 10 03 (Central)
+
+The operator ran the closeout r1 installer; it stopped before application writes on three dependency hashes. The package had omitted previously reviewed Windows/CRLF variants for the form configuration, pricing module and public staff route. Exact CRLF fixture copies reproduce the reported stop. Installer revision **job-closeout-20261002-r1.1** restores exact LF/CRLF recognition for all 32 dependencies while leaving all application payloads, dependency files, settings and data unchanged. The same installer filename and WHM command apply.
+
+All 31 installer tests and four focused review passes pass. The independent audit confirmed byte-identical application payloads and recovered actual r1 journals at all 18 interruption/completion boundaries. Unknown edits and unknown journals still stop safely. Full details and current checksum are in `JOB-CLOSEOUT-REVIEW.md`. Next: replace the uploaded installer, rerun `--deploy`, then inspect the operator's result. Installation is not yet confirmed; Stripe remains TEST. After successful installation, continue the fresh-job final-payment and Production delivery check before the planned Codex replacement application.
+
+---
+
 ## Approved direction — 2026 10 02 (Central)
 
 The user has directed us to finish the current build first, then build a replacement web application in Codex. Complete installation and a fresh TEST closeout/payment/Production delivery check before beginning that replacement. The current installer is prepared; server installation has not yet been reported.

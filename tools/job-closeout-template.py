@@ -4,6 +4,8 @@ import argparse, base64, fcntl, hashlib, json, os, pathlib, pwd, stat, subproces
 ROOT = pathlib.Path('/home/sitesee/.sitesee-real-estate')
 PUBLIC = pathlib.Path('/home/sitesee/public_html/re')
 REVISION = 'job-closeout-20261002-r1'
+INSTALLER_REVISION = 'job-closeout-20261002-r1.1'
+PREVIOUS_PAYLOAD_SHA = '81f968a096191b6221fbc12145bcb41249b9b1109260a1f18cba77f73716977e'
 JOURNAL = 'job-closeout-20261002-r1-install.json'
 PAYLOAD = '__PAYLOAD__'
 PAYLOAD_SHA = '__PAYLOAD_SHA__'
@@ -98,7 +100,9 @@ def preflight(root,public,uid,obj,j=None):
         need(isinstance(checkout,dict) and checkout.get('stage')=='TEST','Stripe must remain TEST.')
     except (ValueError,Stop,OSError) as e:errors.append(str(e) if not isinstance(e,ValueError) else 'Invalid checkout configuration.')
     for n,accepted in obj['dependencies'].items():
-        try:need(sha(read(target(n,root,public),uid)) in accepted,'Unreviewed closeout dependency preserved: '+n)
+        try:
+            observed=sha(read(target(n,root,public),uid))
+            need(observed in accepted,'Unreviewed closeout dependency preserved: '+n+' (SHA-256 '+observed+')')
         except (Stop,OSError) as e:errors.append(str(e))
     for name in ['test-recipient-20261002-r1-install.json','email-change-20261002-r1-install.json','staff-review-20261002-r1-install.json','portal-polish-20261002-r1-install.json','calendar-notice-20261002-r1-install.json','re-draft-recovery-install.json','re-business-workflow-install.json','portal-complete-install.json']:
         try:
@@ -134,7 +138,13 @@ def prepare(root,public,uid,gid,obj,before,after):
     need(read(root/JOURNAL,uid,True) is None,'Another update journal appeared; preserved.')
     atomic(root/JOURNAL,encode(j),uid,gid);return j
 def resume_plan(root,public,uid,obj,j):
-    need(isinstance(j,dict) and j.get('revision')==REVISION and j.get('payload_sha')==PAYLOAD_SHA and j.get('state') in ('prepared','installed'),'Different update journal preserved.')
+    # r1.1 only adds exact dependency line-ending variants. Prove the entire old
+    # payload before accepting its journal; a future application change cannot
+    # accidentally inherit this compatibility allowance.
+    previous=dict(obj);previous['dependencies']={n:accepted[:1] for n,accepted in obj['dependencies'].items()}
+    compatible={PAYLOAD_SHA}
+    if sha(json.dumps(previous,sort_keys=True,separators=(',',':')).encode())==PREVIOUS_PAYLOAD_SHA:compatible.add(PREVIOUS_PAYLOAD_SHA)
+    need(isinstance(j,dict) and j.get('revision')==REVISION and j.get('payload_sha') in compatible and j.get('state') in ('prepared','installed'),'Different update journal preserved.')
     name=j.get('backup','');need(isinstance(name,str) and name.startswith('job-closeout-') and pathlib.Path(name).name==name,'Backup path differs.')
     folder=root/'deployment-backups'/name;safe(folder)
     need(set(j.get('entries',{}))==targets(obj),'Journal paths differ.')
@@ -199,7 +209,7 @@ def main():
         try:fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
         except BlockingIOError:raise Stop('Another deployment is running. Rerun this same command when it finishes.')
         booking_lock=appointment_lock(ROOT,uid,gid)
-        print('INSTALLER REVISION: '+REVISION,flush=True);obj=load()
+        print('INSTALLER REVISION: '+INSTALLER_REVISION,flush=True);obj=load()
         raw=read(ROOT/JOURNAL,uid,True);j=json.loads(raw) if raw else None
         RESUMING=isinstance(j,dict) and j.get('state')=='prepared'
         before,after=preflight(ROOT,PUBLIC,uid,obj,j)
