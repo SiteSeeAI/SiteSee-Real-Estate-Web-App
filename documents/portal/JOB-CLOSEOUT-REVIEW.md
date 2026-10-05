@@ -1,4 +1,4 @@
-# Onsite closeout and Production review — 2026 10 03
+# Onsite closeout and Production review — 2026 10 05
 
 Release: `job-closeout-20261002-r1`. Recovered baseline: `4a658e8408dd1fee9d4282eb6f6d9d0928f7c359` on `feat/calendar-confirmation-20260925`. Work is isolated on `feat/job-closeout-production-20261002`; neither the existing feature branch nor main is changed. The first recoverable application checkpoint is `0237c4d7ea50ef2f2508fc1d56050352e391819e`. No saved closeout code was present in the recovered baseline; this release implements the user's pasted requirements.
 
@@ -10,7 +10,7 @@ The correction restores exact LF/CRLF hash pairs for all 32 dependencies. It doe
 
 Four focused review passes completed: (1) historical source/line-ending proof and exact reproduction of the three errors; (2) unchanged application/dependency bytes and strictly bounded compatibility; (3) backup, metadata, journal and interruption behavior; (4) all 31 installer tests and exact package/historical-builder reproduction. The independent `installer_compat_audit` agent confirmed these checks and additionally created journals with the actual original r1 installer, interrupted at all 18 application/manifest write or completion boundaries, then successfully resumed them with r1.1. Unknown content, mixed line endings, changed application plans and unknown journal payloads remain blocked. No application behavior or provider workflow changed, so the earlier application/browser evidence remains applicable.
 
-Upload the distinctly named corrected installer and run the new command below. The first output line must show `INSTALLER REVISION: job-closeout-20261002-r1.1`. No server installation or real TEST payment has yet been reported.
+On 2026 10 05, the operator reported `INSTALLER REVISION: job-closeout-20261002-r1.1` and successful installation of Onsite Job Complete, final TEST collection and Production delivery. The reported backup is `/home/sitesee/.sitesee-real-estate/deployment-backups/job-closeout-1gte4ywn`. The installer reports preservation of existing records and no database, provider, message or configuration changes during deployment. Stripe remains TEST. This confirms the operator-reported installation checkpoint; actual provider-connected collection and delivery are still awaiting acceptance.
 
 ## What happens
 
@@ -44,7 +44,7 @@ The same command safely resumes an interruption or validates an already installe
 
 After installation, use one fresh, authorized TEST booking with saved-card consent and a verified deposit. Check an approved onsite extra, Job Complete, the exact final TEST amount, Production draft saving and paid link release. If the customer's saved card lacks reuse consent, use the visible customer recovery route. Do not reuse protected historical orders `5D99D336572661A00885`, `8D20B4EBFCD0BADC4DE5` or booking `D32FFC7458`.
 
-This release has not been installed on the user's server or exercised against real Stripe TEST credentials. The isolated tests are not evidence of a provider-connected payment. No real message, charge, invitation, booking or CRM change was made during development. Stripe remains TEST; no live activation or merge to main is part of this release.
+The operator has reported successful server installation. No provider-connected Stripe TEST payment or installed Production delivery result has yet been reported. The isolated tests are not evidence of a provider-connected payment. No real message, charge, invitation, booking or CRM change was made during development. Stripe remains TEST; no live activation or merge to main is part of this release.
 
 The local Customer Portal validation step passes all 13 primitive suites, 226 installer/source assertions and all historical builder checks. Calendar Notice CI passes on `a8d64e4283fb17e03bdfa8cbe8ad8ecfeefa8764` ([run 37081255507](https://github.com/SiteSeeAI/SiteSee-Real-Estate/actions/runs/37081255507)). The first remote closeout browser run completed all behavior assertions but flagged a PHP JIT startup warning from the CI runner. Its isolated server now disables JIT explicitly, matching the existing browser suites; application and installer bytes are unchanged.
 

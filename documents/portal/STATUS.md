@@ -1,3 +1,9 @@
+## Closeout installed; provider-connected acceptance pending — 2026 10 05 (Central)
+
+The operator reported successful installation of `job-closeout-20261002-r1.1`: "INSTALLED: Onsite Job Complete, final TEST collection and Production delivery." The installer reports original bookings, deposits, phone login, calendar and CRM history preserved, with no database changes, provider calls, messages or configuration changes during deployment. Stripe remains TEST. Server backup: `/home/sitesee/.sitesee-real-estate/deployment-backups/job-closeout-1gte4ywn`.
+
+This is operator-provided installation evidence; the installed payment and delivery workflow has not yet been observed. Next, use one fresh authorized TEST booking with a verified deposit, saved-card consent and confirmed appointment: add and approve one onsite service, press **Job Complete**, verify Production and the exact remaining TEST amount, save private Production drafts, then mark **Production Complete** and confirm the agent sees $0 remaining, the receipt and deliverable links. Report the actual payment status if collection needs recovery. Preserve all protected historical orders. Finish this acceptance step before beginning the replacement web app. No live activation or merge to main is authorized.
+
 ## Distinct corrected installer filename — 2026 10 03 (Central)
 
 The operator's second output still says `INSTALLER REVISION: job-closeout-20261002-r1` and shows the original diagnostics, so the executed file was the original package. Deliver the byte-identical, reviewed r1.1 correction as `install-re-job-closeout-20261003-r1_1.py` and run that exact filename. Its SHA-256 remains `b8abe2d55101176082e0497013a112650228cc96721ae9e40934f1687ba21378`. The distinct path avoids accidentally rerunning the old upload; no installer logic or application bytes change. Installation is still not confirmed.
