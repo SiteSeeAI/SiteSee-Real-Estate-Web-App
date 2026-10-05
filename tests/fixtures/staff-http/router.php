@@ -13,4 +13,5 @@ if(in_array($path,['/staff-bookings.php','/staff-before.php'],true)){
     require ($path==='/staff-before.php'?getenv('STAFF_TEST_BEFORE'):$root).'/server/booking-staff.php';return true;
 }
 if(preg_match('~^/assets/fonts/(?:Inter-Regular|Poppins-Regular|Poppins-SemiBold)\.ttf$~D',(string)$path))return false;
+if($path==='/portal-assets/onsite-services.js')return false;
 http_response_code(404);return true;

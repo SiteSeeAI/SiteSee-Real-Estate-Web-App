@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/booking-job-catalog.php';
 
 /** Separate onsite and production ledger. Original bookings and payment history are immutable. */
 function booking_job_schema(PDO $db): void
@@ -71,28 +72,41 @@ function booking_job_approve_extras(PDO $db,string $account,string $reference,st
 }
 function booking_job_bill(PDO $db,string $reference): array
 {
-    $row=booking_job_guard($db,$reference);$draft=booking_job_extras($db,$reference);$lines=json_decode($draft['lines_json'],true,16,JSON_THROW_ON_ERROR);
-    $paid=portal_balance_paid($db,$reference);$total=(int)$row['approved_cents']+(int)$row['rush_fee_cents']+array_sum(array_column($lines,'cents'));
+    return booking_job_bill_from(booking_job_guard($db,$reference),booking_job_extras($db,$reference),portal_balance_paid($db,$reference));
+}
+function booking_job_bill_from(array $row,array $draft,int $paid): array
+{
+    $reference=$row['reference'];$lines=json_decode($draft['lines_json'],true,16,JSON_THROW_ON_ERROR);
+    $total=(int)$row['approved_cents']+(int)$row['rush_fee_cents']+array_sum(array_column($lines,'cents'));
     $bill=['reference'=>$reference,'approved_cents'=>(int)$row['approved_cents'],'rush_cents'=>(int)$row['rush_fee_cents'],
         'deposit_cents'=>(int)$row['deposit_cents'],'prior_balance_cents'=>$paid,'extras'=>$lines,'extras_scope'=>$draft['scope'],
         'extras_approved_by'=>$draft['approved_by'],'extras_approved_at'=>$draft['approved_at'],'total_cents'=>$total,
         'due_cents'=>$total-(int)$row['deposit_cents']-$paid,'approved_at'=>$row['approved_at']];
     if($bill['due_cents']<0||$bill['due_cents']>99999999||($bill['due_cents']>0&&$bill['due_cents']<50))throw new InvalidArgumentException('This balance needs manual billing review.');
+    $bill+=booking_job_commission($lines);
     $bill['scope']=hash('sha256',json_encode($bill,JSON_THROW_ON_ERROR));return $bill;
 }
 /** This transaction blocks legacy balance checkout and appointment changes before any provider call. */
-function booking_job_complete(PDO $db,string $reference,string $scope,bool $agreed,?callable $api=null): array
+function booking_job_complete(PDO $db,string $reference,string $scope,bool $agreed,?callable $api=null,?array $onsite=null): array
 {
     if(!$agreed)throw new InvalidArgumentException('Confirm the onsite work and displayed final bill.');
     booking_job_schema($db);portal_billing_schema($db);$db->exec('BEGIN IMMEDIATE');
     try{
         $job=booking_job_get($db,$reference);
         if($job){if(!hash_equals($job['scope'],$scope))throw new InvalidArgumentException('This job is already closed. Review its final bill.');$db->exec('COMMIT');return booking_job_collect($db,$reference,$api);}
-        $bill=booking_job_bill($db,$reference);if(!hash_equals($bill['scope'],$scope))throw new InvalidArgumentException('The final amount changed. Refresh and review it.');
-        if($bill['extras']&&(!$bill['extras_approved_at']||!$bill['extras_approved_by']||!portal_owns_order($db,$bill['extras_approved_by'],$reference)))throw new InvalidArgumentException('The customer must approve the additional services in My Orders first.');
+        $preview=$onsite===null?null:booking_job_onsite_preview($db,$reference,$onsite['items'],$onsite['draft_scope']);
+        $bill=$preview===null?booking_job_bill($db,$reference):$preview['bill'];
+        if(!hash_equals($bill['scope'],$scope))throw new InvalidArgumentException('The final amount changed. Refresh and review it.');
+        if($onsite===null&&$bill['extras']&&(!$bill['extras_approved_at']||!$bill['extras_approved_by']||!portal_owns_order($db,$bill['extras_approved_by'],$reference)))throw new InvalidArgumentException('The customer must approve the additional services in My Orders first.');
         $latest=portal_billing_latest($db,$reference);
         if($latest&&!$latest['paid_at']&&in_array($latest['state'],['open','creating'],true))throw new InvalidArgumentException('An existing customer balance payment is open. Resolve or verify its expiry before closing the job.');
         $row=booking_get($db,$reference);
+        if($preview!==null){
+            booking_job_write_draft($db,$preview['draft']);
+            $bill['onsite_authorization']=['method'=>'staff_attested_verbal','photographer'=>$row['photographer'],
+                'recorded_at'=>gmdate('c'),'extras_scope'=>$bill['extras_scope'],
+                'statement'=>'I confirm the onsite work is finished, the agent verbally approved the additional services and displayed fees, and the final amount shown is correct.'];
+        }
         $db->prepare('INSERT INTO booking_jobs(reference,scope,bill_json,amount,customer,completed_at) VALUES (?,?,?,?,?,?)')->execute([$reference,$scope,json_encode($bill,JSON_THROW_ON_ERROR),$bill['due_cents'],$row['stripe_customer_id'],gmdate('c')]);
         $db->exec('COMMIT');
     }catch(Throwable $e){if($db->inTransaction())$db->rollBack();else {try{$db->exec('ROLLBACK');}catch(Throwable){}}throw $e;}
@@ -253,7 +267,8 @@ function booking_job_production(PDO $db,string $reference,int $revision,array $i
         $job=booking_job_get($db,$reference);if(!$job||$revision!==(int)$job['production_revision'])throw new InvalidArgumentException('Production changed. Refresh before saving.');
         if($complete){
             if(!$agreed||!isset($links['photos']))throw new InvalidArgumentException('Add the photo download link and confirm all ordered deliverables are ready.');
-            $row=booking_get($db,$reference);$keys=array_column(booking_request($row)['quote']['lines']??[],'key');
+            $row=booking_get($db,$reference);$bill=json_decode($job['bill_json'],true,16,JSON_THROW_ON_ERROR);
+            $keys=array_merge(array_column(booking_request($row)['quote']['lines']??[],'key'),array_column($bill['extras']??[],'service'));
             foreach(['website','video','platform','floor'] as $key)if(in_array($key,$keys,true)&&!isset($links[$key]))throw new InvalidArgumentException('Add the ordered '.booking_job_labels()[$key].' link.');
         }
         $json=json_encode($links,JSON_THROW_ON_ERROR);

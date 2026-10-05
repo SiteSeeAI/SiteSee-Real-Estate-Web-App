@@ -10,6 +10,14 @@ if($command==='prepare'){
     echo 'base64:'.base64_encode(password_hash('isolated-staff-password',PASSWORD_DEFAULT));exit;
 }
 if($command==='recovery-ready'){$db->prepare('UPDATE booking_jobs SET confirm_at=? WHERE reference=?')->execute([time()-31,$ref]);exit;}
+if($command==='commercial-preview'){
+    // Separate synthetic scenario after the residential preservation assertions.
+    $db->prepare('DELETE FROM booking_jobs WHERE reference=?')->execute([$ref]);
+    $db->prepare('DELETE FROM booking_job_extras WHERE reference=?')->execute([$ref]);
+    $row=booking_get($db,$ref);$request=booking_request($row);
+    $request['quote']=real_estate_commercial_quote(['category'=>'small','selected'=>[],'licenseType'=>'unlimited']);
+    $db->prepare("UPDATE bookings SET market='commercial',request_json=? WHERE reference=?")->execute([json_encode($request,JSON_THROW_ON_ERROR),$ref]);exit;
+}
 if(in_array($command,['paid','refund'],true)){
     $p=$root.'/data/job-provider.json';$s=json_decode(file_get_contents($p),true);$s['paid']=true;$s['refunded']=$command==='refund'?100:0;file_put_contents($p,json_encode($s));exit;
 }

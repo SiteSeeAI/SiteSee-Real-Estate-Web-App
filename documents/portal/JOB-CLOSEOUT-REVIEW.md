@@ -1,5 +1,7 @@
 # Onsite closeout and Production review — 2026 10 05
 
+The subsequent `onsite-services-20261005-r1` revision replaces manual add-on entry with catalog pricing and permits vendor-attested verbal approval at Job Complete. See `ONSITE-SERVICES-REVIEW.md`; the portal-approval requirement below describes the original installed closeout release.
+
 Release: `job-closeout-20261002-r1`. Recovered baseline: `4a658e8408dd1fee9d4282eb6f6d9d0928f7c359` on `feat/calendar-confirmation-20260925`. Work is isolated on `feat/job-closeout-production-20261002`; neither the existing feature branch nor main is changed. The first recoverable application checkpoint is `0237c4d7ea50ef2f2508fc1d56050352e391819e`. No saved closeout code was present in the recovered baseline; this release implements the user's pasted requirements.
 
 ## Installer compatibility correction — 2026 10 03

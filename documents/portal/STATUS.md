@@ -1,3 +1,9 @@
+## Onsite service picker and commission revision — 2026 10 05 (Central)
+
+The user requested the full ordering service catalog in repeatable onsite pick lists, unique added service choices, automatic Matterport area/video duration/quantity prices, an additional-service total, 18% photographer commission and vendor-attested verbal approval followed by Job Complete. The user explicitly excludes subscription and licensing fees from commission; hosting fees are excluded as well. Original/preordered service types and package inclusions also earn no onsite commission.
+
+Implemented in `onsite-services-20261005-r1`, upgrading the confirmed closeout installation without changing original bookings or payment/provider logic. See `ONSITE-SERVICES-REVIEW.md` for the reviewed scope, checks, independent audit and consolidated installer. Application/catalog, installer and both residential/commercial closeout browser checks pass, as do existing staff browser regressions. Mobile visual review passed; final CI verification is pending. This update has not yet been installed on the user's server. Stripe remains TEST, and no main merge or live activation is authorized.
+
 ## Closeout installed; provider-connected acceptance pending — 2026 10 05 (Central)
 
 The operator reported successful installation of `job-closeout-20261002-r1.1`: "INSTALLED: Onsite Job Complete, final TEST collection and Production delivery." The installer reports original bookings, deposits, phone login, calendar and CRM history preserved, with no database changes, provider calls, messages or configuration changes during deployment. Stripe remains TEST. Server backup: `/home/sitesee/.sitesee-real-estate/deployment-backups/job-closeout-1gte4ywn`.

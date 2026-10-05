@@ -9,7 +9,7 @@ function portal_job_page(PDO $db,array $account,string $reference,string $notice
         $body.='<section class="panel"><h2>Onsite Services</h2>';
         if(!$lines)$body.='<p>No additional services are awaiting approval. SiteSee will collect the approved remaining balance when the onsite work is complete.</p>';
         else{
-            $body.='<ul>';foreach($lines as $line)$body.='<li>'.$e($line['label']).' · '.$money($line['cents']).'</li>';$body.='</ul><h3>Additional Services Total · '.$money(array_sum(array_column($lines,'cents'))).'</h3>';
+            $body.='<ul>';foreach($lines as $line)$body.='<li>'.$e($line['label']).' · '.$money($line['cents']).(!empty($line['monthly_cents'])?' + '.$money($line['monthly_cents']).'/month separately after publication':'').'</li>';$body.='</ul><h3>Additional Services Total · '.$money(array_sum(array_column($lines,'cents'))).'</h3>';
             if($draft['approved_at'])$body.='<p class="status">Your approval is recorded. No additional payment has been collected yet.</p>';
             else $body.=portal_service_form($reference,'job_approve','<input type="hidden" name="scope" value="'.$e($draft['scope']).'"><label class="card-consent"><input type="checkbox" name="agreed" value="yes" required><span>I approve these additional services and authorize their displayed total to be added to my final TEST payment when the onsite work is complete.</span></label>','Approve Additional Services');
         }
@@ -19,6 +19,7 @@ function portal_job_page(PDO $db,array $account,string $reference,string $notice
     try{$job=booking_job_refresh($db,$reference);$verified=$job['payment_state']==='paid';if($verified&&$job['production_complete_at'])$links=json_decode($job['published_json'],true,16,JSON_THROW_ON_ERROR);}catch(Throwable){$job=booking_job_get($db,$reference);}
     $body.='<section class="panel"><h2>'.($job['production_complete_at']?'Production Complete':'Production').'</h2><p>The onsite work is complete.</p><dl><dt>Approved Job Amount</dt><dd>'.$money($bill['approved_cents']).'</dd><dt>Approved Rush Fee</dt><dd>'.$money($bill['rush_cents']).'</dd>';
     foreach($bill['extras'] as $line)$body.='<dt>'.$e($line['label']).'</dt><dd>'.$money($line['cents']).'</dd>';
+    if(!empty($bill['additional_monthly_cents']))$body.='<dt>Additional Platform Billing</dt><dd>'.$money($bill['additional_monthly_cents']).'/month separately after publication</dd>';
     $body.='<dt>Final Job Total</dt><dd>'.$money($bill['total_cents']).'</dd><dt>Deposit And Earlier Payments</dt><dd>'.$money($bill['deposit_cents']+$bill['prior_balance_cents']).'</dd><dt>Final Payment</dt><dd>'.$money((int)$job['amount']).'</dd><dt>Remaining</dt><dd>'.($verified?'$0.00':($job['paid_at']?'Under Billing Review':$money((int)$job['amount']))).'</dd></dl><p class="status">'.($verified?'Payment Verified':$e(ucwords(str_replace('_',' ',$job['payment_state'])))).'</p>';
     if($verified&&$job['receipt_url'])$body.='<p><a target="_blank" rel="noreferrer" href="'.$e($job['receipt_url']).'">View Final Payment Receipt</a></p>';
     if(!$verified&&$job['payment_intent']&&$job['payment_state']==='needs_action'){

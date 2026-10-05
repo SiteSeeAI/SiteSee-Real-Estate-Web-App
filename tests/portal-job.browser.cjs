@@ -41,15 +41,41 @@ const reserve=()=>new Promise(resolve=>{const s=net.createServer();s.listen(0,'1
   await go(staff,'/staff-production.php');assert.equal(await staff.getByRole('button',{name:'Sign In',exact:true}).count(),1);
   assert.equal((await post(staff,'/staff-production.php',{action:'job_production_save',reference:ref,revision:'0'})).status(),403);
   await staff.getByLabel('Password',{exact:true}).fill('isolated-staff-password');await staff.getByRole('button',{name:'Sign In',exact:true}).click();await staff.getByRole('heading',{name:'Production Queue',exact:true}).waitFor();
-  const login=async(p,phone)=>{fixture('portal-http','reset-sms-rate');await go(p,'/account.php');await p.getByLabel('Cell Phone Number',{exact:true}).fill(phone);await p.getByLabel('Text me a one-time sign-in code.',{exact:false}).check();await p.getByRole('button',{name:'Text My Sign In Code'}).click();await p.getByRole('heading',{name:'Enter Your Text Code'}).waitFor();const code=Object.values(JSON.parse(fs.readFileSync(path.join(root,'data/sms-fixture.json')))).at(-1).code;await p.getByLabel('Sign In Code',{exact:true}).fill(code);await p.getByRole('button',{name:'Sign In',exact:true}).click();await p.getByRole('heading',{name:'My Orders',exact:true}).waitFor();};
+  const login=async(p,phone)=>{fixture('portal-http','reset-sms-rate');await go(p,'/account.php');await p.getByLabel('Cell Phone Number',{exact:true}).fill(phone);await p.getByLabel('Text me a one-time sign-in code.',{exact:false}).check();await p.getByRole('button',{name:'Text My Sign In Code'}).click();await p.getByRole('heading',{name:'Enter Your Text Code'}).waitFor();const code=Object.values(JSON.parse(fs.readFileSync(path.join(root,'data/sms-fixture.json')))).at(-1).code;await p.getByLabel('Sign In Code',{exact:true}).fill(code);await p.getByRole('button',{name:'Sign In',exact:true}).click();await p.getByRole('heading',{name:'My Orders',exact:true}).waitFor().catch(async e=>{throw Error(e.message+' Page: '+await p.locator('body').innerText()+' PHP: '+logs);});};
   await login(customer,'3125550102');await login(foreign,'3125550101');
   const denied=await go(foreign,jobUrl);assert.equal(denied.status(),400);const denial=await denied.text();const absent=await go(foreign,'/account.php?view=job&reference=FFFFFFFFFF');assert.equal(absent.status(),400);assert.equal(await absent.text(),denial,'Foreign and missing jobs use the same generic response');
-  await go(staff,staffUrl);await staff.getByText('Add Additional Services',{exact:true}).click();await staff.getByLabel('Service *',{exact:true}).fill('Onsite aerial photographs');await staff.getByLabel('Total For This Service ($) *',{exact:true}).fill('84.00');await staff.getByRole('button',{name:'Add Service',exact:true}).click();await staff.getByText('Customer approval needed.',{exact:true}).waitFor();assert.equal(await staff.getByRole('button',{name:'Job Complete',exact:true}).count(),0);await layout(staff,'onsite');
-  await go(customer,jobUrl);assert.match(await customer.locator('main').innerText(),/Onsite aerial photographs/);await customer.locator('input[name=agreed]').check();await customer.getByRole('button',{name:'Approve Additional Services',exact:true}).click();await customer.getByText('Your approval is recorded. No additional payment has been collected yet.',{exact:true}).waitFor();assert(!fs.existsSync(path.join(root,'data/job-provider.json')),'Approval never charges');
-  await go(staff,staffUrl);const completeForm=staff.locator('form').filter({has:staff.locator('input[name=action][value=job_complete]')});const scope=await completeForm.locator('input[name=scope]').inputValue();
-  assert.equal((await post(staff,'/staff-bookings.php',{action:'job_complete',reference:ref,scope,agreed:'yes'},{Origin:'https://untrusted.example'})).status(),403);
-  await completeForm.locator('input[name=agreed]').check();await completeForm.getByRole('button',{name:'Job Complete',exact:true}).click();await staff.getByText('Customer Action Needed',{exact:true}).waitFor();await layout(staff,'payment-recovery');
-  await post(staff,'/staff-bookings.php',{action:'job_complete',reference:ref,scope,agreed:'yes'});await staff.getByRole('button',{name:'Check / Recover Final Payment',exact:true}).click();
+  await go(staff,staffUrl);
+  const verified=()=>staff.getByText('Fees verified. Confirm the displayed total with the agent before Job Complete.',{exact:true}).waitFor();
+  const onsite=staff.locator('#job-onsite');await verified();
+  const keys=['photo','platform','website','drone','zillow','video','floor','twilight','mp'];
+  assert.deepEqual(await staff.getByLabel('Service 1',{exact:true}).locator('option').evaluateAll(options=>options.map(o=>o.value).filter(Boolean)),keys,'Full residential catalog includes preordered/package services');
+  assert(await staff.locator('#job-add-item').isHidden());
+  for(let i=0;i<keys.length;i++){
+   if(i)await staff.getByRole('button',{name:'Add Additional Service Item',exact:true}).click();
+   const select=staff.getByLabel('Service '+(i+1),{exact:true});
+   const remaining=await select.locator('option').evaluateAll(options=>options.map(o=>o.value).filter(Boolean));
+   assert.deepEqual(remaining,keys.slice(i),'New pick list excludes every previously selected key');
+   await select.selectOption(keys[i]);
+   if(keys[i]==='photo')await staff.getByLabel('Photography Coverage (SQF)',{exact:true}).fill('1200');
+   if(keys[i]==='mp')await staff.getByLabel('Matterport Coverage (SQF)',{exact:true}).fill('2500');
+  }
+  await verified();assert(await staff.locator('#job-add-item').isHidden(),'No add button when all services are chosen');
+  while(await onsite.getByRole('button',{name:'Remove Service',exact:true}).count()>1)await onsite.getByRole('button',{name:'Remove Service',exact:true}).last().click();
+  await staff.getByLabel('Service 1',{exact:true}).selectOption('drone');
+  await staff.getByRole('button',{name:'Add Additional Service Item',exact:true}).click();await staff.getByLabel('Service 2',{exact:true}).selectOption('mp');await staff.getByLabel('Matterport Coverage (SQF)',{exact:true}).fill('2500');
+  await staff.getByRole('button',{name:'Add Additional Service Item',exact:true}).click();await staff.getByLabel('Service 3',{exact:true}).selectOption('video');await staff.getByLabel('Number Of Minutes',{exact:true}).fill('2');
+  await verified();assert.equal(await staff.locator('#job-extra-total').innerText(),'$557.50');assert.equal(await staff.locator('#job-commission').inputValue(),'$21.60','Only new drone earns commission; original MP and package video excluded');
+  await onsite.locator('input[name=agreed]').check();await staff.getByLabel('Number Of Minutes',{exact:true}).fill('3');assert(!(await onsite.locator('input[name=agreed]').isChecked()),'Editing fees clears verbal attestation');await verified();
+  await staff.getByLabel('Number Of Minutes',{exact:true}).fill('2');await verified();await layout(staff,'onsite');
+  if(process.env.PORTAL_SCREENSHOTS){await staff.setViewportSize({width:390,height:2200});await onsite.screenshot({path:path.join(process.env.PORTAL_SCREENSHOTS,'onsite-picker-mobile.png')});}
+  assert(!fs.existsSync(path.join(root,'data/job-provider.json')),'Preview never charges');
+  await staff.getByRole('button',{name:'Save Additional Services',exact:true}).click();await staff.getByText('Additional services saved. Confirm the agent’s verbal approval and complete the job when the onsite work is finished.',{exact:true}).waitFor({timeout:5000}).catch(async e=>{throw Error(e.message+' Staff: '+await staff.locator('main').innerText()+' PHP: '+logs);});await verified();
+  await go(customer,jobUrl);assert.match(await customer.locator('main').innerText(),/Drone \/ Aerial Photos/);assert(!fs.existsSync(path.join(root,'data/job-provider.json')),'Saving never charges; no agent portal approval submitted');
+  const scope=await onsite.locator('input[name=scope]').inputValue(),items=await onsite.locator('input[name=items]').inputValue(),draft_scope=await onsite.locator('input[name=draft_scope]').inputValue();
+  const closeout={action:'job_complete',reference:ref,scope,items,draft_scope,agreed:'yes'};
+  assert.equal((await post(staff,'/staff-bookings.php',closeout,{Origin:'https://untrusted.example'})).status(),403);
+  await onsite.locator('input[name=agreed]').check();await onsite.getByRole('button',{name:'Job Complete',exact:true}).click();await staff.getByText('Customer Action Needed',{exact:true}).waitFor();await layout(staff,'payment-recovery');
+  await post(staff,'/staff-bookings.php',closeout);await staff.getByRole('button',{name:'Check / Recover Final Payment',exact:true}).click();
   let provider=JSON.parse(fs.readFileSync(path.join(root,'data/job-provider.json')));assert.equal(provider.creates,1);assert.equal(provider.confirms,1);
   fixture('job-http','recovery-ready');await go(customer,jobUrl);assert.match(await customer.locator('main').innerText(),/Production/);await customer.locator('#job-payment input[name=agreed]').check();await customer.getByRole('button',{name:'Continue To Secure Payment',exact:true}).click();await customer.getByRole('button',{name:'Pay Final Test Balance',exact:true}).waitFor();assert.equal(await customer.evaluate(()=>window.fixtureSecret),'synthetic_http_job_secret');
   await customer.getByRole('button',{name:'Pay Final Test Balance',exact:true}).click();await customer.getByText('Synthetic bank verification required',{exact:true}).waitFor();assert.equal(await customer.evaluate(()=>window.fixtureReturn),origin+jobUrl);await layout(customer,'customer-payment');
@@ -61,7 +87,25 @@ const reserve=()=>new Promise(resolve=>{const s=net.createServer();s.listen(0,'1
   fixture('job-http','refund');await go(customer,jobUrl);assert.equal(await customer.getByRole('link',{name:'Photo Download',exact:true}).count(),0);assert.match(await customer.locator('main').innerText(),/Under Billing Review/);
   await go(customer,'/account.php?view=billing&reference='+ref);assert.equal(await customer.getByRole('link',{name:'View Receipt',exact:true}).count(),2,'Deposit and final receipts stay accessible during review');
   assert.equal(fixture('job-http','snapshot'),baseline,'Original booking, calendar, CRM and mail records unchanged');provider=JSON.parse(fs.readFileSync(path.join(root,'data/job-provider.json')));assert.equal(provider.creates,1);assert.equal(provider.confirms,1);
+  fixture('job-http','commercial-preview');await go(staff,staffUrl);await verified();
+  const commercialKeys=['photo','platform','mp','views360','drone','video','floor','website'];
+  assert.deepEqual(await staff.getByLabel('Service 1',{exact:true}).locator('option').evaluateAll(options=>options.map(o=>o.value).filter(Boolean)),commercialKeys);
+  for(let i=0;i<commercialKeys.length;i++){
+   if(i)await staff.getByRole('button',{name:'Add Additional Service Item',exact:true}).click();
+   await staff.getByLabel('Service '+(i+1),{exact:true}).selectOption(commercialKeys[i]);
+   if(commercialKeys[i]==='mp'){
+    await staff.getByLabel('Matterport Coverage (SQF)',{exact:true}).fill('2000');await staff.getByLabel('Matterport Hosting (Months)',{exact:true}).fill('18');await staff.getByLabel('Hosting Payment',{exact:true}).selectOption('yes');
+   }
+   if(commercialKeys[i]==='video')await staff.getByLabel('Number Of Minutes',{exact:true}).fill('2');
+  }
+  await verified();assert(await staff.locator('#job-add-item').isHidden());
+  const droneRow=onsite.locator('fieldset').filter({has:staff.getByLabel('Number Of Aerial Images',{exact:true})});
+  await droneRow.getByLabel('Media License',{exact:true}).selectOption('term');await droneRow.getByLabel('License Term (Months)',{exact:true}).fill('');await droneRow.getByLabel('Media License',{exact:true}).selectOption('unlimited');await verified();
+  assert(await droneRow.getByLabel('License Term (Months)',{exact:true}).isHidden());assert(await droneRow.getByLabel('License Term (Months)',{exact:true}).isDisabled());
+  assert.equal(await staff.locator('#job-extra-total').innerText(),'$3,591.82');assert.equal(await staff.locator('#job-commission').inputValue(),'$286.55','Commercial subscriptions, licensing, hosting and original photo excluded');
+  await layout(staff,'commercial-onsite');
+  provider=JSON.parse(fs.readFileSync(path.join(root,'data/job-provider.json')));assert.equal(provider.creates,1);assert.equal(provider.confirms,1,'Commercial previews never call providers');
   assert.deepEqual(errors,[]);assert(!/PHP (?:Fatal error|Warning|Notice)/.test(logs),logs);
-  console.log('portal-job-browser: PASS (real HTTPS staff/phone login; extras approval; Job Complete; one payment; decline recovery UI; drafts; unpaid release gate; paid links; refund review; preserved records; 320/390/736/1200 layout; synthetic providers only)');
+  console.log('portal-job-browser: PASS (real HTTPS staff/phone login; full repeatable catalog; server prices; commission exclusions; verbal closeout; Job Complete; one payment; decline recovery UI; drafts; unpaid release gate; paid links; refund review; preserved records; 320/390/736/1200 layout; synthetic providers only)');
  }finally{if(browser)await browser.close();if(proxy)await new Promise(r=>proxy.close(r));if(php){php.kill();await new Promise(r=>php.once('exit',r));}fs.rmSync(temp,{recursive:true,force:true});}
 })().catch(e=>{console.error(e);process.exit(1);});

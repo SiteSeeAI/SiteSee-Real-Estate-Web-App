@@ -9,12 +9,17 @@ function staff_job_input(string $key,int $max=2048): string
 function staff_job_action(PDO $db,string $action): string
 {
     $ref=staff_job_input('reference',32);$scope=staff_job_input('scope',64);
-    if($action==='job_add'||$action==='job_remove'){
-        booking_job_save_extras($db,$ref,$scope,substr($action,4),staff_job_input('label',160),staff_job_input('price',16),staff_job_input('remove',16));
-        return 'Additional services saved. The customer must approve the current list before Job Complete.';
+    if($action==='job_save'){
+        $onsite=staff_job_onsite_input();$db->exec('BEGIN IMMEDIATE');
+        try{
+            $preview=booking_job_onsite_preview($db,$ref,$onsite['items'],$onsite['draft_scope']);
+            if(!hash_equals($preview['bill']['scope'],$scope))throw new InvalidArgumentException('Review the current service total before saving.');
+            booking_job_write_draft($db,$preview['draft']);$db->exec('COMMIT');
+        }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
+        return 'Additional services saved. Confirm the agent’s verbal approval and complete the job when the onsite work is finished.';
     }
     if($action==='job_complete'){
-        $job=booking_job_complete($db,$ref,$scope,staff_job_input('agreed',8)==='yes');
+        $job=booking_job_complete($db,$ref,$scope,staff_job_input('agreed',8)==='yes',null,staff_job_onsite_input());
         return $job['payment_state']==='paid'?'Onsite work complete. Payment verified. Job moved to Production.':'Onsite work complete. Job moved to Production. Review the final payment status below.';
     }
     if($action==='job_recover'){
@@ -26,6 +31,23 @@ function staff_job_action(PDO $db,string $action): string
         return $action==='job_production_complete'?'Production complete. The finished links become available in My Orders after payment verification.':'Production progress saved. These draft links are not published.';
     }
     throw new InvalidArgumentException('Unknown job action.');
+}
+function staff_job_onsite_input(): array
+{
+    try{$items=json_decode(staff_job_input('items',24000),true,16,JSON_THROW_ON_ERROR);}
+    catch(JsonException){throw new InvalidArgumentException('Review the additional services before continuing.');}
+    if(!is_array($items))throw new InvalidArgumentException('Review the additional services before continuing.');
+    return ['items'=>$items,'draft_scope'=>staff_job_input('draft_scope',64)];
+}
+function staff_job_preview_response(PDO $db): never
+{
+    header('Content-Type: application/json; charset=utf-8');
+    try{
+        $input=staff_job_onsite_input();
+        $preview=booking_job_onsite_preview($db,staff_job_input('reference',32),$input['items'],$input['draft_scope']);
+        echo json_encode(['bill'=>$preview['bill']],JSON_THROW_ON_ERROR);
+    }catch(Throwable $e){http_response_code(400);echo json_encode(['error'=>$e instanceof InvalidArgumentException?$e->getMessage():'The additional service prices could not be checked. Reload and try again.']);}
+    exit;
 }
 function staff_job_form(string $ref,string $action,string $fields,string $label): string
 {
@@ -41,17 +63,20 @@ function staff_job_panel(PDO $db,string $reference): string
     if($job){
         $bill=json_decode($job['bill_json'],true,16,JSON_THROW_ON_ERROR);
         $html='<section class="card next-step"><h2>'.($job['production_complete_at']?'Production Complete':'Production').'</h2><p>Onsite work completed. Final amount to collect: <strong>'.staff_money((int)$job['amount']).'</strong>.</p><p role="status">'.booking_job_payment_label($job['payment_state']).'</p>';
+        if(isset($bill['commission_cents']))$html.='<label>Photographer Commission (18%)<input readonly value="'.staff_money($bill['commission_cents']).'"></label><p class="help">18% of eligible additional service fees. Commission is recorded separately from the customer’s payment.</p>';
+        if(isset($bill['onsite_authorization']))$html.='<p>Agent’s verbal approval recorded at job completion.</p>';
         if($job['payment_state']!=='paid')$html.=staff_job_form($reference,'job_recover','','Check / Recover Final Payment').'<p><a href="/account.php?view=job&amp;reference='.$e($reference).'" target="_blank" rel="noopener noreferrer">Customer Payment Recovery Page ↗</a></p>';
         return $html.'<p><a href="staff-production.php?reference='.$e($reference).'">Open Production</a></p></section>';
     }
     try{$bill=booking_job_bill($db,$reference);}catch(InvalidArgumentException){return '';}
-    $draft=booking_job_extras($db,$reference);$lines=json_decode($draft['lines_json'],true,16,JSON_THROW_ON_ERROR);$scope='<input type="hidden" name="scope" value="'.$e($draft['scope']).'">';
-    $html='<section class="card next-step"><h2>Onsite Closeout</h2><p>Record any additional services, then complete the job to collect the final amount and start Production.</p>';
-    if($lines){$html.='<h3>Additional Services</h3><ul>';foreach($lines as $line)$html.='<li>'.$e($line['label']).' · '.staff_money($line['cents']).staff_job_form($reference,'job_remove',$scope.'<input type="hidden" name="remove" value="'.$e($line['id']).'">','Remove Service').'</li>';$html.='</ul><p>'.($draft['approved_at']?'Customer approval recorded.':'Customer approval needed.').'</p>';
-        if(!$draft['approved_at'])$html.='<p>The customer can approve these services in My Orders → Order Details → Job Status.</p><p><a href="/account.php?view=job&amp;reference='.$e($reference).'" target="_blank" rel="noopener noreferrer">Open Customer Approval Page ↗</a></p>';
-    }
-    $html.='<details><summary>Add Additional Services</summary>'.staff_job_form($reference,'job_add',$scope.'<label>Service *<input name="label" maxlength="160" required placeholder="For example: additional aerial photographs"></label><label>Total For This Service ($) *<input name="price" inputmode="decimal" pattern="[0-9]+([.][0-9]{1,2})?" required></label>','Add Service').'</details><dl class="job-facts facts"><div><dt>Final Job Total</dt><dd>'.staff_money($bill['total_cents']).'</dd></div><div><dt>Remaining To Collect</dt><dd>'.staff_money($bill['due_cents']).'</dd></div></dl>';
-    if(!$lines||$draft['approved_at'])$html.=staff_job_form($reference,'job_complete','<input type="hidden" name="scope" value="'.$e($bill['scope']).'"><label><input type="checkbox" name="agreed" value="yes" required>I confirm the onsite work is finished and the final amount shown above is correct.</label>','Job Complete');
+    $draft=booking_job_extras($db,$reference);$lines=json_decode($draft['lines_json'],true,16,JSON_THROW_ON_ERROR);
+    $items=array_map(static fn($line)=>isset($line['service'])?['service'=>$line['service'],'inputs'=>$line['inputs']]:['legacy_id'=>$line['id']],$lines);
+    $config=['catalog'=>booking_job_catalog(booking_get($db,$reference)),'items'=>$items,'saved'=>$lines];
+    $html='<section class="card next-step"><h2>Onsite Closeout</h2><p>Select the additional services and review their total with the agent. When the shoot is finished, confirm the agent’s verbal approval and complete the job.</p>';
+    $html.='<form id="job-onsite" method="post" data-config="'.$e(json_encode($config,JSON_THROW_ON_ERROR)).'"><input type="hidden" name="csrf" value="'.$e(staff_csrf()).'"><input type="hidden" name="reference" value="'.$e($reference).'"><input type="hidden" name="draft_scope" value="'.$e($draft['scope']).'"><input type="hidden" name="scope" value=""><input type="hidden" name="items" value="'.$e(json_encode($items,JSON_THROW_ON_ERROR)).'">';
+    $html.='<div id="job-service-items"></div><button id="job-add-item" type="button">Add Additional Service Item</button><p id="job-price-status" role="status">Checking the current service prices…</p><dl class="facts"><div><dt>Total Additional Service Fee</dt><dd id="job-extra-total">'.staff_money(array_sum(array_column($lines,'cents'))).'</dd></div><div><dt>Final Job Total</dt><dd id="job-total">'.staff_money($bill['total_cents']).'</dd></div><div><dt>Remaining To Collect</dt><dd id="job-due">'.staff_money($bill['due_cents']).'</dd></div></dl>';
+    $html.='<label id="job-commission-field" hidden>Photographer Commission (18%)<input id="job-commission" readonly value="'.staff_money($bill['commission_cents']).'"></label><p id="job-monthly" class="help" hidden></p><p id="job-commission-note" class="help" hidden>Commission applies only to service types not included in the original order. Subscriptions, hosting and licensing fees are excluded. Commission does not increase the customer’s charge.</p><p id="job-legacy-note" class="help" hidden>Previously entered custom services retain their saved fees. Re-select them from the service list to calculate commission.</p>';
+    $html.='<p><button name="action" value="job_save" id="job-save" formnovalidate disabled>Save Additional Services</button></p><label><input type="checkbox" name="agreed" value="yes" required disabled>I confirm the onsite work is finished, the agent verbally approved the additional services and displayed fees, and the final amount shown is correct.</label><button name="action" value="job_complete" id="job-complete" disabled>Job Complete</button><noscript><p>Enable JavaScript to select services and verify the final amount before closing this job.</p></noscript></form><script src="/portal-assets/onsite-services.js" defer></script>';
     return $html.'</section>';
 }
 function staff_job_production_page(PDO $db,string $reference): string
