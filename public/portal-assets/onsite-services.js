@@ -103,7 +103,7 @@
     controller = new AbortController();
     try {
       const body = new FormData(form); body.set('action', 'job_preview'); body.delete('agreed');
-      const response = await fetch('/staff-bookings.php', {method: 'POST', body, credentials: 'same-origin', signal: controller.signal});
+      const response = await fetch(form.dataset.previewUrl || '/staff-bookings.php', {method: 'POST', body, credentials: 'same-origin', signal: controller.signal});
       const result = await response.json();
       if (ticket !== revision) return;
       if (!response.ok || !result.bill) throw Error(result.error || 'Sign in again to check the current service prices.');
@@ -127,7 +127,7 @@
       status.textContent = 'Fees verified. Confirm the displayed total with the agent before Job Complete.';
     } catch (error) {
       if (ticket !== revision || error.name === 'AbortError') return;
-      status.textContent = error instanceof SyntaxError ? 'Your staff session needs to be refreshed. Reload and sign in again.' : error.message;
+      status.textContent = error instanceof SyntaxError ? 'Your session needs to be refreshed. Reload and sign in again.' : error.message;
     }
   }
   add.addEventListener('click', () => {

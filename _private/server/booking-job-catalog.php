@@ -41,6 +41,7 @@ function booking_job_catalog(array $row): array
     }
     $services=[];
     foreach($base['services'] as $key=>$label){
+        if($key==='video')$label='Property Video';
         $note='';
         if(!$commercial&&$key==='platform')$note='$49/month after publication, billed separately. No monthly fee or commission is collected in this final payment.';
         if($commercial&&$key==='mp')$note='First six hosting months are included. Additional hosting follows the ordering form prices.';
@@ -106,6 +107,7 @@ function booking_job_catalog_lines(array $row,array $items,array $saved): array
             $priced=real_estate_commercial_quote($state);
         }else $priced=real_estate_residential_quote($state);
         $byKey=array_column($priced['lines'],null,'key');$line=$byKey[$key];$cents=$line['cents'];$details=[];
+        if($key==='video')$line['label']=str_replace($priced['services']['video'],'Property Video',$line['label']);
         if($key==='mp'&&!$commercial)$line['label'].=' · '.number_format($input['matterportSqft']).' sq ft scanned';
         $commissionBase=$key==='platform'?0:$cents;
         if($commercial){

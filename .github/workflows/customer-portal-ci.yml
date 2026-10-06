@@ -5,13 +5,17 @@ on:
     paths:
       - '_private/server/portal-*.php'
       - '_private/server/booking-*.php'
+      - '_private/server/vendor-*.php'
       - '_private/views/portal*.php'
       - 'public/account.php'
       - 'public/staff-production.php'
+      - 'public/staff-vendors.php'
+      - 'public/vendor.php'
       - 'public/portal-assets/**'
       - 'tests/fixtures/portal-http/**'
       - 'tests/fixtures/staff-http/**'
       - 'tests/fixtures/job-http/**'
+      - 'tests/fixtures/vendor-http/**'
       - 'tests/fixtures/portal-r1/**'
       - 'documents/portal/**'
       - 'tests/portal-*'
@@ -22,19 +26,24 @@ on:
       - 'tools/*test-recipient*'
       - 'tools/*job-closeout*'
       - 'tools/*onsite-services*'
+      - 'tools/*vendor-accounts*'
       - '.github/workflows/customer-portal-ci.yml'
   push:
     branches: ['feat/calendar-confirmation-20260925', 'feat/job-closeout-production-20261002']
     paths:
       - '_private/server/portal-*.php'
       - '_private/server/booking-*.php'
+      - '_private/server/vendor-*.php'
       - '_private/views/portal*.php'
       - 'public/account.php'
       - 'public/staff-production.php'
+      - 'public/staff-vendors.php'
+      - 'public/vendor.php'
       - 'public/portal-assets/**'
       - 'tests/fixtures/portal-http/**'
       - 'tests/fixtures/staff-http/**'
       - 'tests/fixtures/job-http/**'
+      - 'tests/fixtures/vendor-http/**'
       - 'tests/fixtures/portal-r1/**'
       - 'documents/portal/**'
       - 'tests/portal-*'
@@ -45,6 +54,7 @@ on:
       - 'tools/*test-recipient*'
       - 'tools/*job-closeout*'
       - 'tools/*onsite-services*'
+      - 'tools/*vendor-accounts*'
       - '.github/workflows/customer-portal-ci.yml'
 
 permissions:
@@ -81,6 +91,9 @@ jobs:
           php tests/portal-service.test.php
           php tests/portal-job.test.php
           php tests/portal-onsite-catalog.test.php
+          php tests/portal-vendor.test.php
+          php -l public/vendor.php
+          php -l public/staff-vendors.php
           php tests/portal-draft-recovery.test.php
           PORTAL_FIXTURE_AGENT_EMAIL=info@1789media.com php tests/portal-draft-recovery.test.php
           php tests/portal-test-recipient.test.php
@@ -98,6 +111,7 @@ jobs:
           python3 tests/portal-test-recipient-installer.test.py
           python3 tests/portal-job-installer.test.py
           python3 tests/portal-onsite-installer.test.py
+          python3 tests/portal-vendor-installer.test.py
           python3 tests/portal-staff-installer.test.py
           python3 tests/portal-staff-source.test.py
           python3 tools/build-portal-installer.py
@@ -112,6 +126,8 @@ jobs:
           git diff --exit-code -- tools/install-re-portal-polish-20261002-r1.py
           python3 tools/build-test-recipient.py
           git diff --exit-code -- tools/install-re-test-recipient-20261002-r1.py
+          python3 tools/build-vendor-accounts.py
+          git diff --exit-code -- tools/install-re-vendor-accounts-20261005-r1.py
           python3 tools/build-onsite-services.py
           git diff --exit-code -- tools/install-re-onsite-services-20261005-r1.py
           python3 tools/build-job-closeout.py
@@ -134,6 +150,7 @@ jobs:
           node tests/portal-http.browser.cjs
           node tests/portal-staff.browser.cjs
           node tests/portal-job.browser.cjs
+          node tests/portal-vendor.browser.cjs
           node tests/portal-email.browser.cjs
       - name: Save example-only preview screenshots
         if: always()

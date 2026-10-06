@@ -87,11 +87,12 @@ function booking_job_bill_from(array $row,array $draft,int $paid): array
     $bill['scope']=hash('sha256',json_encode($bill,JSON_THROW_ON_ERROR));return $bill;
 }
 /** This transaction blocks legacy balance checkout and appointment changes before any provider call. */
-function booking_job_complete(PDO $db,string $reference,string $scope,bool $agreed,?callable $api=null,?array $onsite=null): array
+function booking_job_complete(PDO $db,string $reference,string $scope,bool $agreed,?callable $api=null,?array $onsite=null,?callable $authorize=null): array
 {
     if(!$agreed)throw new InvalidArgumentException('Confirm the onsite work and displayed final bill.');
     booking_job_schema($db);portal_billing_schema($db);$db->exec('BEGIN IMMEDIATE');
     try{
+        $actor=$authorize===null?null:$authorize($reference);
         $job=booking_job_get($db,$reference);
         if($job){if(!hash_equals($job['scope'],$scope))throw new InvalidArgumentException('This job is already closed. Review its final bill.');$db->exec('COMMIT');return booking_job_collect($db,$reference,$api);}
         $preview=$onsite===null?null:booking_job_onsite_preview($db,$reference,$onsite['items'],$onsite['draft_scope']);
@@ -106,6 +107,10 @@ function booking_job_complete(PDO $db,string $reference,string $scope,bool $agre
             $bill['onsite_authorization']=['method'=>'staff_attested_verbal','photographer'=>$row['photographer'],
                 'recorded_at'=>gmdate('c'),'extras_scope'=>$bill['extras_scope'],
                 'statement'=>'I confirm the onsite work is finished, the agent verbally approved the additional services and displayed fees, and the final amount shown is correct.'];
+            if($actor!==null){
+                $bill['onsite_authorization']['method']='vendor_attested_verbal';
+                $bill['onsite_authorization']['vendor']=$actor;
+            }
         }
         $db->prepare('INSERT INTO booking_jobs(reference,scope,bill_json,amount,customer,completed_at) VALUES (?,?,?,?,?,?)')->execute([$reference,$scope,json_encode($bill,JSON_THROW_ON_ERROR),$bill['due_cents'],$row['stripe_customer_id'],gmdate('c')]);
         $db->exec('COMMIT');

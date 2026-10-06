@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/booking-lifecycle-ui.php';
 require_once __DIR__ . '/booking-job-ui.php';
+require_once __DIR__ . '/vendor-admin.php';
 header('Cache-Control: no-store, private, max-age=0');
 header('X-Robots-Tag: noindex, nofollow, noarchive');
 header('X-Frame-Options: DENY');
@@ -22,7 +23,7 @@ function staff_page(string $body, int $status = 200): never
 [hidden]{display:none!important}#job-service-items fieldset{border:1px solid #d9dfe2;border-radius:6px;padding:14px 18px;margin:18px 0}#job-service-items legend{font-weight:600;padding:0 6px}#job-service-items button{background:#fff;color:#17252e;border-color:#a6afb5}#job-commission input{background:#f7f8f9}button:disabled{opacity:.55;cursor:wait}
 @media(max-width:650px){main{padding:26px 6% 44px}h1{font-size:25px}h2{font-size:20px}.card,.staff-fold{padding:18px}.staff-fold{padding:10px 18px}.facts{grid-template-columns:1fr}.progress{grid-template-columns:1fr 1fr;gap:16px}.request-item{grid-template-columns:1fr;padding:18px}.request-link{justify-self:start}.topline{align-items:flex-start}button{font-size:14px}header{padding:22px 6%}#job-service-items fieldset{padding:10px}}
 CSS;
-    $staffTitle=defined('SITESEE_PRODUCTION_PAGE')&&SITESEE_PRODUCTION_PAGE?'Production':'Booking Review';
+    $staffTitle=defined('SITESEE_VENDOR_ADMIN_PAGE')&&SITESEE_VENDOR_ADMIN_PAGE?'Vendor Accounts':(defined('SITESEE_PRODUCTION_PAGE')&&SITESEE_PRODUCTION_PAGE?'Production':'Booking Review');
     echo '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SiteSee | '.staff_escape($staffTitle).'</title><style>' . $style . '</style></head><body><a class="skip" href="#content">Skip To Content</a><header><div class="brand">SiteSee<span>.</span></div><small>Show More. Decide Faster.</small></header><main id="content"><h1>'.staff_escape($staffTitle).'</h1>'
         . $body . '</main><footer>SiteSee Real Estate · Staff access · TEST</footer></body></html>';
     exit;
@@ -71,7 +72,7 @@ if ($method === 'POST') {
             session_regenerate_id(true);
             $_SESSION['staff_until'] = time() + 7200;
             $_SESSION['csrf'] = bin2hex(random_bytes(24));
-            header('Location: '.(defined('SITESEE_PRODUCTION_PAGE')&&SITESEE_PRODUCTION_PAGE?'staff-production.php':'staff-bookings.php'), true, 303);
+            header('Location: '.(defined('SITESEE_VENDOR_ADMIN_PAGE')&&SITESEE_VENDOR_ADMIN_PAGE?'staff-vendors.php':(defined('SITESEE_PRODUCTION_PAGE')&&SITESEE_PRODUCTION_PAGE?'staff-production.php':'staff-bookings.php')), true, 303);
             exit;
         }
         $db->prepare('INSERT INTO staff_login_attempts (ip_hash,at) VALUES (?,?)')->execute([$ipHash, time()]);
@@ -79,10 +80,13 @@ if ($method === 'POST') {
     } elseif ($action === 'logout') {
         $_SESSION = [];
         session_destroy();
-        header('Location: '.(defined('SITESEE_PRODUCTION_PAGE')&&SITESEE_PRODUCTION_PAGE?'staff-production.php':'staff-bookings.php'), true, 303);
+        header('Location: '.(defined('SITESEE_VENDOR_ADMIN_PAGE')&&SITESEE_VENDOR_ADMIN_PAGE?'staff-vendors.php':(defined('SITESEE_PRODUCTION_PAGE')&&SITESEE_PRODUCTION_PAGE?'staff-production.php':'staff-bookings.php')), true, 303);
         exit;
     } elseif (empty($_SESSION['staff_until']) || (int)$_SESSION['staff_until'] < time()) {
         staff_page('<p>Your staff session has expired. Reload and sign in again.</p>', 403);
+    } elseif (str_starts_with($action, 'vendor_')) {
+        try { $notice=vendor_admin_action($db,$action); }
+        catch(Throwable $exception){$error=$exception instanceof InvalidArgumentException?$exception->getMessage():'The vendor account action could not finish. Refresh before trying again.';}
     } elseif (str_starts_with($action, 'job_')) {
         if($action==='job_preview')staff_job_preview_response($db);
         try { $notice=staff_job_action($db,$action); }
@@ -280,7 +284,8 @@ if ($issuedLink) {
     $body .= '<h2>Private Booking Link</h2><p>Copy this private link to the authorized test customer. It appears only once; save it before leaving this page.</p><p><input type="text" readonly aria-label="Private booking link" value="' . staff_escape($issuedLink) . '" style="width:100%"></p><p><a href="' . staff_escape($issuedLink) . '" target="_blank" rel="noopener noreferrer">Open Booking Page ↗</a></p>';
 }
 $reference = (string)($_POST['reference'] ?? $_GET['reference'] ?? '');
-$body.='<nav aria-label="Staff Navigation"><a href="staff-bookings.php">Bookings</a> · <a href="staff-production.php">Production</a></nav>';
+$body.='<nav aria-label="Staff Navigation"><a href="staff-bookings.php">Bookings</a> · <a href="staff-production.php">Production</a> · <a href="staff-vendors.php">Vendors</a></nav>';
+if(defined('SITESEE_VENDOR_ADMIN_PAGE')&&SITESEE_VENDOR_ADMIN_PAGE)staff_page($body.vendor_admin_page($db));
 if(defined('SITESEE_PRODUCTION_PAGE')&&SITESEE_PRODUCTION_PAGE)staff_page($body.staff_job_production_page($db,$reference));
 $row = booking_get($db, $reference);
 if ($row) {
@@ -305,6 +310,7 @@ if ($row) {
         . '<p class="help">Staff only. Includes the customer’s property access instructions.</p><pre>' . staff_escape($request['salesPlain']) . '</pre>';
     $body .= staff_disclosure('request-details', 'Services & Property Access', $requestHtml);
     $body .= staff_job_panel($db,$reference);
+    $body .= vendor_admin_assignment($db,$reference);
     if ($row['reschedule_required']) {
         $body .= '<p class="note">Rush declined. No rush fee is charged. The agent must request another standard window at least 72 hours ahead. Their existing deposit remains credited; do not create a new booking.</p>'
             . '<form method="post"><input type="hidden" name="csrf" value="' . $csrf . '"><input type="hidden" name="action" value="reschedule_link"><input type="hidden" name="reference" value="' . staff_escape($reference) . '"><button>Create Rescheduling Link</button></form>';

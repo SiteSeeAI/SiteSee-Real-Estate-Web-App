@@ -1,8 +1,18 @@
 """Validate reviewed upgrades while reproducing older immutable packages."""
 import base64, json
 
-def before_onsite_update(root, source):
+def before_vendor_update(root, source):
     actual=(root/source).read_bytes()
+    manifest=root/'documents/portal/vendor-accounts-source.json'
+    if not manifest.exists():return actual
+    change=json.loads(manifest.read_text())['files'].get(source.replace('_private/','private/',1))
+    if change is None:return actual
+    if actual!=base64.b64decode(change['after']):raise RuntimeError('Reviewed vendor source differs: '+source)
+    if change['before'] is None:raise RuntimeError('No historical baseline: '+source)
+    return base64.b64decode(change['before'])
+
+def before_onsite_update(root, source):
+    actual=before_vendor_update(root, source)
     manifest=root/'documents/portal/onsite-services-source.json'
     if not manifest.exists():return actual
     change=json.loads(manifest.read_text())['files'].get(source.replace('_private/','private/',1))

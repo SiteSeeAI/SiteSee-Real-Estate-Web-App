@@ -1,13 +1,11 @@
-"""Installed-closeout upgrade, interruption and preservation checks."""
+"""Installed-onsite upgrade, interruption and preservation checks."""
 import base64, hashlib, importlib.util, json, os, pathlib, subprocess, tempfile, unittest
 ROOT=pathlib.Path(__file__).resolve().parents[1]
-import sys
-sys.path.insert(0,str(ROOT/'tools'))
-from portal_source_chain import before_vendor_update
-spec=importlib.util.spec_from_file_location('onsite',ROOT/'tools/install-re-onsite-services-20261005-r1.py')
+
+spec=importlib.util.spec_from_file_location('vendor',ROOT/'tools/install-re-vendor-accounts-20261005-r1.py')
 m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 
-class OnsiteInstaller(unittest.TestCase):
+class VendorInstaller(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup);base=pathlib.Path(self.tmp.name)
         self.root=base/'private';self.public=base/'public';self.root.mkdir(mode=0o700);self.public.mkdir(mode=0o750)
@@ -18,7 +16,7 @@ class OnsiteInstaller(unittest.TestCase):
         for n in self.obj['dependencies']:
             source=n.replace('private/','_private/',1) if n.startswith('private/') else n
             self.path(n).parent.mkdir(exist_ok=True,parents=True,mode=0o755 if n.startswith('public/') else 0o700)
-            self.put(n,before_vendor_update(ROOT,source))
+            self.put(n,(ROOT/source).read_bytes())
         self.manifests()
         self.put('private/booking-checkout.json',m.encode({'stage':'TEST','enabled':True,'key':'synthetic-preserved'}))
         self.put('private/job-closeout-20261002-r1-install.json',m.encode({'revision':'job-closeout-20261002-r1','state':'installed','backup':'job-closeout-original'}))
@@ -75,7 +73,7 @@ class OnsiteInstaller(unittest.TestCase):
         with self.assertRaises(m.Stop):self.begin()
         self.assertFalse((self.root/m.JOURNAL).exists());self.check_preserved()
     def test_prior_incomplete_install_blocks(self):
-        self.put('private/job-closeout-20261002-r1-install.json',m.encode({'state':'prepared'}))
+        self.put('private/onsite-services-20261005-r1-install.json',m.encode({'state':'prepared'}))
         with self.assertRaisesRegex(m.Stop,'earlier update is incomplete'):self.begin()
         self.assertFalse((self.root/m.JOURNAL).exists())
     def test_live_configuration_blocks(self):
@@ -91,20 +89,20 @@ class OnsiteInstaller(unittest.TestCase):
         j=json.loads((self.root/m.JOURNAL).read_bytes());backup=next((self.root/'deployment-backups'/j['backup']).glob('*.bin'));backup.write_bytes(b'bad')
         with self.assertRaises(m.Stop):self.resume()
     def test_symbolic_link_is_preserved(self):
-        p=self.path('private/server/booking-job-catalog.php');p.symlink_to(self.root/'bookings.sqlite')
+        p=self.path('private/server/vendor-access.php');p.symlink_to(self.root/'bookings.sqlite')
         with self.assertRaises(m.Stop):self.begin()
         self.assertTrue(p.is_symlink());self.check_preserved()
     def test_before_source_matches_installed_release_and_after_current_source(self):
-        prior=json.loads((ROOT/'documents/portal/job-closeout-source.json').read_text())
-        self.assertEqual(len(self.obj['files']),6);self.assertEqual(len(self.obj['dependencies']),40)
+        prior=json.loads((ROOT/'documents/portal/onsite-services-source.json').read_text())
+        self.assertEqual(len(self.obj['files']),11);self.assertEqual(len(self.obj['dependencies']),41)
         for n,item in self.obj['files'].items():
             source=n.replace('private/','_private/',1) if n.startswith('private/') else n
-            self.assertEqual(base64.b64decode(item['after']),before_vendor_update(ROOT,source))
+            self.assertEqual(base64.b64decode(item['after']),(ROOT/source).read_bytes())
             if item['before'] is not None:self.assertEqual(item['before'],prior['files'][n]['after'])
-        self.assertEqual(self.obj['order'][0],'private/server/booking-job-catalog.php')
-        self.assertEqual(self.obj['order'][-1],'private/server/booking-staff.php')
+        self.assertEqual(self.obj['order'][0],'private/server/vendor-access.php')
+        self.assertEqual(self.obj['order'][-1],'public/vendor.php')
     def test_builder_reproduces_both_installer_releases(self):
-        for builder,package in [('build-onsite-services.py','install-re-onsite-services-20261005-r1.py'),('build-job-closeout.py','install-re-job-closeout-20261003-r1_1.py')]:
+        for builder,package in [('build-vendor-accounts.py','install-re-vendor-accounts-20261005-r1.py'),('build-onsite-services.py','install-re-onsite-services-20261005-r1.py'),('build-job-closeout.py','install-re-job-closeout-20261003-r1_1.py')]:
             before=(ROOT/'tools'/package).read_bytes();subprocess.run(['python3',str(ROOT/'tools'/builder)],check=True);self.assertEqual((ROOT/'tools'/package).read_bytes(),before)
         self.assertEqual(hashlib.sha256((ROOT/'tools/install-re-job-closeout-20261003-r1_1.py').read_bytes()).hexdigest(),'b8abe2d55101176082e0497013a112650228cc96721ae9e40934f1687ba21378')
 
