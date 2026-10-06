@@ -2,6 +2,10 @@
 
 Release: `onsite-services-20261005-r1`. This upgrades the operator-confirmed `job-closeout-20261002-r1.1` installation. Baseline branch checkpoint: `5efe122cc940be25ce349ab214df35f1521d2311`. The original server backup remains `/home/sitesee/.sitesee-real-estate/deployment-backups/job-closeout-1gte4ywn`.
 
+## Installed checkpoint — 2026 10 05
+
+The operator reported successful installation of `onsite-services-20261005-r1`. Reported server backup: `/home/sitesee/.sitesee-real-estate/deployment-backups/onsite-services-en6k5ecg`. The installer reports preservation of original bookings, deposits, phone login, calendar and CRM history, with no database changes, provider calls, messages or configuration changes during deployment. Stripe remains TEST. Actual installed service selection, final provider-connected TEST collection and Production delivery are still awaiting acceptance; installation output alone does not verify those actions.
+
 ## Requested behavior
 
 Onsite Closeout now offers every service in the applicable ordering catalog: nine residential services or eight commercial services. Each added row removes its selected service from the other pick lists. **Add Additional Service Item** creates another row until all services are selected. Removing or changing a row restores the available choices.
