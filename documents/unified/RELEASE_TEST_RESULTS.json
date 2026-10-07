@@ -1,0 +1,71 @@
+{
+  "scope": "Fixed-commit TEST release, consolidated installer and isolated recovery rehearsal",
+  "artifact": {
+    "commit": "3aa76798d011d2f30b7002aaa716b3f66153f529",
+    "release": "unified-test-3aa76798d011",
+    "path": "/workspace/.sitesee-onboarding/unified-release-candidate/unified-test-3aa76798d011.tar.gz",
+    "sha256": "6959643cf7d4b2e08da09985740c01cefc38cf89f93d814b39a13bc114fba1fc",
+    "deployment_files": 267,
+    "changed_from_baseline": 24,
+    "migration": "none",
+    "stage": "TEST"
+  },
+  "runs": [
+    {
+      "php": "8.2",
+      "cases": 30,
+      "passed": 29,
+      "skipped": 1,
+      "failed": 0,
+      "interrupted_write_boundaries": 30,
+      "log": "release-php82-final.log"
+    },
+    {
+      "php": "8.3",
+      "cases": 30,
+      "passed": 29,
+      "skipped": 1,
+      "failed": 0,
+      "interrupted_write_boundaries": 30,
+      "log": "release-php83-final.log"
+    }
+  ],
+  "application_parity": "See SHELL_TEST_RESULTS.json; application deployment bytes are identical to the audited shell checkpoint.",
+  "independent_review": "pending",
+  "privileged_CI": "pending; all required ownership cases must execute without skips",
+  "installed_connected_TEST": "pending; existing re.sitesee.ai selected by user",
+  "server_update": "not executed",
+  "logs": [
+    {
+      "name": "release-first-run.log",
+      "sha256": "0fe3bf0f2c19ea96f089dd6575b46271254450f003a3d821600ed7728b37296d",
+      "bytes": 3328,
+      "phase": "diagnostic_history"
+    },
+    {
+      "name": "release-php82-final.log",
+      "sha256": "257acefeaa55ecf138c9b15b364bb4022c67aa3d17751e2368432ab78e7e5b8d",
+      "bytes": 3737,
+      "phase": "final"
+    },
+    {
+      "name": "release-php82-review.log",
+      "sha256": "742a50e4dfc0b29f20c62ac68f23339a2b1f034f8300b115eeb5d4576de9efa7",
+      "bytes": 3328,
+      "phase": "diagnostic_history"
+    },
+    {
+      "name": "release-php83-final.log",
+      "sha256": "64e2a82b3f5eb3ed7e64fef6409081f13a703172058114ed746de4f4f9c05d78",
+      "bytes": 3737,
+      "phase": "final"
+    },
+    {
+      "name": "release-php83-review.log",
+      "sha256": "ec20b148f68ec131f94d1631ccaaf3b331cd9479e017959d498b599f3823922d",
+      "bytes": 3328,
+      "phase": "diagnostic_history"
+    }
+  ],
+  "evidence_directory": "/workspace/.sitesee-onboarding/unified-release-evidence"
+}
