@@ -1,4 +1,5 @@
 'use strict';
+const {assertApplicationShell}=require('./application-shell.browser-checks.cjs');
 const assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
 const http=require('node:http'),https=require('node:https'),net=require('node:net');
 const {spawn,execFileSync}=require('node:child_process'),{chromium}=require('playwright');
@@ -31,9 +32,11 @@ const reserve=()=>new Promise(resolve=>{const s=net.createServer();s.listen(0,'1
   const csrf=()=>page.locator('input[name=csrf]').first().inputValue();
   const post=async(data,extra={})=>page.request.post(origin+'/staff-bookings.php',{form:{csrf:await csrf(),...data},headers:{Origin:origin},maxRedirects:0,...extra});
   const first=await goto();assert.match(first.headers()['cache-control'],/no-store/);assert.match(first.headers()['content-security-policy'],/default-src 'none'/);
+  await assertApplicationShell(page,'staff',false);
   assert.equal(first.headers()['referrer-policy'],'same-origin');assert.match(first.headers()['content-security-policy'],/font-src 'self'/);assert.equal(await page.getByRole('button',{name:'Sign In',exact:true}).count(),1);
   assert.equal((await page.request.post(origin+'/staff-bookings.php',{form:{action:'review_paid',reference:refs.paid}})).status(),403);
   await page.getByLabel('Password',{exact:true}).fill('isolated-staff-password');await page.getByRole('button',{name:'Sign In',exact:true}).click();await page.getByRole('heading',{name:'Recent Requests',exact:true}).waitFor({timeout:5000}).catch(async e=>{throw Error(e.message+' Page: '+await page.locator('body').innerText()+' Trace: '+JSON.stringify(requestTrace)+' Server: '+logs);});
+  await assertApplicationShell(page,'staff',true);
   const cookies=await context.cookies();assert(cookies[0].secure&&cookies[0].httpOnly&&cookies[0].sameSite==='Strict');
   assert.match(await page.locator('.request-list').innerText(),/2026-10-02 9:00 AM Central/);
   const shots=process.env.PORTAL_SCREENSHOTS;

@@ -1,4 +1,5 @@
 'use strict';
+const {assertApplicationShell}=require('./application-shell.browser-checks.cjs');
 const assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
 const http=require('node:http'),https=require('node:https'),net=require('node:net');
 const {spawn,execFileSync}=require('node:child_process'),{chromium}=require('playwright');
@@ -46,7 +47,9 @@ const reserve=()=>new Promise(resolve=>{const s=net.createServer();s.listen(0,'1
   const create=async(name,phone)=>{const form=staff.locator('section').filter({has:staff.getByRole('heading',{name:'Add Vendor',exact:true})});await form.getByLabel('Vendor Name',{exact:true}).fill(name);await form.getByLabel('Cell Phone Number',{exact:true}).fill(phone);await form.getByRole('button',{name:'Create Vendor Account',exact:true}).click();await staff.getByText('Vendor account saved. Any previous sign-in sessions have ended. No text was sent.',{exact:true}).waitFor();};
   await create('Vendor One','3125550130');await create('Vendor Two','3125550131');assert(!fs.existsSync(path.join(root,'data/sms-fixture.json')),'Account creation sends no SMS');
   const login=async(p,phone)=>{fixture('vendor-http','reset-rate');await go(p,'/vendor.php');await p.getByLabel('Cell Phone Number',{exact:true}).fill(phone);await p.getByLabel('Text me a one-time sign-in code.',{exact:true}).check();await p.getByRole('button',{name:'Text My Sign In Code',exact:true}).click();await p.getByRole('heading',{name:'Enter Your Text Code',exact:true}).waitFor();const code=Object.values(JSON.parse(fs.readFileSync(path.join(root,'data/sms-fixture.json')))).at(-1).code;await p.getByLabel('Sign In Code',{exact:true}).fill(code);await p.getByRole('button',{name:'Sign In',exact:true}).click();await p.getByRole('heading',{name:'My Jobs',exact:true}).waitFor().catch(async e=>{throw Error(e.message+' BODY: '+await p.locator('body').innerText()+' PHP: '+logs);});};
+  await go(vendor,'/vendor.php');await assertApplicationShell(vendor,'vendor',false);
   await login(vendor,'3125550130');assert.match(await vendor.locator('main').innerText(),/No jobs are assigned/);
+  await assertApplicationShell(vendor,'vendor',true);
   await login(foreign,'3125550131');
   const assign=async(name)=>{await go(staff,staffUrl);await staff.locator('#vendor-assignment summary').click();const select=staff.getByLabel('Vendor Account',{exact:true});await select.selectOption({label:name},{timeout:5000}).catch(async e=>{throw Error(e.message+' BODY: '+await staff.locator('main').innerText());});await staff.getByRole('button',{name:'Assign Vendor',exact:true}).click();await staff.getByText('Vendor access updated. The booking, calendar and customer payment records are preserved.',{exact:true}).waitFor();};
   await assign('Vendor One · +13125550130');

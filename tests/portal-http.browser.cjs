@@ -1,4 +1,5 @@
 'use strict';
+const {assertApplicationShell}=require('./application-shell.browser-checks.cjs');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');const os=require('node:os');const path=require('node:path');
 const http=require('node:http');const https=require('node:https');const net=require('node:net');
@@ -63,6 +64,7 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
     await p.getByText('Missing A Previous Order?',{exact:true}).click();await p.getByLabel('Private Order Link Or Code').fill(code);await p.getByRole('button',{name:'Add Previous Order',exact:true}).click();
   };
   const first=await goto(page);assert.match(first.headers()['cache-control'],/no-store/);assert.equal(first.headers()['referrer-policy'],'same-origin');
+  await assertApplicationShell(page,'customer',false);
   if(process.env.PORTAL_SCREENSHOTS)console.log('PORTAL_VISUAL_phone-signin:'+(await page.screenshot({type:'jpeg',quality:65,fullPage:true})).toString('base64'));
   const cookies=await context.cookies();assert(cookies[0].secure&&cookies[0].httpOnly&&cookies[0].sameSite==='Lax');
   assert.equal((await page.request.post(origin+'/account.php',{form:{action:'request_login',email:'one@example.com'}})).status(),403);
@@ -76,6 +78,7 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   await goto(page,'/account.php?view=verify#'+token);assert.equal(new URL(page.url()).hash,'');
   await goto(two,'/account.php?view=verify#'+token);
   await page.getByLabel('Sign In Code',{exact:true}).fill(token);await page.getByRole('button',{name:'Sign In',exact:true}).click();await page.getByRole('heading',{name:'My Orders',exact:true}).waitFor();
+  await assertApplicationShell(page,'customer',true);
   assert.notEqual((await context.cookies())[0].value,anonymous);assert(!(await page.content()).includes('101 Example Lane'),'No email-only historical attachment');
   await two.getByLabel('Sign In Code',{exact:true}).fill(token);await two.getByRole('button',{name:'Sign In',exact:true}).click();await two.getByRole('alert').waitFor();assert.match(await two.getByRole('alert').textContent(),/could not be verified/);
   await claim(page,origin+'/booking-pay.php?reference=AAAAAAAAAA&token='+'1'.repeat(64));await page.getByRole('heading',{name:'101 Example Lane Chicago IL 60601'}).waitFor();

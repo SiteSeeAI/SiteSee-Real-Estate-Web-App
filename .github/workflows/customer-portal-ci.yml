@@ -7,6 +7,13 @@ on:
       - '_private/server/booking-*.php'
       - '_private/server/vendor-*.php'
       - '_private/views/portal*.php'
+      - '_private/views/application-shell.php'
+      - '_private/server/application.php'
+      - 'public/application-entry.php'
+      - 'tests/application-*.test.php'
+      - 'tests/application-shell.browser-checks.cjs'
+      - 'documents/unified/**'
+      - 'tools/unified_source.py'
       - 'public/account.php'
       - 'public/staff-production.php'
       - 'public/staff-vendors.php'
@@ -29,12 +36,19 @@ on:
       - 'tools/*vendor-accounts*'
       - '.github/workflows/customer-portal-ci.yml'
   push:
-    branches: ['feat/calendar-confirmation-20260925', 'feat/job-closeout-production-20261002']
+    branches: ['feat/calendar-confirmation-20260925', 'feat/job-closeout-production-20261002', 'feat/unified-*']
     paths:
       - '_private/server/portal-*.php'
       - '_private/server/booking-*.php'
       - '_private/server/vendor-*.php'
       - '_private/views/portal*.php'
+      - '_private/views/application-shell.php'
+      - '_private/server/application.php'
+      - 'public/application-entry.php'
+      - 'tests/application-*.test.php'
+      - 'tests/application-shell.browser-checks.cjs'
+      - 'documents/unified/**'
+      - 'tools/unified_source.py'
       - 'public/account.php'
       - 'public/staff-production.php'
       - 'public/staff-vendors.php'
@@ -72,11 +86,14 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: pdo_sqlite
+          extensions: pdo_sqlite, curl, pcntl
       - name: Validate private account primitives
         run: |
           find _private/server -name '*.php' -print0 | xargs -0 -n1 php -l
           php -l _private/views/portal.php
+          php -l _private/views/application-shell.php
+          php tests/application-bootstrap.test.php
+          php tests/application-shell.test.php
           php -l _private/views/portal-purchase.php
           php -l _private/views/portal-service.php
           php -l _private/views/portal-job.php

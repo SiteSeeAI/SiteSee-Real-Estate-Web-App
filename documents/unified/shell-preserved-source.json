@@ -1,0 +1,990 @@
+{
+  "baseline": "ff5e625a8ff4c51af336e9203fa4be29b3611570",
+  "reviewed_presentation_changes": [
+    "_private/server/booking-staff.php",
+    "_private/server/vendor-app.php",
+    "_private/views/portal.php"
+  ],
+  "files": [
+    {
+      "path": "_private/pricing-assets/availability.js",
+      "sha256": "a341fc6e314f3ce6d071be85532436c06605f146b17818c7d6e9bc183bd35752"
+    },
+    {
+      "path": "_private/pricing-assets/commercial-pricing.js",
+      "sha256": "94b62f65e226a4d95aba043ebf12b16a5021eca10143b612ebcbfc36c2c6b36c"
+    },
+    {
+      "path": "_private/pricing-assets/commercial-quote-engine.js",
+      "sha256": "2a06d902685da3ca1d0c46fb99fd3141cefb5d52ef1b011ed17912305d2c932e"
+    },
+    {
+      "path": "_private/pricing-assets/pricing-market.js",
+      "sha256": "33dd1b7ec50d1d8705f0b499aae7812b89a3b2e72b47d1815729be988573c414"
+    },
+    {
+      "path": "_private/pricing-assets/pricing.js",
+      "sha256": "a2885516e3c3305cbb14505b7ddbd206e23b348a6cc66babdb1a17482355fc79"
+    },
+    {
+      "path": "_private/pricing-assets/quote-engine.js",
+      "sha256": "d103f08921d5b1d516213a0e4902fef699e4dfbe798b1ad853e17f57ed5bf9a6"
+    },
+    {
+      "path": "_private/pricing-assets/scheduling.js",
+      "sha256": "816fe247dc1ce812dd6a9e0b54a9b0f05f5333bfcca8555ab5f7e0a00931d3b5"
+    },
+    {
+      "path": "_private/real-estate-form-config.php",
+      "sha256": "3539b5b9bf008e9f901c526eedb99299a45ca243f9bf42a5994040dc9688fe75"
+    },
+    {
+      "path": "_private/real-estate-pricing.php",
+      "sha256": "671848826aa1b4f53c8e15db516ff5aee1ba7d453feb20601bebab7a01779f73"
+    },
+    {
+      "path": "_private/server/booking-availability-check.php",
+      "sha256": "2e207ff610b2e57914779ef33dffaa1eb51b375118f8711d56a5ec307ba94b75"
+    },
+    {
+      "path": "_private/server/booking-availability.php",
+      "sha256": "da8193a4891127a7780b699cc6a9482e72dc90cbbe2de805debe114f7803f8e4"
+    },
+    {
+      "path": "_private/server/booking-calendar-client.php",
+      "sha256": "e6f80acb03a71a5fc4daf055015fc45b1af62bbdd2700fb080c880bad6e7e0aa"
+    },
+    {
+      "path": "_private/server/booking-checkout.php",
+      "sha256": "f818e0e349f79329e816c80587b28fca4c7f2bae31feb77cf1716112348bd41d"
+    },
+    {
+      "path": "_private/server/booking-communication.php",
+      "sha256": "c25a161b7f4ac61ca11f9c50f6cfc97b946f9ce1fa2532b1cf40abfb372956d1"
+    },
+    {
+      "path": "_private/server/booking-confirmation.php",
+      "sha256": "0e6ee305d0e5651a4eb2cd9e0e33d9a1faf5d946a99d92aa0523bbc9e18f0095"
+    },
+    {
+      "path": "_private/server/booking-crm.php",
+      "sha256": "acf250ec05945007b7940b09cd57280b9a8baea6ecc7bec81962345f9421bb97"
+    },
+    {
+      "path": "_private/server/booking-feedback.php",
+      "sha256": "1cb4bb08b67278cacce231a8e9da7ef5ab589fed745c50fe8c93339e2fc51e4b"
+    },
+    {
+      "path": "_private/server/booking-invitation.php",
+      "sha256": "a539677df67ee40b6866a67d2e9c03b10b877762600c2257786cf005f7117b8a"
+    },
+    {
+      "path": "_private/server/booking-job-catalog.php",
+      "sha256": "172319fab5b8417d560e8fa95f6943bde084b1a7f52e1c2ed33d48d9c13cff2a"
+    },
+    {
+      "path": "_private/server/booking-job-ui.php",
+      "sha256": "4d09568cf5481859867eb5e1958efdccd75ea1df2e23d2a7500a000bebdb2612"
+    },
+    {
+      "path": "_private/server/booking-job.php",
+      "sha256": "7556fc13937a1dfaa4d6a68e9a22175ed11a4e466165b5dbf02a70df3ed869dd"
+    },
+    {
+      "path": "_private/server/booking-lifecycle-reconcile.php",
+      "sha256": "df8145725767d5f13df1227f68763104beffc5b7c8ee03ad240ba836813fa592"
+    },
+    {
+      "path": "_private/server/booking-lifecycle-store.php",
+      "sha256": "1b1b74d4bded768e74f3510670adf415c5440f88c7f3e2897135e30e610b25a4"
+    },
+    {
+      "path": "_private/server/booking-lifecycle-ui.php",
+      "sha256": "742caa0fb1796ccbec0393e29f1519483d1308cd36f69cad4056ab25dbf2635c"
+    },
+    {
+      "path": "_private/server/booking-lifecycle.php",
+      "sha256": "4fbc49e0bece79ede3ebbbe256a620b72262f0cdd9703a0f2a1663c942e2b2d4"
+    },
+    {
+      "path": "_private/server/booking-mail-client.php",
+      "sha256": "acaf52b9b4532fec5f1c49ede966754aa91c7357eef5b4c47e9e7128903fe3cd"
+    },
+    {
+      "path": "_private/server/booking-manage.php",
+      "sha256": "68a7db6a39afe2f39182256419a839455c45cd620a6f979af1809449a61c5114"
+    },
+    {
+      "path": "_private/server/booking-microsoft-calendar.php",
+      "sha256": "d527f4d0807c5380d96a598a2844644b6873d502fc77af347fc3c63575ab8946"
+    },
+    {
+      "path": "_private/server/booking-pay.php",
+      "sha256": "e2170aeb9e7976abed8e25046d64da046fdfe78831127c914e4ca13731a6899f"
+    },
+    {
+      "path": "_private/server/booking-schedule.php",
+      "sha256": "abcbb7c4f53a4a8b74e26613790ed9e4ab761d08a9d5410fbefac8572c2a5013"
+    },
+    {
+      "path": "_private/server/booking-scheduling-provider.php",
+      "sha256": "79a5a1d8f5b9b2b4365d868ce6d80e5bfd7701a4654fe1459ba9f6f5ba744800"
+    },
+    {
+      "path": "_private/server/booking-store.php",
+      "sha256": "4e75573b5b4637d3c9b93b0befa8254557a10581009153b3410996822007e30a"
+    },
+    {
+      "path": "_private/server/booking-test-recipients.php",
+      "sha256": "6e38c6b4803efcba3beb8c944d07a7f67270ecdcd569d246afd894bd5c874710"
+    },
+    {
+      "path": "_private/server/booking-webhook.php",
+      "sha256": "78084ea646b53d1757c60778df21525883cc4a1fd05cc5bf29f71ed16e304819"
+    },
+    {
+      "path": "_private/server/booking-workflow.php",
+      "sha256": "a1e5ec339f09706bcfaf37c2d7b2ddb474d8c984517a6df0dad1258fe2d41148"
+    },
+    {
+      "path": "_private/server/check-calendar-feedback.php",
+      "sha256": "257a4c0221cb0c95a13633e1e84a6284b991f19d2bdebd5406ae83a2c31c8341"
+    },
+    {
+      "path": "_private/server/contact-submit.php",
+      "sha256": "09f7ab5eebc421fb0a431419898462e65f3025acf5c2dd2989459089f8657dd9"
+    },
+    {
+      "path": "_private/server/portal-access.php",
+      "sha256": "4dca86e77fec6c4ccfd41122b7fab5eb1f2e7dc3c7157e38e7f69a33938bda4e"
+    },
+    {
+      "path": "_private/server/portal-app.php",
+      "sha256": "bbb7f298f88ce3fcbdf85ed753ca051a466c67aa4c768b5665a41b122d816a96"
+    },
+    {
+      "path": "_private/server/portal-billing.php",
+      "sha256": "4bdb4a246a4ddb60110d089301722bc1ed8c6360c5c07dde45d4fad4ae2b5104"
+    },
+    {
+      "path": "_private/server/portal-email.php",
+      "sha256": "7aeb0413c2f023fd7cd5533212d13063fb851c1e72d802088a14d73b204ae882"
+    },
+    {
+      "path": "_private/server/portal-mail.php",
+      "sha256": "d20ad7b851d5a23fc1858a02e2733fd5118f68f9fb63dbfdea670fb684bcaf58"
+    },
+    {
+      "path": "_private/server/portal-orders.php",
+      "sha256": "d4988aba13afbe6dc83940afaac596d41cd19800c40d02a22ef0acc0a83f6188"
+    },
+    {
+      "path": "_private/server/portal-phone.php",
+      "sha256": "cfcff2ee9b2e33bb6d33920b11036afa09820817b87d1763185f7e905ded2646"
+    },
+    {
+      "path": "_private/server/portal-purchase.php",
+      "sha256": "329077c89ba91ebcab0e8e3d5c116e3e9f43b58187d28dc8c19b7256c5ae296d"
+    },
+    {
+      "path": "_private/server/portal-release.php",
+      "sha256": "870cdacffc3a4b4619c2da36725d8493cba460b257b94748be38efe5925bd670"
+    },
+    {
+      "path": "_private/server/portal-service.php",
+      "sha256": "8438a607396b50d8e8775e44df067fd4e12f13734cc6cd598a643969e7c2300e"
+    },
+    {
+      "path": "_private/server/portal-session.php",
+      "sha256": "3b61ac29db3d45328eb8cea05af5a91e260e2e23b5065087fc11bbfc9dacaae7"
+    },
+    {
+      "path": "_private/server/portal-sms.php",
+      "sha256": "257608e1fe0c17b0cd52353bdec8be31dfac3c80c3ff141f837f1d1050fe226e"
+    },
+    {
+      "path": "_private/server/pricing-approve.php",
+      "sha256": "37cf07e67d6b41ded1195a8139950692a138aba2a91a2fcacd2e1d236707ffcd"
+    },
+    {
+      "path": "_private/server/pricing-asset.php",
+      "sha256": "a750f9e31a7813bf2be860814a2b050c81ff996f7469b6af7e2ffc173eb1d43d"
+    },
+    {
+      "path": "_private/server/pricing-confirm.php",
+      "sha256": "08e370d38931542efacd05643187069bebd74b06210e4127b305eac9b237a316"
+    },
+    {
+      "path": "_private/server/pricing-logout.php",
+      "sha256": "62cdd97c7c56c56dad7066baf4529a9c721118f1c0d8eedcacbe779b91baa40e"
+    },
+    {
+      "path": "_private/server/pricing-request.php",
+      "sha256": "86e208e729e843536abf6f0cad2cb9dace0743d1e2534c4ce974cdcaf5e6f3a8"
+    },
+    {
+      "path": "_private/server/quote-receipts.php",
+      "sha256": "228327f69f9d0a46482411b78929572727e60e99366b23c491f330305119c883"
+    },
+    {
+      "path": "_private/server/quote-submit.php",
+      "sha256": "fbd006a051950f9e8b1be61dd7f711e240c414556d434661f3992b755a692492"
+    },
+    {
+      "path": "_private/server/vendor-access.php",
+      "sha256": "a48b94f131ee731407e1609d87e8b86919db60bb4081146627c03765f2f01660"
+    },
+    {
+      "path": "_private/server/vendor-admin.php",
+      "sha256": "7299f0f97f9261641e75fd542ad19cdce82b594b9cfca4a91c099d5fe9979439"
+    },
+    {
+      "path": "_private/views/booking-payment.php",
+      "sha256": "b9fc01773cb12a08f79f3e58acfcefa0e91b6b7034e256fe12181e21d3ce3b45"
+    },
+    {
+      "path": "_private/views/portal-job.php",
+      "sha256": "d3252b9cce977b203394dcb5cf1d0ddb4cbe17e2b98d67a566859a7f34e6e8ca"
+    },
+    {
+      "path": "_private/views/portal-purchase.php",
+      "sha256": "11f9775ff60185772808ba21fa571318f100446a0eefc08c245f9318832e9c50"
+    },
+    {
+      "path": "_private/views/portal-service.php",
+      "sha256": "3cba606105c5782ab38bfaa5b4a326781a70ff4032b098123c937457bcda4edb"
+    },
+    {
+      "path": "_private/views/pricing.php",
+      "sha256": "815036974a21e0e9839344a27f14153e674ffaa3a8cb9418121ace7a4308c156"
+    },
+    {
+      "path": "_private/views/scheduling-fields.php",
+      "sha256": "ab8b82e95eeea7331a4c2d530ea8d04fcb6e789a7461c4554fe547102aa74ba7"
+    },
+    {
+      "path": "public/.htaccess",
+      "sha256": "5c11efaf0e8e09fafbe18a1a539f474d15e53620acd5d144983b7338da227f7c"
+    },
+    {
+      "path": "public/_notes/dwsync.xml",
+      "sha256": "f513f7f1e0654d8eb4eec0ff0b9f5db9ebd317c36b7af3317bd2675d3957895a"
+    },
+    {
+      "path": "public/ai-assisted-design.html",
+      "sha256": "d8a22cbc31c229d36c81dc97e9f78ce39df04f3ce1f2c0e6d49bb062b4295403"
+    },
+    {
+      "path": "public/assets/css/_notes/dwsync.xml",
+      "sha256": "c0a52e872bbf46b6b0ec27f83b03c127943ba788bd8e5fec379d4c976f15109c"
+    },
+    {
+      "path": "public/assets/css/pricing.css",
+      "sha256": "879615d061b32a062b00caafcc335e3807b7d0c5d92c7940a7376734c43bc67f"
+    },
+    {
+      "path": "public/assets/css/service-process.css",
+      "sha256": "58d90e3a1c4f86accc0fdf81ff4c0669937ef290b1e92dbab0527a3f065bd027"
+    },
+    {
+      "path": "public/assets/css/site.css",
+      "sha256": "0daddde3b4384ca986239d903bafbeb70f039216a8890ff2c8841ec24e49d79a"
+    },
+    {
+      "path": "public/assets/fonts/Inter-OFL.txt",
+      "sha256": "5b9321a4298cfeb6b34354164a1c3afc3db114569984c502b9b35d988fd58c57"
+    },
+    {
+      "path": "public/assets/fonts/Inter-Regular.ttf",
+      "sha256": "24c14a91c8d59b86aff3cb98d283bcfceeef6a032b953ecddb907ed819ac559b"
+    },
+    {
+      "path": "public/assets/fonts/Poppins-OFL.txt",
+      "sha256": "6be04893d770899a015649c7aa3b582f871b272f8747a92b78b17c3e5c8b2573"
+    },
+    {
+      "path": "public/assets/fonts/Poppins-Regular.ttf",
+      "sha256": "7e65201e9b79159e2300267cc885e16c8dcef2424cdfa09a29bfb0980a94a7ba"
+    },
+    {
+      "path": "public/assets/fonts/Poppins-SemiBold.ttf",
+      "sha256": "d3bf1bdaf0550e83da9ac0b1d1d9fe6db086835a83aa28578e609a394b9a0286"
+    },
+    {
+      "path": "public/assets/fonts/_notes/dwsync.xml",
+      "sha256": "836babc980c80081ca73f1e352ae62fa2a5dc277dc714199eb1725339a224315"
+    },
+    {
+      "path": "public/assets/images/_notes/dwsync.xml",
+      "sha256": "d9ab07c0be4549adaae9a8e13dd162030a74cffe3847f201b0f4017b2f9f43d6"
+    },
+    {
+      "path": "public/assets/images/favicon.png",
+      "sha256": "69d4fa1109d94140ef8638ab8bb7f5a681f1e9e169bd03244a74a2a4627ebd41"
+    },
+    {
+      "path": "public/assets/images/photography/commercial/commercial-01.webp",
+      "sha256": "215cc8fad99390d972ad28e7e92046c63aef1c283905aed2f4631a2ea41b3360"
+    },
+    {
+      "path": "public/assets/images/photography/commercial/commercial-02.webp",
+      "sha256": "f040862412bcd5aa2172060f8c11cf43b85c8842d6280842567c020d833e329d"
+    },
+    {
+      "path": "public/assets/images/photography/commercial/commercial-03.webp",
+      "sha256": "07326484b1517cdc3343b7eab8e001d40a9a5985d52aadc3dba4a2ad6a8f1738"
+    },
+    {
+      "path": "public/assets/images/photography/commercial/commercial-04.webp",
+      "sha256": "b352a871167396ad331d1385f608d1ceaa9d833604d27ca20765eb1b8b12c5ff"
+    },
+    {
+      "path": "public/assets/images/photography/commercial/commercial-05.webp",
+      "sha256": "9850d0a78971cd2598825cd705ffa7e39a08415c9047cf3ff15843bea7f9a3cb"
+    },
+    {
+      "path": "public/assets/images/photography/commercial/commercial-06.webp",
+      "sha256": "8d9dd4c94a99fad4815fc4ff025654d08a1eac76f21006abcaa47e07c536395c"
+    },
+    {
+      "path": "public/assets/images/photography/commercial/commercial-07.webp",
+      "sha256": "3d1826c673a6d367082b2d0902c8ab128d9b351e8a6e0e10b3f37f162fc92c4a"
+    },
+    {
+      "path": "public/assets/images/photography/commercial/commercial-08.webp",
+      "sha256": "d81e278a65ed99ce3e78606883138c2e2e5bb1b4c42673e3183c9495510d1a02"
+    },
+    {
+      "path": "public/assets/images/photography/commercial/commercial-09.webp",
+      "sha256": "24d16a5dcc6dee8e3f4d267ceab6b7b4ea068a69013ee9fd9f991e5c05bc09c3"
+    },
+    {
+      "path": "public/assets/images/photography/commercial/commercial-10.webp",
+      "sha256": "786c340781fa7ca303f3d855ce6be59ae320bed091915c5440640e5a50681f56"
+    },
+    {
+      "path": "public/assets/images/photography/commercial/commercial-11.webp",
+      "sha256": "13e0e0515e6ed904fc0031112b3190787b545dd4e43b68aeaa7fcc1f97bba8e2"
+    },
+    {
+      "path": "public/assets/images/photography/commercial/commercial-12.webp",
+      "sha256": "5dc5a93bde6d284efb714d6be54abfa3efa6b09bf90c68957a407c8365ac7853"
+    },
+    {
+      "path": "public/assets/images/photography/commercial/commercial-13.webp",
+      "sha256": "12edebd5b3d3b1f72b838467e33cc4c2912fc5c4e56e45c25cdd6d8479562d9f"
+    },
+    {
+      "path": "public/assets/images/photography/commercial/commercial-14.webp",
+      "sha256": "1a9144a6ca931a41fc9c1d895185687a36dbaf08fd41732fb5329eff0f6b606f"
+    },
+    {
+      "path": "public/assets/images/photography/commercial/commercial-15.webp",
+      "sha256": "ca78df3baf6f2d2717bd650c8264dbeab1f440078dd9d3a34770594a56115b43"
+    },
+    {
+      "path": "public/assets/images/photography/commercial/commercial-16.webp",
+      "sha256": "5e680db8e32a2736967576086593d802de1c201e21336418d17f9b4efe60dd71"
+    },
+    {
+      "path": "public/assets/images/photography/commercial/commercial-17.webp",
+      "sha256": "efd6e91218734f6a2d7f2596dcc2e475768e3d538b53e540ca3c48b9c8a269ff"
+    },
+    {
+      "path": "public/assets/images/photography/commercial/commercial-18.webp",
+      "sha256": "0002755d5c342aaca3d0cf21801cba2541823329bf6d251c52cd4b05452fef08"
+    },
+    {
+      "path": "public/assets/images/photography/commercial/commercial-19.webp",
+      "sha256": "be265896fe9907ac84fe810fbb00b6731e1183d51cc8a1b6e90e6b608b0bdaf6"
+    },
+    {
+      "path": "public/assets/images/photography/commercial/commercial-20.webp",
+      "sha256": "eeeea47fcdeea50b2ea65ac697fc4eef7eceae59a051bda03421b94d79a3a144"
+    },
+    {
+      "path": "public/assets/images/photography/commercial/commercial-21.webp",
+      "sha256": "3b2ed59b20449c4797798e514c0bd0df0faf1cba0c5c12ddad17458184cb05fa"
+    },
+    {
+      "path": "public/assets/images/photography/commercial/commercial-22.webp",
+      "sha256": "d1a1bc9410924bad627f83cfaafb154fdbf94c915bfe513be77515848baece79"
+    },
+    {
+      "path": "public/assets/images/photography/commercial/commercial-23.webp",
+      "sha256": "613534521a08780345fb17cc013b7010f72321d2df822c8de34fb3ef3ddddd7a"
+    },
+    {
+      "path": "public/assets/images/photography/commercial/commercial-24.webp",
+      "sha256": "56f6918ac181db851d5516ecf8e742cc1301059f5ad9e4247ec9b180c84e00f3"
+    },
+    {
+      "path": "public/assets/images/photography/commercial/commercial-25.webp",
+      "sha256": "e879babbf804b9a8b953c3ace748d0d69a20161047dd98105f95fc03a7147774"
+    },
+    {
+      "path": "public/assets/images/photography/commercial/commercial-26.webp",
+      "sha256": "f1706e29c4678bb9ba6c2c5791f98fb610a1350a493e63228c7fbf723b756a46"
+    },
+    {
+      "path": "public/assets/images/photography/commercial/commercial-27.webp",
+      "sha256": "66511bf86c1c502c58c6804ac62e96a5b0849f9dd4b8d59beff43b26170bd113"
+    },
+    {
+      "path": "public/assets/images/photography/commercial/commercial-28.webp",
+      "sha256": "b2006b212b592727f8162b48705ac536c3b3504bd9c7f8a3bb01f97f95d4738a"
+    },
+    {
+      "path": "public/assets/images/photography/commercial/commercial-29.webp",
+      "sha256": "e924245114465270ae3b032fc56baa9d9a192bfb649632ddd1dd1c2b1bea0423"
+    },
+    {
+      "path": "public/assets/images/photography/commercial/commercial-30.webp",
+      "sha256": "48d6d64f54971354b7d7319e0e818840b9a49be28e20c8c3931f3c06f1742c92"
+    },
+    {
+      "path": "public/assets/images/photography/commercial/commercial-31.webp",
+      "sha256": "169cea8d75d20f6d4db28f936b9c14429387507eb241fe8e6e048169190a818f"
+    },
+    {
+      "path": "public/assets/images/photography/commercial/commercial-32.webp",
+      "sha256": "00ade553fa3c94befb4929a0a15f84b63f466ee377a01a544dbb9aefee281b16"
+    },
+    {
+      "path": "public/assets/images/photography/commercial/commercial-33.webp",
+      "sha256": "15776242a089fe0358e36558e08a1baf6798d062fcfd86dd8ee8be27055c5417"
+    },
+    {
+      "path": "public/assets/images/photography/commercial/commercial-34.webp",
+      "sha256": "f10c8f8b5e52b6e7288e36315811598adc29de3f60d7f272b60245bd8ef8580c"
+    },
+    {
+      "path": "public/assets/images/photography/commercial/commercial-35.webp",
+      "sha256": "cc024b0da748000af8a94bf361a54a398431d1205519743db6214a6c51a0744a"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-01.webp",
+      "sha256": "2403f6512de983e08a49c80745089a938d0e931a88b979aad8b3a5ded38defd9"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-02.webp",
+      "sha256": "64b3b46dd334b5cdb9cc21b1e34b08c8eb690d1df6e6131d193682951bb8c730"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-03.webp",
+      "sha256": "41d1cd2fe1a8a510d2ab0efe814f71bf60b8544642e390d681ae3d67e4d345e6"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-04.webp",
+      "sha256": "362508caecc73e6ce7607892f4c06d6c06159d12fc84323a58c8f58c878e5196"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-05.webp",
+      "sha256": "c74f06d8c54f9bfeea5284b0d3c6b8917598eca7bd8368b9db44f9b2fdda602c"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-06.webp",
+      "sha256": "5e914f207f992652dfe972a462c37054adf5db72bc4f69eb75eb79955f24ca5d"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-07.webp",
+      "sha256": "3064b3d0c0c0b424ead35b65429a3a5008b5b8ac99df1e581f5c6d68c150bc82"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-08.webp",
+      "sha256": "62ec45476995620955bb11be9767737d9cc88b3e9a1b55459960d00516e9c26e"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-09.webp",
+      "sha256": "9a0e973d4bc9d8dd46a94ecd691e3b8cda36016f7be51331c5a8f0154a9b2f25"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-10.webp",
+      "sha256": "a66999fd0ad0c504c581affcba141b06bd746d1de0be62a38cb76c597518d396"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-11.webp",
+      "sha256": "444fd0c47c21084fff3b3a018b265507ecf1e23ec69aabf4f1e4d347395c04f7"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-12.webp",
+      "sha256": "418b5e9019ace4d3b3ce857eb15cd6639f1004f6ffdd17c74aea506e544c233d"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-13.webp",
+      "sha256": "6c829c80fae3d5da2ad4e6d0474e44ce9c3ea202a9dbece4b2cabfbe49c9cb8c"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-14.webp",
+      "sha256": "ded54f5e6d0ef8459a711dffc5bf126f343547e088ce7c5e7664e21b4e3c5c04"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-15.webp",
+      "sha256": "2ed048636ab9e190911e5fb56766daa546212b092ab87590a23d2124d87e4d68"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-16.webp",
+      "sha256": "5a26fd0982378a057566a06e3e41d2bff244acac49aa577dd44ac7333167b381"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-17.webp",
+      "sha256": "283be5a47a5b6075080dd0b4b9c8b6862c7bae731c60f45c286719d9f398ce37"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-18.webp",
+      "sha256": "db707864a652a0ecb29344f3d61be260259b358568285fa59ee6bd7c0735c1e3"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-19.webp",
+      "sha256": "51ff26228ec47b45b2019b28a26bfb6431dcc4968c9456c3d9c5985aa1cae008"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-20.webp",
+      "sha256": "9d86a49e6ae393deb5f01e730c79c3296805b7024ece587ebe1ebb1033578d30"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-21.webp",
+      "sha256": "b54470de26e5007cf597ca81fb6e125fd5bc6b68b92f81b2fb64a835ca8954db"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-22.webp",
+      "sha256": "a61436a6261224f3fdc3f4c654d59751e0d0d11e673e5e38615bef39741a74e2"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-23.webp",
+      "sha256": "8c2f846717a1a0c3b13637c60021962308b0e19ddcb611c89c4f1b038af591e9"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-24.webp",
+      "sha256": "c1ab21fa757d71ec245cd404f48bf43ea570839562ddc1afa993df2ef78bce2b"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-25.webp",
+      "sha256": "c97af5a6f757fd3ed1ebda7232a0acf4e8a98d89633aa7221b9d28d8554fd533"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-26.webp",
+      "sha256": "5f4d6ed92ccd108db950628a15f2ac7fdb145ab28e7bc115193957768c182a1a"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-27.webp",
+      "sha256": "85d8e78b391976a9a8c9960c724f7b627f92c5197b10a1a8a963b895770750cc"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-28.webp",
+      "sha256": "4ad34a667eff0b589f66734ef47ec68e15c6e58cb343efba261e6c193ee7368e"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-29.webp",
+      "sha256": "90695a0ff9d03bf02609d10e4d149060c94d50cdaedde44862e5fbbf0369faa9"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-30.webp",
+      "sha256": "cfa1d26c5478ed94ace3191643540cc46ec1b9d03b9f72c6b908c0d387306ec7"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-31.webp",
+      "sha256": "d833ce4480938cf69296e60156f0bcde5050079ab7d93dfa39789558651e3f17"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-32.webp",
+      "sha256": "c5c0462e2f7f72d36192ac52932a5ee75fcb25d81a5af09f1e4f596d7a7fd8a8"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-33.webp",
+      "sha256": "5bc70167833d8659a0609a1fa142e5bc4e44a28987cd624f5154e55fa989e809"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-34.webp",
+      "sha256": "33ba43c2a612a57ec755423ce70c8e48fe1b349804a0dcbd432a7021f79e512f"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-35.webp",
+      "sha256": "ee7bbd60d98303c3d6ee729f3c48dc764c3624468e469d3130498b6e71ba2eac"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-36.webp",
+      "sha256": "a001a581cef9f9b7d5687df2d53f472d278a4b5e32849943cb77ab524a1bb6c0"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-37.webp",
+      "sha256": "1d27e91ebfa42d11f3073b80475067eef2b4105a4bd390f1725534b7428c9dd3"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-38.webp",
+      "sha256": "9f459dec20bc902c31250e0519bc433796cdb02ce52b028534ef2f244a744515"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-39.webp",
+      "sha256": "df5e490c984f457913b8d5d7e68e40812f55c3eb497354b38857b8cc0f39d7e8"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-40.webp",
+      "sha256": "d1f061c4afc0fee892fb995d41da598bd7c73586c65a1dfcbc5598db1e53bdbf"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-41.webp",
+      "sha256": "d55d67b2c180d1d3a04c5eacd7f619afeff55a294203be8f9b1245c613431df8"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-42.webp",
+      "sha256": "6a7cc73fa99c38f849665edf3b6fe048b426682b0cfaebc6556ec1aaff6f0f1a"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-43.webp",
+      "sha256": "b1015c81e7abb2bc7bda098cc022c5039fea22ee001701dc7aa760dd236d37f6"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-44.webp",
+      "sha256": "502e5c0d24a3f055b8b48576c79574c5fc7ac9b68258cefc9d78f76bd12aeec4"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-45.webp",
+      "sha256": "05735170e59a4c96a10e5a4d8e4cdfb7ac7314cba694f3147fd2138f164c7d97"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-46.webp",
+      "sha256": "8241eece9b2b6fb10cde114d75262ede896cb1a2412343471af2bafdd7ea8cfb"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-47.webp",
+      "sha256": "31528523ae14cafa8cf2392f1680e094970bbd01ccd55a9c940be18de9c0b057"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-48.webp",
+      "sha256": "dc0e88c9e8ec0c99825f8b89846e85e14077801cb772152779552263dc2987b4"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-49.webp",
+      "sha256": "8c51e449880b13136c882c70c4c404f9b5c52de0b84a32b337ba982b2eae000a"
+    },
+    {
+      "path": "public/assets/images/photography/residential/residential-50.webp",
+      "sha256": "c830f59cc0cdf9223fdc00333a7b96c8561fbc4647d546a44c4ab757552ca2d7"
+    },
+    {
+      "path": "public/assets/images/platform/ai/ai-01-before.webp",
+      "sha256": "e780ea9fafac7d62eedee335dd06b5f6485f6a5b5ffb77e3c953b361a419643f"
+    },
+    {
+      "path": "public/assets/images/platform/ai/ai-01-decluttered.webp",
+      "sha256": "ce001d9b89a8f1bd5140d66317ff2261e8a3c3cdb9b280d6208c187a04758142"
+    },
+    {
+      "path": "public/assets/images/platform/ai/ai-01-redesign.webp",
+      "sha256": "32577f1aa47e3aa75d423d984bb669f4fa72e61bc6376aac4920f32fa8c1f482"
+    },
+    {
+      "path": "public/assets/images/platform/ai/ai-02-before.webp",
+      "sha256": "0588c01d986d179535cf76a818e540e7ef11e3978f578c45fbf02d83cdb3574f"
+    },
+    {
+      "path": "public/assets/images/platform/ai/ai-02-decluttered.webp",
+      "sha256": "17648982d5ac01e9ed54ebc51fc93ecd2022fb4fd1d5546f3fff585d4f2717d9"
+    },
+    {
+      "path": "public/assets/images/platform/ai/ai-02-redesign.webp",
+      "sha256": "901c766a56502c2c46c03057f8373b5a2999bd2117317c9cebc55c1007900f46"
+    },
+    {
+      "path": "public/assets/images/platform/ai/ai-03-before.webp",
+      "sha256": "aa8b3a14e72ef346cdc95698df204f30c8b2d4bed996ca2c09f59978667e6bba"
+    },
+    {
+      "path": "public/assets/images/platform/ai/ai-03-decluttered.webp",
+      "sha256": "9bce746d5bba7338d19a04a9e18c7f60b19b5b8eb09ca09a63d309b9afd3b729"
+    },
+    {
+      "path": "public/assets/images/platform/ai/ai-03-redesign.webp",
+      "sha256": "eb8226451e553df71751472c13ce5ddd2eccf80cf101223c81501dc5c411450c"
+    },
+    {
+      "path": "public/assets/images/platform/floor-plans/commercial-distribution.webp",
+      "sha256": "46d5fea19f0fe374024dfb4722337b0c438382a11bfc945ebc20e05b6f3f1c25"
+    },
+    {
+      "path": "public/assets/images/platform/floor-plans/industrial-manufacturing.webp",
+      "sha256": "ced02f3f63081385682e5bbfce8a9814b247b75d9724c9dd4921916efee1f1a7"
+    },
+    {
+      "path": "public/assets/images/platform/floor-plans/residential-courtyard.webp",
+      "sha256": "6e05f5f8639c0a3beb5a58b89fcfd0ce616910275b08e9601f56687fe386b322"
+    },
+    {
+      "path": "public/assets/images/platform/floor-plans/residential-terrace.webp",
+      "sha256": "59711e6ea5633ff74b73bc1cdb1f5d2282091b01633dd473228739fb4187deeb"
+    },
+    {
+      "path": "public/assets/images/platform/hub-commercial.webp",
+      "sha256": "e82c82041253c844dc0974e58b7c4a178bab0509472b72404b895a335de2ab0f"
+    },
+    {
+      "path": "public/assets/images/platform/hub-residential.webp",
+      "sha256": "f774bbc996e1f8e2e27dc5014150afc524a71a70e373502a8d0c7dfbd5af3bf5"
+    },
+    {
+      "path": "public/assets/images/platform/measurements.webp",
+      "sha256": "ad3af2ef91008db6aa482f8f28c714e9c9dc9990befd4230a93a576ec2089ff5"
+    },
+    {
+      "path": "public/assets/images/platform/notes-collaboration.svg",
+      "sha256": "b9cba09d64909add099515d23df994ab9a3673f9fbc829bcf8922737f1212cce"
+    },
+    {
+      "path": "public/assets/images/property-templates/commercial/com-01.webp",
+      "sha256": "1b990d31e083ce9b762f5a944985c113d3cc6590b0881ae135c86cfb2ab36055"
+    },
+    {
+      "path": "public/assets/images/property-templates/commercial/com-02.webp",
+      "sha256": "f3dd994a3af0dcb71f905f607f315e19dbef610afbefb024392a2af63a444ccb"
+    },
+    {
+      "path": "public/assets/images/property-templates/commercial/com-03.webp",
+      "sha256": "70508416d1fd09e8f2f3cb9a61c65d6c8c1e69aa3e75ba0d72432b2d0b6998bc"
+    },
+    {
+      "path": "public/assets/images/property-templates/commercial/com-04.webp",
+      "sha256": "46c436c363d1648fca015bc186d0e3d895a1d9366805250e24eb00fda4d06719"
+    },
+    {
+      "path": "public/assets/images/property-templates/commercial/com-05.webp",
+      "sha256": "f40cd8764ba5f84d9719623f154bc8e401e6f0eaf51ea421a6b6925cad35d524"
+    },
+    {
+      "path": "public/assets/images/property-templates/residential/res-01.webp",
+      "sha256": "3cf208104137fecdc6a072fe3074753546255533b695c149124ddbfe3b99ae81"
+    },
+    {
+      "path": "public/assets/images/property-templates/residential/res-02.webp",
+      "sha256": "3b8d3ec43c19fdbbc838eed941b1077b36a596b63a22787df2f29569a023466a"
+    },
+    {
+      "path": "public/assets/images/property-templates/residential/res-03.webp",
+      "sha256": "698cc1fb1ee843070cf791e58c385b1c9d90f203e8c9d16759e1192dd417399c"
+    },
+    {
+      "path": "public/assets/images/property-templates/residential/res-04.webp",
+      "sha256": "3b739be133a79fd49b761c4808c39db92d8858bdd4235e598540de9f0b4e7dca"
+    },
+    {
+      "path": "public/assets/images/property-templates/residential/res-05.webp",
+      "sha256": "c1b4d02b43ba093a948702a50e2321881c7f603b17eca3c2b7f218a042b70e9b"
+    },
+    {
+      "path": "public/assets/images/property-templates/residential/res-06.webp",
+      "sha256": "f12ca95460f144cd6ffb0cff4a72e4fdf943908a895c00965f600bab34cf3437"
+    },
+    {
+      "path": "public/assets/images/property-templates/residential/res-07.webp",
+      "sha256": "e4f874d4efa577aee53e03ccbe9d41c3589bf86bb7687bf0eac5e6dcf2d18127"
+    },
+    {
+      "path": "public/assets/images/property-templates/residential/res-08.webp",
+      "sha256": "3fce7663f753b7c0d03d0c9a971a5bd71e3861d412ea0557c7b1a56df115b2b7"
+    },
+    {
+      "path": "public/assets/images/property-templates/residential/res-09.webp",
+      "sha256": "2b7be399201dd2a8962ed1c0d20d1dca97994f3c1414710aa1d58a4cd443eff3"
+    },
+    {
+      "path": "public/assets/images/property-templates/residential/res-10.webp",
+      "sha256": "5d90c5472c29b977a557586597edbcf58e095d37530d939a2c5b6441aeb6105c"
+    },
+    {
+      "path": "public/assets/images/re_website_templates/Architectural noir_ Bluff House.png",
+      "sha256": "a789485741424653dc20fedb32f2fb0c695ef704abca2cdae24668f109544504"
+    },
+    {
+      "path": "public/assets/images/re_website_templates/Coastal Calm at 410 Harbor Point.png",
+      "sha256": "5754db8895c682dc5e16e776f1762664b30b131f47455e9a444593083e3d817f"
+    },
+    {
+      "path": "public/assets/images/re_website_templates/Field & Form The Meadow House.png",
+      "sha256": "46b93830d80e795461c041202baafc9141510ed3df89c09921713160e5c13347"
+    },
+    {
+      "path": "public/assets/images/re_website_templates/Gallery Minimal_ Wauwatosa Prairie Home.png",
+      "sha256": "2c82bab5bb348e510da4920b4fe0ea90082884e262ccd290fb2bc30761804d1d"
+    },
+    {
+      "path": "public/assets/images/re_website_templates/Heritage red Victorian home showcase.png",
+      "sha256": "936c71b823d1e4e3b929ee036dea9dcb0a0515a014c0b49d861e81ee9a22de13"
+    },
+    {
+      "path": "public/assets/images/re_website_templates/Light Editorial Lake Geneva Residence.png",
+      "sha256": "f87f43ef1696a17f42fff52c4d193d1968bbf914a8f23e5a0990a157215bb535"
+    },
+    {
+      "path": "public/assets/images/re_website_templates/Metro Blue Third Ward Loft.png",
+      "sha256": "d062baf1a79fb8ba3dc69419ef4b755d734b0d3af81e617f0253974f35d7bb8a"
+    },
+    {
+      "path": "public/assets/images/re_website_templates/Open House Studio property showcase.png",
+      "sha256": "73386dd83a5d879b380b0c37ac618d3d700814286e41c9f765e42f4a8f88c509"
+    },
+    {
+      "path": "public/assets/images/re_website_templates/Quiet Estate_ Cedarburg Property Showcase.png",
+      "sha256": "c355ef6c6131e739b78a4d397c66cffe61f690dbd8bb84bd89ce93f450865ee5"
+    },
+    {
+      "path": "public/assets/images/re_website_templates/Warm Modern Madison Home Showcase.png",
+      "sha256": "a66bfd969847fa43578963aecb1c235a1ff00748a4aa9dad514352e0b7f04530"
+    },
+    {
+      "path": "public/assets/images/sitesee-logo.png",
+      "sha256": "87bf854242d486d19036fb1b24aaba59b66199bf3e2410ede0614230815068b9"
+    },
+    {
+      "path": "public/assets/js/_notes/dwsync.xml",
+      "sha256": "bcf15f8654e932bec6d277e7f196ce8be62893c527d7165b22dd92eacfddadd3"
+    },
+    {
+      "path": "public/assets/js/media-showcase.js",
+      "sha256": "ac92fad0561cdc972123c656c0ac0ff365945798aebb21d271bf064967a464b6"
+    },
+    {
+      "path": "public/assets/js/pricing-access.js",
+      "sha256": "155c040becd6b5551b02dd3fdde708fd9fe22b7afeb1c88e626748f3b23db42d"
+    },
+    {
+      "path": "public/assets/js/request-received.js",
+      "sha256": "71c92ee71c7d40b0e623c0bc4675fa8203568e88891f8d6c758be595d796d5ba"
+    },
+    {
+      "path": "public/assets/js/site.js",
+      "sha256": "b38c3b005efebc98983cdfb2f7f81b4c697f00e1411aa34d430ae0d2f7a306a5"
+    },
+    {
+      "path": "public/assets/js/turnstile.js",
+      "sha256": "ff638d6a3e2a794a46af4c670327bf11637ef1b44fdd2b40c10edba04bf9e0d8"
+    },
+    {
+      "path": "public/booking-clock.php",
+      "sha256": "404960e0c377eba6ecc96e5d62bee30302216df778cf4ff6d93d80187373e518"
+    },
+    {
+      "path": "public/collaboration-live-meetings.html",
+      "sha256": "53309ce594ee6b1cd5051e9229efdd3f0489c5f8ae417064c055e842479e0ad0"
+    },
+    {
+      "path": "public/commercial-photography.html",
+      "sha256": "45eb24fbc1e50c2a8634d4a7b9bd1aa6a77ce7746560913d553886f6654e6efe"
+    },
+    {
+      "path": "public/commercial-services.html",
+      "sha256": "e6aa088a35616ecf685ffd713a4279d3dd10f09f10fe14853d469b47fb80c456"
+    },
+    {
+      "path": "public/contact.html",
+      "sha256": "ccbc40b986ffa1bae387052d2bda9fc49a7c545ed82e2c7e029db62bd6bc5f62"
+    },
+    {
+      "path": "public/drone-aerial.html",
+      "sha256": "8d0d2e5cd04209eafd6d59033d6f27102cb074ef24a2d13a5501885b2d90729d"
+    },
+    {
+      "path": "public/engagement-analytics.html",
+      "sha256": "177484b8473fcaa2ef8d0b5337afac5421164867b33102a34151339a6d7e2d13"
+    },
+    {
+      "path": "public/floor-plans.html",
+      "sha256": "befd9f2dd343ac8bad7fb311cad601db0ee00584af16b04e666199c3f84299b8"
+    },
+    {
+      "path": "public/for-teams.html",
+      "sha256": "b1b07df0d21d1b100731d07418b766a0f59f092a10fc3ec9ab9677f197613c09"
+    },
+    {
+      "path": "public/index.html",
+      "sha256": "cfc689dae76349ec9efb2d9457b905fb2a98dcc178de996d1428f819379ffbf5"
+    },
+    {
+      "path": "public/media-packages.html",
+      "sha256": "38176c0813d8b4cf49563b9017b339337e059ae4b94025ed7ba1e7d941115c8f"
+    },
+    {
+      "path": "public/our-work.html",
+      "sha256": "01fffa3680a507677effa14b0b960c5c5012d0e043378f0b53117fe09d42d8a6"
+    },
+    {
+      "path": "public/platform.html",
+      "sha256": "9f2c6925401bb88d938757fc4b6d043dbf1a44d6961c8d08d7bb034abc090f74"
+    },
+    {
+      "path": "public/portal-assets/booking-notice.js",
+      "sha256": "8a246d577dc37987383f0cb6a1e804588ec59c7855fc2e4cef39385bc344c8f4"
+    },
+    {
+      "path": "public/portal-assets/job-payment.js",
+      "sha256": "917a1773ebfc018535541a60fe2e756ba51c99fb548cf1d2d2a117f1e4aae729"
+    },
+    {
+      "path": "public/portal-assets/onsite-services.js",
+      "sha256": "ebb61e2a065075b8d708c765bc9e76adcfabf4ef144a1e365f1c8066b342c09f"
+    },
+    {
+      "path": "public/portal-assets/order.css",
+      "sha256": "44497f927bd3cfc1abe35270abdc31a2ed3a085f844277a8bc7cfa75c370013e"
+    },
+    {
+      "path": "public/portal-assets/order.js",
+      "sha256": "8092e76b937570a009e624ed140d3944dca73166d865e318d33f0d63a5960f7e"
+    },
+    {
+      "path": "public/portal-assets/payment.js",
+      "sha256": "1df88c4e07de28b662eb9481dfdac08b6f368bceb8791251babf42160ed0b4f0"
+    },
+    {
+      "path": "public/portal-assets/portal.css",
+      "sha256": "b09436fa4600f9b9a83203f2d4c3626ce8585ae677cb66376e06ea86f29efb4e"
+    },
+    {
+      "path": "public/portal-assets/portal.js",
+      "sha256": "f921d5a5fad9cc679f69fc855cebdb2795efa02d7e1192c56e922b9d4c3c0971"
+    },
+    {
+      "path": "public/portal-assets/vendor.css",
+      "sha256": "6016301d365ccc52f453c7c9f5a2f3c4d5e0bf085e1a2b21a94201d9ab882bb0"
+    },
+    {
+      "path": "public/pricing-request.html",
+      "sha256": "52e52528ebed22bc23341ff851c97600b2b5bfc5758b9977b4fe7f532d7df0c8"
+    },
+    {
+      "path": "public/property-video.html",
+      "sha256": "735d76978251d66e91ceb550f209474f59ad3717c5ee7b6852b982afcf1d31c5"
+    },
+    {
+      "path": "public/property-websites.html",
+      "sha256": "a378afdc2375e529d8c943bf8182e80ba7c980a31dd8691b425ebba292638cdf"
+    },
+    {
+      "path": "public/request-received.html",
+      "sha256": "24a556092c783d4cec6f68d8b8f4eed55cbbeea2c41dc90d53aa34942b760ff8"
+    },
+    {
+      "path": "public/residential-photography.html",
+      "sha256": "756ae2ddc6094284214345103c4b80ee37203560ad09157357c907c47454dcc0"
+    },
+    {
+      "path": "public/residential-services.html",
+      "sha256": "20413bce69a5717a6d9784d041625d210c35ac312fde4931c7c36f23013c595f"
+    },
+    {
+      "path": "public/robots.txt",
+      "sha256": "331ea9090db0c9f6f597bd9840fd5b171830f6e0b3ba1cb24dfa91f0c95aedc1"
+    },
+    {
+      "path": "public/services-provided.html",
+      "sha256": "cec5e1b79e4d461272e48d1204c84b7706439b02dc5767ca6808bd77d1cc905b"
+    },
+    {
+      "path": "public/virtual-experiences.html",
+      "sha256": "caa912b04c78724248f9dcff8214731adb8e7009bf0ae940d20450d5f1474858"
+    },
+    {
+      "path": "public/virtual-twilight.html",
+      "sha256": "abf8c922ac1339d8d385067eb4d6371c47e8112b69527ef1ca104be4f20ae6e4"
+    }
+  ]
+}

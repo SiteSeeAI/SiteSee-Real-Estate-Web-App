@@ -1,0 +1,9 @@
+/* Shared account shell; existing role styles retain every form and job control. */
+.site-shell>header{display:flex;align-items:center;justify-content:space-between;gap:24px;background:#01111e;color:#fff;padding:24px 6%;border-bottom:4px solid #ffc107}
+.site-shell .brand{display:block;color:#fff;font:600 30px/1.2 Poppins,Arial,sans-serif;text-decoration:none;letter-spacing:-1px}
+.site-shell .brand span{color:#ffc107}.site-shell .brand small{display:block;font:12px/1.5 Inter,Arial,sans-serif;letter-spacing:.3px;margin-top:8px}
+.site-shell>header nav{display:flex;align-items:center;flex-wrap:wrap;gap:20px}.site-shell>header nav a{color:#fff;min-height:44px;padding:10px 0;text-decoration:none}
+.site-shell>header nav .new-order{color:#01111e;padding:12px 22px}.site-shell>header nav a:hover{text-decoration:underline;text-underline-offset:4px}
+.site-shell>.test-notice{font:12px/1.6 Inter,Arial,sans-serif;color:#17252e;padding:10px 6%;background:#fff;border-bottom:1px solid #d9dfe2;letter-spacing:1px}
+.site-shell>.test-notice span{letter-spacing:0;margin-left:16px;color:#58636b}.site-shell>footer{display:flex;justify-content:space-between;gap:16px;padding:24px 6%;font-size:13px;color:#58636b;text-align:left}
+@media(max-width:650px){.site-shell>header{align-items:flex-start;flex-direction:column;gap:18px;padding:22px 6%}.site-shell>header nav{width:100%;gap:18px;font-size:14px}.site-shell>header nav .new-order{padding:10px 14px}.site-shell>.test-notice{font-size:11px}.site-shell>.test-notice span{display:block;margin-left:0}.site-shell>footer{flex-direction:column}}

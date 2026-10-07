@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/application-shell.php';
 function portal_escape(mixed $value): string { return htmlspecialchars((string)$value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
 function portal_csrf_field(): string { return '<input type="hidden" name="csrf" value="'.portal_escape($_SESSION['csrf']).'">'; }
 function portal_payment_label(array $order, int $balancePaid): string
@@ -11,9 +12,7 @@ function portal_payment_label(array $order, int $balancePaid): string
 function portal_page(string $title, string $body, array|false $account = false, int $status = 200): never
 {
     http_response_code($status);
-    $e='portal_escape';
-    $nav=$account ? '<nav aria-label="Customer Navigation"><a href="/account.php">My Orders</a><a href="/account.php?view=profile">Account</a><a class="new-order" href="/account.php?view=new">New Order</a></nav>' : '';
-    echo '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><title>'.$e($title).' | SiteSee</title><link rel="stylesheet" href="/portal-assets/portal.css?v=20261002-polish-r1"><script src="/portal-assets/portal.js" defer></script></head><body><a class="skip" href="#content">Skip To Content</a><header><a class="brand" href="/account.php" aria-label="SiteSee My Orders">SiteSee<span>.</span><small>Show More. Decide Faster.</small></a>'.$nav.'</header><div class="test-notice">TEST ACCESS <span>Orders and payments remain in test mode.</span></div><main id="content"><h1>'.$e($title).'</h1>'.$body.'</main><footer><span>SiteSee Real Estate</span><a href="mailto:sales@re.sitesee.ai">sales@re.sitesee.ai</a></footer></body></html>';
+    echo site_application_shell('customer', $title, $body, (bool)$account);
     exit;
 }
 function portal_sign_in(string $notice = ''): never

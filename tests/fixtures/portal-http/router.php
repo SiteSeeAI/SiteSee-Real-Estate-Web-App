@@ -11,4 +11,5 @@ if($path==='/account.php') {
 }
 if(preg_match('~^/assets/fonts/(?:Inter-Regular|Poppins-Regular|Poppins-SemiBold)\.ttf$~D',(string)$path))return false;
 if(preg_match('~^/portal-assets/(?:portal|order|payment|booking-notice)\.(?:css|js)$~D',(string)$path))return false;
+if($path==='/portal-assets/application.css')return false;
 http_response_code(404);return true;

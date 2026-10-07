@@ -1,5 +1,7 @@
 # Unified application: bootstrap milestone
 
+Current work: [shared role shell](SHELL_PROGRESS.md). The validation below records the earlier bootstrap checkpoint; its Node result was produced before the loader change and is now explicitly marked historical. The current-source Node contracts and their rerun are recorded with the shell evidence.
+
 Project brief: [CODEX_HANDOFF.md](../../CODEX_HANDOFF.md). Baseline: `ff5e625a8ff4c51af336e9203fa4be29b3611570`. Working branch: `feat/unified-server-app-20261007`. This is the first implementation milestone; the consolidated release and server acceptance remain pending.
 
 The unchanged package and complete Git history were verified before coding. The unchanged PHP baseline completed 31 of 36 suites successfully and reproduced all five recorded inherited failures. Their corrected fixtures now use the approved primary TEST mailbox, complete Graph envelopes, and the exact historical files recorded by the release manifests. Original wrong-sender, replay, uncertain-operation, integrity and concurrency assertions remain active. Historical files have Git commit and SHA256 provenance beside them. Historical installer payloads and deployment manifests retain their original bytes.
@@ -21,7 +23,7 @@ The existing customer, vendor and staff page shells remain in use. Presentation 
 | --- | --- |
 | PHP 8.2 application suites | 37 completed and passed, including all five inherited failures and the new bootstrap suite |
 | Bootstrap contract | 87 checks passed |
-| Node 24 tests | 109 passed |
+| Node 24 tests | 109 passed before the shared loader; current loader contracts are corrected and rerun in the shell milestone |
 | Portal/calendar Python scripts (`*.test.py`) | 15 suites, 292 cases, 291 passed and one privileged ownership case skipped |
 | Historical Python discovery (`*_test.py`) | 153 cases, 131 passed and 22 privileged ownership/cron cases skipped |
 | Historical builders | All 19 reproduce original installer and deployment-manifest bytes |
@@ -40,4 +42,4 @@ The local logs are under `/workspace/.sitesee-onboarding/unified-baseline/`. Ins
 
 Continue the shared page shell with role-specific navigation and unchanged forms; assemble a release from a fixed reviewed commit with a source/test manifest; implement one preflight/install/resume/verify command with verified SQLite backup/restore and code rollback/repair rules; complete four reviews and an independent audit of that implementation; provide isolated server TEST acceptance before presenting a cutover.
 
-The operator reports cPanel/WHM and PHP 8.2. cPanel Terminal availability is not yet confirmed. A separate HTTPS staging hostname, document root, private data/configuration paths and exclusive worker/webhook ownership remain unverified. Staging must explicitly isolate the booking database, sessions and callbacks; changing only the source-root variable is insufficient. Keep current server records and backups, including the protected references in the brief, throughout that work.
+The operator reports cPanel/WHM, PHP 8.2 and available Terminal. The operator subsequently chose the existing `re.sitesee.ai` for the installed TEST review and declined a separate hostname. Complete isolated local rehearsals first, then prepare one exact server update with verified backup, exclusive worker/webhook ownership and recovery rules for approval. Keep current server records and backups, including the protected references in the brief, throughout that work.

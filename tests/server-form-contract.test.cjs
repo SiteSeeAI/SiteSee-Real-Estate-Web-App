@@ -38,11 +38,18 @@ test('the public pricing-request route replaces pricing.html and does not expose
 });
 
 test('public PHP routes are minimal entrypoints into private implementations', () => {
+  const loader = read('public/application-entry.php');
+  const registry = read('_private/server/application.php');
+  assert.ok(loader.includes('/home/sitesee/.sitesee-real-estate'), 'private root is preserved');
+  assert.ok(loader.includes("'/server/application.php'"), 'loader requires private registry');
   for (const [publicPath, privatePath] of Object.entries(publicEntrypoints)) {
     const entrypoint = read(publicPath);
     assert.equal(fs.existsSync(path.join(root, privatePath)), true, privatePath);
-    const productionPath = privatePath.replace(/^_private/, '/home/sitesee/.sitesee-real-estate');
-    assert.ok(entrypoint.includes("require '" + productionPath + "';"), publicPath);
+    const route = path.basename(publicPath);
+    const handler = privatePath.replace(/^_private\//, '');
+    assert.ok(entrypoint.includes("require __DIR__ . '/application-entry.php';"), publicPath);
+    assert.ok(entrypoint.includes("require site_application_route_target('" + route + "');"), publicPath);
+    assert.ok(registry.includes("'" + route + "' => ['handler'=>'" + handler + "',"), publicPath + ' retains private handler');
     for (const privateMarker of ['real_estate_send_mail', 'real_estate_prepare_submission', 'readfile(', '<form']) {
       assert.equal(entrypoint.includes(privateMarker), false, publicPath + ' exposes ' + privateMarker);
     }

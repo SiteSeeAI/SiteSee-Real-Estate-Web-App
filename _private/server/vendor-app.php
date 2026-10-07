@@ -10,6 +10,7 @@ if(empty($_SERVER['HTTPS'])||$_SERVER['HTTPS']==='off'){http_response_code(400);
 require_once __DIR__.'/booking-job-ui.php';
 require_once __DIR__.'/vendor-access.php';
 require_once __DIR__.'/portal-sms.php';
+require_once dirname(__DIR__).'/views/application-shell.php';
 
 // The shared onsite view needs formatting and CSRF helpers only, never staff login.
 function staff_escape(string $s): string{return htmlspecialchars($s,ENT_QUOTES,'UTF-8');}
@@ -18,8 +19,8 @@ function staff_csrf(): string{return $_SESSION['csrf'];}
 function vendor_page(string $title,string $html,?array $account=null,int $status=200): never
 {
     http_response_code($status);$e='staff_escape';
-    $nav=$account?'<div class="topline"><div><a href="/vendor.php">My Jobs</a><p class="help">'.$e($account['name']).'</p></div><form method="post"><input type="hidden" name="csrf" value="'.$e(staff_csrf()).'"><button name="action" value="logout">Sign Out</button></form></div>':'';
-    echo '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SiteSee | '.$e($title).'</title><link rel="stylesheet" href="/portal-assets/vendor.css"></head><body><a class="skip" href="#content">Skip To Content</a><header><div class="brand">SiteSee<span>.</span></div><small>Show More. Decide Faster.</small></header><main id="content">'.$nav.'<h1>'.$e($title).'</h1>'.$html.'</main><footer>SiteSee Real Estate · Vendor Account · TEST</footer></body></html>';exit;
+    $nav=$account?'<div class="topline"><div><p class="help">'.$e($account['name']).'</p></div><form method="post"><input type="hidden" name="csrf" value="'.$e(staff_csrf()).'"><button name="action" value="logout">Sign Out</button></form></div>':'';
+    echo site_application_shell('vendor', $title, $nav.$html, (bool)$account);exit;
 }
 function vendor_redirect(string $query=''): never{header('Location: /vendor.php'.$query,true,303);exit;}
 function vendor_json(array $data,int $status=200): never{http_response_code($status);header('Content-Type: application/json; charset=utf-8');echo json_encode($data,JSON_THROW_ON_ERROR);exit;}

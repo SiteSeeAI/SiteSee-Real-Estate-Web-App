@@ -4,11 +4,12 @@ declare(strict_types=1);
 require_once __DIR__ . '/booking-lifecycle-ui.php';
 require_once __DIR__ . '/booking-job-ui.php';
 require_once __DIR__ . '/vendor-admin.php';
+require_once dirname(__DIR__).'/views/application-shell.php';
 header('Cache-Control: no-store, private, max-age=0');
 header('X-Robots-Tag: noindex, nofollow, noarchive');
 header('X-Frame-Options: DENY');
 header('Referrer-Policy: same-origin');
-header('Content-Security-Policy: default-src \'none\'; script-src \'self\'; connect-src \'self\'; style-src \'unsafe-inline\'; font-src \'self\'; form-action \'self\'; base-uri \'none\'');
+header('Content-Security-Policy: default-src \'none\'; script-src \'self\'; connect-src \'self\'; style-src \'self\' \'unsafe-inline\'; font-src \'self\'; form-action \'self\'; base-uri \'none\'');
 header('Content-Type: text/html; charset=utf-8');
 
 function staff_escape(string $value): string { return htmlspecialchars($value, ENT_QUOTES, 'UTF-8'); }
@@ -24,8 +25,7 @@ function staff_page(string $body, int $status = 200): never
 @media(max-width:650px){main{padding:26px 6% 44px}h1{font-size:25px}h2{font-size:20px}.card,.staff-fold{padding:18px}.staff-fold{padding:10px 18px}.facts{grid-template-columns:1fr}.progress{grid-template-columns:1fr 1fr;gap:16px}.request-item{grid-template-columns:1fr;padding:18px}.request-link{justify-self:start}.topline{align-items:flex-start}button{font-size:14px}header{padding:22px 6%}#job-service-items fieldset{padding:10px}}
 CSS;
     $staffTitle=defined('SITESEE_VENDOR_ADMIN_PAGE')&&SITESEE_VENDOR_ADMIN_PAGE?'Vendor Accounts':(defined('SITESEE_PRODUCTION_PAGE')&&SITESEE_PRODUCTION_PAGE?'Production':'Booking Review');
-    echo '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SiteSee | '.staff_escape($staffTitle).'</title><style>' . $style . '</style></head><body><a class="skip" href="#content">Skip To Content</a><header><div class="brand">SiteSee<span>.</span></div><small>Show More. Decide Faster.</small></header><main id="content"><h1>'.staff_escape($staffTitle).'</h1>'
-        . $body . '</main><footer>SiteSee Real Estate · Staff access · TEST</footer></body></html>';
+    echo site_application_shell('staff', $staffTitle, $body, !empty($_SESSION['staff_until']) && (int)$_SESSION['staff_until'] >= time(), $style);
     exit;
 }
 function staff_csrf(): string
@@ -284,7 +284,6 @@ if ($issuedLink) {
     $body .= '<h2>Private Booking Link</h2><p>Copy this private link to the authorized test customer. It appears only once; save it before leaving this page.</p><p><input type="text" readonly aria-label="Private booking link" value="' . staff_escape($issuedLink) . '" style="width:100%"></p><p><a href="' . staff_escape($issuedLink) . '" target="_blank" rel="noopener noreferrer">Open Booking Page ↗</a></p>';
 }
 $reference = (string)($_POST['reference'] ?? $_GET['reference'] ?? '');
-$body.='<nav aria-label="Staff Navigation"><a href="staff-bookings.php">Bookings</a> · <a href="staff-production.php">Production</a> · <a href="staff-vendors.php">Vendors</a></nav>';
 if(defined('SITESEE_VENDOR_ADMIN_PAGE')&&SITESEE_VENDOR_ADMIN_PAGE)staff_page($body.vendor_admin_page($db));
 if(defined('SITESEE_PRODUCTION_PAGE')&&SITESEE_PRODUCTION_PAGE)staff_page($body.staff_job_production_page($db,$reference));
 $row = booking_get($db, $reference);

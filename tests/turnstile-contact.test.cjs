@@ -66,7 +66,10 @@ test('contact form posts to the server instead of displaying a design preview', 
 });
 
 test('public contact entrypoint does not expose delivery implementation', () => {
-  assert.match(contactEntrypoint, /\/home\/sitesee\/\.sitesee-real-estate\/server\/contact-submit\.php/);
+  assert.match(contactEntrypoint, /require __DIR__ \. '\/application-entry\.php';/);
+  assert.match(contactEntrypoint, /require site_application_route_target\('contact-submit\.php'\);/);
+  assert.match(read('_private/server/application.php'), /'contact-submit\.php' => \['handler'=>'server\/contact-submit\.php'/);
+  assert.match(read('public/application-entry.php'), /\/home\/sitesee\/\.sitesee-real-estate/);
   for (const marker of ['real_estate_send_mail', 'real_estate_turnstile_config', 'salesHtml', '<form']) {
     assert.equal(contactEntrypoint.includes(marker), false, marker);
   }
