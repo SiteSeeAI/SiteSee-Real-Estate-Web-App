@@ -7,6 +7,8 @@ on:
       - 'tools/build-unified-release.py'
       - 'tools/install-unified.py'
       - 'tests/unified-release.test.py'
+      - 'tests/booking_crm_recovery_test.py'
+      - 'tests/fixtures/booking-crm-before/**'
       - 'documents/unified/**'
       - '.github/workflows/unified-release-ci.yml'
   push:
@@ -17,6 +19,8 @@ on:
       - 'tools/build-unified-release.py'
       - 'tools/install-unified.py'
       - 'tests/unified-release.test.py'
+      - 'tests/booking_crm_recovery_test.py'
+      - 'tests/fixtures/booking-crm-before/**'
       - 'documents/unified/**'
       - '.github/workflows/unified-release-ci.yml'
 jobs:

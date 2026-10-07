@@ -1,0 +1,37 @@
+{
+  "purpose": "Exact historical CRM/runner source for the preserved recovery installer rehearsal",
+  "files": {
+    "tests/fixtures/booking-crm-before/server/booking-crm.php": {
+      "commit": "d6f1b55fb96fb6abada0bfac4e1f5a66508d03a4",
+      "source": "_private/server/booking-crm.php",
+      "blob": "36945c4120a6f6a91acd62e238797b1cf8d5c1d1",
+      "sha256": "42eb3369d40e1fc37712413cde685f76cdf72dac5329b199ac22c6ef42877c39",
+      "normalized_sha256": "42eb3369d40e1fc37712413cde685f76cdf72dac5329b199ac22c6ef42877c39",
+      "bytes": 10986
+    },
+    "tests/fixtures/booking-crm-before/finish-booking-communications.py": {
+      "commit": "89170b63c6b3b452f51928720bd1c0d7948a4105",
+      "source": "tools/finish-booking-communications.py",
+      "blob": "91d7f97ca14cdbac7fd221075b503b70f228469c",
+      "sha256": "bd9de9f30ea41a11bc52bb7c611374cd5bce4a35caa95fb2a1e8052c4bb37f46",
+      "normalized_sha256": "bd9de9f30ea41a11bc52bb7c611374cd5bce4a35caa95fb2a1e8052c4bb37f46",
+      "bytes": 11322
+    },
+    "tests/fixtures/booking-crm-before/server/booking-mail-client.php": {
+      "commit": "d6f1b55fb96fb6abada0bfac4e1f5a66508d03a4",
+      "source": "_private/server/booking-mail-client.php",
+      "blob": "bf8462dc8f66c1fc0552da3a4baf264317269982",
+      "sha256": "189e15f44c3c28856765527efdcf25b71f748add07d6e7d31c396d50d3ed5e5b",
+      "normalized_sha256": "189e15f44c3c28856765527efdcf25b71f748add07d6e7d31c396d50d3ed5e5b",
+      "bytes": 7360
+    },
+    "tests/fixtures/booking-crm-before/tools/booking-communications.php": {
+      "commit": "d6f1b55fb96fb6abada0bfac4e1f5a66508d03a4",
+      "source": "tools/booking-communications.php",
+      "blob": "3923b3ff38eba00d8d8ccddfc0204e3a582284d6",
+      "sha256": "bf8173d38bfa7f980cf8a6d7e8e09ee07f0efabbdc3a466c87f08c2e1877ad5b",
+      "normalized_sha256": "bf8173d38bfa7f980cf8a6d7e8e09ee07f0efabbdc3a466c87f08c2e1877ad5b",
+      "bytes": 9513
+    }
+  }
+}

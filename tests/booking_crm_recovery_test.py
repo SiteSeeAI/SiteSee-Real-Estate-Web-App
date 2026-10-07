@@ -75,10 +75,11 @@ class RecoveryTests(unittest.TestCase):
         php = os.environ.get('SITESEE_TEST_PHP', '/workspace/scratch/0620b17ff5df/php-bin/php')
         if not Path(php).is_file():
             self.skipTest('Set SITESEE_TEST_PHP for installer rehearsal.')
-        original = PROJECT.parent / 'deliverables/booking-communications-20260926/payload/server/booking-crm.php'
-        previous_runner = PROJECT.parent / 'deliverables/finish-booking-communications.py'
-        if not original.is_file() or not previous_runner.is_file():
-            self.skipTest('Prior deployment fixtures are required for installer rehearsal.')
+        original = PROJECT / 'tests/fixtures/booking-crm-before/server/booking-crm.php'
+        previous_runner = PROJECT / 'tests/fixtures/booking-crm-before/finish-booking-communications.py'
+        self.assertTrue(original.is_file() and previous_runner.is_file(), 'Pinned historical CRM fixtures are required.')
+        self.assertEqual(recovery.digest(original.read_bytes()), recovery.CRM_OLD)
+        self.assertEqual(recovery.digest(previous_runner.read_bytes()), recovery.RUNNER_OLD)
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / 'private'
             (root / 'server').mkdir(parents=True)
@@ -86,7 +87,9 @@ class RecoveryTests(unittest.TestCase):
             root.chmod(0o700)
             (root / 'server/booking-crm.php').write_bytes(original.read_bytes())
             for name in ('server/booking-mail-client.php', 'tools/booking-communications.php'):
-                source = PROJECT / ('_private/' + name if name.startswith('server/') else name)
+                source = PROJECT / 'tests/fixtures/booking-crm-before' / name
+                expected = recovery.CLIENT_HASH if name.startswith('server/') else recovery.CLI_HASH
+                self.assertEqual(recovery.digest(source.read_bytes()), expected)
                 (root / name).write_bytes(source.read_bytes())
             runner = Path(directory) / 'finish-booking-communications.py'
             runner.write_bytes(previous_runner.read_bytes())
