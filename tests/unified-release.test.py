@@ -22,6 +22,13 @@ spec = importlib.util.spec_from_file_location('unified_installer', ROOT / 'tools
 installer = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(installer)
 BASELINE = 'ff5e625a8ff4c51af336e9203fa4be29b3611570'
+CPANEL_HANDLER = '''# php -- BEGIN cPanel-generated handler, do not edit
+# Set the “ea-php82” package as the default “PHP” programming language.
+<IfModule mime_module>
+  AddHandler application/x-httpd-ea-php82 .php .php8 .phtml
+</IfModule>
+# php -- END cPanel-generated handler, do not edit
+'''.encode()
 
 
 class UnifiedRelease(unittest.TestCase):
@@ -290,6 +297,91 @@ class UnifiedRelease(unittest.TestCase):
         names_before = sorted(p.relative_to(self.private) for p in self.private.rglob('*'))
         self.assertIn('PREFLIGHT PASS', self.cli('--preflight'))
         self.assertEqual(names_before, sorted(p.relative_to(self.private) for p in self.private.rglob('*')))
+        self.assertFalse(self.journal_path.exists())
+
+    def test_cpanel_handler_preflight_install_verify_resume_and_recovery_preserve_exact_file(self):
+        path = self.public / '.htaccess'
+        data = (path.read_bytes() + b'\n' + CPANEL_HANDLER).replace(b'\n', b'\r\n')
+        path.write_bytes(data)
+        info = path.stat(); original_meta = installer.metadata(path)
+        # A mapped hosting digest must still be checked and remain unchanged.
+        manifest_path = self.private / self.obj['active_manifests'][0]
+        record = json.loads(manifest_path.read_bytes()); record['files']['public/.htaccess'] = installer.sha(data)
+        manifest_path.write_bytes(installer.encode(record))
+        preflight = json.loads(self.cli('--preflight'))
+        self.assertEqual(preflight['preserved_host_files']['public/.htaccess'], installer.sha(data))
+        self.assertFalse(self.journal_path.exists())
+        for action in ('--install', '--verify', '--resume'):
+            self.cli(action)
+            self.assertEqual(path.read_bytes(), data)
+            self.assertEqual(installer.metadata(path), original_meta)
+            self.assertEqual((path.stat().st_ino, path.stat().st_mtime_ns), (info.st_ino, info.st_mtime_ns))
+        release = json.loads((self.private / 'unified-release.json').read_bytes())
+        self.assertEqual(release['files']['public/.htaccess'], installer.sha(data))
+        self.assertEqual(release['preserved_host_files']['public/.htaccess'], installer.sha(data))
+        journal = json.loads(self.journal_path.read_bytes())
+        self.assertEqual(journal['entries']['public/.htaccess']['before'], journal['entries']['public/.htaccess']['after'])
+        self.cli('--rollback-code')
+        self.assertEqual(path.read_bytes(), data)
+        self.assertEqual(installer.metadata(path), original_meta)
+        self.assertEqual(json.loads(manifest_path.read_bytes())['files']['public/.htaccess'], installer.sha(data))
+
+    def test_plain_crlf_apache_file_is_not_rewritten(self):
+        path = self.public / '.htaccess'; data = path.read_bytes().replace(b'\n', b'\r\n'); path.write_bytes(data)
+        before, after, _ = self.plan()
+        self.assertEqual(before['public/.htaccess'], data)
+        self.assertEqual(after['public/.htaccess'], data)
+
+    def test_cpanel_handler_unknown_rules_and_versions_refused(self):
+        path = self.public / '.htaccess'; original = path.read_bytes()
+        examples = [original + CPANEL_HANDLER + b'SetEnv UNKNOWN_FLAG value\n',
+                    original.replace(b'no-store, private', b'public') + CPANEL_HANDLER,
+                    original + CPANEL_HANDLER.replace(b'ea-php82', b'ea-php83'),
+                    original + CPANEL_HANDLER + CPANEL_HANDLER,
+                    original.replace(b'\n', b'\x0b') + CPANEL_HANDLER]
+        for data in examples:
+            with self.subTest(digest=installer.sha(data)):
+                path.write_bytes(data)
+                with self.assertRaisesRegex(installer.Stop, 'Unknown deployed edit'): self.plan()
+                self.assertEqual(path.read_bytes(), data)
+                self.assertFalse(self.journal_path.exists())
+
+    def test_joined_apache_directives_require_repair_before_preflight(self):
+        path = self.public / '.htaccess'
+        data = path.read_bytes().replace(b'Options -Indexes\nDirectoryIndex index.html\n\n',
+                                        b'Options -IndexesDirectoryIndex index.html\n', 1) + CPANEL_HANDLER
+        path.write_bytes(data)
+        with self.assertRaisesRegex(installer.Stop, 'Joined Apache directives'): self.plan()
+        self.assertEqual(path.read_bytes(), data)
+        self.assertFalse(self.journal_path.exists())
+
+    def test_recovery_rechecks_reviewed_apache_rules_from_backups(self):
+        path = self.public / '.htaccess'; path.write_bytes(path.read_bytes() + CPANEL_HANDLER)
+        journal, before, after, metas = self.prepared()
+        name = 'public/.htaccess'
+        data = before[name] + b'RewriteRule ^.*$ https://example.invalid/ [R=302,L]\n'
+        backup = self.private / 'unified-deployments' / journal['backup'] / (installer.sha(name.encode()) + '.bin')
+        backup.write_bytes(data)
+        journal['entries'][name]['before'] = journal['entries'][name]['after'] = installer.sha(data)
+        with self.assertRaisesRegex(installer.Stop, 'Unknown deployed edit'): self.recovered(journal)
+
+    def test_concurrent_cpanel_change_is_preserved_during_recovery(self):
+        path = self.public / '.htaccess'; path.write_bytes(path.read_bytes() + CPANEL_HANDLER)
+        journal, _, _, _ = self.prepared()
+        newer = path.read_bytes().replace(b'\n', b'\r\n'); path.write_bytes(newer)
+        with self.assertRaisesRegex(installer.Stop, 'Concurrent/unknown edit'): self.recovered(journal)
+        self.assertEqual(path.read_bytes(), newer)
+
+    def test_missing_php_path_and_preflight_error_identify_cause_without_resume_hint(self):
+        missing = self.folder / 'missing-php'
+        command = ['python3', str(ROOT / 'tools/install-unified.py'), '--package', str(self.package), '--sha256', self.package_sha,
+                   '--private-root', str(self.private), '--public-root', str(self.public), '--account', self.account,
+                   '--php', str(missing), '--preflight']
+        result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('Required path missing: ' + str(missing), result.stdout)
+        self.assertIn('Read-only preflight stopped.', result.stdout)
+        self.assertNotIn('Use the same package with --resume', result.stdout)
         self.assertFalse(self.journal_path.exists())
         self.assertFalse((self.private / 'unified-deployments').exists())
 

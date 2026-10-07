@@ -57,7 +57,9 @@ def read(path, uid, optional=False):
     s = path.stat()
     need(stat.S_ISREG(s.st_mode) and s.st_nlink == 1 and s.st_uid == uid
          and 0 < stat.S_IMODE(s.st_mode) <= 0o777 and not s.st_mode & 0o022,
-         'Unsafe file or ownership preserved: ' + str(path))
+         'Unsafe file or ownership preserved: ' + str(path) +
+         ' (uid=' + str(s.st_uid) + ', expected_uid=' + str(uid) +
+         ', mode=' + format(stat.S_IMODE(s.st_mode), '04o') + ', links=' + str(s.st_nlink) + ')')
     need(s.st_size <= 128 * 1024 * 1024, 'Unexpected file size: ' + str(path))
     return path.read_bytes()
 
@@ -197,12 +199,59 @@ def lint(files, php):
             need(result.returncode == 0, 'PHP syntax differs: ' + name)
 
 
+def preserved_apache(source, current, accepted):
+    """Retain exact host bytes only for reviewed application rules and PHP 8.2."""
+    need(current is not None, 'Required file missing: public/.htaccess')
+    if sha(current) in accepted:
+        return current
+    normalized = current.replace(b'\r\n', b'\n')
+    need(b'Options -IndexesDirectoryIndex index.html' not in normalized,
+         'Joined Apache directives in public/.htaccess; preserve the cPanel handler and repair only the first line before preflight.')
+    try:
+        lines = [line.strip(' \t') for line in normalized.decode('utf-8').split('\n')]
+        base = [line.strip(' \t') for line in source.decode('utf-8').split('\n')]
+    except UnicodeDecodeError:
+        raise Stop('Unknown deployed edit preserved: public/.htaccess')
+    # Only outer line whitespace and blank separators are presentation changes.
+    # Directive text, quoted values, order and section boundaries must match.
+    while base and not base[-1]:
+        base.pop()
+    need(lines[:len(base)] == base, 'Unknown deployed edit preserved: public/.htaccess')
+    suffix = lines[len(base):]
+    while suffix and not suffix[0]:
+        suffix.pop(0)
+    while suffix and not suffix[-1]:
+        suffix.pop()
+    comments = (
+        '# Set the “ea-php82” package as the default “PHP” programming language.',
+        '# Set the "ea-php82" package as the default "PHP" programming language.',
+    )
+    need(len(suffix) == 6 and suffix[0] == '# php -- BEGIN cPanel-generated handler, do not edit'
+         and suffix[1] in comments and suffix[2:] == [
+             '<IfModule mime_module>',
+             'AddHandler application/x-httpd-ea-php82 .php .php8 .phtml',
+             '</IfModule>',
+             '# php -- END cPanel-generated handler, do not edit'],
+         'Unknown deployed edit preserved: public/.htaccess')
+    return current
+
+
+def release_record(obj, files, deployed, manifest_sha):
+    return encode({'release': obj['release'], 'commit': obj['commit'], 'stage': 'TEST',
+        'manifest_sha256': manifest_sha, 'migration': 'none',
+        'files': {n: sha(deployed[n]) for n in files},
+        'preserved_host_files': {'public/.htaccess': sha(deployed['public/.htaccess'])}})
+
+
 def inspect(obj, files, root, public, uid, manifest_sha):
     before, after, metas = {}, dict(files), {}
     for name, item in obj['files'].items():
         path = target(name, root, public)
         data = read(path, uid, item['allow_missing'])
-        need((data is None and item['allow_missing']) or sha(data) in item['accepted_before'], 'Unknown deployed edit preserved: ' + name)
+        if name == 'public/.htaccess':
+            after[name] = preserved_apache(files[name], data, item['accepted_before'])
+        else:
+            need((data is None and item['allow_missing']) or sha(data) in item['accepted_before'], 'Unknown deployed edit preserved: ' + name)
         before[name] = data
         metas[name] = metadata(path) if data is not None else {'uid': uid, 'gid': pwd.getpwuid(uid).pw_gid, 'mode': 0o644 if name.startswith('public/') else 0o600}
     for filename in obj['active_manifests']:
@@ -221,8 +270,7 @@ def inspect(obj, files, root, public, uid, manifest_sha):
                     changed = True
         before[name], after[name], metas[name] = raw, encode(record) if changed else raw, metadata(root / filename)
     name = 'private/unified-release.json'
-    data = encode({'release': obj['release'], 'commit': obj['commit'], 'stage': 'TEST', 'manifest_sha256': manifest_sha,
-                   'migration': 'none', 'files': {n: sha(b) for n, b in files.items()}})
+    data = release_record(obj, files, after, manifest_sha)
     old = read(root / 'unified-release.json', uid, True)
     need(old in (None, data), 'Different unified release record preserved.')
     before[name], after[name] = old, data
@@ -330,6 +378,8 @@ def recover_plan(obj, files, journal, package_sha, root, public, db, uid, manife
         before[name], metas[name] = data, meta
     # Recompute active manifest updates from the immutable original backups.
     after = dict(files)
+    after['public/.htaccess'] = preserved_apache(files['public/.htaccess'], before['public/.htaccess'],
+                                               obj['files']['public/.htaccess']['accepted_before'])
     for filename in obj['active_manifests']:
         name = 'private/' + filename
         record = json.loads(before[name]); changed = False
@@ -338,11 +388,10 @@ def recover_plan(obj, files, journal, package_sha, root, public, db, uid, manife
             target(lookup, root, public)
             if lookup in files:
                 need(digest == sha(before[lookup]), 'Backup release metadata differs.')
-                if before[lookup] != files[lookup]:
-                    record['files'][key] = sha(files[lookup]); changed = True
+                if before[lookup] != after[lookup]:
+                    record['files'][key] = sha(after[lookup]); changed = True
         after[name] = encode(record) if changed else before[name]
-    after['private/unified-release.json'] = encode({'release': obj['release'], 'commit': obj['commit'], 'stage': 'TEST',
-        'manifest_sha256': manifest_sha, 'migration': 'none', 'files': {n: sha(b) for n, b in files.items()}})
+    after['private/unified-release.json'] = release_record(obj, files, after, manifest_sha)
     for name, value in after.items():
         item = journal['entries'][name]
         need(sha(value) == item['after'], 'Journal result differs: ' + name)
@@ -407,7 +456,7 @@ def main():
     parser.add_argument('--public-root', type=pathlib.Path, default=pathlib.Path('/home/sitesee/public_html/re'))
     parser.add_argument('--database', type=pathlib.Path)
     parser.add_argument('--account', default='sitesee')
-    parser.add_argument('--php', default='/opt/cpanel/ea-php82/root/usr/bin/php-cli')
+    parser.add_argument('--php', default='/opt/cpanel/ea-php82/root/usr/bin/php')
     actions = parser.add_mutually_exclusive_group(required=True)
     for action in ('preflight', 'install', 'resume', 'verify', 'rollback-code'):
         actions.add_argument('--' + action, action='store_true')
@@ -446,6 +495,7 @@ def main():
             print(json.dumps({'result': 'PREFLIGHT PASS', 'release': obj['release'], 'commit': obj['commit'],
                   'stage': 'TEST', 'deployment_files': len(files), 'changed_files': sum(before[n] != after[n] for n in after),
                   'journal': None if journal is None else journal['state'], 'database': 'read-only integrity checked',
+                  'preserved_host_files': {'public/.htaccess': sha(after['public/.htaccess'])},
                   'fpm_and_connected_acceptance': 'pending; CLI is not FPM evidence'}))
             return
         if args.restore_rehearsal:
@@ -481,6 +531,12 @@ if __name__ == '__main__':
     try:
         main()
     except (Exception, KeyboardInterrupt) as error:
-        print('STOPPED: ' + (str(error) if isinstance(error, Stop) else 'Local check failed (' + type(error).__name__ + ').'))
-        print('Preserve files and journal. Use the same package with --resume after reviewing the cause; unknown edits are never overwritten.')
+        detail = str(error) if isinstance(error, Stop) else (
+            'Required path missing: ' + str(error.filename) if isinstance(error, FileNotFoundError)
+            else 'Local check failed (' + type(error).__name__ + ').')
+        print('STOPPED: ' + detail)
+        if '--preflight' in sys.argv:
+            print('Read-only preflight stopped. Review the cause and repeat --preflight; do not use --resume.')
+        else:
+            print('Preserve files and journal. Review the cause before resuming; unknown edits are never overwritten.')
         sys.exit(1)
