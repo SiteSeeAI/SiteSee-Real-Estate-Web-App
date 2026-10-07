@@ -213,10 +213,11 @@ def inspect(obj, files, root, public, uid, manifest_sha):
         for key, digest in record['files'].items():
             lookup = key if key.startswith(('private/', 'public/')) else 'private/' + key
             target(lookup, root, public)
-            if lookup in before and before[lookup] != after[lookup]:
+            if lookup in before:
                 need(digest == sha(before[lookup]), 'Established manifest hash differs: ' + filename + ' / ' + key)
-                record['files'][key] = sha(after[lookup])
-                changed = True
+                if before[lookup] != after[lookup]:
+                    record['files'][key] = sha(after[lookup])
+                    changed = True
         before[name], after[name], metas[name] = raw, encode(record) if changed else raw, metadata(root / filename)
     name = 'private/unified-release.json'
     data = encode({'release': obj['release'], 'commit': obj['commit'], 'stage': 'TEST', 'manifest_sha256': manifest_sha,
@@ -334,9 +335,10 @@ def recover_plan(obj, files, journal, package_sha, root, public, db, uid, manife
         for key, digest in record['files'].items():
             lookup = key if key.startswith(('private/', 'public/')) else 'private/' + key
             target(lookup, root, public)
-            if lookup in files and before[lookup] != files[lookup]:
+            if lookup in files:
                 need(digest == sha(before[lookup]), 'Backup release metadata differs.')
-                record['files'][key] = sha(files[lookup]); changed = True
+                if before[lookup] != files[lookup]:
+                    record['files'][key] = sha(files[lookup]); changed = True
         after[name] = encode(record) if changed else before[name]
     after['private/unified-release.json'] = encode({'release': obj['release'], 'commit': obj['commit'], 'stage': 'TEST',
         'manifest_sha256': manifest_sha, 'migration': 'none', 'files': {n: sha(b) for n, b in files.items()}})

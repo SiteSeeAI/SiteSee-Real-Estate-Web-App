@@ -252,6 +252,25 @@ class UnifiedRelease(unittest.TestCase):
         path.write_bytes(installer.encode(record))
         with self.assertRaises(installer.Stop): self.plan()
 
+    def test_manifest_unchanged_source_hash_mismatch_refused(self):
+        path = self.private / self.obj['active_manifests'][0]
+        record = json.loads(path.read_bytes()); record['files']['server/booking-store.php'] = '0' * 64
+        corrupted = installer.encode(record); path.write_bytes(corrupted)
+        with self.assertRaisesRegex(installer.Stop, 'Established manifest hash differs'): self.plan()
+        self.assertEqual(path.read_bytes(), corrupted)
+        self.assertFalse(self.journal_path.exists())
+
+    def test_recovery_refuses_legacy_journal_with_bad_unchanged_manifest_hash(self):
+        before, after, metas = self.plan()
+        name = 'private/' + self.obj['active_manifests'][0]
+        for values in (before, after):
+            record = json.loads(values[name]); record['files']['server/booking-store.php'] = '0' * 64
+            values[name] = installer.encode(record)
+        installer.target(name, self.private, self.public).write_bytes(before[name])
+        # A self-consistent prior journal must not bless a broken integrity record.
+        journal = installer.prepare(self.obj, self.package_sha, self.private, self.public, self.db, self.uid, before, after, metas)
+        with self.assertRaisesRegex(installer.Stop, 'Backup release metadata differs'): self.recovered(journal)
+
     def test_insufficient_disk_capacity_refused(self):
         before, after, metas = self.plan()
         with mock.patch.object(installer.shutil, 'disk_usage', return_value=shutil._ntuple_diskusage(10, 9, 1)):
