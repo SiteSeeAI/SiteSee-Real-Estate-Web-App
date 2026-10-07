@@ -1,17 +1,23 @@
 # Existing-host TEST review
 
-The operator chose the existing `https://re.sitesee.ai` hostname and confirmed cPanel Terminal with PHP 8.2. No new domain is required. The source release is `unified-test-3aa76798d011`, based on exact commit `3aa76798d011d2f30b7002aaa716b3f66153f529`. The package SHA-256 is `6959643cf7d4b2e08da09985740c01cefc38cf89f93d814b39a13bc114fba1fc`.
+The operator chose the existing `https://re.sitesee.ai` hostname and confirmed cPanel Terminal with PHP 8.2. No new domain is required. The source release is `unified-test-c81c4e2011f2`, based on exact commit `c81c4e2011f26a13a75d95dffc8c3106323d8681`. The package SHA-256 is `52c35823554b80a6be590ec7f7dc306f419c54c2719344a0767199a4eb8a2422`.
 
-The hosting update is not authorized or executed by this document. Finish independent release review and privileged CI first. Then stage the exact package and its matching installer in a private account-owned directory outside `public_html`, verify their checksums and run the read-only preflight. Preflight reports any unknown deployed edits, runtime/permission differences or earlier incomplete installer so they can be reviewed without replacing files. CLI checks do not prove FPM settings; retain the existing FPM pool, signing secret, TEST provider bindings and corporate/mail bridges.
+The hosting update is not authorized or executed by this document. Independent release review and privileged CI have passed on this exact source commit. Stage the exact package and its matching installer in a private account-owned directory outside `public_html`, verify their checksums and run the read-only preflight. Preflight reports any unknown deployed edits, runtime/permission differences or earlier incomplete installer so they can be reviewed without replacing files. CLI checks do not prove FPM settings; retain the existing FPM pool, signing secret, TEST provider bindings and corporate/mail bridges.
 
 Use cPanel Terminal as account `sitesee`. Python 3 and either the cPanel PHP 8.2 CLI binary below or its verified `php` counterpart are required. The expected roots remain `/home/sitesee/.sitesee-real-estate` and `/home/sitesee/public_html/re`; the existing private database path must be retained. Supply `--database` if the actual database path differs from the default. Never paste credentials or customer data into chat or logs.
 
-After the candidate is approved and privately staged, the preflight command has this form:
+Create the private staging folder in cPanel Terminal, then upload the exact package and matching installer into it using File Manager:
 
 ```sh
-python3 /home/sitesee/unified-test-3aa76798d011/install-unified.py \
-  --package /home/sitesee/unified-test-3aa76798d011/unified-test-3aa76798d011.tar.gz \
-  --sha256 6959643cf7d4b2e08da09985740c01cefc38cf89f93d814b39a13bc114fba1fc \
+install -d -m 0700 /home/sitesee/unified-test-c81c4e2011f2
+```
+
+Run this read-only preflight after the upload:
+
+```sh
+python3 /home/sitesee/unified-test-c81c4e2011f2/install-unified.py \
+  --package /home/sitesee/unified-test-c81c4e2011f2/unified-test-c81c4e2011f2.tar.gz \
+  --sha256 52c35823554b80a6be590ec7f7dc306f419c54c2719344a0767199a4eb8a2422 \
   --php /opt/cpanel/ea-php82/root/usr/bin/php-cli \
   --preflight
 ```

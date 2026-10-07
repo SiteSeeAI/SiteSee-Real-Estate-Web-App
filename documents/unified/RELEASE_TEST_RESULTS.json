@@ -1,41 +1,141 @@
 {
   "scope": "Fixed-commit TEST release, consolidated installer and isolated recovery rehearsal",
   "artifact": {
-    "commit": "3aa76798d011d2f30b7002aaa716b3f66153f529",
-    "release": "unified-test-3aa76798d011",
-    "path": "/workspace/.sitesee-onboarding/unified-release-candidate/unified-test-3aa76798d011.tar.gz",
-    "sha256": "6959643cf7d4b2e08da09985740c01cefc38cf89f93d814b39a13bc114fba1fc",
+    "commit": "c81c4e2011f26a13a75d95dffc8c3106323d8681",
+    "release": "unified-test-c81c4e2011f2",
+    "path": "/workspace/.sitesee-onboarding/unified-release-frozen/unified-test-c81c4e2011f2.tar.gz",
+    "sha256": "52c35823554b80a6be590ec7f7dc306f419c54c2719344a0767199a4eb8a2422",
     "deployment_files": 267,
     "changed_from_baseline": 24,
     "migration": "none",
-    "stage": "TEST"
+    "stage": "TEST",
+    "source_test_files": 633
   },
   "runs": [
     {
       "php": "8.2",
-      "cases": 30,
-      "passed": 29,
+      "cases": 37,
+      "passed": 36,
       "skipped": 1,
       "failed": 0,
       "interrupted_write_boundaries": 30,
-      "log": "release-php82-final.log"
+      "log": "release-php82-approved.log",
+      "source_commit": "6f1e5680a52e404685c405741adc4d86120efd6f",
+      "note": "Same installer/payload bytes as frozen candidate. Exact frozen-commit CI executes all37 cases on both PHP versions with real privileges and no skips."
     },
     {
       "php": "8.3",
-      "cases": 30,
-      "passed": 29,
+      "cases": 37,
+      "passed": 36,
       "skipped": 1,
       "failed": 0,
       "interrupted_write_boundaries": 30,
-      "log": "release-php83-final.log"
+      "log": "release-php83-approved.log",
+      "source_commit": "6f1e5680a52e404685c405741adc4d86120efd6f",
+      "note": "Same installer/payload bytes as frozen candidate. Exact frozen-commit CI executes all37 cases on both PHP versions with real privileges and no skips."
     }
   ],
   "application_parity": "See SHELL_TEST_RESULTS.json; application deployment bytes are identical to the audited shell checkpoint.",
-  "independent_review": "pending",
-  "privileged_CI": "pending; all required ownership cases must execute without skips",
+  "independent_review": "Complete; four findings resolved, no unresolved implementation defect. See INDEPENDENT_RELEASE_REVIEW.md.",
+  "privileged_CI": {
+    "commit": "c81c4e2011f26a13a75d95dffc8c3106323d8681",
+    "release": {
+      "id": 37688457266,
+      "conclusion": "success",
+      "url": "https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/actions/runs/37688457266",
+      "jobs": [
+        {
+          "id": 113022231844,
+          "name": "release (8.2)",
+          "conclusion": "success",
+          "root_cases": 37,
+          "root_skips": 0,
+          "interrupted_write_boundaries": 30,
+          "log": "release-frozen-ci-8.2.log"
+        },
+        {
+          "id": 113022232374,
+          "name": "release (8.3)",
+          "conclusion": "success",
+          "root_cases": 37,
+          "root_skips": 0,
+          "interrupted_write_boundaries": 30,
+          "log": "release-frozen-ci-8.3.log"
+        }
+      ]
+    },
+    "server": {
+      "id": 37688457115,
+      "conclusion": "success",
+      "url": "https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/actions/runs/37688457115",
+      "historical_root_cases": 168,
+      "historical_root_skips": 0
+    },
+    "github_push_protection": "resolved; upload succeeded after false-positive review; no history rewrite"
+  },
   "installed_connected_TEST": "pending; existing re.sitesee.ai selected by user",
   "server_update": "not executed",
   "logs": [
+    {
+      "name": "crm-frozen-fixture-local.log",
+      "sha256": "49f394b41e33a89291a4edc4e8eb2ba0b8bcfe91316520d68d13470a4950d961",
+      "bytes": 1877,
+      "phase": "diagnostic_history"
+    },
+    {
+      "name": "crm-frozen-fixture-php82.log",
+      "sha256": "d0c08167fc1a05ec954e64450e5c4894680ad6a758c481a57164e5231555a847",
+      "bytes": 946,
+      "phase": "final"
+    },
+    {
+      "name": "crm-frozen-fixture-php83.log",
+      "sha256": "b28f31ff50edfea3c0b692b8f163709f78eab9109e15f3c4249fd384d1ca0a2c",
+      "bytes": 946,
+      "phase": "final"
+    },
+    {
+      "name": "current-ci-runs.json",
+      "sha256": "3d86c2414ea2421def2d1984aa01aedfbbbdd638c08a74a3f6bef4d959cb35f4",
+      "bytes": 2173,
+      "phase": "diagnostic_history"
+    },
+    {
+      "name": "frozen-ci-summary.json",
+      "sha256": "5a23ef16ddfe52c4a574d25debed5598b821761703bc1fe4a7754bfd48714685",
+      "bytes": 1082,
+      "phase": "final"
+    },
+    {
+      "name": "github-push-protection.json",
+      "sha256": "9be2723e2555677f3542e996ab28567790433df15ce6a00c6d65f1af8dcb3739",
+      "bytes": 601,
+      "phase": "diagnostic_history"
+    },
+    {
+      "name": "historical-ownership-ci-first.log",
+      "sha256": "b9160ab04a9a3380e0b53d2b1185c93061219d5cb35881c9d4c80689939a2360",
+      "bytes": 46981,
+      "phase": "diagnostic_history"
+    },
+    {
+      "name": "package-frozen-verification.json",
+      "sha256": "a36df7ae62db37a528f4f72c0a931412f1916eaa88786407cfaac3c4d6cc971d",
+      "bytes": 395,
+      "phase": "final"
+    },
+    {
+      "name": "package-source-audited-verification.json",
+      "sha256": "985fada973cbd56737d88f530ceefc55b915b57694949e0dcf3b01498ab38818",
+      "bytes": 357,
+      "phase": "diagnostic_history"
+    },
+    {
+      "name": "package-source-verification.json",
+      "sha256": "a5e3c42b5dbd48175b43d5246dabc1d0add637a3ff6fb3419044de843abf0332",
+      "bytes": 342,
+      "phase": "diagnostic_history"
+    },
     {
       "name": "release-first-run.log",
       "sha256": "0fe3bf0f2c19ea96f089dd6575b46271254450f003a3d821600ed7728b37296d",
@@ -43,10 +143,46 @@
       "phase": "diagnostic_history"
     },
     {
+      "name": "release-frozen-ci-8.2.log",
+      "sha256": "2e6594255545b13a0624c06882b87ef04012bcddc161be3be41690f52e1f94a5",
+      "bytes": 28143,
+      "phase": "final"
+    },
+    {
+      "name": "release-frozen-ci-8.3.log",
+      "sha256": "19ae19bf528d3b6f3a89523d173551298c127a516a57d7ef1cba3055ae73b3b8",
+      "bytes": 28149,
+      "phase": "final"
+    },
+    {
+      "name": "release-frozen-ci-jobs.json",
+      "sha256": "53cb65c8f7c76d5775f102af4ba0ee2046d39d56a15811ab7c3c63278eb50d00",
+      "bytes": 429,
+      "phase": "final"
+    },
+    {
+      "name": "release-php82-approved.log",
+      "sha256": "ab58e55d934d12e49d314b0943ef9233ca88dd56cfdbc559c70987b7d4e96c84",
+      "bytes": 4776,
+      "phase": "final"
+    },
+    {
+      "name": "release-php82-audited.log",
+      "sha256": "40e81a04e237eb002a87f44c79dc53f16da4dad39f719ace95cdc32683d951b7",
+      "bytes": 4323,
+      "phase": "diagnostic_history"
+    },
+    {
       "name": "release-php82-final.log",
       "sha256": "257acefeaa55ecf138c9b15b364bb4022c67aa3d17751e2368432ab78e7e5b8d",
       "bytes": 3737,
-      "phase": "final"
+      "phase": "diagnostic_history"
+    },
+    {
+      "name": "release-php82-integrity.log",
+      "sha256": "e5d07d0b1212ed19cc27bc4388d84546b24d6acce6329c21f8da569264f0c669",
+      "bytes": 4635,
+      "phase": "diagnostic_history"
     },
     {
       "name": "release-php82-review.log",
@@ -55,17 +191,87 @@
       "phase": "diagnostic_history"
     },
     {
+      "name": "release-php83-approved.log",
+      "sha256": "fffc45a9e108eec6f738263759887b2f679c48eaf2637e478930ad04c6d7e6d3",
+      "bytes": 4776,
+      "phase": "final"
+    },
+    {
+      "name": "release-php83-audited.log",
+      "sha256": "f96e9561588f3a99b7a3e6b375b23d4f800752b69acf1ce922bc68c956e6532f",
+      "bytes": 4323,
+      "phase": "diagnostic_history"
+    },
+    {
       "name": "release-php83-final.log",
       "sha256": "64e2a82b3f5eb3ed7e64fef6409081f13a703172058114ed746de4f4f9c05d78",
       "bytes": 3737,
-      "phase": "final"
+      "phase": "diagnostic_history"
+    },
+    {
+      "name": "release-php83-integrity.log",
+      "sha256": "cc8d1caa70bbc8355fa384195b29826dce7958e9f9012809f70096c464b3a0d5",
+      "bytes": 4635,
+      "phase": "diagnostic_history"
     },
     {
       "name": "release-php83-review.log",
       "sha256": "ec20b148f68ec131f94d1631ccaaf3b331cd9479e017959d498b599f3823922d",
       "bytes": 3328,
       "phase": "diagnostic_history"
+    },
+    {
+      "name": "server-ci-first-jobs.json",
+      "sha256": "7d06546e3ddcaacb5a2db0dab48f6ff8bf50ea52918f9ad39c9b6753ce0b8cf3",
+      "bytes": 7413,
+      "phase": "diagnostic_history"
+    },
+    {
+      "name": "server-frozen-jobs.json",
+      "sha256": "18acf7850487787a6f7c13854705a378503c9e92edeabc99b382af7dcca82069",
+      "bytes": 281,
+      "phase": "final"
+    },
+    {
+      "name": "server-frozen-ownership.log",
+      "sha256": "130a1d0529d6a558d01c5eb50188384a1f9cf0a30532773b1a265e325eeb3bbf",
+      "bytes": 47130,
+      "phase": "final"
+    },
+    {
+      "name": "server-frozen-validate.log",
+      "sha256": "b02e2905723d5b065e068a470616b5a71dfa63c1944846627fb05901a05bdb30",
+      "bytes": 54149,
+      "phase": "final"
     }
   ],
-  "evidence_directory": "/workspace/.sitesee-onboarding/unified-release-evidence"
+  "evidence_directory": "/workspace/.sitesee-onboarding/unified-release-evidence",
+  "github_push_protection": {
+    "reason": "Initial push was blocked on a verified synthetic fixture. That historical block was resolved; Git history was preserved.",
+    "known_synthetic_fixture_verified": true,
+    "provider_transports_disabled": true,
+    "affected_paths": [
+      "tests/portal-http.browser.cjs",
+      "tests/portal-job.browser.cjs",
+      "tests/portal-vendor.browser.cjs"
+    ],
+    "history_preserved": true,
+    "review_url": "https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/security/secret-scanning/unblock-secret/3KNmmsn8CvP7l8UmYM7fivHTDfp",
+    "operator_review": "resolved; branch uploads and frozen-commit CI succeeded"
+  },
+  "CRM_fixture_rehearsal": {
+    "php82": {
+      "cases": 7,
+      "passed": 7,
+      "skipped": 0,
+      "log": "crm-frozen-fixture-php82.log"
+    },
+    "php83": {
+      "cases": 7,
+      "passed": 7,
+      "skipped": 0,
+      "log": "crm-frozen-fixture-php83.log"
+    },
+    "provenance": "Four exact historical Git blobs, pinned to unchanged production recovery hashes; no production guard changed."
+  }
 }

@@ -1,3 +1,5 @@
+Current local release and remaining gates: [RELEASE_PROGRESS.md](RELEASE_PROGRESS.md). This file retains the bootstrap milestone history.
+
 # Unified application: bootstrap milestone
 
 Current work: [shared role shell](SHELL_PROGRESS.md). The validation below records the earlier bootstrap checkpoint; its Node result was produced before the loader change and is now explicitly marked historical. The current-source Node contracts and their rerun are recorded with the shell evidence.
