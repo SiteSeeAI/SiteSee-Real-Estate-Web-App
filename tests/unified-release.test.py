@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Rehearse the real fixed-commit release on isolated files and a synthetic WAL ledger."""
 import contextlib
+import fcntl
 import hashlib
 import importlib.util
 import io
@@ -139,6 +140,19 @@ class UnifiedRelease(unittest.TestCase):
         path = self.folder / 'tampered.tar.gz'; path.write_bytes(self.package.read_bytes() + b'changed')
         with self.assertRaises(installer.Stop): installer.load(path, self.package_sha)
 
+    def test_package_uses_verified_bytes_if_upload_path_is_replaced(self):
+        path = self.folder / 'replaced-upload.tar.gz'
+        path.write_bytes(self.package.read_bytes())
+        open_archive = tarfile.open
+        def replace_upload_then_open(*args, **kwargs):
+            path.write_bytes(b'replacement is not the verified archive')
+            return open_archive(*args, **kwargs)
+        with mock.patch.object(installer.tarfile, 'open', side_effect=replace_upload_then_open):
+            obj, files, digest = installer.load(path, self.package_sha)
+        self.assertEqual(obj, self.obj)
+        self.assertEqual(files, self.files)
+        self.assertEqual(digest, self.manifest_sha)
+
     def test_artifact_contains_no_runtime_database_or_credentials(self):
         self.assertTrue(all(n.startswith(('private/', 'public/')) for n in self.files))
         self.assertFalse(any('/data/' in n or n.endswith(('.sqlite', '.json')) for n in self.files))
@@ -227,6 +241,26 @@ class UnifiedRelease(unittest.TestCase):
         self.assertIn('VERIFY PASS', self.cli('--verify'))
         self.assertEqual(self.db.read_bytes(), original_db)
         for name, value in self.files.items(): self.assertEqual(installer.target(name, self.private, self.public).read_bytes(), value)
+
+    def test_cli_refuses_a_concurrent_deployment(self):
+        fd = os.open(self.private, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            self.assertIn('Another deployment is running.', self.cli('--preflight', success=False))
+            self.assertFalse(self.journal_path.exists())
+        finally:
+            os.close(fd)
+
+    def test_cli_code_recovery_preserves_later_provider_state(self):
+        self.cli('--install')
+        with contextlib.closing(sqlite3.connect(self.db)) as db:
+            db.execute("UPDATE provider_operations SET state='succeeded'"); db.commit()
+        self.assertIn('CODE RESTORED', self.cli('--rollback-code'))
+        self.assertEqual(json.loads(self.journal_path.read_bytes())['state'], 'restored')
+        self.assertEqual((self.public / 'account.php').read_bytes(), self.original['public/account.php'])
+        with contextlib.closing(sqlite3.connect(self.db)) as db:
+            self.assertEqual(db.execute('SELECT state FROM provider_operations').fetchone()[0], 'succeeded')
+        self.assertIn('Installation is not complete.', self.cli('--verify', success=False))
 
     def test_configuration_sessions_and_old_backups_preserved(self):
         protected = [self.private / n for n in ['booking-checkout.json', 'portal-test.json', 'portal-sms.json', 'deployment-backups/prior-backup',

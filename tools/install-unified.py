@@ -4,6 +4,7 @@ import argparse
 import contextlib
 import fcntl
 import hashlib
+import io
 import json
 import os
 import pathlib
@@ -93,9 +94,11 @@ def target(name, root, public):
 
 def load(package, expected):
     need(re.fullmatch('[0-9a-f]{64}', expected), 'Exact package SHA256 required.')
-    need(sha(package.read_bytes()) == expected, 'Package checksum differs.')
+    payload = package.read_bytes()
+    need(sha(payload) == expected, 'Package checksum differs.')
     values = {}
-    with tarfile.open(package, 'r:gz') as archive:
+    # Parse the same bytes we verified, even if the upload path is replaced.
+    with tarfile.open(fileobj=io.BytesIO(payload), mode='r:gz') as archive:
         total = 0
         for member in archive:
             parts = pathlib.PurePosixPath(member.name).parts
