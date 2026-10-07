@@ -1095,7 +1095,7 @@
   "evidence": {
     "directory": "/workspace/.sitesee-onboarding/unified-shell-evidence",
     "selection": "final_evidence contains completed current checks; diagnostic_history retains the earlier route-contract and stylesheet fixture failures and interim results. Earlier bootstrap Node evidence is explicitly marked pre-bootstrap in TEST_RESULTS.json.",
-    "audit": "Complete; no unresolved shared-shell defect. CSS evidence observation corrected and independently verified. See INDEPENDENT_SHELL_REVIEW.md.",
+    "audit": "Complete; no unresolved shell defect. CSS evidence observation resolved and independently verified; see INDEPENDENT_SHELL_REVIEW.md.",
     "note": "No connected provider/server acceptance or privileged ownership execution is claimed."
   },
   "logs": {
