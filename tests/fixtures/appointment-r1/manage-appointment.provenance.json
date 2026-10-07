@@ -1,0 +1,6 @@
+{
+  "commit": "ff5e625a8ff4c51af336e9203fa4be29b3611570",
+  "path": "public/manage-appointment.php",
+  "sha256": "5dd668490f5952f32f3c7ea93a79352b3810b72b2d0263eada044121fbbe3eab",
+  "artifact": "tools/install-appointment-management.py"
+}

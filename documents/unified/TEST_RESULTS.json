@@ -1,0 +1,1860 @@
+{
+  "baseline": "ff5e625a8ff4c51af336e9203fa4be29b3611570",
+  "scope": "Inherited fixtures and initial application bootstrap",
+  "stripe": "TEST only",
+  "checks": {
+    "php82": {
+      "suites": 37,
+      "passed": 37,
+      "failed": 0,
+      "results": [
+        {
+          "test": "tests/application-bootstrap.test.php",
+          "exit": 0,
+          "completion": [
+            "Application bootstrap: 87 route and configuration checks passed."
+          ],
+          "log": "application-bootstrap.test-bootstrap.log"
+        },
+        {
+          "test": "tests/availability-endpoint.test.php",
+          "exit": 0,
+          "completion": [
+            "Availability endpoint: 30 checks passed."
+          ],
+          "log": "availability-endpoint.test-bootstrap.log"
+        },
+        {
+          "test": "tests/booking-availability.test.php",
+          "exit": 0,
+          "completion": [
+            "Calendar availability: 53 checks passed."
+          ],
+          "log": "booking-availability.test-bootstrap.log"
+        },
+        {
+          "test": "tests/booking-checkout.test.php",
+          "exit": 0,
+          "completion": [
+            "Booking checkout: 64 checks passed."
+          ],
+          "log": "booking-checkout.test-bootstrap.log"
+        },
+        {
+          "test": "tests/booking-communication.test.php",
+          "exit": 0,
+          "completion": [
+            "Booking communication safety: 91 checks passed"
+          ],
+          "log": "booking-communication.test-bootstrap.log"
+        },
+        {
+          "test": "tests/booking-confirmation.test.php",
+          "exit": 0,
+          "completion": [
+            "Booking confirmation and invitation safety: 119 checks passed"
+          ],
+          "log": "booking-confirmation.test-bootstrap.log"
+        },
+        {
+          "test": "tests/booking-feedback.test.php",
+          "exit": 0,
+          "completion": [
+            "Calendar feedback: 34 checks passed."
+          ],
+          "log": "booking-feedback.test-bootstrap.log"
+        },
+        {
+          "test": "tests/booking-flow.test.php",
+          "exit": 0,
+          "completion": [
+            "Booking flow: 133 assertions passed."
+          ],
+          "log": "booking-flow.test-bootstrap.log"
+        },
+        {
+          "test": "tests/booking-lifecycle.test.php",
+          "exit": 0,
+          "completion": [
+            "Appointment lifecycle: 258 checks passed"
+          ],
+          "log": "booking-lifecycle.test-bootstrap.log"
+        },
+        {
+          "test": "tests/booking-window-diagnostic.test.php",
+          "exit": 0,
+          "completion": [
+            "Booking window diagnostic: 7 checks passed."
+          ],
+          "log": "booking-window-diagnostic.test-bootstrap.log"
+        },
+        {
+          "test": "tests/booking-workflow.test.php",
+          "exit": 0,
+          "completion": [
+            "Unified booking workflow: 85 checks passed"
+          ],
+          "log": "booking-workflow.test-bootstrap.log"
+        },
+        {
+          "test": "tests/calendar-audit.test.php",
+          "exit": 0,
+          "completion": [
+            "PASS: 20 combined-audit checks; all requests mocked."
+          ],
+          "log": "calendar-audit.test-bootstrap.log"
+        },
+        {
+          "test": "tests/calendar-diagnostic.test.php",
+          "exit": 0,
+          "completion": [
+            "PASS: 128 diagnostic safety checks (mocked Zoho; no real requests)."
+          ],
+          "log": "calendar-diagnostic.test-bootstrap.log"
+        },
+        {
+          "test": "tests/calendar-notice.test.php",
+          "exit": 0,
+          "completion": [
+            "Calendar notice/backend parity: PASS (78 cutoff checks)."
+          ],
+          "log": "calendar-notice.test-bootstrap.log"
+        },
+        {
+          "test": "tests/link-microsoft-test-contact.test.php",
+          "exit": 0,
+          "completion": [
+            "Microsoft TEST contact reuse: 32 checks passed"
+          ],
+          "log": "link-microsoft-test-contact.test-bootstrap.log"
+        },
+        {
+          "test": "tests/microsoft-calendar-connection.test.php",
+          "exit": 0,
+          "completion": [
+            "13 Microsoft calendar connection cases passed (provider simulated)."
+          ],
+          "log": "microsoft-calendar-connection.test-bootstrap.log"
+        },
+        {
+          "test": "tests/microsoft-scheduling.test.php",
+          "exit": 0,
+          "completion": [
+            "Microsoft TEST scheduling: 89 checks passed"
+          ],
+          "log": "microsoft-scheduling.test-bootstrap.log"
+        },
+        {
+          "test": "tests/move-test-booking-window.test.php",
+          "exit": 0,
+          "completion": [
+            "TEST booking window move: 15 checks passed."
+          ],
+          "log": "move-test-booking-window.test-bootstrap.log"
+        },
+        {
+          "test": "tests/portal-access.test.php",
+          "exit": 0,
+          "completion": [
+            "portal-access: PASS (one-use login, expiry, throttling, disabled accounts, ownership isolation)"
+          ],
+          "log": "portal-access.test-bootstrap.log"
+        },
+        {
+          "test": "tests/portal-draft-recovery.test.php",
+          "exit": 0,
+          "completion": [
+            "PASS saved draft repair, same-message resume, current calendar/CRM, identity guards, and no duplicate sends"
+          ],
+          "log": "portal-draft-recovery.test-bootstrap.log"
+        },
+        {
+          "test": "tests/portal-email-concurrency.test.php",
+          "exit": 0,
+          "completion": [
+            "portal-email-concurrency: PASS (separate-process duplicate activation and one-use replay)"
+          ],
+          "log": "portal-email-concurrency.test-bootstrap.log"
+        },
+        {
+          "test": "tests/portal-email.test.php",
+          "exit": 0,
+          "completion": [
+            "portal-email: PASS (identity; verification; expiry/reuse; duplicates; revisions; rates; mail ambiguity; races; history; drafts; captured recovery; fixed sender)"
+          ],
+          "log": "portal-email.test-bootstrap.log"
+        },
+        {
+          "test": "tests/portal-job.test.php",
+          "exit": 0,
+          "completion": [
+            "portal-job: PASS (exact approved bill, immutable booking, ownership, consent, duplicate clicks, lost create/confirm, declines, detached cards, legacy races, payment recovery, refunds/disputes, private drafts, production release)"
+          ],
+          "log": "portal-job.test-bootstrap.log"
+        },
+        {
+          "test": "tests/portal-onsite-catalog.test.php",
+          "exit": 0,
+          "completion": [
+            "portal-onsite-catalog: PASS (full catalogs, exact prices, duplicates, quantities, package overlap, commission exclusions, dependency rules, legacy preservation)"
+          ],
+          "log": "portal-onsite-catalog.test-bootstrap.log"
+        },
+        {
+          "test": "tests/portal-phone.test.php",
+          "exit": 0,
+          "completion": [
+            "portal-phone: PASS (normalization; staff binding; isolation; cooldown and daily limits; expiry; attempts; one use; provider uncertainty; disabled and changed identities; old-session rejection)"
+          ],
+          "log": "portal-phone.test-bootstrap.log"
+        },
+        {
+          "test": "tests/portal-purchase.test.php",
+          "exit": 0,
+          "completion": [
+            "portal-purchase: PASS (canonical prices; crash recovery; ownership; consent; mail retries; hosted/embedded idempotency; signed webhook; Order Again; expiry; disabled/cancelled)"
+          ],
+          "log": "portal-purchase.test-bootstrap.log"
+        },
+        {
+          "test": "tests/portal-release.test.php",
+          "exit": 0,
+          "completion": [
+            "PASS portal release gate"
+          ],
+          "log": "portal-release.test-bootstrap.log"
+        },
+        {
+          "test": "tests/portal-service.test.php",
+          "exit": 0,
+          "completion": [
+            "portal-service: PASS (owned lifecycle; no staff controls; recovery; payment evidence; consent; approved scope; refunds/disputes; same-key retry; expiry; webhook race/replay; restricted methods; disabled ownership)"
+          ],
+          "log": "portal-service.test-bootstrap.log"
+        },
+        {
+          "test": "tests/portal-session.test.php",
+          "exit": 0,
+          "completion": [
+            "portal-session: PASS (strict cookies, ID and CSRF rotation, idle/absolute expiry, disable, cross-origin rejection)"
+          ],
+          "log": "portal-session.test-bootstrap.log"
+        },
+        {
+          "test": "tests/portal-sms.test.php",
+          "exit": 0,
+          "completion": [
+            "portal-sms: PASS (private configuration; allowed recipients; SMS-only requests; exact account/service/number/SID binding; approved-only authentication)"
+          ],
+          "log": "portal-sms.test-bootstrap.log"
+        },
+        {
+          "test": "tests/portal-test-recipient.test.php",
+          "exit": 0,
+          "completion": [
+            "PASS approved recipients, unchanged prerequisites, narrow PATCH, exact CRM and protected cron selection"
+          ],
+          "log": "portal-test-recipient.test-bootstrap.log"
+        },
+        {
+          "test": "tests/portal-vendor.test.php",
+          "exit": 0,
+          "completion": [
+            "portal-vendor: PASS (separate identities; phone binding; expiry; throttling; replay; revocation during verification; provider uncertainty; isolated sessions)"
+          ],
+          "log": "portal-vendor.test-bootstrap.log"
+        },
+        {
+          "test": "tests/pricing-gate.test.php",
+          "exit": 0,
+          "completion": [
+            "Passed 8 pricing-gate assertions."
+          ],
+          "log": "pricing-gate.test-bootstrap.log"
+        },
+        {
+          "test": "tests/pricing-request.test.php",
+          "exit": 0,
+          "completion": [
+            "Passed 44 server-form assertions."
+          ],
+          "log": "pricing-request.test-bootstrap.log"
+        },
+        {
+          "test": "tests/quote-receipts.test.php",
+          "exit": 0,
+          "completion": [
+            "Quote receipt handler: 42 assertions passed."
+          ],
+          "log": "quote-receipts.test-bootstrap.log"
+        },
+        {
+          "test": "tests/residential-platform.test.php",
+          "exit": 0,
+          "completion": [
+            "Residential platform server pricing: PASS"
+          ],
+          "log": "residential-platform.test-bootstrap.log"
+        },
+        {
+          "test": "tests/turnstile-verification.test.php",
+          "exit": 0,
+          "completion": [
+            "Corporate-pattern Turnstile tests passed (18 checks)."
+          ],
+          "log": "turnstile-verification.test-bootstrap.log"
+        }
+      ]
+    },
+    "php83": {
+      "suites": 37,
+      "passed": 37,
+      "failed": 0,
+      "results": [
+        {
+          "test": "tests/application-bootstrap.test.php",
+          "exit": 0,
+          "completion": [
+            "Application bootstrap: 87 route and configuration checks passed."
+          ],
+          "log": "application-bootstrap.test-php83.log"
+        },
+        {
+          "test": "tests/availability-endpoint.test.php",
+          "exit": 0,
+          "completion": [
+            "Availability endpoint: 30 checks passed."
+          ],
+          "log": "availability-endpoint.test-php83.log"
+        },
+        {
+          "test": "tests/booking-availability.test.php",
+          "exit": 0,
+          "completion": [
+            "Calendar availability: 53 checks passed."
+          ],
+          "log": "booking-availability.test-php83.log"
+        },
+        {
+          "test": "tests/booking-checkout.test.php",
+          "exit": 0,
+          "completion": [
+            "Booking checkout: 64 checks passed."
+          ],
+          "log": "booking-checkout.test-php83.log"
+        },
+        {
+          "test": "tests/booking-communication.test.php",
+          "exit": 0,
+          "completion": [
+            "Booking communication safety: 91 checks passed"
+          ],
+          "log": "booking-communication.test-php83.log"
+        },
+        {
+          "test": "tests/booking-confirmation.test.php",
+          "exit": 0,
+          "completion": [
+            "Booking confirmation and invitation safety: 119 checks passed"
+          ],
+          "log": "booking-confirmation.test-php83.log"
+        },
+        {
+          "test": "tests/booking-feedback.test.php",
+          "exit": 0,
+          "completion": [
+            "Calendar feedback: 34 checks passed."
+          ],
+          "log": "booking-feedback.test-php83.log"
+        },
+        {
+          "test": "tests/booking-flow.test.php",
+          "exit": 0,
+          "completion": [
+            "Booking flow: 133 assertions passed."
+          ],
+          "log": "booking-flow.test-php83.log"
+        },
+        {
+          "test": "tests/booking-lifecycle.test.php",
+          "exit": 0,
+          "completion": [
+            "Appointment lifecycle: 258 checks passed"
+          ],
+          "log": "booking-lifecycle.test-php83.log"
+        },
+        {
+          "test": "tests/booking-window-diagnostic.test.php",
+          "exit": 0,
+          "completion": [
+            "Booking window diagnostic: 7 checks passed."
+          ],
+          "log": "booking-window-diagnostic.test-php83.log"
+        },
+        {
+          "test": "tests/booking-workflow.test.php",
+          "exit": 0,
+          "completion": [
+            "Unified booking workflow: 85 checks passed"
+          ],
+          "log": "booking-workflow.test-php83.log"
+        },
+        {
+          "test": "tests/calendar-audit.test.php",
+          "exit": 0,
+          "completion": [
+            "PASS: 20 combined-audit checks; all requests mocked."
+          ],
+          "log": "calendar-audit.test-php83.log"
+        },
+        {
+          "test": "tests/calendar-diagnostic.test.php",
+          "exit": 0,
+          "completion": [
+            "PASS: 128 diagnostic safety checks (mocked Zoho; no real requests)."
+          ],
+          "log": "calendar-diagnostic.test-php83.log"
+        },
+        {
+          "test": "tests/calendar-notice.test.php",
+          "exit": 0,
+          "completion": [
+            "Calendar notice/backend parity: PASS (78 cutoff checks)."
+          ],
+          "log": "calendar-notice.test-php83.log"
+        },
+        {
+          "test": "tests/link-microsoft-test-contact.test.php",
+          "exit": 0,
+          "completion": [
+            "Microsoft TEST contact reuse: 32 checks passed"
+          ],
+          "log": "link-microsoft-test-contact.test-php83.log"
+        },
+        {
+          "test": "tests/microsoft-calendar-connection.test.php",
+          "exit": 0,
+          "completion": [
+            "13 Microsoft calendar connection cases passed (provider simulated)."
+          ],
+          "log": "microsoft-calendar-connection.test-php83.log"
+        },
+        {
+          "test": "tests/microsoft-scheduling.test.php",
+          "exit": 0,
+          "completion": [
+            "Microsoft TEST scheduling: 89 checks passed"
+          ],
+          "log": "microsoft-scheduling.test-php83.log"
+        },
+        {
+          "test": "tests/move-test-booking-window.test.php",
+          "exit": 0,
+          "completion": [
+            "TEST booking window move: 15 checks passed."
+          ],
+          "log": "move-test-booking-window.test-php83.log"
+        },
+        {
+          "test": "tests/portal-access.test.php",
+          "exit": 0,
+          "completion": [
+            "portal-access: PASS (one-use login, expiry, throttling, disabled accounts, ownership isolation)"
+          ],
+          "log": "portal-access.test-php83.log"
+        },
+        {
+          "test": "tests/portal-draft-recovery.test.php",
+          "exit": 0,
+          "completion": [
+            "PASS saved draft repair, same-message resume, current calendar/CRM, identity guards, and no duplicate sends"
+          ],
+          "log": "portal-draft-recovery.test-php83.log"
+        },
+        {
+          "test": "tests/portal-email-concurrency.test.php",
+          "exit": 0,
+          "completion": [
+            "portal-email-concurrency: PASS (separate-process duplicate activation and one-use replay)"
+          ],
+          "setup_correction": "pcntl extension added; affected suite rerun completed",
+          "log": "portal-email-concurrency.test-php83-rerun.log"
+        },
+        {
+          "test": "tests/portal-email.test.php",
+          "exit": 0,
+          "completion": [
+            "portal-email: PASS (identity; verification; expiry/reuse; duplicates; revisions; rates; mail ambiguity; races; history; drafts; captured recovery; fixed sender)"
+          ],
+          "log": "portal-email.test-php83.log"
+        },
+        {
+          "test": "tests/portal-job.test.php",
+          "exit": 0,
+          "completion": [
+            "portal-job: PASS (exact approved bill, immutable booking, ownership, consent, duplicate clicks, lost create/confirm, declines, detached cards, legacy races, payment recovery, refunds/disputes, private drafts, production release)"
+          ],
+          "log": "portal-job.test-php83.log"
+        },
+        {
+          "test": "tests/portal-onsite-catalog.test.php",
+          "exit": 0,
+          "completion": [
+            "portal-onsite-catalog: PASS (full catalogs, exact prices, duplicates, quantities, package overlap, commission exclusions, dependency rules, legacy preservation)"
+          ],
+          "log": "portal-onsite-catalog.test-php83.log"
+        },
+        {
+          "test": "tests/portal-phone.test.php",
+          "exit": 0,
+          "completion": [
+            "portal-phone: PASS (normalization; staff binding; isolation; cooldown and daily limits; expiry; attempts; one use; provider uncertainty; disabled and changed identities; old-session rejection)"
+          ],
+          "log": "portal-phone.test-php83.log"
+        },
+        {
+          "test": "tests/portal-purchase.test.php",
+          "exit": 0,
+          "completion": [
+            "portal-purchase: PASS (canonical prices; crash recovery; ownership; consent; mail retries; hosted/embedded idempotency; signed webhook; Order Again; expiry; disabled/cancelled)"
+          ],
+          "log": "portal-purchase.test-php83.log"
+        },
+        {
+          "test": "tests/portal-release.test.php",
+          "exit": 0,
+          "completion": [
+            "PASS portal release gate"
+          ],
+          "log": "portal-release.test-php83.log"
+        },
+        {
+          "test": "tests/portal-service.test.php",
+          "exit": 0,
+          "completion": [
+            "portal-service: PASS (owned lifecycle; no staff controls; recovery; payment evidence; consent; approved scope; refunds/disputes; same-key retry; expiry; webhook race/replay; restricted methods; disabled ownership)"
+          ],
+          "log": "portal-service.test-php83.log"
+        },
+        {
+          "test": "tests/portal-session.test.php",
+          "exit": 0,
+          "completion": [
+            "portal-session: PASS (strict cookies, ID and CSRF rotation, idle/absolute expiry, disable, cross-origin rejection)"
+          ],
+          "log": "portal-session.test-php83.log"
+        },
+        {
+          "test": "tests/portal-sms.test.php",
+          "exit": 0,
+          "completion": [
+            "portal-sms: PASS (private configuration; allowed recipients; SMS-only requests; exact account/service/number/SID binding; approved-only authentication)"
+          ],
+          "log": "portal-sms.test-php83.log"
+        },
+        {
+          "test": "tests/portal-test-recipient.test.php",
+          "exit": 0,
+          "completion": [
+            "PASS approved recipients, unchanged prerequisites, narrow PATCH, exact CRM and protected cron selection"
+          ],
+          "log": "portal-test-recipient.test-php83.log"
+        },
+        {
+          "test": "tests/portal-vendor.test.php",
+          "exit": 0,
+          "completion": [
+            "portal-vendor: PASS (separate identities; phone binding; expiry; throttling; replay; revocation during verification; provider uncertainty; isolated sessions)"
+          ],
+          "log": "portal-vendor.test-php83.log"
+        },
+        {
+          "test": "tests/pricing-gate.test.php",
+          "exit": 0,
+          "completion": [
+            "Passed 8 pricing-gate assertions."
+          ],
+          "log": "pricing-gate.test-php83.log"
+        },
+        {
+          "test": "tests/pricing-request.test.php",
+          "exit": 0,
+          "completion": [
+            "Passed 44 server-form assertions."
+          ],
+          "log": "pricing-request.test-php83.log"
+        },
+        {
+          "test": "tests/quote-receipts.test.php",
+          "exit": 0,
+          "completion": [
+            "Quote receipt handler: 42 assertions passed."
+          ],
+          "log": "quote-receipts.test-php83.log"
+        },
+        {
+          "test": "tests/residential-platform.test.php",
+          "exit": 0,
+          "completion": [
+            "Residential platform server pricing: PASS"
+          ],
+          "log": "residential-platform.test-php83.log"
+        },
+        {
+          "test": "tests/turnstile-verification.test.php",
+          "exit": 0,
+          "completion": [
+            "Corporate-pattern Turnstile tests passed (18 checks)."
+          ],
+          "log": "turnstile-verification.test-php83.log"
+        }
+      ]
+    },
+    "bootstrap": {
+      "checks": 87,
+      "passed": 87,
+      "failed": 0
+    },
+    "node": {
+      "command": "node --test tests/*.test.cjs",
+      "tests": 109,
+      "passed": 109,
+      "failed": 0,
+      "skipped": 0
+    },
+    "portal_python": {
+      "command": "python3 tests/<each *.test.py>",
+      "suites": 15,
+      "tests": 292,
+      "skipped": 1,
+      "failed": 0,
+      "passed": 291
+    },
+    "historical_python": {
+      "command": "python3 -m unittest discover -s tests -p '*_test.py'",
+      "tests": 153,
+      "passed": 131,
+      "failed": 0,
+      "skipped": 22,
+      "required_privileged_CI": "pending",
+      "versions": [
+        "8.2.34",
+        "8.3.35"
+      ],
+      "logs": [
+        "python-historical-final.log",
+        "python-historical-php83-final.log"
+      ]
+    },
+    "builders": {
+      "builders": 19,
+      "passed": 19,
+      "changed_historical_artifacts": 0
+    },
+    "browser": {
+      "runner": "Playwright 1.58.2 bundled Chromium",
+      "suites": 7,
+      "passed": 7,
+      "synthetic_providers": true,
+      "provider_egress": "blocked",
+      "results": [
+        {
+          "test": "tests/calendar-notice.browser.cjs",
+          "exit": 0,
+          "completion": "Calendar notice browser: PASS (both quote markets and portal markets; native date validity; partial days; rush; stale selections; wrong device clock; Tokyo/Honolulu; server refresh).",
+          "log": "calendar-notice.browser-bootstrap.log"
+        },
+        {
+          "test": "tests/portal-preview.browser.cjs",
+          "exit": 0,
+          "completion": "portal-preview: PASS (navigation, preserved answers, canonical prices, dependencies, escaped input, responsive widths)",
+          "log": "portal-preview.browser-bootstrap.log"
+        },
+        {
+          "test": "tests/portal-staff.browser.cjs",
+          "exit": 0,
+          "completion": "portal-staff: PASS (19 baseline form contracts + 3 external-agent cases; unchanged ledgers; no GET/provider calls; real HTTPS login/CSRF/origin/consent; staged controls; recovery; Central Time; keyboard; 320/390/736/1200 layout)",
+          "log": "portal-staff.browser-bootstrap.log"
+        },
+        {
+          "test": "tests/portal-http.browser.cjs",
+          "exit": 0,
+          "completion": "portal-http: PASS (actual HTTPS phone-code journey; two customers; email routes disabled; both existing proof adapters; CSRF/origin; single use; expiry; logout replay; profile isolation; synthetic ordering; no external provider writes; 320/390/736/1200 layout)",
+          "log": "portal-http-browser-final.log"
+        },
+        {
+          "test": "tests/portal-email.browser.cjs",
+          "exit": 0,
+          "completion": "portal-email-browser: PASS (native HTTPS forms; CSRF/origin; phone login; account/session isolation; GET/replay; responsive code form; retained orders; new-order email; no external calls)",
+          "log": "portal-email-browser-final.log"
+        },
+        {
+          "test": "tests/portal-job.browser.cjs",
+          "exit": 0,
+          "completion": "portal-job-browser: PASS (real HTTPS staff/phone login; full repeatable catalog; server prices; commission exclusions; verbal closeout; Job Complete; one payment; decline recovery UI; drafts; unpaid release gate; paid links; refund review; preserved records; 320/390/736/1200 layout; synthetic providers only)",
+          "log": "portal-job-browser-final.log"
+        },
+        {
+          "test": "tests/portal-vendor.browser.cjs",
+          "exit": 0,
+          "completion": "portal-vendor-browser: PASS (manager enrollment; no-assignment login; phone-only separate sessions; explicit job ownership; manager/customer isolation; CSRF; reassign/regrant revocation; current appointment; onsite pricing/commission; named verbal closeout; duplicate-charge protection; Production handoff; disabled sessions; preserved records; responsive layout; synthetic providers only)",
+          "log": "portal-vendor-browser-final.log"
+        }
+      ]
+    },
+    "syntax": {
+      "counts": {
+        ".php": 183,
+        ".js": 22,
+        ".cjs": 18,
+        ".py": 105
+      },
+      "failed": []
+    },
+    "privileged_ownership": {
+      "status": "pending",
+      "local_runner_rejects_nonroot": true,
+      "required_job": "Historical Installer Ownership CI",
+      "skips_accepted_for_release": false,
+      "log": "ownership-runner-nonroot.log"
+    }
+  },
+  "logs": {
+    "final_evidence": [
+      {
+        "name": "application-bootstrap.test-bootstrap.log",
+        "sha256": "485245eba396eaf71ada5ab0ec4741459744a4855bca92c7a2054bc21c9482d1",
+        "bytes": 65
+      },
+      {
+        "name": "application-bootstrap.test-php83.log",
+        "sha256": "485245eba396eaf71ada5ab0ec4741459744a4855bca92c7a2054bc21c9482d1",
+        "bytes": 65
+      },
+      {
+        "name": "availability-endpoint.test-bootstrap.log",
+        "sha256": "efb04aca32a205554aa6688523d89752afaddb3adbe939cfa6667ce9b866d3c1",
+        "bytes": 41
+      },
+      {
+        "name": "availability-endpoint.test-php83.log",
+        "sha256": "efb04aca32a205554aa6688523d89752afaddb3adbe939cfa6667ce9b866d3c1",
+        "bytes": 41
+      },
+      {
+        "name": "booking-availability.test-bootstrap.log",
+        "sha256": "6ec3be5e710d6f7e838b69a45627fb1e6218493c34a176192f66b4c127eba09a",
+        "bytes": 41
+      },
+      {
+        "name": "booking-availability.test-php83.log",
+        "sha256": "6ec3be5e710d6f7e838b69a45627fb1e6218493c34a176192f66b4c127eba09a",
+        "bytes": 41
+      },
+      {
+        "name": "booking-checkout.test-bootstrap.log",
+        "sha256": "3d3a34b6749288bc92c3615a147d3a6e3ff464a0141359dd7dbbada0a0ada43b",
+        "bytes": 36
+      },
+      {
+        "name": "booking-checkout.test-php83.log",
+        "sha256": "3d3a34b6749288bc92c3615a147d3a6e3ff464a0141359dd7dbbada0a0ada43b",
+        "bytes": 36
+      },
+      {
+        "name": "booking-communication.test-bootstrap.log",
+        "sha256": "349ef0d4c36aa68092e9b82bce18e02f6945fb38e16930b5fee45afca4da579b",
+        "bytes": 47
+      },
+      {
+        "name": "booking-communication.test-php83.log",
+        "sha256": "349ef0d4c36aa68092e9b82bce18e02f6945fb38e16930b5fee45afca4da579b",
+        "bytes": 47
+      },
+      {
+        "name": "booking-confirmation.test-bootstrap.log",
+        "sha256": "53827024e9d05efdb03aad8a51e20b84324052347b1c72a58c85124ff191ccde",
+        "bytes": 62
+      },
+      {
+        "name": "booking-confirmation.test-php83.log",
+        "sha256": "53827024e9d05efdb03aad8a51e20b84324052347b1c72a58c85124ff191ccde",
+        "bytes": 62
+      },
+      {
+        "name": "booking-feedback.test-bootstrap.log",
+        "sha256": "f140e67778a1f35a32db18e3a8b1ff2707ea1d8ae30b4c580ba119fd91c78b0a",
+        "bytes": 37
+      },
+      {
+        "name": "booking-feedback.test-php83.log",
+        "sha256": "f140e67778a1f35a32db18e3a8b1ff2707ea1d8ae30b4c580ba119fd91c78b0a",
+        "bytes": 37
+      },
+      {
+        "name": "booking-flow.test-bootstrap.log",
+        "sha256": "964f8f0ad1390fcf400cea998a907103d3dfce47ad6294a011e9998a498261fb",
+        "bytes": 37
+      },
+      {
+        "name": "booking-flow.test-php83.log",
+        "sha256": "964f8f0ad1390fcf400cea998a907103d3dfce47ad6294a011e9998a498261fb",
+        "bytes": 37
+      },
+      {
+        "name": "booking-lifecycle.test-bootstrap.log",
+        "sha256": "f435a52fe245b791f9ab34df22e6bd32894d933016fe58def79ff40ce21f2b2f",
+        "bytes": 41
+      },
+      {
+        "name": "booking-lifecycle.test-php83.log",
+        "sha256": "f435a52fe245b791f9ab34df22e6bd32894d933016fe58def79ff40ce21f2b2f",
+        "bytes": 41
+      },
+      {
+        "name": "booking-window-diagnostic.test-bootstrap.log",
+        "sha256": "d99f166bad832678f9189315e7a961644c2d08be0f81069b3c1d7b7f3e9926f2",
+        "bytes": 44
+      },
+      {
+        "name": "booking-window-diagnostic.test-php83.log",
+        "sha256": "d99f166bad832678f9189315e7a961644c2d08be0f81069b3c1d7b7f3e9926f2",
+        "bytes": 44
+      },
+      {
+        "name": "booking-workflow.test-bootstrap.log",
+        "sha256": "5caa00816880306e7e93cdc2e1c07df624e0e98c9d4dd95bbdc38754a890ec55",
+        "bytes": 43
+      },
+      {
+        "name": "booking-workflow.test-php83.log",
+        "sha256": "5caa00816880306e7e93cdc2e1c07df624e0e98c9d4dd95bbdc38754a890ec55",
+        "bytes": 43
+      },
+      {
+        "name": "browser-final-alias-results.json",
+        "sha256": "aeed7fe11edd2a59c5e090a359b4c7933efdbcd0cbcf55a849e3b1f256b04804",
+        "bytes": 1510
+      },
+      {
+        "name": "builders-final.log",
+        "sha256": "57875cf10cd6c7bfce087b672c9c4475323c902284a2391c6a024c6063844cc4",
+        "bytes": 1043
+      },
+      {
+        "name": "calendar-audit.test-bootstrap.log",
+        "sha256": "36b24d3a9f2741d7856c8eb8ad3c2ae904b17b127a9e1ebeb877d7c0b2aa256b",
+        "bytes": 53
+      },
+      {
+        "name": "calendar-audit.test-php83.log",
+        "sha256": "36b24d3a9f2741d7856c8eb8ad3c2ae904b17b127a9e1ebeb877d7c0b2aa256b",
+        "bytes": 53
+      },
+      {
+        "name": "calendar-diagnostic.test-bootstrap.log",
+        "sha256": "030b2f9f9f1f8107b06318591ec326363bc02e975a23463c2617a111be080219",
+        "bytes": 68
+      },
+      {
+        "name": "calendar-diagnostic.test-php83.log",
+        "sha256": "030b2f9f9f1f8107b06318591ec326363bc02e975a23463c2617a111be080219",
+        "bytes": 68
+      },
+      {
+        "name": "calendar-notice.browser-bootstrap.log",
+        "sha256": "15184e22c1904e45759f82a49d0aa74ad3dac27943bfd79d3d436dbfaaa66237",
+        "bytes": 183
+      },
+      {
+        "name": "calendar-notice.test-bootstrap.log",
+        "sha256": "9febfcddf113ecedc698e2c43333c704287564e75178d7f3ae540b93a2e57e9d",
+        "bytes": 57
+      },
+      {
+        "name": "calendar-notice.test-php83.log",
+        "sha256": "9febfcddf113ecedc698e2c43333c704287564e75178d7f3ae540b93a2e57e9d",
+        "bytes": 57
+      },
+      {
+        "name": "link-microsoft-test-contact.test-bootstrap.log",
+        "sha256": "6963b17562cad3db5ffd599f41c11032aa005ec253050c2c235232a4b338dbb9",
+        "bytes": 47
+      },
+      {
+        "name": "link-microsoft-test-contact.test-php83.log",
+        "sha256": "6963b17562cad3db5ffd599f41c11032aa005ec253050c2c235232a4b338dbb9",
+        "bytes": 47
+      },
+      {
+        "name": "microsoft-calendar-connection.test-bootstrap.log",
+        "sha256": "57d7e650273f93472820076e8a4f56efa387ba868965851fdd4cb9eacf0c85ff",
+        "bytes": 984
+      },
+      {
+        "name": "microsoft-calendar-connection.test-php83.log",
+        "sha256": "57d7e650273f93472820076e8a4f56efa387ba868965851fdd4cb9eacf0c85ff",
+        "bytes": 984
+      },
+      {
+        "name": "microsoft-scheduling.test-bootstrap.log",
+        "sha256": "3d59c8d38eb9f6f5a56a509be30441444c8a73f420b996cb6a6ea7ba09d0279b",
+        "bytes": 44
+      },
+      {
+        "name": "microsoft-scheduling.test-php83.log",
+        "sha256": "3d59c8d38eb9f6f5a56a509be30441444c8a73f420b996cb6a6ea7ba09d0279b",
+        "bytes": 44
+      },
+      {
+        "name": "move-test-booking-window.test-bootstrap.log",
+        "sha256": "216383d880a43a6d366ef386767647f21f4507ef6a4b98e636d7e88e375f99ea",
+        "bytes": 44
+      },
+      {
+        "name": "move-test-booking-window.test-php83.log",
+        "sha256": "216383d880a43a6d366ef386767647f21f4507ef6a4b98e636d7e88e375f99ea",
+        "bytes": 44
+      },
+      {
+        "name": "node-fixtures.log",
+        "sha256": "31e8c655c656ac02d892aa1264313c84b9fbef35210be1ca809f6ab18fb7c188",
+        "bytes": 9559
+      },
+      {
+        "name": "ownership-runner-nonroot.log",
+        "sha256": "4b959e4e87c89ae89b386e8ba1cad27ae63f0689e5a6a4796e5af59bdf196ab2",
+        "bytes": 68
+      },
+      {
+        "name": "php-bootstrap-results.json",
+        "sha256": "be350074e29c9ff3f3851c3c4452c56fda0b8428796ecc4934b0b1a0a9ef1241",
+        "bytes": 7013
+      },
+      {
+        "name": "php83-results.json",
+        "sha256": "ace84b46e7dae74fe38bf35a67957116e621a7219d179cce05f9724a9b343fa3",
+        "bytes": 7094
+      },
+      {
+        "name": "portal-access.test-bootstrap.log",
+        "sha256": "96c695f0078439bfbaed36a8d4191744b11d2403117fe7559049f7f5766e56c6",
+        "bytes": 96
+      },
+      {
+        "name": "portal-access.test-php83.log",
+        "sha256": "96c695f0078439bfbaed36a8d4191744b11d2403117fe7559049f7f5766e56c6",
+        "bytes": 96
+      },
+      {
+        "name": "portal-draft-recovery.test-bootstrap.log",
+        "sha256": "eb1484c07a4716fc639e68987562ba4d7d2f0a111f450de77ab15f31473fa68d",
+        "bytes": 108
+      },
+      {
+        "name": "portal-draft-recovery.test-php83.log",
+        "sha256": "eb1484c07a4716fc639e68987562ba4d7d2f0a111f450de77ab15f31473fa68d",
+        "bytes": 108
+      },
+      {
+        "name": "portal-email-browser-final.log",
+        "sha256": "11aff27ed2d6fa366d3acb0a27f11b5d13d2cc16e9d5f36db2df0a0ae095c942",
+        "bytes": 188
+      },
+      {
+        "name": "portal-email-concurrency.test-bootstrap.log",
+        "sha256": "3da7ad4fcf1c399c5a520e14b9c34ca3bd308f15a1adc4a24d5f1d5980a13978",
+        "bytes": 90
+      },
+      {
+        "name": "portal-email-concurrency.test-php83-rerun.log",
+        "sha256": "3da7ad4fcf1c399c5a520e14b9c34ca3bd308f15a1adc4a24d5f1d5980a13978",
+        "bytes": 90
+      },
+      {
+        "name": "portal-email.test-bootstrap.log",
+        "sha256": "f1505ebfc53c8800af817ee7fe9bbd3c60758bcafdb040d9aee39140e1b191bb",
+        "bytes": 161
+      },
+      {
+        "name": "portal-email.test-php83.log",
+        "sha256": "f1505ebfc53c8800af817ee7fe9bbd3c60758bcafdb040d9aee39140e1b191bb",
+        "bytes": 161
+      },
+      {
+        "name": "portal-http-browser-final.log",
+        "sha256": "b09deca0c6732a1653a386d716f164eeaa45af600aee17ab609716a905ca57f8",
+        "bytes": 261
+      },
+      {
+        "name": "portal-job-browser-final.log",
+        "sha256": "7978e77474f087479b2b623b3d988c534a00a64aca77a0fed4a3578628c92cb2",
+        "bytes": 310
+      },
+      {
+        "name": "portal-job.test-bootstrap.log",
+        "sha256": "353b207e5214a546bc7663b865b6d7c982a5e9dee3f5ecfb9fc9d91312241b72",
+        "bytes": 229
+      },
+      {
+        "name": "portal-job.test-php83.log",
+        "sha256": "353b207e5214a546bc7663b865b6d7c982a5e9dee3f5ecfb9fc9d91312241b72",
+        "bytes": 229
+      },
+      {
+        "name": "portal-onsite-catalog.test-bootstrap.log",
+        "sha256": "431e77b40625c06fa3a0ddd9c4d46592d68c3ffdfefcafdea1531506cb7c4231",
+        "bytes": 161
+      },
+      {
+        "name": "portal-onsite-catalog.test-php83.log",
+        "sha256": "431e77b40625c06fa3a0ddd9c4d46592d68c3ffdfefcafdea1531506cb7c4231",
+        "bytes": 161
+      },
+      {
+        "name": "portal-phone.test-bootstrap.log",
+        "sha256": "12f0e7938e7e0dea4d82b1916c09cbc5eda978db298c0d5e485a7a3ee65fa079",
+        "bytes": 193
+      },
+      {
+        "name": "portal-phone.test-php83.log",
+        "sha256": "12f0e7938e7e0dea4d82b1916c09cbc5eda978db298c0d5e485a7a3ee65fa079",
+        "bytes": 193
+      },
+      {
+        "name": "portal-preview.browser-bootstrap.log",
+        "sha256": "1fe80f8ad4f3e6db41368b9f61809586dec469a0d43b19a9402258a01d8a2fa1",
+        "bytes": 119
+      },
+      {
+        "name": "portal-purchase.test-bootstrap.log",
+        "sha256": "3b4d86c9d08a2c0c4bc2ad1bc9100bbe8ad47f05025d30975be6c57496a0b526",
+        "bytes": 177
+      },
+      {
+        "name": "portal-purchase.test-php83.log",
+        "sha256": "3b4d86c9d08a2c0c4bc2ad1bc9100bbe8ad47f05025d30975be6c57496a0b526",
+        "bytes": 177
+      },
+      {
+        "name": "portal-python-bootstrap.log",
+        "sha256": "ef51d780d56ec9f753da960e48c123282eb0ad6bf4ae14b97324e0a6dbc469a7",
+        "bytes": 2466
+      },
+      {
+        "name": "portal-release.test-bootstrap.log",
+        "sha256": "4ec5283e9461c861fb7641e0bb67d2f5a50af8a4eddb27ae77e309bc27adb79d",
+        "bytes": 25
+      },
+      {
+        "name": "portal-release.test-php83.log",
+        "sha256": "4ec5283e9461c861fb7641e0bb67d2f5a50af8a4eddb27ae77e309bc27adb79d",
+        "bytes": 25
+      },
+      {
+        "name": "portal-service.test-bootstrap.log",
+        "sha256": "5137a1ed4dc8326cb150bb79291c4d8197cd566260388a5630860152f09ec123",
+        "bytes": 214
+      },
+      {
+        "name": "portal-service.test-php83.log",
+        "sha256": "5137a1ed4dc8326cb150bb79291c4d8197cd566260388a5630860152f09ec123",
+        "bytes": 214
+      },
+      {
+        "name": "portal-session.test-bootstrap.log",
+        "sha256": "4359fd19877eb68f33691b8efcb2618d7e68c4d0e925da44cee98bea81d629c6",
+        "bytes": 115
+      },
+      {
+        "name": "portal-session.test-php83.log",
+        "sha256": "4359fd19877eb68f33691b8efcb2618d7e68c4d0e925da44cee98bea81d629c6",
+        "bytes": 115
+      },
+      {
+        "name": "portal-sms.test-bootstrap.log",
+        "sha256": "c4c9a27103f498077554d0466afba82628165369d985e8bb2b48f2ebef1c74cc",
+        "bytes": 152
+      },
+      {
+        "name": "portal-sms.test-php83.log",
+        "sha256": "c4c9a27103f498077554d0466afba82628165369d985e8bb2b48f2ebef1c74cc",
+        "bytes": 152
+      },
+      {
+        "name": "portal-staff.browser-bootstrap.log",
+        "sha256": "0ef8565dfac713d71c2beab47a04d3339d11ac9dc96574f749fa34e9f1660d43",
+        "bytes": 229
+      },
+      {
+        "name": "portal-test-recipient.test-bootstrap.log",
+        "sha256": "520cb95676a6565c0524b3c479e29e614f4faa4fe9fd85c7cef78c2acd3ff9e8",
+        "bytes": 104
+      },
+      {
+        "name": "portal-test-recipient.test-php83.log",
+        "sha256": "520cb95676a6565c0524b3c479e29e614f4faa4fe9fd85c7cef78c2acd3ff9e8",
+        "bytes": 104
+      },
+      {
+        "name": "portal-vendor-browser-final.log",
+        "sha256": "51c8a651374de7686d94797d3d9dccebe03e8c3e8d7c282cd94a2339451d8d80",
+        "bytes": 390
+      },
+      {
+        "name": "portal-vendor.test-bootstrap.log",
+        "sha256": "e2573cb70a1e9e097563d9bcbf5e23e7ac186fad560730e5908c15699d648dd9",
+        "bytes": 158
+      },
+      {
+        "name": "portal-vendor.test-php83.log",
+        "sha256": "e2573cb70a1e9e097563d9bcbf5e23e7ac186fad560730e5908c15699d648dd9",
+        "bytes": 158
+      },
+      {
+        "name": "pricing-gate.test-bootstrap.log",
+        "sha256": "3fb12b1e8ab39e09fdbd63020553ecb3b94c2229be378c0038a5b44058cc3bcc",
+        "bytes": 34
+      },
+      {
+        "name": "pricing-gate.test-php83.log",
+        "sha256": "3fb12b1e8ab39e09fdbd63020553ecb3b94c2229be378c0038a5b44058cc3bcc",
+        "bytes": 34
+      },
+      {
+        "name": "pricing-request.test-bootstrap.log",
+        "sha256": "150bd5c7cdce61fe38a25fb92ba0cc15032bd5f7bea155dca29d92894a55b56e",
+        "bytes": 34
+      },
+      {
+        "name": "pricing-request.test-php83.log",
+        "sha256": "150bd5c7cdce61fe38a25fb92ba0cc15032bd5f7bea155dca29d92894a55b56e",
+        "bytes": 34
+      },
+      {
+        "name": "python-historical-final.log",
+        "sha256": "62dbf37dbdf8955ad700fbabee6b89dd57ca6f1ee10220653ae212e230c8cd52",
+        "bytes": 2166
+      },
+      {
+        "name": "python-historical-php83-final.log",
+        "sha256": "627b82da775983073c5f2e1ffbebbed82bb17ad6b22c876bb28f37b30d9359cd",
+        "bytes": 2166
+      },
+      {
+        "name": "quote-receipts.test-bootstrap.log",
+        "sha256": "9bebed97d8b2d0e23c12d32cb6eda3ef6c9ae9dfc3ea32b18d2d341d88192c61",
+        "bytes": 45
+      },
+      {
+        "name": "quote-receipts.test-php83.log",
+        "sha256": "9bebed97d8b2d0e23c12d32cb6eda3ef6c9ae9dfc3ea32b18d2d341d88192c61",
+        "bytes": 45
+      },
+      {
+        "name": "residential-platform.test-bootstrap.log",
+        "sha256": "aa0f88e5fca5106daa797307a181a4b87293afecd1d33b93f1b7f4780863148b",
+        "bytes": 42
+      },
+      {
+        "name": "residential-platform.test-php83.log",
+        "sha256": "aa0f88e5fca5106daa797307a181a4b87293afecd1d33b93f1b7f4780863148b",
+        "bytes": 42
+      },
+      {
+        "name": "syntax-results.json",
+        "sha256": "4aa790961bc9f61a14685d1271c6b3c2fd2b6ffb6df6f5c53a3c7e1e3d48111b",
+        "bytes": 101
+      },
+      {
+        "name": "turnstile-verification.test-bootstrap.log",
+        "sha256": "05d742b569b548e31078d69882b676b2ab292f1c65db1eededf8991062887ee2",
+        "bytes": 54
+      },
+      {
+        "name": "turnstile-verification.test-php83.log",
+        "sha256": "05d742b569b548e31078d69882b676b2ab292f1c65db1eededf8991062887ee2",
+        "bytes": 54
+      }
+    ],
+    "unchanged_baseline": [
+      {
+        "name": "availability-endpoint.test.php.log",
+        "sha256": "efb04aca32a205554aa6688523d89752afaddb3adbe939cfa6667ce9b866d3c1",
+        "bytes": 41
+      },
+      {
+        "name": "booking-availability.test.php.log",
+        "sha256": "6ec3be5e710d6f7e838b69a45627fb1e6218493c34a176192f66b4c127eba09a",
+        "bytes": 41
+      },
+      {
+        "name": "booking-checkout.test.php.log",
+        "sha256": "3d3a34b6749288bc92c3615a147d3a6e3ff464a0141359dd7dbbada0a0ada43b",
+        "bytes": 36
+      },
+      {
+        "name": "booking-communication.test.php.log",
+        "sha256": "f517a3e8d0ff0cf246a434ff19537a6c10fea271523f10ca5ec3e89129bf2107",
+        "bytes": 472
+      },
+      {
+        "name": "booking-confirmation.test.php.log",
+        "sha256": "53827024e9d05efdb03aad8a51e20b84324052347b1c72a58c85124ff191ccde",
+        "bytes": 62
+      },
+      {
+        "name": "booking-feedback.test.php.log",
+        "sha256": "f140e67778a1f35a32db18e3a8b1ff2707ea1d8ae30b4c580ba119fd91c78b0a",
+        "bytes": 37
+      },
+      {
+        "name": "booking-flow.test.php.log",
+        "sha256": "964f8f0ad1390fcf400cea998a907103d3dfce47ad6294a011e9998a498261fb",
+        "bytes": 37
+      },
+      {
+        "name": "booking-lifecycle.test.php.log",
+        "sha256": "f3c94695d0a774d4485f72389b58b7ab98b936dc8dee147b7bfd15a693e7c110",
+        "bytes": 909
+      },
+      {
+        "name": "booking-window-diagnostic.test.php.log",
+        "sha256": "d99f166bad832678f9189315e7a961644c2d08be0f81069b3c1d7b7f3e9926f2",
+        "bytes": 44
+      },
+      {
+        "name": "booking-workflow.test.php.log",
+        "sha256": "bcd2a40900d9237eb83af61d553db5ce32dce4e8377e1a1e9dc861adc1a14044",
+        "bytes": 571
+      },
+      {
+        "name": "calendar-audit.test.php.log",
+        "sha256": "d096da42878fd3c8a634d86263a6e55781e1b6788e67569a8b44218ba9792324",
+        "bytes": 3340
+      },
+      {
+        "name": "calendar-diagnostic.test.php.log",
+        "sha256": "030b2f9f9f1f8107b06318591ec326363bc02e975a23463c2617a111be080219",
+        "bytes": 68
+      },
+      {
+        "name": "calendar-notice.test.php.log",
+        "sha256": "9febfcddf113ecedc698e2c43333c704287564e75178d7f3ae540b93a2e57e9d",
+        "bytes": 57
+      },
+      {
+        "name": "link-microsoft-test-contact.test.php.log",
+        "sha256": "6963b17562cad3db5ffd599f41c11032aa005ec253050c2c235232a4b338dbb9",
+        "bytes": 47
+      },
+      {
+        "name": "microsoft-calendar-connection.test.php.log",
+        "sha256": "57d7e650273f93472820076e8a4f56efa387ba868965851fdd4cb9eacf0c85ff",
+        "bytes": 984
+      },
+      {
+        "name": "microsoft-scheduling.test.php.log",
+        "sha256": "7deb21d0a0226841efe62e5701b34aeaa28dddca2721f2d0a19353b751e88dc6",
+        "bytes": 941
+      },
+      {
+        "name": "move-test-booking-window.test.php.log",
+        "sha256": "216383d880a43a6d366ef386767647f21f4507ef6a4b98e636d7e88e375f99ea",
+        "bytes": 44
+      },
+      {
+        "name": "php-results.json",
+        "sha256": "8328c65dab698c3ba8988f8306203f1d021e5f7fe6bd4d4422ac0b6712002a5a",
+        "bytes": 6793
+      },
+      {
+        "name": "portal-access.test.php.log",
+        "sha256": "96c695f0078439bfbaed36a8d4191744b11d2403117fe7559049f7f5766e56c6",
+        "bytes": 96
+      },
+      {
+        "name": "portal-draft-recovery.test.php.log",
+        "sha256": "eb1484c07a4716fc639e68987562ba4d7d2f0a111f450de77ab15f31473fa68d",
+        "bytes": 108
+      },
+      {
+        "name": "portal-email-concurrency.test.php.log",
+        "sha256": "3da7ad4fcf1c399c5a520e14b9c34ca3bd308f15a1adc4a24d5f1d5980a13978",
+        "bytes": 90
+      },
+      {
+        "name": "portal-email.test.php.log",
+        "sha256": "f1505ebfc53c8800af817ee7fe9bbd3c60758bcafdb040d9aee39140e1b191bb",
+        "bytes": 161
+      },
+      {
+        "name": "portal-job.test.php.log",
+        "sha256": "353b207e5214a546bc7663b865b6d7c982a5e9dee3f5ecfb9fc9d91312241b72",
+        "bytes": 229
+      },
+      {
+        "name": "portal-onsite-catalog.test.php.log",
+        "sha256": "431e77b40625c06fa3a0ddd9c4d46592d68c3ffdfefcafdea1531506cb7c4231",
+        "bytes": 161
+      },
+      {
+        "name": "portal-phone.test.php.log",
+        "sha256": "12f0e7938e7e0dea4d82b1916c09cbc5eda978db298c0d5e485a7a3ee65fa079",
+        "bytes": 193
+      },
+      {
+        "name": "portal-purchase.test.php.log",
+        "sha256": "3b4d86c9d08a2c0c4bc2ad1bc9100bbe8ad47f05025d30975be6c57496a0b526",
+        "bytes": 177
+      },
+      {
+        "name": "portal-release.test.php.log",
+        "sha256": "4ec5283e9461c861fb7641e0bb67d2f5a50af8a4eddb27ae77e309bc27adb79d",
+        "bytes": 25
+      },
+      {
+        "name": "portal-service.test.php.log",
+        "sha256": "5137a1ed4dc8326cb150bb79291c4d8197cd566260388a5630860152f09ec123",
+        "bytes": 214
+      },
+      {
+        "name": "portal-session.test.php.log",
+        "sha256": "4359fd19877eb68f33691b8efcb2618d7e68c4d0e925da44cee98bea81d629c6",
+        "bytes": 115
+      },
+      {
+        "name": "portal-sms.test.php.log",
+        "sha256": "c4c9a27103f498077554d0466afba82628165369d985e8bb2b48f2ebef1c74cc",
+        "bytes": 152
+      },
+      {
+        "name": "portal-test-recipient.test.php.log",
+        "sha256": "520cb95676a6565c0524b3c479e29e614f4faa4fe9fd85c7cef78c2acd3ff9e8",
+        "bytes": 104
+      },
+      {
+        "name": "portal-vendor.test.php.log",
+        "sha256": "e2573cb70a1e9e097563d9bcbf5e23e7ac186fad560730e5908c15699d648dd9",
+        "bytes": 158
+      },
+      {
+        "name": "pricing-gate.test.php.log",
+        "sha256": "3fb12b1e8ab39e09fdbd63020553ecb3b94c2229be378c0038a5b44058cc3bcc",
+        "bytes": 34
+      },
+      {
+        "name": "pricing-request.test.php.log",
+        "sha256": "150bd5c7cdce61fe38a25fb92ba0cc15032bd5f7bea155dca29d92894a55b56e",
+        "bytes": 34
+      },
+      {
+        "name": "quote-receipts.test.php.log",
+        "sha256": "9bebed97d8b2d0e23c12d32cb6eda3ef6c9ae9dfc3ea32b18d2d341d88192c61",
+        "bytes": 45
+      },
+      {
+        "name": "residential-platform.test.php.log",
+        "sha256": "aa0f88e5fca5106daa797307a181a4b87293afecd1d33b93f1b7f4780863148b",
+        "bytes": 42
+      },
+      {
+        "name": "turnstile-verification.test.php.log",
+        "sha256": "05d742b569b548e31078d69882b676b2ab292f1c65db1eededf8991062887ee2",
+        "bytes": 54
+      }
+    ],
+    "diagnostic_history": [
+      {
+        "name": "availability-endpoint.test-fixed.log",
+        "sha256": "efb04aca32a205554aa6688523d89752afaddb3adbe939cfa6667ce9b866d3c1",
+        "bytes": 41
+      },
+      {
+        "name": "booking-availability.test-fixed.log",
+        "sha256": "6ec3be5e710d6f7e838b69a45627fb1e6218493c34a176192f66b4c127eba09a",
+        "bytes": 41
+      },
+      {
+        "name": "booking-checkout.test-fixed.log",
+        "sha256": "3d3a34b6749288bc92c3615a147d3a6e3ff464a0141359dd7dbbada0a0ada43b",
+        "bytes": 36
+      },
+      {
+        "name": "booking-communication-fixed.log",
+        "sha256": "44eb3eb7ea19bc07df89198cefdbc3b31af49a0df1e78bc64c5e4c69a97040eb",
+        "bytes": 641
+      },
+      {
+        "name": "booking-communication.test-fixed.log",
+        "sha256": "349ef0d4c36aa68092e9b82bce18e02f6945fb38e16930b5fee45afca4da579b",
+        "bytes": 47
+      },
+      {
+        "name": "booking-confirmation.test-fixed.log",
+        "sha256": "53827024e9d05efdb03aad8a51e20b84324052347b1c72a58c85124ff191ccde",
+        "bytes": 62
+      },
+      {
+        "name": "booking-feedback.test-fixed.log",
+        "sha256": "f140e67778a1f35a32db18e3a8b1ff2707ea1d8ae30b4c580ba119fd91c78b0a",
+        "bytes": 37
+      },
+      {
+        "name": "booking-flow.test-fixed.log",
+        "sha256": "964f8f0ad1390fcf400cea998a907103d3dfce47ad6294a011e9998a498261fb",
+        "bytes": 37
+      },
+      {
+        "name": "booking-lifecycle-fixed.log",
+        "sha256": "b4d05de04c589ba8fefbc1d9874684cbf4fa7df6bb5768e975ec7265c6cdcc46",
+        "bytes": 781
+      },
+      {
+        "name": "booking-lifecycle.test-fixed.log",
+        "sha256": "f435a52fe245b791f9ab34df22e6bd32894d933016fe58def79ff40ce21f2b2f",
+        "bytes": 41
+      },
+      {
+        "name": "booking-window-diagnostic.test-fixed.log",
+        "sha256": "d99f166bad832678f9189315e7a961644c2d08be0f81069b3c1d7b7f3e9926f2",
+        "bytes": 44
+      },
+      {
+        "name": "booking-workflow-fixed.log",
+        "sha256": "4e6b846cc6aa2c438cc5653c7007cea1611c075cb62a4831f3a94f1c78732a7c",
+        "bytes": 386
+      },
+      {
+        "name": "booking-workflow.test-fixed.log",
+        "sha256": "5caa00816880306e7e93cdc2e1c07df624e0e98c9d4dd95bbdc38754a890ec55",
+        "bytes": 43
+      },
+      {
+        "name": "browser-bootstrap-results.json",
+        "sha256": "207bee75bc6bee10952796158524d5deffe0bba359a86bc24c767a81aec03e98",
+        "bytes": 1835
+      },
+      {
+        "name": "calendar-audit-fixed.log",
+        "sha256": "36b24d3a9f2741d7856c8eb8ad3c2ae904b17b127a9e1ebeb877d7c0b2aa256b",
+        "bytes": 53
+      },
+      {
+        "name": "calendar-audit.test-fixed.log",
+        "sha256": "36b24d3a9f2741d7856c8eb8ad3c2ae904b17b127a9e1ebeb877d7c0b2aa256b",
+        "bytes": 53
+      },
+      {
+        "name": "calendar-diagnostic.test-fixed.log",
+        "sha256": "030b2f9f9f1f8107b06318591ec326363bc02e975a23463c2617a111be080219",
+        "bytes": 68
+      },
+      {
+        "name": "calendar-notice.test-fixed.log",
+        "sha256": "9febfcddf113ecedc698e2c43333c704287564e75178d7f3ae540b93a2e57e9d",
+        "bytes": 57
+      },
+      {
+        "name": "link-microsoft-test-contact.test-fixed.log",
+        "sha256": "6963b17562cad3db5ffd599f41c11032aa005ec253050c2c235232a4b338dbb9",
+        "bytes": 47
+      },
+      {
+        "name": "microsoft-calendar-connection.test-fixed.log",
+        "sha256": "57d7e650273f93472820076e8a4f56efa387ba868965851fdd4cb9eacf0c85ff",
+        "bytes": 984
+      },
+      {
+        "name": "microsoft-scheduling-fixed.log",
+        "sha256": "3d59c8d38eb9f6f5a56a509be30441444c8a73f420b996cb6a6ea7ba09d0279b",
+        "bytes": 44
+      },
+      {
+        "name": "microsoft-scheduling.test-fixed.log",
+        "sha256": "3d59c8d38eb9f6f5a56a509be30441444c8a73f420b996cb6a6ea7ba09d0279b",
+        "bytes": 44
+      },
+      {
+        "name": "move-test-booking-window.test-fixed.log",
+        "sha256": "216383d880a43a6d366ef386767647f21f4507ef6a4b98e636d7e88e375f99ea",
+        "bytes": 44
+      },
+      {
+        "name": "php-fixed-results.json",
+        "sha256": "d0dd24c629b9320d86a23ba22a74d3cca1173babdfbc879b1250da22e29445b7",
+        "bytes": 6838
+      },
+      {
+        "name": "portal-access.test-fixed.log",
+        "sha256": "96c695f0078439bfbaed36a8d4191744b11d2403117fe7559049f7f5766e56c6",
+        "bytes": 96
+      },
+      {
+        "name": "portal-draft-recovery.test-fixed.log",
+        "sha256": "eb1484c07a4716fc639e68987562ba4d7d2f0a111f450de77ab15f31473fa68d",
+        "bytes": 108
+      },
+      {
+        "name": "portal-email-concurrency.test-fixed.log",
+        "sha256": "3da7ad4fcf1c399c5a520e14b9c34ca3bd308f15a1adc4a24d5f1d5980a13978",
+        "bytes": 90
+      },
+      {
+        "name": "portal-email-concurrency.test-php83.log",
+        "sha256": "3065d265afe0d1fc63d73b2e28601317183cc4e34d8243bcfddc7bda8d21b3ca",
+        "bytes": 870
+      },
+      {
+        "name": "portal-email.browser-bootstrap.log",
+        "sha256": "11aff27ed2d6fa366d3acb0a27f11b5d13d2cc16e9d5f36db2df0a0ae095c942",
+        "bytes": 188
+      },
+      {
+        "name": "portal-email.test-fixed.log",
+        "sha256": "f1505ebfc53c8800af817ee7fe9bbd3c60758bcafdb040d9aee39140e1b191bb",
+        "bytes": 161
+      },
+      {
+        "name": "portal-http.browser-bootstrap.log",
+        "sha256": "b09deca0c6732a1653a386d716f164eeaa45af600aee17ab609716a905ca57f8",
+        "bytes": 261
+      },
+      {
+        "name": "portal-job.browser-bootstrap.log",
+        "sha256": "7978e77474f087479b2b623b3d988c534a00a64aca77a0fed4a3578628c92cb2",
+        "bytes": 310
+      },
+      {
+        "name": "portal-job.test-fixed.log",
+        "sha256": "353b207e5214a546bc7663b865b6d7c982a5e9dee3f5ecfb9fc9d91312241b72",
+        "bytes": 229
+      },
+      {
+        "name": "portal-onsite-catalog.test-fixed.log",
+        "sha256": "431e77b40625c06fa3a0ddd9c4d46592d68c3ffdfefcafdea1531506cb7c4231",
+        "bytes": 161
+      },
+      {
+        "name": "portal-phone.test-fixed.log",
+        "sha256": "12f0e7938e7e0dea4d82b1916c09cbc5eda978db298c0d5e485a7a3ee65fa079",
+        "bytes": 193
+      },
+      {
+        "name": "portal-purchase.test-fixed.log",
+        "sha256": "3b4d86c9d08a2c0c4bc2ad1bc9100bbe8ad47f05025d30975be6c57496a0b526",
+        "bytes": 177
+      },
+      {
+        "name": "portal-release.test-fixed.log",
+        "sha256": "4ec5283e9461c861fb7641e0bb67d2f5a50af8a4eddb27ae77e309bc27adb79d",
+        "bytes": 25
+      },
+      {
+        "name": "portal-service.test-fixed.log",
+        "sha256": "5137a1ed4dc8326cb150bb79291c4d8197cd566260388a5630860152f09ec123",
+        "bytes": 214
+      },
+      {
+        "name": "portal-session.test-fixed.log",
+        "sha256": "4359fd19877eb68f33691b8efcb2618d7e68c4d0e925da44cee98bea81d629c6",
+        "bytes": 115
+      },
+      {
+        "name": "portal-sms.test-fixed.log",
+        "sha256": "c4c9a27103f498077554d0466afba82628165369d985e8bb2b48f2ebef1c74cc",
+        "bytes": 152
+      },
+      {
+        "name": "portal-test-recipient.test-fixed.log",
+        "sha256": "520cb95676a6565c0524b3c479e29e614f4faa4fe9fd85c7cef78c2acd3ff9e8",
+        "bytes": 104
+      },
+      {
+        "name": "portal-vendor.test-fixed.log",
+        "sha256": "e2573cb70a1e9e097563d9bcbf5e23e7ac186fad560730e5908c15699d648dd9",
+        "bytes": 158
+      },
+      {
+        "name": "pricing-gate.test-fixed.log",
+        "sha256": "3fb12b1e8ab39e09fdbd63020553ecb3b94c2229be378c0038a5b44058cc3bcc",
+        "bytes": 34
+      },
+      {
+        "name": "pricing-request.test-fixed.log",
+        "sha256": "150bd5c7cdce61fe38a25fb92ba0cc15032bd5f7bea155dca29d92894a55b56e",
+        "bytes": 34
+      },
+      {
+        "name": "python-bootstrap-final.log",
+        "sha256": "60b52e40289d8a70e8cb7b9f22860914a5bdeb7557fb7457466c1c391e452021",
+        "bytes": 2166
+      },
+      {
+        "name": "python-bootstrap.log",
+        "sha256": "7eae2b932b137882fe615709a365f06e16f1e2f0380985dc1ee7a6c58dd1b3f1",
+        "bytes": 34774
+      },
+      {
+        "name": "python-historical-fixed.log",
+        "sha256": "afd68733a6bfd1a602f10bfa9228ccd4524b0fdef8f9c3e23c157e2b2811990a",
+        "bytes": 34779
+      },
+      {
+        "name": "python-historical.log",
+        "sha256": "a707f8b6fb4f37519afd1fc77de885283e41bb9b0b5bed1b84ac737ef2c99440",
+        "bytes": 70115
+      },
+      {
+        "name": "quote-receipts.test-fixed.log",
+        "sha256": "9bebed97d8b2d0e23c12d32cb6eda3ef6c9ae9dfc3ea32b18d2d341d88192c61",
+        "bytes": 45
+      },
+      {
+        "name": "residential-platform.test-fixed.log",
+        "sha256": "aa0f88e5fca5106daa797307a181a4b87293afecd1d33b93f1b7f4780863148b",
+        "bytes": 42
+      },
+      {
+        "name": "turnstile-verification.test-fixed.log",
+        "sha256": "05d742b569b548e31078d69882b676b2ab292f1c65db1eededf8991062887ee2",
+        "bytes": 54
+      },
+      {
+        "name": "vendor-bootstrap.log",
+        "sha256": "51c8a651374de7686d94797d3d9dccebe03e8c3e8d7c282cd94a2339451d8d80",
+        "bytes": 390
+      }
+    ]
+  },
+  "unchanged_baseline": {
+    "suites": 36,
+    "passed": 31,
+    "failed": 5,
+    "results": [
+      {
+        "test": "tests/availability-endpoint.test.php",
+        "exit_code": 0,
+        "last_output": "Availability endpoint: 30 checks passed.",
+        "log": "availability-endpoint.test.php.log"
+      },
+      {
+        "test": "tests/booking-availability.test.php",
+        "exit_code": 0,
+        "last_output": "Calendar availability: 53 checks passed.",
+        "log": "booking-availability.test.php.log"
+      },
+      {
+        "test": "tests/booking-checkout.test.php",
+        "exit_code": 0,
+        "last_output": "Booking checkout: 64 checks passed.",
+        "log": "booking-checkout.test.php.log"
+      },
+      {
+        "test": "tests/booking-communication.test.php",
+        "exit_code": 255,
+        "last_output": "  thrown in /workspace/SiteSee-Real-Estate/_private/server/booking-communication.php on line 57",
+        "log": "booking-communication.test.php.log"
+      },
+      {
+        "test": "tests/booking-confirmation.test.php",
+        "exit_code": 0,
+        "last_output": "Booking confirmation and invitation safety: 119 checks passed",
+        "log": "booking-confirmation.test.php.log"
+      },
+      {
+        "test": "tests/booking-feedback.test.php",
+        "exit_code": 0,
+        "last_output": "Calendar feedback: 34 checks passed.",
+        "log": "booking-feedback.test.php.log"
+      },
+      {
+        "test": "tests/booking-flow.test.php",
+        "exit_code": 0,
+        "last_output": "Booking flow: 133 assertions passed.",
+        "log": "booking-flow.test.php.log"
+      },
+      {
+        "test": "tests/booking-lifecycle.test.php",
+        "exit_code": 255,
+        "last_output": "  thrown in /workspace/SiteSee-Real-Estate/_private/server/booking-confirmation.php on line 42",
+        "log": "booking-lifecycle.test.php.log"
+      },
+      {
+        "test": "tests/booking-window-diagnostic.test.php",
+        "exit_code": 0,
+        "last_output": "Booking window diagnostic: 7 checks passed.",
+        "log": "booking-window-diagnostic.test.php.log"
+      },
+      {
+        "test": "tests/booking-workflow.test.php",
+        "exit_code": 255,
+        "last_output": "  thrown in /workspace/SiteSee-Real-Estate/_private/server/booking-workflow.php on line 19",
+        "log": "booking-workflow.test.php.log"
+      },
+      {
+        "test": "tests/calendar-audit.test.php",
+        "exit_code": 255,
+        "last_output": "  thrown in /workspace/SiteSee-Real-Estate/tests/calendar-audit.test.php on line 29",
+        "log": "calendar-audit.test.php.log"
+      },
+      {
+        "test": "tests/calendar-diagnostic.test.php",
+        "exit_code": 0,
+        "last_output": "PASS: 128 diagnostic safety checks (mocked Zoho; no real requests).",
+        "log": "calendar-diagnostic.test.php.log"
+      },
+      {
+        "test": "tests/calendar-notice.test.php",
+        "exit_code": 0,
+        "last_output": "Calendar notice/backend parity: PASS (78 cutoff checks).",
+        "log": "calendar-notice.test.php.log"
+      },
+      {
+        "test": "tests/link-microsoft-test-contact.test.php",
+        "exit_code": 0,
+        "last_output": "Microsoft TEST contact reuse: 32 checks passed",
+        "log": "link-microsoft-test-contact.test.php.log"
+      },
+      {
+        "test": "tests/microsoft-calendar-connection.test.php",
+        "exit_code": 0,
+        "last_output": "13 Microsoft calendar connection cases passed (provider simulated).",
+        "log": "microsoft-calendar-connection.test.php.log"
+      },
+      {
+        "test": "tests/microsoft-scheduling.test.php",
+        "exit_code": 255,
+        "last_output": "  thrown in /workspace/SiteSee-Real-Estate/_private/server/booking-confirmation.php on line 42",
+        "log": "microsoft-scheduling.test.php.log"
+      },
+      {
+        "test": "tests/move-test-booking-window.test.php",
+        "exit_code": 0,
+        "last_output": "TEST booking window move: 15 checks passed.",
+        "log": "move-test-booking-window.test.php.log"
+      },
+      {
+        "test": "tests/portal-access.test.php",
+        "exit_code": 0,
+        "last_output": "portal-access: PASS (one-use login, expiry, throttling, disabled accounts, ownership isolation)",
+        "log": "portal-access.test.php.log"
+      },
+      {
+        "test": "tests/portal-draft-recovery.test.php",
+        "exit_code": 0,
+        "last_output": "PASS saved draft repair, same-message resume, current calendar/CRM, identity guards, and no duplicate sends",
+        "log": "portal-draft-recovery.test.php.log"
+      },
+      {
+        "test": "tests/portal-email-concurrency.test.php",
+        "exit_code": 0,
+        "last_output": "portal-email-concurrency: PASS (separate-process duplicate activation and one-use replay)",
+        "log": "portal-email-concurrency.test.php.log"
+      },
+      {
+        "test": "tests/portal-email.test.php",
+        "exit_code": 0,
+        "last_output": "portal-email: PASS (identity; verification; expiry/reuse; duplicates; revisions; rates; mail ambiguity; races; history; drafts; captured recovery; fixed sender)",
+        "log": "portal-email.test.php.log"
+      },
+      {
+        "test": "tests/portal-job.test.php",
+        "exit_code": 0,
+        "last_output": "portal-job: PASS (exact approved bill, immutable booking, ownership, consent, duplicate clicks, lost create/confirm, declines, detached cards, legacy races, payment recovery, refunds/disputes, private drafts, production release)",
+        "log": "portal-job.test.php.log"
+      },
+      {
+        "test": "tests/portal-onsite-catalog.test.php",
+        "exit_code": 0,
+        "last_output": "portal-onsite-catalog: PASS (full catalogs, exact prices, duplicates, quantities, package overlap, commission exclusions, dependency rules, legacy preservation)",
+        "log": "portal-onsite-catalog.test.php.log"
+      },
+      {
+        "test": "tests/portal-phone.test.php",
+        "exit_code": 0,
+        "last_output": "portal-phone: PASS (normalization; staff binding; isolation; cooldown and daily limits; expiry; attempts; one use; provider uncertainty; disabled and changed identities; old-session rejection)",
+        "log": "portal-phone.test.php.log"
+      },
+      {
+        "test": "tests/portal-purchase.test.php",
+        "exit_code": 0,
+        "last_output": "portal-purchase: PASS (canonical prices; crash recovery; ownership; consent; mail retries; hosted/embedded idempotency; signed webhook; Order Again; expiry; disabled/cancelled)",
+        "log": "portal-purchase.test.php.log"
+      },
+      {
+        "test": "tests/portal-release.test.php",
+        "exit_code": 0,
+        "last_output": "PASS portal release gate",
+        "log": "portal-release.test.php.log"
+      },
+      {
+        "test": "tests/portal-service.test.php",
+        "exit_code": 0,
+        "last_output": "portal-service: PASS (owned lifecycle; no staff controls; recovery; payment evidence; consent; approved scope; refunds/disputes; same-key retry; expiry; webhook race/replay; restricted methods; disabled ownership)",
+        "log": "portal-service.test.php.log"
+      },
+      {
+        "test": "tests/portal-session.test.php",
+        "exit_code": 0,
+        "last_output": "portal-session: PASS (strict cookies, ID and CSRF rotation, idle/absolute expiry, disable, cross-origin rejection)",
+        "log": "portal-session.test.php.log"
+      },
+      {
+        "test": "tests/portal-sms.test.php",
+        "exit_code": 0,
+        "last_output": "portal-sms: PASS (private configuration; allowed recipients; SMS-only requests; exact account/service/number/SID binding; approved-only authentication)",
+        "log": "portal-sms.test.php.log"
+      },
+      {
+        "test": "tests/portal-test-recipient.test.php",
+        "exit_code": 0,
+        "last_output": "PASS approved recipients, unchanged prerequisites, narrow PATCH, exact CRM and protected cron selection",
+        "log": "portal-test-recipient.test.php.log"
+      },
+      {
+        "test": "tests/portal-vendor.test.php",
+        "exit_code": 0,
+        "last_output": "portal-vendor: PASS (separate identities; phone binding; expiry; throttling; replay; revocation during verification; provider uncertainty; isolated sessions)",
+        "log": "portal-vendor.test.php.log"
+      },
+      {
+        "test": "tests/pricing-gate.test.php",
+        "exit_code": 0,
+        "last_output": "Passed 8 pricing-gate assertions.",
+        "log": "pricing-gate.test.php.log"
+      },
+      {
+        "test": "tests/pricing-request.test.php",
+        "exit_code": 0,
+        "last_output": "Passed 44 server-form assertions.",
+        "log": "pricing-request.test.php.log"
+      },
+      {
+        "test": "tests/quote-receipts.test.php",
+        "exit_code": 0,
+        "last_output": "Quote receipt handler: 42 assertions passed.",
+        "log": "quote-receipts.test.php.log"
+      },
+      {
+        "test": "tests/residential-platform.test.php",
+        "exit_code": 0,
+        "last_output": "Residential platform server pricing: PASS",
+        "log": "residential-platform.test.php.log"
+      },
+      {
+        "test": "tests/turnstile-verification.test.php",
+        "exit_code": 0,
+        "last_output": "Corporate-pattern Turnstile tests passed (18 checks).",
+        "log": "turnstile-verification.test.php.log"
+      }
+    ]
+  },
+  "evidence": {
+    "directory": "/workspace/.sitesee-onboarding/unified-baseline",
+    "selection": "final_evidence lists completed checks for this milestone; unchanged_baseline retains the five reproduced failures; diagnostic_history retains earlier repair and setup attempts and is not the final result.",
+    "php83_setup_correction": "The original PHP 8.3 build lacked test-only pcntl. After compiling the extension from the verified official source, portal-email-concurrency was rerun and completed; all 37 suites pass.",
+    "historical_python_correction": "The restored full calendar label was rechecked by both final historical Python runs.",
+    "deployable_candidate": false
+  }
+}

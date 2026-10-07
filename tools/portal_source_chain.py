@@ -1,8 +1,9 @@
 """Validate reviewed upgrades while reproducing older immutable packages."""
 import base64, json
+from unified_source import before_unified_update
 
 def before_vendor_update(root, source):
-    actual=(root/source).read_bytes()
+    actual=before_unified_update(root, source)
     manifest=root/'documents/portal/vendor-accounts-source.json'
     if not manifest.exists():return actual
     change=json.loads(manifest.read_text())['files'].get(source.replace('_private/','private/',1))

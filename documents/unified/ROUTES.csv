@@ -1,0 +1,20 @@
+public_url,retained_handler,boundary
+/account.php,_private/server/portal-app.php,existing handler authorization and provider guards
+/vendor.php,_private/server/vendor-app.php,existing handler authorization and provider guards
+/staff-bookings.php,_private/server/booking-staff.php,existing handler authorization and provider guards
+/staff-production.php,_private/server/booking-staff.php,existing handler authorization and provider guards
+/staff-vendors.php,_private/server/booking-staff.php,existing handler authorization and provider guards
+/manage-appointment.php,_private/server/booking-manage.php,existing handler authorization and provider guards
+/booking-pay.php,_private/server/booking-pay.php,existing handler authorization and provider guards
+/booking-webhook.php,_private/server/booking-webhook.php,existing handler authorization and provider guards
+/booking-availability.php,_private/server/booking-availability-check.php,existing handler authorization and provider guards
+/pricing.php,_private/views/pricing.php,existing handler authorization and provider guards
+/pricing-request.php,_private/server/pricing-request.php,existing handler authorization and provider guards
+/pricing-approve.php,_private/server/pricing-approve.php,existing handler authorization and provider guards
+/pricing-confirm.php,_private/server/pricing-confirm.php,existing handler authorization and provider guards
+/pricing-logout.php,_private/server/pricing-logout.php,existing handler authorization and provider guards
+/pricing-asset.php,_private/server/pricing-asset.php,existing handler authorization and provider guards
+/quote-submit.php,_private/server/quote-submit.php,existing handler authorization and provider guards
+/contact-submit.php,_private/server/contact-submit.php,existing handler authorization and provider guards
+/booking-clock.php,public/booking-clock.php,public server time only; no private bootstrap
+/application-entry.php,public/application-entry.php,direct requests denied (404)

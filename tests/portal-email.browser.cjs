@@ -8,6 +8,7 @@ const temp=fs.mkdtempSync(path.join(os.tmpdir(),'sitesee-portal-http-'));
 const privateRoot=path.join(temp,'private');fs.cpSync(path.join(repo,'_private'),privateRoot,{recursive:true});
 // Reuse code only; previous unit-test session directories are not fixture state.
 fs.rmSync(path.join(privateRoot,'data'),{recursive:true,force:true});
+fs.writeFileSync(path.join(temp,'application-entry.php'),fs.readFileSync(path.join(repo,'public/application-entry.php'),'utf8').replaceAll('/home/sitesee/.sitesee-real-estate',privateRoot));
 const accountEntry=path.join(temp,'account.php');
 fs.writeFileSync(accountEntry,fs.readFileSync(path.join(repo,'public/account.php'),'utf8').replaceAll('/home/sitesee/.sitesee-real-estate',privateRoot));
 const releaseFlag=path.join(privateRoot,'portal-test.json');

@@ -9,7 +9,7 @@ class WorkerRuntime(unittest.TestCase):
  def setUp(self):
   self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup);self.home=Path(self.temp.name);self.root=self.home/'.sitesee-real-estate'
   shutil.copytree(PROJECT/'_private',self.root);(self.home/'public_html/re').mkdir(parents=True)
-  cfg=self.root/'booking-lifecycle.json';cfg.write_text(json.dumps(dict(schema=1,stage='test',enabled=True,recipient='cro@sitesee.ai')));cfg.chmod(0o600)
+  cfg=self.root/'booking-lifecycle.json';cfg.write_text(json.dumps(dict(schema=1,stage='test',enabled=True,recipient='sales@re.sitesee.ai')));cfg.chmod(0o600)
   self.env=os.environ.copy();self.env.pop('SITESEE_REAL_ESTATE_BOOKING_DB',None)
  def run_worker(self,*args):
   return subprocess.run([PHP,str(self.root/'server/booking-lifecycle-reconcile.php'),*args],cwd=self.home,env=self.env,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
@@ -27,12 +27,12 @@ class WorkerRuntime(unittest.TestCase):
   self.assertFalse((self.home/'public_html/re/bookings.sqlite').exists())
  def test_protected_booking_is_not_processed(self):
   self.run_worker('--diagnose');db=sqlite3.connect(self.root/'data/bookings.sqlite')
-  db.execute("INSERT INTO bookings(reference,created_at,status,market,email,request_json,requested_utc,quote_cents,platform_monthly_cents) VALUES('D32FFC7458','now','deposit_paid_test','residential','cro@sitesee.ai','{}','now',100,0)")
+  db.execute("INSERT INTO bookings(reference,created_at,status,market,email,request_json,requested_utc,quote_cents,platform_monthly_cents) VALUES('D32FFC7458','now','deposit_paid_test','residential','sales@re.sitesee.ai','{}','now',100,0)")
   db.execute("INSERT INTO booking_confirmations(reference,state,calendar_uid,event_uid,planned_start,planned_end,event_json,created_at) VALUES('D32FFC7458','confirmed','protected','protected',9999999000,9999999999,'{}','now')");db.commit();db.close()
   r=self.run_worker();self.assertEqual(r.returncode,0,r.stdout+r.stderr);self.assertIn('Reconciled: 0; review required: 0.',r.stdout)
  def test_report_includes_safe_worker_failures_and_two_references(self):
   self.run_worker('--diagnose')
-  db=sqlite3.connect(self.root/'data/bookings.sqlite');db.execute("INSERT INTO bookings(reference,created_at,status,market,email,request_json,requested_utc,quote_cents,platform_monthly_cents) VALUES('B0AC5BEFEB','now','deposit_paid_test','residential','cro@sitesee.ai','{}','now',100,0)");db.commit();db.close()
+  db=sqlite3.connect(self.root/'data/bookings.sqlite');db.execute("INSERT INTO bookings(reference,created_at,status,market,email,request_json,requested_utc,quote_cents,platform_monthly_cents) VALUES('B0AC5BEFEB','now','deposit_paid_test','residential','sales@re.sitesee.ai','{}','now',100,0)");db.commit();db.close()
   (self.root/'lifecycle-reconcile.log').write_text('2026-09-28T18:15:01+00:00 Worker started.\n2026-09-28T18:15:01+00:00 Worker stopped: stage=database; type=RuntimeException; code=database-path-guard.\nSECRET-TOKEN-DO-NOT-PRINT\n')
   module=previous.load('worker_report',PROJECT/'tools/appointment-worker-report.py')
   # Missing-reference output must identify the reference, and report logs even before a booking exists.
@@ -41,6 +41,8 @@ class WorkerRuntime(unittest.TestCase):
   self.assertNotIn('SECRET-TOKEN',out.getvalue());self.assertIn('stage=database; type=RuntimeException',out.getvalue());self.assertIn('B0AC5BEFEB',out.getvalue())
 class WorkerInstall(unittest.TestCase):
  def setUp(self):
+  if self._testMethodName=='test_reproducible_bundle':
+   self.x,self.m,self.old,self.before,self.files,self.report=repair.load();return
   self.previous=previous.Repair();self.previous.setUp();self.addCleanup(self.previous.doCleanups);self.previous.deploy()
   self.root=self.previous.root;self.uid,self.gid=os.getuid(),os.getgid();self.x,self.m,self.old,self.before,self.files,self.report=repair.load()
   self.cron=self.previous.fixture.cron;self.public=self.previous.fixture.public
@@ -69,6 +71,6 @@ class WorkerInstall(unittest.TestCase):
   with self.assertRaises(self.m.InstallError):self.values()
   self.assertEqual(p.read_bytes(),b'operator edit')
  def test_reproducible_bundle(self):
-  for n,b in self.files.items():self.assertEqual(b,(PROJECT/'_private'/n).read_bytes())
+  for n,b in self.files.items():self.assertEqual(b,(PROJECT/'tests/fixtures/appointment-r3'/Path(n).name).read_bytes())
   p=PROJECT/'tools/repair-appointment-worker.py';before=p.read_bytes();subprocess.run(['python3',str(PROJECT/'tools/build-appointment-worker-repair.py')],check=True);self.assertEqual(before,p.read_bytes())
 if __name__=='__main__':unittest.main()

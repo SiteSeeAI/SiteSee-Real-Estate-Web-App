@@ -8,6 +8,9 @@ import re
 import zlib
 
 root = Path(__file__).resolve().parents[1]
+def historical(path):
+    frozen = root / 'tests/fixtures/lifecycle-before' / path.name
+    return frozen if '_private' in path.parts and frozen.is_file() else path
 paths = {'server/booking-microsoft-calendar.php': root / '_private/server/booking-microsoft-calendar.php',
          'tools/verify-microsoft-calendar-connection.php': root / 'tools/verify-microsoft-calendar-connection.php'}
 raw = json.dumps({name: path.read_text() for name, path in paths.items()}, sort_keys=True).encode()
@@ -23,5 +26,5 @@ if runner.exists():
     text = runner.read_text()
     text = re.sub(r"^INSTALLER = .*?$", 'INSTALLER = ' + repr(base64.b64encode(zlib.compress(source, 9)).decode()), text, flags=re.M)
     text = re.sub(r"^INSTALLER_SHA = .*?$", 'INSTALLER_SHA = ' + repr(hashlib.sha256(source).hexdigest()), text, flags=re.M)
-    text = re.sub(r"^MAIL_CLIENT_SHA = .*?$", 'MAIL_CLIENT_SHA = ' + repr(hashlib.sha256((root / '_private/server/booking-mail-client.php').read_bytes().replace(b'\r\n', b'\n')).hexdigest()), text, flags=re.M)
+    text = re.sub(r"^MAIL_CLIENT_SHA = .*?$", 'MAIL_CLIENT_SHA = ' + repr(hashlib.sha256(historical(root / '_private/server/booking-mail-client.php').read_bytes().replace(b'\r\n', b'\n')).hexdigest()), text, flags=re.M)
     runner.write_text(text)

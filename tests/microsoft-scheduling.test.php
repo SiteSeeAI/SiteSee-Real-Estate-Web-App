@@ -12,7 +12,7 @@ $config=booking_scheduling_ms_config();$lock=$tmp.'/confirm.lock';
 function paid_ms(string $ref,string $time='09:00'):array{
  global $db,$now,$day;
  $s=real_estate_prepare_submission(['version'=>2,'action'=>'request_appointment','market'=>'residential',
- 'details'=>['first'=>'Test','last'=>'Agent','company'=>'Example','email'=>'cro@sitesee.ai','phone'=>'5555550100','street'=>'123 Main St','unit'=>'','city'=>'Madison','state'=>'WI','zip'=>'53703','optOut'=>'Yes'],
+ 'details'=>['first'=>'Test','last'=>'Agent','company'=>'Example','email'=>'sales@re.sitesee.ai','phone'=>'5555550100','street'=>'123 Main St','unit'=>'','city'=>'Madison','state'=>'WI','zip'=>'53703','optOut'=>'Yes'],
  'state'=>['category'=>'average','package'=>'custom','sqft'=>'2000','selected'=>['photo'],'videoSeconds'=>60,'images'=>1],
  'appointment'=>['date'=>$day,'time'=>$time,'windowMinutes'=>120,'rushRequested'=>false,'meetPhotographer'=>'No','accessType'=>'Lockbox','lockboxCode'=>'0123456789','cancellationAccepted'=>true]],$now);
  booking_capture($db,$s,$ref,true);$db->prepare("UPDATE bookings SET status='deposit_paid_test',deposit_paid_at=?,checkout_state='paid' WHERE reference=?")->execute([gmdate('c'),$ref]);

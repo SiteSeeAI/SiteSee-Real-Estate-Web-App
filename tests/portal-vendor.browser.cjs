@@ -4,6 +4,7 @@ const http=require('node:http'),https=require('node:https'),net=require('node:ne
 const {spawn,execFileSync}=require('node:child_process'),{chromium}=require('playwright');
 const repo=path.resolve(__dirname,'..'),temp=fs.mkdtempSync(path.join(os.tmpdir(),'sitesee-portal-http-'));
 const root=path.join(temp,'private');fs.cpSync(path.join(repo,'_private'),root,{recursive:true});fs.rmSync(path.join(root,'data'),{recursive:true,force:true});
+fs.writeFileSync(path.join(temp,'application-entry.php'),fs.readFileSync(path.join(repo,'public/application-entry.php'),'utf8').replaceAll('/home/sitesee/.sitesee-real-estate',root));
 const vendorEntry=path.join(temp,'vendor.php');fs.writeFileSync(vendorEntry,fs.readFileSync(path.join(repo,'public/vendor.php'),'utf8').replaceAll('/home/sitesee/.sitesee-real-estate',root));
 const entry=path.join(temp,'account.php');fs.writeFileSync(entry,fs.readFileSync(path.join(repo,'public/account.php'),'utf8').replaceAll('/home/sitesee/.sitesee-real-estate',root));
 fs.writeFileSync(path.join(root,'portal-test.json'),JSON.stringify({release:'portal-20260929-r2',stage:'TEST',enabled:true}),{mode:0o600});

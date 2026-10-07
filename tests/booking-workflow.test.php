@@ -11,7 +11,7 @@ $db=booking_db();booking_communication_schema($db);$day=(new DateTimeImmutable('
 function paid(string $ref,string $time='09:00'):array{
  global $db,$day;
  $s=real_estate_prepare_submission(['version'=>2,'action'=>'request_appointment','market'=>'residential',
- 'details'=>['first'=>'David','last'=>'Cro','company'=>'SiteSee','email'=>'cro@sitesee.ai','phone'=>'5555550100','street'=>'123 Main','unit'=>'','city'=>'Madison','state'=>'WI','zip'=>'53703','optOut'=>'Yes'],
+ 'details'=>['first'=>'David','last'=>'Cro','company'=>'SiteSee','email'=>'sales@re.sitesee.ai','phone'=>'5555550100','street'=>'123 Main','unit'=>'','city'=>'Madison','state'=>'WI','zip'=>'53703','optOut'=>'Yes'],
  'state'=>['category'=>'average','package'=>'custom','sqft'=>'2000','selected'=>['photo'],'videoSeconds'=>60,'images'=>1],
  'appointment'=>['date'=>$day,'time'=>$time,'windowMinutes'=>120,'rushRequested'=>false,'meetPhotographer'=>'Yes','cancellationAccepted'=>true]]);
  booking_capture($db,$s,$ref,true);$db->prepare("UPDATE bookings SET status='deposit_paid_test',deposit_paid_at=? WHERE reference=?")->execute([gmdate('c'),$ref]);
@@ -32,10 +32,10 @@ $crm=static function($method,$path,$body=null)use(&$crmFail,&$crmWrites,&$wrongE
  if($path==='/org')return ['status'=>200,'body'=>['org'=>[['id'=>$wrongOrg?'999':'100']]]];
  if($path==='/users?type=CurrentUser')return ['status'=>200,'body'=>['users'=>[['id'=>'200']]]];
  if(str_starts_with($path,'/Contacts/search'))return ['status'=>200,'body'=>['data'=>[
-  ['id'=>'300','Full_Name'=>'<script>bad</script>','Email'=>'cro@sitesee.ai'],['id'=>'301','Full_Name'=>'Other exact match','Email'=>'cro@sitesee.ai']], 'info'=>['more_records'=>false]]];
+  ['id'=>'300','Full_Name'=>'<script>bad</script>','Email'=>'sales@re.sitesee.ai'],['id'=>'301','Full_Name'=>'Other exact match','Email'=>'sales@re.sitesee.ai']], 'info'=>['more_records'=>false]]];
  if($path==='/Contacts/300'){
   if($changeDuringRead)$db->exec("UPDATE bookings SET crm_contact_id='888' WHERE reference='CCD0000002'");
-  return ['status'=>200,'body'=>['data'=>[['id'=>'300','Email'=>$wrongEmail?'different@example.com':'cro@sitesee.ai']]]];
+  return ['status'=>200,'body'=>['data'=>[['id'=>'300','Email'=>$wrongEmail?'different@example.com':'sales@re.sitesee.ai']]]];
  }
  if(str_ends_with($path,'/Emails'))return ['status'=>200,'body'=>['Emails'=>$history,'info'=>['more_records'=>false]]];
  if($method==='POST'){
@@ -84,8 +84,8 @@ booking_communication_update($db,$key,['submission_state'=>'uncertain']);
 $r=booking_workflow_recover($db,$row['reference'],$deps);ok(str_contains($r['items']['Delivery / CRM'],'Waiting')&&$crmWrites===0,'Lost draft ID never triggers resend or CRM false sent history.');
 booking_communication_update($db,$key,['provider_message_id'=>'message-1']);
 $sent=['id'=>'message-1','isDraft'=>false,'internetMessageId'=>'<actual-message@example.com>','sentDateTime'=>gmdate('c'),
- 'from'=>['emailAddress'=>['address'=>BOOKING_MAIL_SENDER]],'toRecipients'=>[['emailAddress'=>['address'=>'cro@sitesee.ai']]],
- 'replyTo'=>[['emailAddress'=>['address'=>BOOKING_MAIL_SENDER]]],'subject'=>$message['subject']];
+ 'from'=>['emailAddress'=>['address'=>BOOKING_MAIL_SENDER]],'toRecipients'=>[['emailAddress'=>['address'=>'sales@re.sitesee.ai']]],
+ 'ccRecipients'=>[],'bccRecipients'=>[],'replyTo'=>[['emailAddress'=>['address'=>BOOKING_MAIL_SENDER]]],'subject'=>$message['subject']];
 $deliveryFail=true;$r=booking_workflow_recover($db,$row['reference'],$deps);
 ok(booking_confirmation_get($db,$row['reference'])['invitation_state']==='sent','Saved uncertain attempt recovered by actual sent copy.');
 ok(booking_communication_get($db,$key)['crm_state']==='associated'&&str_contains($r['items']['Recipient mailbox'],'not verified'),'Delivery access failure does not hide successful CRM association.');
@@ -106,7 +106,7 @@ $r=booking_workflow_recover($db,$row['reference'],$deps);ok(booking_communicatio
 booking_communication_update($db,$key,['crm_state'=>'provider_duplicate','crm_message_id'=>null]);unset($history[0]['original_message_id']);
 $r=booking_workflow_recover($db,$row['reference'],$deps);ok(count($r['history'])===1&&booking_communication_get($db,$key)['crm_state']==='provider_duplicate','Ambiguous CRM email requires explicit staff review.');
 // UI rendering escapes provider-supplied names and keeps local evidence distinct.
-$status=['calendar'=>'Microsoft','claim'=>$claim,'mail'=>false,'contact'=>'Not linked','can_send'=>false];
+$status=['calendar'=>'Microsoft','claim'=>$claim,'mail'=>false,'contact'=>'Not linked','link'=>false,'can_send'=>false];
 $html=booking_workflow_html($row,$status,'csrf',$report);
 ok(!str_contains($html,'<script>')&&str_contains($html,'&lt;script&gt;'),'Provider contact names escaped.');
 ok(str_contains($html,'Check Booking Readiness')&&str_contains($html,'Recover Booking Status')&&str_contains($html,'contact_verified'),'Unified controls and explicit selection present.');

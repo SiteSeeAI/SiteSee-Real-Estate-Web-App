@@ -9,6 +9,8 @@ def load(name,path):
 repair=load('repair',PROJECT/'tools/repair-appointment-management.py')
 class Repair(unittest.TestCase):
  def setUp(self):
+  if self._testMethodName=='test_bundle_reproducible':
+   self.x,self.m,self.old,self.before,self.files,self.report=repair.load();return
   self.fixture=base.LifecycleInstall();self.fixture.setUp();self.addCleanup(self.fixture.doCleanups);self.fixture.deploy()
   self.root=self.fixture.root;self.uid,self.gid=os.getuid(),os.getgid();self.x,self.m,self.old,self.before,self.files,self.report=repair.load()
   self.php=base.base.base.f.baseline.PHP

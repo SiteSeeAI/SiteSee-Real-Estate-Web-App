@@ -3,6 +3,9 @@ from unittest.mock import patch
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 import sys
 sys.path.insert(0,str(ROOT/'tools'))
+from unified_source import before_unified_update
+import sys
+sys.path.insert(0,str(ROOT/'tools'))
 from portal_source_chain import before_email_update, before_recipient_update
 spec=importlib.util.spec_from_file_location('job_closeout',ROOT/'tools/install-re-job-closeout-20261003-r1_1.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 class InstallerTests(unittest.TestCase):
@@ -15,7 +18,7 @@ class InstallerTests(unittest.TestCase):
    if item['before'] is not None:p.write_bytes(base64.b64decode(item['before']));p.chmod(0o644 if n.startswith('public/') else 0o600)
   for n in self.obj['dependencies']:
    source=n.replace('private/','_private/',1) if n.startswith('private/') else n
-   p=self.path(n);p.parent.mkdir(exist_ok=True,parents=True);p.write_bytes((ROOT/source).read_bytes());p.chmod(0o600)
+   p=self.path(n);p.parent.mkdir(exist_ok=True,parents=True);p.write_bytes(before_unified_update(ROOT,source));p.chmod(0o600)
   for name in self.obj['manifests']:
    self.put('private/'+name,{'revision':'preserve','files':{n.removeprefix('private/'):m.sha(self.path(n).read_bytes()) for n,v in self.obj['files'].items() if v['before'] is not None},'retain':['unknown historical metadata']})
   self.put('private/booking-checkout.json',{'stage':'TEST','enabled':True,'private':'unchanged'})
@@ -194,7 +197,7 @@ class InstallerTests(unittest.TestCase):
  def test_original_r1_application_payload_is_identical(self):
   old=self.original_payload()
   for n,accepted in self.obj['dependencies'].items():
-   source=n.replace('private/','_private/',1) if n.startswith('private/') else n;data=(ROOT/source).read_bytes()
+   source=n.replace('private/','_private/',1) if n.startswith('private/') else n;data=before_unified_update(ROOT,source)
    self.assertEqual(accepted,list(dict.fromkeys([m.sha(data),m.sha(data.replace(b'\n',b'\r\n'))])))
    self.assertEqual(old['dependencies'][n],[m.sha(data)])
   self.assertEqual(m.REVISION,'job-closeout-20261002-r1');self.assertEqual(m.INSTALLER_REVISION,'job-closeout-20261002-r1.1')

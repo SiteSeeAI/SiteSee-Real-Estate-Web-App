@@ -1,0 +1,6 @@
+{
+  "commit": "faf46ff27f604edeb8ddaaba35258b147d1be713",
+  "path": "_private/server/booking-workflow.php",
+  "sha256": "ad79a7105abb2c2507aaf02ac24bd3ab063e48173126c17470b2dfdfdb876bbc",
+  "artifact": "tools/repair-legacy-cancellation.py"
+}

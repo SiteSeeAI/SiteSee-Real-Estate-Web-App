@@ -1,0 +1,108 @@
+{
+  "baseline": "ff5e625a8ff4c51af336e9203fa4be29b3611570",
+  "purpose": "Reviewed bootstrap route consolidation. Historical builders validate the new bytes before recovering the immutable previous bytes.",
+  "files": {
+    "public/account.php": {
+      "before": "PD9waHAKZGVjbGFyZShzdHJpY3RfdHlwZXM9MSk7Ci8qIFB1YmxpYyByb3V0ZSBvbmx5LiBObyBjb25maWd1cmF0aW9uLCByZWNvcmRzIG9yIHNlc3Npb24gZmlsZXMgYmVsb25nIGhlcmUuICovCnJlcXVpcmUgJy9ob21lL3NpdGVzZWUvLnNpdGVzZWUtcmVhbC1lc3RhdGUvc2VydmVyL3BvcnRhbC1yZWxlYXNlLnBocCc7Ci8vIEV4cGxpY2l0bHkgb3ZlcnJpZGUgaW5oZXJpdGVkIGZsYWdzOiBkaXNhYmxpbmcgdGhpcyByZWxlYXNlIG11c3QgY2xvc2UgdGhlIHJvdXRlLgpwdXRlbnYoJ1NJVEVTRUVfUkVBTF9FU1RBVEVfUE9SVEFMX1RFU1RfRU5BQkxFRD0nIC4gKHBvcnRhbF9yZWxlYXNlX2VuYWJsZWQoJy9ob21lL3NpdGVzZWUvLnNpdGVzZWUtcmVhbC1lc3RhdGUvcG9ydGFsLXRlc3QuanNvbicpID8gJzEnIDogJzAnKSk7CnJlcXVpcmUgJy9ob21lL3NpdGVzZWUvLnNpdGVzZWUtcmVhbC1lc3RhdGUvc2VydmVyL3BvcnRhbC1hcHAucGhwJzsK",
+      "after": "PD9waHAKZGVjbGFyZShzdHJpY3RfdHlwZXM9MSk7Ci8vIFJvdXRlIGFsaWFzIHJldGFpbmVkOyBhdXRoZW50aWNhdGlvbiBiZWxvbmdzIHRvIHRoZSBleGlzdGluZyBwcml2YXRlIGhhbmRsZXIuCnJlcXVpcmUgX19ESVJfXyAuICcvYXBwbGljYXRpb24tZW50cnkucGhwJzsKcmVxdWlyZSBzaXRlX2FwcGxpY2F0aW9uX3JvdXRlX3RhcmdldCgnYWNjb3VudC5waHAnKTsK",
+      "before_sha256": "66c49d8bd7095fecd14d0a9dacd3d8db2a47ca7fe7d553a23e2cc53420ceaff0",
+      "after_sha256": "e54d7e592a55cec5151d1b1d8849fc98a3bc9df684995c7cd22fccea534160c2"
+    },
+    "public/vendor.php": {
+      "before": "PD9waHAKZGVjbGFyZShzdHJpY3RfdHlwZXM9MSk7CnJlcXVpcmUgJy9ob21lL3NpdGVzZWUvLnNpdGVzZWUtcmVhbC1lc3RhdGUvc2VydmVyL3BvcnRhbC1yZWxlYXNlLnBocCc7CnB1dGVudignU0lURVNFRV9SRUFMX0VTVEFURV9QT1JUQUxfVEVTVF9FTkFCTEVEPScuKHBvcnRhbF9yZWxlYXNlX2VuYWJsZWQoJy9ob21lL3NpdGVzZWUvLnNpdGVzZWUtcmVhbC1lc3RhdGUvcG9ydGFsLXRlc3QuanNvbicpPycxJzonMCcpKTsKcmVxdWlyZSAnL2hvbWUvc2l0ZXNlZS8uc2l0ZXNlZS1yZWFsLWVzdGF0ZS9zZXJ2ZXIvdmVuZG9yLWFwcC5waHAnOwo=",
+      "after": "PD9waHAKZGVjbGFyZShzdHJpY3RfdHlwZXM9MSk7Ci8vIFJvdXRlIGFsaWFzIHJldGFpbmVkOyBhdXRoZW50aWNhdGlvbiBiZWxvbmdzIHRvIHRoZSBleGlzdGluZyBwcml2YXRlIGhhbmRsZXIuCnJlcXVpcmUgX19ESVJfXyAuICcvYXBwbGljYXRpb24tZW50cnkucGhwJzsKcmVxdWlyZSBzaXRlX2FwcGxpY2F0aW9uX3JvdXRlX3RhcmdldCgndmVuZG9yLnBocCcpOwo=",
+      "before_sha256": "0fcb97d079a0af5059177716a61e136a6e6e1db51ecf1e99474dbb30cda86272",
+      "after_sha256": "00d99f5436fbc2af948ac8ffaa266b01b1e74238913182b5ba6dcea5dd70720b"
+    },
+    "public/staff-bookings.php": {
+      "before": "PD9waHAKZGVjbGFyZShzdHJpY3RfdHlwZXM9MSk7CnJlcXVpcmUgJy9ob21lL3NpdGVzZWUvLnNpdGVzZWUtcmVhbC1lc3RhdGUvc2VydmVyL2Jvb2tpbmctc3RhZmYucGhwJzsK",
+      "after": "PD9waHAKZGVjbGFyZShzdHJpY3RfdHlwZXM9MSk7Ci8vIFJvdXRlIGFsaWFzIHJldGFpbmVkOyBhdXRoZW50aWNhdGlvbiBiZWxvbmdzIHRvIHRoZSBleGlzdGluZyBwcml2YXRlIGhhbmRsZXIuCnJlcXVpcmUgX19ESVJfXyAuICcvYXBwbGljYXRpb24tZW50cnkucGhwJzsKcmVxdWlyZSBzaXRlX2FwcGxpY2F0aW9uX3JvdXRlX3RhcmdldCgnc3RhZmYtYm9va2luZ3MucGhwJyk7Cg==",
+      "before_sha256": "957092dc0b919c00b70073fdcd24581d7d4d70ce7a7cc93f87f07d6dccdf1eca",
+      "after_sha256": "605185200358bebc842647e1a278facfe031c6f03ed6057ec6885fe2b3fb7682"
+    },
+    "public/staff-production.php": {
+      "before": "PD9waHAKZGVjbGFyZShzdHJpY3RfdHlwZXM9MSk7CmRlZmluZSgnU0lURVNFRV9QUk9EVUNUSU9OX1BBR0UnLHRydWUpOwpyZXF1aXJlICcvaG9tZS9zaXRlc2VlLy5zaXRlc2VlLXJlYWwtZXN0YXRlL3NlcnZlci9ib29raW5nLXN0YWZmLnBocCc7Cg==",
+      "after": "PD9waHAKZGVjbGFyZShzdHJpY3RfdHlwZXM9MSk7Ci8vIFJvdXRlIGFsaWFzIHJldGFpbmVkOyBhdXRoZW50aWNhdGlvbiBiZWxvbmdzIHRvIHRoZSBleGlzdGluZyBwcml2YXRlIGhhbmRsZXIuCnJlcXVpcmUgX19ESVJfXyAuICcvYXBwbGljYXRpb24tZW50cnkucGhwJzsKcmVxdWlyZSBzaXRlX2FwcGxpY2F0aW9uX3JvdXRlX3RhcmdldCgnc3RhZmYtcHJvZHVjdGlvbi5waHAnKTsK",
+      "before_sha256": "bb7228d4c66f417ef65f0091bc08d3629bfff6da9f82718778ee44eb1a554310",
+      "after_sha256": "199c3c59cfa0ffba17915749bca3e09334c9639e77f3e49a545cb782303dd43b"
+    },
+    "public/staff-vendors.php": {
+      "before": "PD9waHAKZGVjbGFyZShzdHJpY3RfdHlwZXM9MSk7CmRlZmluZSgnU0lURVNFRV9WRU5ET1JfQURNSU5fUEFHRScsdHJ1ZSk7CnJlcXVpcmUgJy9ob21lL3NpdGVzZWUvLnNpdGVzZWUtcmVhbC1lc3RhdGUvc2VydmVyL2Jvb2tpbmctc3RhZmYucGhwJzsK",
+      "after": "PD9waHAKZGVjbGFyZShzdHJpY3RfdHlwZXM9MSk7Ci8vIFJvdXRlIGFsaWFzIHJldGFpbmVkOyBhdXRoZW50aWNhdGlvbiBiZWxvbmdzIHRvIHRoZSBleGlzdGluZyBwcml2YXRlIGhhbmRsZXIuCnJlcXVpcmUgX19ESVJfXyAuICcvYXBwbGljYXRpb24tZW50cnkucGhwJzsKcmVxdWlyZSBzaXRlX2FwcGxpY2F0aW9uX3JvdXRlX3RhcmdldCgnc3RhZmYtdmVuZG9ycy5waHAnKTsK",
+      "before_sha256": "906d74237870273a640ba4b4ec3a6df045cdea936a6e88aa8f6169a035076e52",
+      "after_sha256": "e80c36969297dccd0757bf0bc956081977bdfc0bacd145ace8d683997e9119b9"
+    },
+    "public/manage-appointment.php": {
+      "before": "PD9waHAKZGVjbGFyZShzdHJpY3RfdHlwZXM9MSk7CnJlcXVpcmUgJy9ob21lL3NpdGVzZWUvLnNpdGVzZWUtcmVhbC1lc3RhdGUvc2VydmVyL2Jvb2tpbmctbWFuYWdlLnBocCc7Cg==",
+      "after": "PD9waHAKZGVjbGFyZShzdHJpY3RfdHlwZXM9MSk7Ci8vIFJvdXRlIGFsaWFzIHJldGFpbmVkOyBhdXRoZW50aWNhdGlvbiBiZWxvbmdzIHRvIHRoZSBleGlzdGluZyBwcml2YXRlIGhhbmRsZXIuCnJlcXVpcmUgX19ESVJfXyAuICcvYXBwbGljYXRpb24tZW50cnkucGhwJzsKcmVxdWlyZSBzaXRlX2FwcGxpY2F0aW9uX3JvdXRlX3RhcmdldCgnbWFuYWdlLWFwcG9pbnRtZW50LnBocCcpOwo=",
+      "before_sha256": "5dd668490f5952f32f3c7ea93a79352b3810b72b2d0263eada044121fbbe3eab",
+      "after_sha256": "9f3397189c2417abc9b97b2d302376b2c9a91593a039c2a2d2448b07a175a158"
+    },
+    "public/booking-pay.php": {
+      "before": "PD9waHAKZGVjbGFyZShzdHJpY3RfdHlwZXM9MSk7CnJlcXVpcmUgJy9ob21lL3NpdGVzZWUvLnNpdGVzZWUtcmVhbC1lc3RhdGUvc2VydmVyL2Jvb2tpbmctcGF5LnBocCc7Cg==",
+      "after": "PD9waHAKZGVjbGFyZShzdHJpY3RfdHlwZXM9MSk7Ci8vIFJvdXRlIGFsaWFzIHJldGFpbmVkOyBhdXRoZW50aWNhdGlvbiBiZWxvbmdzIHRvIHRoZSBleGlzdGluZyBwcml2YXRlIGhhbmRsZXIuCnJlcXVpcmUgX19ESVJfXyAuICcvYXBwbGljYXRpb24tZW50cnkucGhwJzsKcmVxdWlyZSBzaXRlX2FwcGxpY2F0aW9uX3JvdXRlX3RhcmdldCgnYm9va2luZy1wYXkucGhwJyk7Cg==",
+      "before_sha256": "5f82aa7f0d1d8aeffae23e0ad7d8dc4276cb749e661c4a2439f8ab80cc0e4127",
+      "after_sha256": "3ed3be60d307bc6fe65f55f9dcd5778627bad28f64beb6d06ad0ed6f19192187"
+    },
+    "public/booking-webhook.php": {
+      "before": "PD9waHAKZGVjbGFyZShzdHJpY3RfdHlwZXM9MSk7CnJlcXVpcmUgJy9ob21lL3NpdGVzZWUvLnNpdGVzZWUtcmVhbC1lc3RhdGUvc2VydmVyL2Jvb2tpbmctd2ViaG9vay5waHAnOwo=",
+      "after": "PD9waHAKZGVjbGFyZShzdHJpY3RfdHlwZXM9MSk7Ci8vIFJvdXRlIGFsaWFzIHJldGFpbmVkOyBhdXRoZW50aWNhdGlvbiBiZWxvbmdzIHRvIHRoZSBleGlzdGluZyBwcml2YXRlIGhhbmRsZXIuCnJlcXVpcmUgX19ESVJfXyAuICcvYXBwbGljYXRpb24tZW50cnkucGhwJzsKcmVxdWlyZSBzaXRlX2FwcGxpY2F0aW9uX3JvdXRlX3RhcmdldCgnYm9va2luZy13ZWJob29rLnBocCcpOwo=",
+      "before_sha256": "629e7f182f8b79abd2ab2e0bb013a233b4c2638bf1349aa7c91b11d92f71fcfc",
+      "after_sha256": "83657a160b108bc5dc3a9e2f308a9c0ae2593b5fbb7f7414a5cab7c846c28eeb"
+    },
+    "public/booking-availability.php": {
+      "before": "PD9waHAKZGVjbGFyZShzdHJpY3RfdHlwZXM9MSk7CgovKiBQdWJsaWMgcm91dGUgb25seTsgaW1wbGVtZW50YXRpb24gaXMgb3V0c2lkZSB0aGUgZG9jdW1lbnQgcm9vdC4gKi8KcmVxdWlyZSAnL2hvbWUvc2l0ZXNlZS8uc2l0ZXNlZS1yZWFsLWVzdGF0ZS9zZXJ2ZXIvYm9va2luZy1hdmFpbGFiaWxpdHktY2hlY2sucGhwJzsK",
+      "after": "PD9waHAKZGVjbGFyZShzdHJpY3RfdHlwZXM9MSk7Ci8vIFJvdXRlIGFsaWFzIHJldGFpbmVkOyBhdXRoZW50aWNhdGlvbiBiZWxvbmdzIHRvIHRoZSBleGlzdGluZyBwcml2YXRlIGhhbmRsZXIuCnJlcXVpcmUgX19ESVJfXyAuICcvYXBwbGljYXRpb24tZW50cnkucGhwJzsKcmVxdWlyZSBzaXRlX2FwcGxpY2F0aW9uX3JvdXRlX3RhcmdldCgnYm9va2luZy1hdmFpbGFiaWxpdHkucGhwJyk7Cg==",
+      "before_sha256": "2e2f828fd3579da3736f77bfd9c5ad7a5f2046b77c01104e9867d2063059198d",
+      "after_sha256": "c538462179a27d6d670ddf4f0b9500d0859f563028a8ac6858d219600e69a22b"
+    },
+    "public/pricing.php": {
+      "before": "PD9waHAKZGVjbGFyZShzdHJpY3RfdHlwZXM9MSk7CgovKiBQdWJsaWMgcm91dGUgb25seTsgaW1wbGVtZW50YXRpb24gaXMgb3V0c2lkZSB0aGUgZG9jdW1lbnQgcm9vdC4gKi8KcmVxdWlyZSAnL2hvbWUvc2l0ZXNlZS8uc2l0ZXNlZS1yZWFsLWVzdGF0ZS92aWV3cy9wcmljaW5nLnBocCc7Cg==",
+      "after": "PD9waHAKZGVjbGFyZShzdHJpY3RfdHlwZXM9MSk7Ci8vIFJvdXRlIGFsaWFzIHJldGFpbmVkOyBhdXRoZW50aWNhdGlvbiBiZWxvbmdzIHRvIHRoZSBleGlzdGluZyBwcml2YXRlIGhhbmRsZXIuCnJlcXVpcmUgX19ESVJfXyAuICcvYXBwbGljYXRpb24tZW50cnkucGhwJzsKcmVxdWlyZSBzaXRlX2FwcGxpY2F0aW9uX3JvdXRlX3RhcmdldCgncHJpY2luZy5waHAnKTsK",
+      "before_sha256": "77d7b93c894040268bed0a285fa812fb6d18b982200021152468eb2dff0a15d4",
+      "after_sha256": "5804289508363a855ba0844c56ad52c8d964013eb0a4b08e452d6af852a6c014"
+    },
+    "public/pricing-request.php": {
+      "before": "PD9waHAKZGVjbGFyZShzdHJpY3RfdHlwZXM9MSk7CgovKiBQdWJsaWMgcm91dGUgb25seTsgaW1wbGVtZW50YXRpb24gaXMgb3V0c2lkZSB0aGUgZG9jdW1lbnQgcm9vdC4gKi8KcmVxdWlyZSAnL2hvbWUvc2l0ZXNlZS8uc2l0ZXNlZS1yZWFsLWVzdGF0ZS9zZXJ2ZXIvcHJpY2luZy1yZXF1ZXN0LnBocCc7Cg==",
+      "after": "PD9waHAKZGVjbGFyZShzdHJpY3RfdHlwZXM9MSk7Ci8vIFJvdXRlIGFsaWFzIHJldGFpbmVkOyBhdXRoZW50aWNhdGlvbiBiZWxvbmdzIHRvIHRoZSBleGlzdGluZyBwcml2YXRlIGhhbmRsZXIuCnJlcXVpcmUgX19ESVJfXyAuICcvYXBwbGljYXRpb24tZW50cnkucGhwJzsKcmVxdWlyZSBzaXRlX2FwcGxpY2F0aW9uX3JvdXRlX3RhcmdldCgncHJpY2luZy1yZXF1ZXN0LnBocCcpOwo=",
+      "before_sha256": "9f4ca2ee4b4d55af9abcbccfde39ea21b36c07f94f77afe9c4a04605b78581ca",
+      "after_sha256": "03e2ee1eb43f636654cd5afb05a44c1a291615409c113ddaf678a3ae9beb942c"
+    },
+    "public/pricing-approve.php": {
+      "before": "PD9waHAKZGVjbGFyZShzdHJpY3RfdHlwZXM9MSk7CgovKiBQdWJsaWMgcm91dGUgb25seTsgaW1wbGVtZW50YXRpb24gaXMgb3V0c2lkZSB0aGUgZG9jdW1lbnQgcm9vdC4gKi8KcmVxdWlyZSAnL2hvbWUvc2l0ZXNlZS8uc2l0ZXNlZS1yZWFsLWVzdGF0ZS9zZXJ2ZXIvcHJpY2luZy1hcHByb3ZlLnBocCc7Cg==",
+      "after": "PD9waHAKZGVjbGFyZShzdHJpY3RfdHlwZXM9MSk7Ci8vIFJvdXRlIGFsaWFzIHJldGFpbmVkOyBhdXRoZW50aWNhdGlvbiBiZWxvbmdzIHRvIHRoZSBleGlzdGluZyBwcml2YXRlIGhhbmRsZXIuCnJlcXVpcmUgX19ESVJfXyAuICcvYXBwbGljYXRpb24tZW50cnkucGhwJzsKcmVxdWlyZSBzaXRlX2FwcGxpY2F0aW9uX3JvdXRlX3RhcmdldCgncHJpY2luZy1hcHByb3ZlLnBocCcpOwo=",
+      "before_sha256": "ae09623cd3591f3aed3f8b96f4d7ab3f3b41b902d332c19bb47f394025a50238",
+      "after_sha256": "69c46bb58f0f48238b1061786d99c2fbdf376360bcbb488b7c2189160abfafca"
+    },
+    "public/pricing-confirm.php": {
+      "before": "PD9waHAKZGVjbGFyZShzdHJpY3RfdHlwZXM9MSk7CgovKiBQdWJsaWMgcm91dGUgb25seTsgaW1wbGVtZW50YXRpb24gaXMgb3V0c2lkZSB0aGUgZG9jdW1lbnQgcm9vdC4gKi8KcmVxdWlyZSAnL2hvbWUvc2l0ZXNlZS8uc2l0ZXNlZS1yZWFsLWVzdGF0ZS9zZXJ2ZXIvcHJpY2luZy1jb25maXJtLnBocCc7Cg==",
+      "after": "PD9waHAKZGVjbGFyZShzdHJpY3RfdHlwZXM9MSk7Ci8vIFJvdXRlIGFsaWFzIHJldGFpbmVkOyBhdXRoZW50aWNhdGlvbiBiZWxvbmdzIHRvIHRoZSBleGlzdGluZyBwcml2YXRlIGhhbmRsZXIuCnJlcXVpcmUgX19ESVJfXyAuICcvYXBwbGljYXRpb24tZW50cnkucGhwJzsKcmVxdWlyZSBzaXRlX2FwcGxpY2F0aW9uX3JvdXRlX3RhcmdldCgncHJpY2luZy1jb25maXJtLnBocCcpOwo=",
+      "before_sha256": "0f7e4f312de98f2d1ce2ebc2d9e89799fd93b2b323f33ee0c64b2c3c2f60d55f",
+      "after_sha256": "995ca466e5ed897726e1d26faac728ae8934d26e0472b179fd76918cfffd1f11"
+    },
+    "public/pricing-logout.php": {
+      "before": "PD9waHAKZGVjbGFyZShzdHJpY3RfdHlwZXM9MSk7CgovKiBQdWJsaWMgcm91dGUgb25seTsgaW1wbGVtZW50YXRpb24gaXMgb3V0c2lkZSB0aGUgZG9jdW1lbnQgcm9vdC4gKi8KcmVxdWlyZSAnL2hvbWUvc2l0ZXNlZS8uc2l0ZXNlZS1yZWFsLWVzdGF0ZS9zZXJ2ZXIvcHJpY2luZy1sb2dvdXQucGhwJzsK",
+      "after": "PD9waHAKZGVjbGFyZShzdHJpY3RfdHlwZXM9MSk7Ci8vIFJvdXRlIGFsaWFzIHJldGFpbmVkOyBhdXRoZW50aWNhdGlvbiBiZWxvbmdzIHRvIHRoZSBleGlzdGluZyBwcml2YXRlIGhhbmRsZXIuCnJlcXVpcmUgX19ESVJfXyAuICcvYXBwbGljYXRpb24tZW50cnkucGhwJzsKcmVxdWlyZSBzaXRlX2FwcGxpY2F0aW9uX3JvdXRlX3RhcmdldCgncHJpY2luZy1sb2dvdXQucGhwJyk7Cg==",
+      "before_sha256": "bbea58a7a97ca49eb487c0a17d5b349e35d34810b3a14de98259464e646dda70",
+      "after_sha256": "48d80ef6af11fc5e6fc9d33ec9c11f9fe5384f405702a22dd11a22acb7704869"
+    },
+    "public/pricing-asset.php": {
+      "before": "PD9waHAKZGVjbGFyZShzdHJpY3RfdHlwZXM9MSk7CgovKiBQdWJsaWMgcm91dGUgb25seTsgaW1wbGVtZW50YXRpb24gaXMgb3V0c2lkZSB0aGUgZG9jdW1lbnQgcm9vdC4gKi8KcmVxdWlyZSAnL2hvbWUvc2l0ZXNlZS8uc2l0ZXNlZS1yZWFsLWVzdGF0ZS9zZXJ2ZXIvcHJpY2luZy1hc3NldC5waHAnOwo=",
+      "after": "PD9waHAKZGVjbGFyZShzdHJpY3RfdHlwZXM9MSk7Ci8vIFJvdXRlIGFsaWFzIHJldGFpbmVkOyBhdXRoZW50aWNhdGlvbiBiZWxvbmdzIHRvIHRoZSBleGlzdGluZyBwcml2YXRlIGhhbmRsZXIuCnJlcXVpcmUgX19ESVJfXyAuICcvYXBwbGljYXRpb24tZW50cnkucGhwJzsKcmVxdWlyZSBzaXRlX2FwcGxpY2F0aW9uX3JvdXRlX3RhcmdldCgncHJpY2luZy1hc3NldC5waHAnKTsK",
+      "before_sha256": "ffbeeadcda6c90d39bf0abb0529ed091eb8a1d259905f7d2f0d3de5dbc22f534",
+      "after_sha256": "cc73527e7bfd0d4cbdf70e2cf80f954f2c708591d39fdba43bbc09a082ad40c0"
+    },
+    "public/quote-submit.php": {
+      "before": "PD9waHAKZGVjbGFyZShzdHJpY3RfdHlwZXM9MSk7CgovKiBQdWJsaWMgcm91dGUgb25seTsgaW1wbGVtZW50YXRpb24gaXMgb3V0c2lkZSB0aGUgZG9jdW1lbnQgcm9vdC4gKi8KcmVxdWlyZSAnL2hvbWUvc2l0ZXNlZS8uc2l0ZXNlZS1yZWFsLWVzdGF0ZS9zZXJ2ZXIvcXVvdGUtc3VibWl0LnBocCc7Cg==",
+      "after": "PD9waHAKZGVjbGFyZShzdHJpY3RfdHlwZXM9MSk7Ci8vIFJvdXRlIGFsaWFzIHJldGFpbmVkOyBhdXRoZW50aWNhdGlvbiBiZWxvbmdzIHRvIHRoZSBleGlzdGluZyBwcml2YXRlIGhhbmRsZXIuCnJlcXVpcmUgX19ESVJfXyAuICcvYXBwbGljYXRpb24tZW50cnkucGhwJzsKcmVxdWlyZSBzaXRlX2FwcGxpY2F0aW9uX3JvdXRlX3RhcmdldCgncXVvdGUtc3VibWl0LnBocCcpOwo=",
+      "before_sha256": "a297f86fb63961d4353f5ed7af8e349ccde56d1bc3a5b2fd0fa3f76a4ba2c9c4",
+      "after_sha256": "2bf51d8ec84fd33e7cf03376dd517b3159f18300c057bf3b0bb1de7c5907f3f1"
+    },
+    "public/contact-submit.php": {
+      "before": "PD9waHAKZGVjbGFyZShzdHJpY3RfdHlwZXM9MSk7CgpyZXF1aXJlICcvaG9tZS9zaXRlc2VlLy5zaXRlc2VlLXJlYWwtZXN0YXRlL3NlcnZlci9jb250YWN0LXN1Ym1pdC5waHAnOwoK",
+      "after": "PD9waHAKZGVjbGFyZShzdHJpY3RfdHlwZXM9MSk7Ci8vIFJvdXRlIGFsaWFzIHJldGFpbmVkOyBhdXRoZW50aWNhdGlvbiBiZWxvbmdzIHRvIHRoZSBleGlzdGluZyBwcml2YXRlIGhhbmRsZXIuCnJlcXVpcmUgX19ESVJfXyAuICcvYXBwbGljYXRpb24tZW50cnkucGhwJzsKcmVxdWlyZSBzaXRlX2FwcGxpY2F0aW9uX3JvdXRlX3RhcmdldCgnY29udGFjdC1zdWJtaXQucGhwJyk7Cg==",
+      "before_sha256": "9f158eaf3f9986997a481255b20c55a46b6d3a01f30dc5918b793d8aaf1e579b",
+      "after_sha256": "bf50792503f955a0dfec38f7322249052a293fa054b9d011e77e407f7134faab"
+    }
+  }
+}

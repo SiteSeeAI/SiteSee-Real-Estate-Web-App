@@ -30,12 +30,12 @@ $deps=['calendar'=>$api,'lock_path'=>$tmp.'/lock','now'=>$now];
 function paid(string $ref,string $time='09:00'):array{
     global$db,$day,$api,$deps;
     $s=real_estate_prepare_submission(['version'=>2,'action'=>'request_appointment','market'=>'residential',
-        'details'=>['first'=>'Test','last'=>'Agent','company'=>'Example','email'=>'cro@sitesee.ai','phone'=>'5555550100','street'=>'123 Main','unit'=>'','city'=>'Madison','state'=>'WI','zip'=>'53703','optOut'=>'Yes'],
+        'details'=>['first'=>'Test','last'=>'Agent','company'=>'Example','email'=>'sales@re.sitesee.ai','phone'=>'5555550100','street'=>'123 Main','unit'=>'','city'=>'Madison','state'=>'WI','zip'=>'53703','optOut'=>'Yes'],
         'state'=>['category'=>'average','package'=>'custom','sqft'=>'2000','selected'=>['photo'],'videoSeconds'=>60,'images'=>1],
         'appointment'=>['date'=>$day,'time'=>$time,'windowMinutes'=>120,'rushRequested'=>false,'meetPhotographer'=>'No','accessType'=>'Lockbox','lockboxCode'=>'0123456789','cancellationAccepted'=>true]]);
     booking_capture($db,$s,$ref,true);$db->prepare("UPDATE bookings SET status='deposit_paid_test',deposit_paid_at=?,stripe_session_id=?,stripe_payment_intent_id=?,consent_at='original',consent_version='test-card-reuse-v1' WHERE reference=?")->execute([gmdate('c'),'cs_test_'.$ref,'pi_'.$ref,$ref]);
     booking_review_paid($db,$ref,95,'David',true);booking_confirm_appointment($db,$ref,booking_scheduling_ms_config(),$api,null,$deps['lock_path']);
-    $db->prepare("UPDATE booking_confirmations SET invitation_state='sent',invitation_sent_at='original-sent',invitation_recipient='cro@sitesee.ai' WHERE reference=?")->execute([$ref]);
+    $db->prepare("UPDATE booking_confirmations SET invitation_state='sent',invitation_sent_at='original-sent',invitation_recipient='sales@re.sitesee.ai' WHERE reference=?")->execute([$ref]);
     return booking_get($db,$ref);
 }
 function done_notice(string $ref):void{global$db;$s=booking_lifecycle_state($db,$ref);booking_communication_update($db,'lifecycle-'.$s['revision'].':'.$ref,['submission_state'=>'sent_observed']);}
@@ -127,12 +127,12 @@ ok(booking_confirmation_get($db,$ref)['event_uid']===$old['event_uid'],'Recovere
 
 // Change notice uses the existing verified sender/contact; delivery and CRM remain independent.
 $ref='AAA0000004';paid($ref,'13:00');booking_lifecycle_change($db,$ref,'cancel',booking_lifecycle_fingerprint($db,$ref),'staff','','',$deps);
-$db->prepare('INSERT INTO booking_contact_links VALUES(?,?,?,?,?)')->execute([$ref,'100','300','cro@sitesee.ai',gmdate('c')]);
+$db->prepare('INSERT INTO booking_contact_links VALUES(?,?,?,?,?)')->execute([$ref,'100','300','sales@re.sitesee.ai',gmdate('c')]);
 $key='lifecycle-1:'.$ref;$subject=booking_communication_get($db,$key)['subject'];$draft=true;$mailWrites=0;$crmWrites=0;$crmFail=true;
 $mail=static function($method,$path,$body=null)use(&$draft,&$mailWrites,$subject){
     $message=['id'=>'notice-1','isDraft'=>$draft,'internetMessageId'=>'<notice-1@example.test>','sentDateTime'=>gmdate('c'),
-        'from'=>['emailAddress'=>['address'=>BOOKING_MAIL_SENDER]],'toRecipients'=>[['emailAddress'=>['address'=>'cro@sitesee.ai']]],
-        'replyTo'=>[['emailAddress'=>['address'=>BOOKING_MAIL_SENDER]]],'subject'=>$subject];
+        'from'=>['emailAddress'=>['address'=>BOOKING_MAIL_SENDER]],'toRecipients'=>[['emailAddress'=>['address'=>'sales@re.sitesee.ai']]],
+        'ccRecipients'=>[],'bccRecipients'=>[],'replyTo'=>[['emailAddress'=>['address'=>BOOKING_MAIL_SENDER]]],'subject'=>$subject];
     if($method==='POST'){++$mailWrites;if(str_ends_with($path,'/send')){$draft=false;return ['status'=>202,'body'=>[]];}
         ok(str_contains(base64_decode($body),'X-SiteSee-Communication: lifecycle-1:AAA0000004'),'Mail uniquely identifies change.');return ['status'=>201,'body'=>$message];}
     if(str_contains($path,'%24filter='))return ['status'=>200,'body'=>['value'=>[$message+['receivedDateTime'=>gmdate('c')]]]];
@@ -141,7 +141,7 @@ $mail=static function($method,$path,$body=null)use(&$draft,&$mailWrites,$subject
 $crm=static function($method,$path,$body=null)use(&$crmWrites,&$crmFail){
     if($path==='/org')return ['status'=>200,'body'=>['org'=>[['id'=>'100']]]];
     if($path==='/users?type=CurrentUser')return ['status'=>200,'body'=>['users'=>[['id'=>'200']]]];
-    if($path==='/Contacts/300')return ['status'=>200,'body'=>['data'=>[['id'=>'300','Email'=>'cro@sitesee.ai']]]];
+    if($path==='/Contacts/300')return ['status'=>200,'body'=>['data'=>[['id'=>'300','Email'=>'sales@re.sitesee.ai']]]];
     if($method==='POST'){++$crmWrites;return $crmFail?['status'=>503,'body'=>[]]:['status'=>200,'body'=>['Emails'=>[['code'=>'SUCCESS','details'=>['message_id'=>'crm-1']]]]];}
     throw new RuntimeException('unexpected CRM path');
 };

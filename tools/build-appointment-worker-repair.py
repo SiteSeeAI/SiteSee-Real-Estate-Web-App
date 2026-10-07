@@ -3,7 +3,7 @@ import base64,hashlib,json,re,zlib
 from pathlib import Path
 root=Path(__file__).resolve().parents[1]
 names=['booking-lifecycle-reconcile.php']
-data={'files':{'server/'+n:(root/'_private/server'/n).read_text() for n in names},'report':(root/'tools/appointment-worker-report.py').read_text()}
+data={'files':{'server/'+n:(root/'tests/fixtures/appointment-r3'/n).read_text() for n in names},'report':(root/'tools/appointment-worker-report.py').read_text()}
 p=root/'tools/repair-appointment-worker.py';s=p.read_text()
 for key,raw in [('BASE',(root/'tests/fixtures/appointment-r2/repair-appointment-management.py').read_bytes()),('BUNDLE',json.dumps(data).encode())]:
  s=re.sub(r'^'+key+r' = .*$',key+' = '+repr(base64.b64encode(zlib.compress(raw,9)).decode()),s,flags=re.M)

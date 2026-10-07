@@ -1,4 +1,4 @@
-import importlib.util,json,os,subprocess,tempfile,unittest
+import errno,importlib.util,json,os,subprocess,tempfile,unittest
 from pathlib import Path
 from unittest.mock import patch
 PROJECT=Path(__file__).resolve().parents[1]
@@ -13,6 +13,12 @@ class LifecycleInstall(unittest.TestCase):
   base.w.deploy(self.m,self.root,self.fixture.values(),self.uid,self.gid)
   self.public=self.root.parent/'public';self.public.mkdir(mode=0o755)
   self.crondir=self.root.parent/'cron.d';self.crondir.mkdir(mode=0o755);self.cron=self.crondir/'sitesee'
+  # The installer deliberately requires root-owned host cron files. Do not mock
+  # or relax that guard; the dedicated privileged CI job exercises these cases.
+  try:os.chown(self.crondir,0,0)
+  except OSError as error:
+   if error.errno not in (errno.EPERM,errno.EACCES,errno.EINVAL):raise
+   if self._testMethodName!='test_reproducible_payload':self.skipTest('Root-owned cron rehearsal requires a privileged host; run Historical Installer Ownership CI.')
  def values(self):return x.desired(self.m,self.root,self.files)
  def scan(self):return x.inventory(self.w,self.s,self.r,self.m,self.root,self.public,self.cron,base.base.f.baseline.PHP,self.uid,self.files,self.before,credentials=self.fixture.fixture.secret)
  def deploy(self,write=None):return x.deploy(self.m,self.root,self.values(),self.uid,self.gid,self.public,self.cron,write)

@@ -1,5 +1,5 @@
 <?php
 declare(strict_types=1);
-
-require '/home/sitesee/.sitesee-real-estate/server/contact-submit.php';
-
+// Route alias retained; authentication belongs to the existing private handler.
+require __DIR__ . '/application-entry.php';
+require site_application_route_target('contact-submit.php');

@@ -1,4 +1,5 @@
 <?php
 declare(strict_types=1);
-define('SITESEE_PRODUCTION_PAGE',true);
-require '/home/sitesee/.sitesee-real-estate/server/booking-staff.php';
+// Route alias retained; authentication belongs to the existing private handler.
+require __DIR__ . '/application-entry.php';
+require site_application_route_target('staff-production.php');

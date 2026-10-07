@@ -1,0 +1,16 @@
+{
+  "purpose": "Exact recorded pre-lifecycle deployment bytes; do not regenerate from current application source.",
+  "manifest": "documents/deployment/Calendar_Confirmation_Manifest_20260925.json",
+  "files": {
+    "booking-store.php": {
+      "commit": "f905a1cd80f77931d7d86beb30c0cce36ad61e57",
+      "path": "_private/server/booking-store.php",
+      "sha256": "842176a35abcdd7477f6e50ac322a33c971705482db2c94e65668aae0ebe81e4"
+    },
+    "booking-mail-client.php": {
+      "commit": "d6f1b55fb96fb6abada0bfac4e1f5a66508d03a4",
+      "path": "_private/server/booking-mail-client.php",
+      "sha256": "189e15f44c3c28856765527efdcf25b71f748add07d6e7d31c396d50d3ed5e5b"
+    }
+  }
+}

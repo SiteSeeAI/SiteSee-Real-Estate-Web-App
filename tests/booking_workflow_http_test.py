@@ -28,7 +28,7 @@ class StaffWorkflowHTTP(unittest.TestCase):
   seed=cls.root/'seed.php';seed.write_text('''<?php
 require __DIR__.'/_private/server/booking-workflow.php';$db=booking_db();booking_communication_schema($db);
 $s=real_estate_prepare_submission(['version'=>2,'action'=>'request_appointment','market'=>'residential',
-'details'=>['first'=>'David','last'=>'Cro','company'=>'SiteSee','email'=>'cro@sitesee.ai','phone'=>'5555550100','street'=>'123 Main','unit'=>'','city'=>'Madison','state'=>'WI','zip'=>'53703','optOut'=>'Yes'],
+'details'=>['first'=>'David','last'=>'Cro','company'=>'SiteSee','email'=>'sales@re.sitesee.ai','phone'=>'5555550100','street'=>'123 Main','unit'=>'','city'=>'Madison','state'=>'WI','zip'=>'53703','optOut'=>'Yes'],
 'state'=>['category'=>'average','package'=>'custom','sqft'=>'2000','selected'=>['photo'],'videoSeconds'=>60,'images'=>1],
 'appointment'=>['date'=>(new DateTimeImmutable('+10 days'))->format('Y-m-d'),'time'=>'09:00','windowMinutes'=>120,'rushRequested'=>false,'meetPhotographer'=>'Yes','cancellationAccepted'=>true]]);
 booking_capture($db,$s,'CCD0000001',true);$db->exec("UPDATE bookings SET status='deposit_paid_test',deposit_paid_at='paid',approved_at='reviewed',photographer='David',duration_minutes=95");

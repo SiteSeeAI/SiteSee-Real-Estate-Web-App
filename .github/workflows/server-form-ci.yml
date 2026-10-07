@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - feat/server-form-integration-20260921
+      - feat/unified-*
 
 permissions:
   contents: read
@@ -20,7 +21,7 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
-          extensions: pdo_sqlite, curl
+          extensions: pdo_sqlite, curl, pcntl
       - name: Lint PHP
         run: find public _private tests -name '*.php' -print0 | xargs -0 -n1 php -l
       - name: Test client calculators and form contract
@@ -29,3 +30,17 @@ jobs:
         run: set -e; for test in tests/*.test.php; do php "$test"; done
       - name: Test calendar connection setup and credential preservation
         run: python3 -m unittest discover -s tests -p '*_test.py'
+  historical-installer-ownership:
+    name: Historical Installer Ownership CI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_sqlite, curl, pcntl
+      - name: Rehearse host cron and application-user ownership with real privileges
+        run: sudo env "PATH=$PATH" "SITESEE_TEST_PHP=$(command -v php)" python3 tools/test-installer-ownership.py

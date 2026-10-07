@@ -1,0 +1,6 @@
+{
+  "commit": "7e1aaea76a6431565d6c1005b95b6507645b6b43",
+  "path": "_private/server/booking-lifecycle-reconcile.php",
+  "sha256": "45fd90188feefa78cd0dd88b5a735c601659417f012c603ed6b91a1dd8d1b213",
+  "artifact": "tools/repair-appointment-worker.py"
+}

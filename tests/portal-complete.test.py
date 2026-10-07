@@ -1,5 +1,8 @@
 import copy, importlib.util, json, os, pathlib, tempfile, unittest
 ROOT=pathlib.Path(__file__).resolve().parents[1]
+import sys
+sys.path.insert(0,str(ROOT/'tools'))
+from unified_source import before_unified_update
 spec=importlib.util.spec_from_file_location('installer',ROOT/'tools/install-portal-complete.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 class InstallerTests(unittest.TestCase):
  def setUp(self):
@@ -108,7 +111,7 @@ class CompleteInspectionTests(unittest.TestCase):
    if name=='private/server/booking-webhook.php':
     data=b'<?php /* old webhook */\n';self.obj['webhook_before']=[m.sha(data)];item['content']=m.base64.b64encode(data).decode();item['accepted']=[m.sha(data),m.sha(self.files[name])];self.obj['known'][name]=item['accepted']
    path=m.target(name,self.root,self.public);path.parent.mkdir(parents=True,exist_ok=True,mode=0o700);path.write_bytes(data);path.chmod(0o644 if name.startswith('public/') else 0o600)
-  self.entry=self.public/'manage-appointment.php';self.original_entry=self.entry.read_bytes()
+  self.entry=self.public/'manage-appointment.php';self.original_entry=before_unified_update(ROOT,'public/manage-appointment.php');self.entry.write_bytes(self.original_entry)
   self.manifest=self.root/'appointment-management-release.json';self.manifest.write_bytes(m.encode({'revision':'20260928-r4','files':{'public/manage-appointment.php':m.sha(self.entry.read_bytes()),'server/booking-webhook.php':self.obj['webhook_before'][0]},'preserve':'yes'}));self.manifest.chmod(0o600)
   (self.root/'booking-checkout.json').write_bytes(m.encode({'stage':'TEST','enabled':True,'publishable_key':'pk_test_abcdefghijklmnop'}));(self.root/'booking-checkout.json').chmod(0o600)
   (self.root/'data').mkdir(mode=0o700)

@@ -1,6 +1,9 @@
 """Installed-onsite upgrade, interruption and preservation checks."""
 import base64, hashlib, importlib.util, json, os, pathlib, subprocess, tempfile, unittest
 ROOT=pathlib.Path(__file__).resolve().parents[1]
+import sys
+sys.path.insert(0,str(ROOT/'tools'))
+from unified_source import before_unified_update
 
 spec=importlib.util.spec_from_file_location('vendor',ROOT/'tools/install-re-vendor-accounts-20261005-r1.py')
 m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
@@ -16,7 +19,7 @@ class VendorInstaller(unittest.TestCase):
         for n in self.obj['dependencies']:
             source=n.replace('private/','_private/',1) if n.startswith('private/') else n
             self.path(n).parent.mkdir(exist_ok=True,parents=True,mode=0o755 if n.startswith('public/') else 0o700)
-            self.put(n,(ROOT/source).read_bytes())
+            self.put(n,before_unified_update(ROOT,source))
         self.manifests()
         self.put('private/booking-checkout.json',m.encode({'stage':'TEST','enabled':True,'key':'synthetic-preserved'}))
         self.put('private/job-closeout-20261002-r1-install.json',m.encode({'revision':'job-closeout-20261002-r1','state':'installed','backup':'job-closeout-original'}))
@@ -97,7 +100,7 @@ class VendorInstaller(unittest.TestCase):
         self.assertEqual(len(self.obj['files']),11);self.assertEqual(len(self.obj['dependencies']),41)
         for n,item in self.obj['files'].items():
             source=n.replace('private/','_private/',1) if n.startswith('private/') else n
-            self.assertEqual(base64.b64decode(item['after']),(ROOT/source).read_bytes())
+            self.assertEqual(base64.b64decode(item['after']),before_unified_update(ROOT,source))
             if item['before'] is not None:self.assertEqual(item['before'],prior['files'][n]['after'])
         self.assertEqual(self.obj['order'][0],'private/server/vendor-access.php')
         self.assertEqual(self.obj['order'][-1],'public/vendor.php')

@@ -9,7 +9,7 @@ function ok(bool $v,string $why):void {global $checks;++$checks;if(!$v)throw new
 function fails(callable $f,string $why):void {try{$f();}catch(InvalidArgumentException|RuntimeException $e){ok(true,$why);return;}throw new RuntimeException($why);}
 $db=booking_db();booking_communication_schema($db);
 $day=(new DateTimeImmutable('+10 days',new DateTimeZone('America/Chicago')))->format('Y-m-d');
-$details=['first'=>'David','last'=>'Cro','company'=>'SiteSee','email'=>'cro@sitesee.ai','phone'=>'5555550100','street'=>'123 Main St','unit'=>'','city'=>'Madison','state'=>'WI','zip'=>'53703','optOut'=>'Yes'];
+$details=['first'=>'David','last'=>'Cro','company'=>'SiteSee','email'=>'sales@re.sitesee.ai','phone'=>'5555550100','street'=>'123 Main St','unit'=>'','city'=>'Madison','state'=>'WI','zip'=>'53703','optOut'=>'Yes'];
 function fixture(string $ref):array {
     global $db,$day,$details;
     $submission=real_estate_prepare_submission(['version'=>2,'action'=>'request_appointment','market'=>'residential','details'=>$details,
@@ -25,8 +25,8 @@ $history=[];$historyReads=0;$crmWrites=0;$crmFail=false;$crmCommitThenTimeout=fa
 $crm=static function($method,$path,$body=null)use(&$history,&$historyReads,&$crmWrites,&$crmFail,&$crmCommitThenTimeout,&$wrongOrg,&$wrongEmail,&$malformedHistory,&$duplicate,&$providerError):array {
     if($path==='/org')return ['status'=>200,'body'=>['org'=>[['id'=>$wrongOrg?'999':'100']]]];
     if(str_starts_with($path,'/users'))return ['status'=>200,'body'=>['users'=>[['id'=>'200']]]];
-    if(str_starts_with($path,'/Contacts/search'))return ['status'=>200,'body'=>['data'=>[['id'=>'300','Email'=>'cro@sitesee.ai']], 'info'=>['more_records'=>false]]];
-    if($path==='/Contacts/300')return ['status'=>200,'body'=>['data'=>[['id'=>'300','Email'=>$wrongEmail?'wrong@example.com':'cro@sitesee.ai']]]];
+    if(str_starts_with($path,'/Contacts/search'))return ['status'=>200,'body'=>['data'=>[['id'=>'300','Email'=>'sales@re.sitesee.ai']], 'info'=>['more_records'=>false]]];
+    if($path==='/Contacts/300')return ['status'=>200,'body'=>['data'=>[['id'=>'300','Email'=>$wrongEmail?'wrong@example.com':'sales@re.sitesee.ai']]]];
     if(str_contains($path,'/Emails')) {++$historyReads;return ['status'=>200,'body'=>$malformedHistory?['Emails'=>[]]:['Emails'=>$history,'info'=>['more_records'=>false]]];}
     if($method==='POST') {
         ++$crmWrites;ok(str_ends_with($path,'/actions/associate_email'),'Only CRM association endpoint, never send.');
@@ -49,8 +49,8 @@ $graph=static function($method,$path,$body=null)use(&$graphCalls,&$graphDrafts,&
         ok(str_contains($mime,'Reply-To: sales@re.sitesee.ai'),'Graph Reply-To dedicated.');
         preg_match('/^Subject: (.*)$/m',$mime,$m);$subject=trim($m[1]);
         $lastMessage=['id'=>'immutable-'.$graphDrafts,'isDraft'=>true,'internetMessageId'=>'<draft-id@example.com>',
-            'from'=>['emailAddress'=>['address'=>'sales@re.sitesee.ai']],'toRecipients'=>[['emailAddress'=>['address'=>'cro@sitesee.ai']]],
-            'replyTo'=>[['emailAddress'=>['address'=>'sales@re.sitesee.ai']]],'subject'=>$subject];
+            'from'=>['emailAddress'=>['address'=>'sales@re.sitesee.ai']],'toRecipients'=>[['emailAddress'=>['address'=>'sales@re.sitesee.ai']]],
+            'ccRecipients'=>[],'bccRecipients'=>[],'replyTo'=>[['emailAddress'=>['address'=>'sales@re.sitesee.ai']]],'subject'=>$subject];
         if($lostCreate)throw new RuntimeException('lost draft create reply');
         return ['status'=>201,'body'=>$lastMessage];
     }
@@ -116,8 +116,8 @@ $providerError=null;
 fails(fn()=>booking_crm_link($db,'ABB0000002','999',$config,$crm),'Unverified contact ID cannot link.');
 fails(fn()=>booking_communication_enqueue($db,'ABB0000001','invitation',booking_invitation_message($bookingBefore,['confirmed_at'=>gmdate('c')])),'Unique booking and kind blocks concurrent enqueue.');
 // Enumeration must inspect more than first page and must compare exact email.
-$pages=0;$search=static function($method,$path)use(&$pages){++$pages;return ['status'=>200,'body'=>['data'=>[['id'=>$pages===1?'301':'302','Email'=>$pages===1?'cro+alias@sitesee.ai':'cro@sitesee.ai']],'info'=>['more_records'=>$pages===1]]];};
-$candidates=booking_crm_candidates('cro@sitesee.ai',$search);ok($pages===2 && count($candidates)===1 && $candidates[0]['id']==='302','Complete paginated exact contact matching.');
+$pages=0;$search=static function($method,$path)use(&$pages){++$pages;return ['status'=>200,'body'=>['data'=>[['id'=>$pages===1?'301':'302','Email'=>$pages===1?'sales+alias@re.sitesee.ai':'sales@re.sitesee.ai']],'info'=>['more_records'=>$pages===1]]];};
+$candidates=booking_crm_candidates('sales@re.sitesee.ai',$search);ok($pages===2 && count($candidates)===1 && $candidates[0]['id']==='302','Complete paginated exact contact matching.');
 // The original delivered invitation is never a valid submission target.
 $m=booking_invitation_message($bookingBefore,['confirmed_at'=>gmdate('c')]);$m['from']='cro@sitesee.ai';$orig=booking_communication_enqueue($db,'ABB0000001','original',$m);
 fails(fn()=>booking_communication_submit($db,$orig,$graph),'Original message cannot enter send path.');
@@ -130,7 +130,7 @@ ok($historyReads===$reads && booking_communication_get($db,$orig)['crm_state']==
 $beforeCalls=count($graphCalls);fails(fn()=>booking_communication_crm($db,$key3,$config,$crm),'Unverified send cannot create CRM sent history.');ok(count($graphCalls)===$beforeCalls,'CRM recovery cannot call Graph.');
 // Exercise the real invitation orchestration with provider clients injected, no legacy mail callback.
 $full=fixture('ABB0000010');$cc=['confirmation_stage'=>'test','confirmation_enabled'=>true,'invitations_enabled'=>true,'enabled'=>true,
-    'test_recipient_email'=>'cro@sitesee.ai','client_id'=>'fixture','client_secret'=>'fixture','refresh_token'=>'fixture','calendar_uid'=>'calendar'];
+    'test_recipient_email'=>'sales@re.sitesee.ai','client_id'=>'fixture','client_secret'=>'fixture','refresh_token'=>'fixture','calendar_uid'=>'calendar'];
 $events=[];$eventWrites=0;
 $calendar=static function($method,$url,$form,$token)use(&$events,&$eventWrites,$cc){
     if(str_contains($url,'/oauth/v2/token'))return ['status'=>200,'body'=>['access_token'=>'fixture']];
@@ -140,7 +140,7 @@ $calendar=static function($method,$url,$form,$token)use(&$events,&$eventWrites,$
 booking_confirm_appointment($db,'ABB0000010',$cc,$calendar,null,$tmp.'/calendar.lock');
 booking_crm_link($db,'ABB0000010','300',$config,$crm);
 $history=[];$duplicate=false;$crmFail=true;$beforeSends=$graphSends;
-$deps=['config'=>['test_recipient_email'=>'cro@sitesee.ai'],'crm_config'=>$config,'crm'=>$crm,'graph'=>$graph];
+$deps=['config'=>['test_recipient_email'=>'sales@re.sitesee.ai'],'crm_config'=>$config,'crm'=>$crm,'graph'=>$graph];
 booking_send_invitation($db,'ABB0000010',$cc,null,$calendar,$deps);
 ok(booking_confirmation_get($db,'ABB0000010')['invitation_state']==='sent','Full orchestration keeps accepted invitation sent despite CRM failure.');
 ok(booking_communication_get($db,'invitation:ABB0000010')['crm_state']==='retry_pending','Full orchestration persists CRM recovery state.');

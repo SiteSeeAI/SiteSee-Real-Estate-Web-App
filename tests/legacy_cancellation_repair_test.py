@@ -7,6 +7,8 @@ PROJECT=Path(__file__).resolve().parents[1]
 repair=load('legacy_repair',PROJECT/'tools/repair-legacy-cancellation.py')
 class LegacyInstall(unittest.TestCase):
  def setUp(self):
+  if self._testMethodName=='test_reproducible_payload':
+   self.x,self.m,self.old,self.before,self.files,self.report=repair.load();return
   self.previous=previous.WorkerInstall();self.previous.setUp();self.addCleanup(self.previous.doCleanups);self.previous.deploy()
   self.root=self.previous.root;self.uid,self.gid=os.getuid(),os.getgid();self.cron=self.previous.cron;self.public=self.previous.public
   self.x,self.m,self.old,self.before,self.files,self.report=repair.load()
@@ -35,6 +37,6 @@ class LegacyInstall(unittest.TestCase):
   with self.assertRaises(self.m.InstallError):self.values()
   self.assertEqual(p.read_bytes(),b'operator edit')
  def test_reproducible_payload(self):
-  for n,b in self.files.items():self.assertEqual(b,(PROJECT/'_private'/n).read_bytes())
+  for n,b in self.files.items():self.assertEqual(b,(PROJECT/'tests/fixtures/appointment-r4'/Path(n).name).read_bytes())
   p=PROJECT/'tools/repair-legacy-cancellation.py';before=p.read_bytes();subprocess.run(['python3',str(PROJECT/'tools/build-legacy-cancellation-repair.py')],check=True);self.assertEqual(before,p.read_bytes())
 if __name__=='__main__':unittest.main()
