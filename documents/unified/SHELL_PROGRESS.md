@@ -1,8 +1,10 @@
+Current TEST candidate: `d380d41a090342d82255906f73fad518d722020d`, with reviewed cPanel handler preservation. See RELEASE_PROGRESS.md and HOST_COMPATIBILITY_REVIEW.md. Host repair, inventory and installed acceptance remain pending.
+
 # Shared role shell
 
 Subsequent local release and installer work is recorded in [RELEASE_PROGRESS.md](RELEASE_PROGRESS.md); that record tracks the remaining hosting and CI gates.
 
-Baseline: bootstrap commit `989f09e7730a843dd367e4ec8ad602b8d99d5029`, following pinned application checkpoint `ff5e625a8ff4c51af336e9203fa4be29b3611570`. Brief: [CODEX_HANDOFF.md](../../CODEX_HANDOFF.md). This is application integration work; the consolidated installer and installed acceptance are still pending.
+Baseline: bootstrap commit `989f09e7730a843dd367e4ec8ad602b8d99d5029`, following pinned application checkpoint `ff5e625a8ff4c51af336e9203fa4be29b3611570`. Brief: [CODEX_HANDOFF.md](../../CODEX_HANDOFF.md). This records the shared-shell milestone; current installer status is in RELEASE_PROGRESS.md and installed acceptance remains pending.
 
 Customer, vendor and staff pages now use one private page renderer and a shared header, TEST notice, keyboard skip target and footer. Each keeps its original form styles and controls. Navigation appears only when the caller has authenticated its own role: customer Orders/Account/New Order, vendor My Jobs, and staff Bookings/Production/Vendors. Staff retain password authentication; customer and vendor retain their separate phone identities, cookies, sessions and permissions. The renderer starts no session, opens no database and makes no provider call.
 

@@ -1,10 +1,12 @@
+Current TEST candidate: `d380d41a090342d82255906f73fad518d722020d`, with reviewed cPanel handler preservation. See RELEASE_PROGRESS.md and HOST_COMPATIBILITY_REVIEW.md. Host repair, inventory and installed acceptance remain pending.
+
 Current local release and remaining gates: [RELEASE_PROGRESS.md](RELEASE_PROGRESS.md). This file retains the bootstrap milestone history.
 
 # Unified application: bootstrap milestone
 
-Current work: [shared role shell](SHELL_PROGRESS.md). The validation below records the earlier bootstrap checkpoint; its Node result was produced before the loader change and is now explicitly marked historical. The current-source Node contracts and their rerun are recorded with the shell evidence.
+Earlier milestone: [shared role shell](SHELL_PROGRESS.md). The validation below records the earlier bootstrap checkpoint; its Node result was produced before the loader change and is now explicitly marked historical. The current-source Node contracts and their rerun are recorded with the shell evidence.
 
-Project brief: [CODEX_HANDOFF.md](../../CODEX_HANDOFF.md). Baseline: `ff5e625a8ff4c51af336e9203fa4be29b3611570`. Working branch: `feat/unified-server-app-20261007`. This is the first implementation milestone; the consolidated release and server acceptance remain pending.
+Project brief: [CODEX_HANDOFF.md](../../CODEX_HANDOFF.md). Baseline: `ff5e625a8ff4c51af336e9203fa4be29b3611570`. Working branch: `feat/unified-server-app-20261007`. This records the first implementation milestone; current release status is in RELEASE_PROGRESS.md.
 
 The unchanged package and complete Git history were verified before coding. The unchanged PHP baseline completed 31 of 36 suites successfully and reproduced all five recorded inherited failures. Their corrected fixtures now use the approved primary TEST mailbox, complete Graph envelopes, and the exact historical files recorded by the release manifests. Original wrong-sender, replay, uncertain-operation, integrity and concurrency assertions remain active. Historical files have Git commit and SHA256 provenance beside them. Historical installer payloads and deployment manifests retain their original bytes.
 

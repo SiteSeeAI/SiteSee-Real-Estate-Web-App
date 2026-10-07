@@ -1,5 +1,7 @@
 # Independent consolidated release review
 
+This is the historical c81 review. The current installer-only cPanel compatibility candidate and its independent review are recorded in [HOST_COMPATIBILITY_REVIEW.md](HOST_COMPATIBILITY_REVIEW.md).
+
 The independent agent reviewed the four release review passes, builder, installer, tests, source provenance and corrected fixed artifact without editing the implementation. Candidate commit: `c81c4e2011f26a13a75d95dffc8c3106323d8681`. Package SHA-256: `52c35823554b80a6be590ec7f7dc306f419c54c2719344a0767199a4eb8a2422`.
 
 No unresolved implementation defect was found. Four actionable findings were corrected and independently reproduced as resolved:
