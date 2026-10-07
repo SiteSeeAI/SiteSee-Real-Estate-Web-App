@@ -184,6 +184,17 @@ class UnifiedRelease(unittest.TestCase):
     def test_public_database_refused(self):
         with self.assertRaises(installer.Stop): installer.check_dirs(self.private, self.public, self.public / 'bookings.sqlite', self.uid, self.files)
 
+    def test_parent_path_alias_cannot_place_database_under_public(self):
+        hidden = self.public / 'hidden'; hidden.mkdir(mode=0o700)
+        database = hidden / 'bookings.sqlite'; shutil.copy2(self.db, database)
+        alias = self.private / '../public/hidden/bookings.sqlite'
+        with self.assertRaisesRegex(installer.Stop, 'canonical absolute'):
+            installer.check_dirs(self.private, self.public, alias, self.uid, self.files)
+        self.assertEqual(database.read_bytes(), self.db.read_bytes())
+        for root, public in [(self.private / '../private', self.public), (self.private, self.public / '../public')]:
+            with self.assertRaisesRegex(installer.Stop, 'canonical absolute'):
+                installer.check_dirs(root, public, self.db, self.uid, self.files)
+
     def test_private_directory_and_file_modes_refused(self):
         self.private.chmod(0o755)
         with self.assertRaises(installer.Stop): self.plan()
@@ -214,6 +225,26 @@ class UnifiedRelease(unittest.TestCase):
         path = self.private / 'vendor-accounts-20261005-r1-install.json'
         path.write_bytes(installer.encode({'state': 'prepared'})); path.chmod(0o600)
         with self.assertRaises(installer.Stop): self.plan()
+
+    def test_prior_repair_and_probe_journals_refused(self):
+        for name in ['appointment-management-repair.json', 'appointment-worker-repair.json',
+                     'legacy-cancellation-repair.json', 'microsoft-calendar-probe.json']:
+            path = self.private / name
+            states = ['prepared', 'installing', 'failed', 'restoring', 'unknown', None]
+            if name == 'microsoft-calendar-probe.json': states += ['create_started', 'identified', 'delete_started']
+            for state in states:
+                with self.subTest(journal=name, state=state):
+                    path.write_bytes(installer.encode({'state': state})); path.chmod(0o600)
+                    with self.assertRaisesRegex(installer.Stop, 'requires recovery'): self.plan()
+            path.unlink()
+
+    def test_completed_historical_repair_and_probe_journals_preserved(self):
+        for name, state in [('appointment-management-repair.json', 'installed'), ('appointment-worker-repair.json', 'installed'),
+                            ('legacy-cancellation-repair.json', 'restored'), ('microsoft-calendar-probe.json', 'complete')]:
+            path = self.private / name
+            data = installer.encode({'state': state}); path.write_bytes(data); path.chmod(0o600)
+            self.plan()
+            self.assertEqual(path.read_bytes(), data)
 
     def test_manifest_hash_mismatch_refused(self):
         path = self.private / self.obj['active_manifests'][0]
@@ -295,6 +326,14 @@ class UnifiedRelease(unittest.TestCase):
         journal, before, after, metas = self.prepared()
         for destination in [self.db, self.private / 'data/other.sqlite', self.public / 'other.sqlite']:
             with self.assertRaises(installer.Stop): installer.restore_rehearsal(self.private, self.public, self.db, journal, destination, self.uid)
+
+    def test_restore_rehearsal_parent_alias_cannot_write_under_public(self):
+        journal, before, after, metas = self.prepared()
+        hidden = self.public / 'hidden'; hidden.mkdir(mode=0o700)
+        alias = self.private / '../public/hidden/restored.sqlite'
+        with self.assertRaisesRegex(installer.Stop, 'canonical absolute'):
+            installer.restore_rehearsal(self.private, self.public, self.db, journal, alias, self.uid)
+        self.assertFalse((hidden / 'restored.sqlite').exists())
 
     def test_snapshot_tampering_refused(self):
         journal, before, after, metas = self.prepared()

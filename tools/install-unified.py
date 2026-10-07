@@ -39,7 +39,8 @@ def encode(value):
 
 
 def safe(path):
-    need(path.is_absolute(), 'Paths must be absolute.')
+    need(path.is_absolute() and '..' not in path.parts and path == path.resolve(),
+         'Paths must be canonical absolute paths without parent traversal.')
     need(all(not p.is_symlink() for p in [path, *path.parents]), 'Symbolic link preserved: ' + str(path))
 
 
@@ -135,6 +136,8 @@ def load(package, expected):
 
 
 def check_dirs(root, public, db, uid, files):
+    for path in (root, public, db):
+        safe(path)
     need(root != public and root not in public.parents and public not in root.parents, 'Public/private roots must be separate.')
     need(db != root and public not in db.parents and db != public, 'Database must stay private.')
     for path in {root, public, db.parent, *(target(n, root, public).parent for n in files)}:
@@ -167,11 +170,17 @@ def test_settings(root, uid, own_journal):
     need(os.getenv('SITESEE_APPLICATION_STAGE', 'TEST') in ('', 'TEST'), 'Application stage must remain TEST.')
     for name in ('SITESEE_REAL_ESTATE_STRIPE_TEST_SECRET', 'SITESEE_REAL_ESTATE_STRIPE_PUBLISHABLE_KEY'):
         need(not os.getenv(name, '').startswith(('sk_live_', 'pk_live_', 'rk_live_')), 'LIVE Stripe binding rejected.')
-    for path in root.glob('*install.json'):
+    journals = set(root.glob('*install.json')) | set(root.glob('*repair.json'))
+    probe = root / 'microsoft-calendar-probe.json'
+    if probe.exists() or probe.is_symlink():
+        journals.add(probe)
+    for path in sorted(journals):
         if path.name == own_journal:
             continue
         obj = json.loads(read(path, uid))
-        need(isinstance(obj, dict) and obj.get('state') not in ('prepared', 'installing', 'failed'), 'Earlier interrupted update requires recovery: ' + path.name)
+        terminal = ('complete',) if path.name == 'microsoft-calendar-probe.json' else ('installed', 'restored')
+        need(isinstance(obj, dict) and obj.get('state') in terminal,
+             'Earlier interrupted or unknown update requires recovery: ' + path.name)
 
 
 def lint(files, php):
@@ -374,7 +383,8 @@ def apply(root, public, uid, before, after, metas, rollback=False, writer=atomic
 
 
 def restore_rehearsal(root, public, db, journal, destination, uid):
-    safe(destination)
+    for path in (root, public, db, destination):
+        safe(path)
     need(destination != db and root not in destination.parents and public not in destination.parents and not destination.exists(),
          'Rehearsal destination must be new and outside application/public storage.')
     safe(destination.parent)
