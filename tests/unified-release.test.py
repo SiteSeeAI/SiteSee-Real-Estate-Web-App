@@ -198,6 +198,9 @@ class UnifiedRelease(unittest.TestCase):
     def test_private_directory_and_file_modes_refused(self):
         self.private.chmod(0o755)
         with self.assertRaises(installer.Stop): self.plan()
+        self.private.chmod(0o700)
+        (self.private / 'server/booking-store.php').chmod(0o666)
+        with self.assertRaises(installer.Stop): self.plan()
 
     def test_unsupported_source_modes_rejected_before_journal(self):
         path = self.private / 'server/booking-store.php'
@@ -208,9 +211,6 @@ class UnifiedRelease(unittest.TestCase):
                 self.assertEqual(installer.metadata(path)['mode'], mode)
                 self.assertFalse(self.journal_path.exists())
         path.chmod(0o600)
-        self.private.chmod(0o700)
-        (self.private / 'server/booking-store.php').chmod(0o666)
-        with self.assertRaises(installer.Stop): self.plan()
 
     def test_foreign_ownership_refused(self):
         path = self.private / 'server/booking-store.php'
