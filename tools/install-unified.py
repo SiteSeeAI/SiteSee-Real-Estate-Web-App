@@ -55,7 +55,8 @@ def read(path, uid, optional=False):
         need(optional, 'Required file missing: ' + str(path))
         return None
     s = path.stat()
-    need(stat.S_ISREG(s.st_mode) and s.st_nlink == 1 and s.st_uid == uid and not s.st_mode & 0o022,
+    need(stat.S_ISREG(s.st_mode) and s.st_nlink == 1 and s.st_uid == uid
+         and 0 < stat.S_IMODE(s.st_mode) <= 0o777 and not s.st_mode & 0o022,
          'Unsafe file or ownership preserved: ' + str(path))
     need(s.st_size <= 128 * 1024 * 1024, 'Unexpected file size: ' + str(path))
     return path.read_bytes()
