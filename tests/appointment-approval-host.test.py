@@ -118,13 +118,15 @@ class HostUpdate(unittest.TestCase):
     def test_unobservable_enabled_fpm_cache_is_refused_and_probe_removed(self):
         import pwd
         with tempfile.TemporaryDirectory() as directory:
-            private = pathlib.Path(directory); (private / 'data').mkdir()
-            with mock.patch.object(host, 'PRIVATE', private), mock.patch.object(host, 'fcgi', return_value={'sapi': 'fpm-fcgi', 'version': '8.2.30', 'opcache_enabled': True, 'cache_observable': False}):
+            private = pathlib.Path(directory)
+            def response(socket, script, token):
+                return {'probe_id': token, 'sapi': 'fpm-fcgi', 'version': '8.2.30', 'opcache_enabled': True, 'cache_observable': False}
+            with mock.patch.object(host, 'PUBLIC', private), mock.patch.object(host, 'fcgi', side_effect=response):
                 with self.assertRaisesRegex(RuntimeError, 'not observable'):
                     host.runtime_probe('/synthetic/socket', pwd.getpwuid(os.geteuid()))
-            self.assertEqual(list((private / 'data').iterdir()), [])
+            self.assertEqual(list(private.iterdir()), [])
 
-    def exchange(self, body, app_status=0, request_id=1):
+    def exchange(self, body, app_status=0, request_id=1, status=200, stderr=b''):
         with tempfile.TemporaryDirectory() as name:
             socket_path = str(pathlib.Path(name) / 'fpm.sock')
             errors = []; received = []
@@ -138,7 +140,10 @@ class HostUpdate(unittest.TestCase):
                             while host.fcgi_record(5) not in data:
                                 data += connection.recv(4096)
                             received.append(data)
-                            response = host.fcgi_record(6, b'Content-Type: application/json\r\n\r\n' + body)
+                            headers = ('Status: ' + str(status) + '\r\nContent-Type: application/json\r\n\r\n').encode()
+                            response = host.fcgi_record(6, headers + body)
+                            for offset in range(0, len(stderr), 65535):
+                                response += host.fcgi_record(7, stderr[offset:offset + 65535])
                             response += struct.pack('!BBHHBB', 1, 3, request_id, 8, 0, 0) + struct.pack('!IB3x', app_status, 0)
                             for offset in range(0, len(response), 3):
                                 connection.sendall(response[offset:offset + 3])
@@ -146,11 +151,13 @@ class HostUpdate(unittest.TestCase):
                         errors.append(error)
                 thread = threading.Thread(target=server); thread.start()
                 try:
-                    result = host.fcgi(socket_path, pathlib.Path('/private/probe.php'))
+                    result = host.fcgi(socket_path, host.PUBLIC / 'probe.php', 'synthetic-probe-token')
                 finally:
                     thread.join(timeout=3)
                 self.assertFalse(errors)
-                self.assertIn(b'SCRIPT_FILENAME/private/probe.php', received[0])
+                self.assertIn(b'SCRIPT_FILENAME' + str(host.PUBLIC / 'probe.php').encode(), received[0])
+                self.assertIn(b'SCRIPT_NAME/probe.php', received[0])
+                self.assertIn(b'HTTP_X_SITESEE_RUNTIME_TOKENsynthetic-probe-token', received[0])
                 return result
 
     def test_fragmented_real_fastcgi_response(self):
@@ -161,9 +168,35 @@ class HostUpdate(unittest.TestCase):
             self.exchange(b'{}', app_status=1)
 
     def test_invalid_runtime_body_hides_private_error_details(self):
-        with self.assertRaisesRegex(RuntimeError, 'expected JSON') as caught:
+        with self.assertRaisesRegex(RuntimeError, 'invalid_json') as caught:
             self.exchange(b'private credentials should never appear')
         self.assertNotIn('credentials', str(caught.exception))
+
+    def test_php_error_categories_are_reported_without_raw_details(self):
+        for status, text, category in [(404, b'Primary script unknown private-secret', 'primary_script_unknown'),
+                                       (403, b'Access denied private-secret', 'access_denied'),
+                                       (500, b'PHP Fatal error private-secret', 'fatal_error')]:
+            with self.subTest(status=status), self.assertRaisesRegex(RuntimeError, category) as caught:
+                self.exchange(b'File not found', status=status, stderr=text)
+            self.assertNotIn('private-secret', str(caught.exception))
+
+    def test_json_with_error_http_status_is_refused(self):
+        with self.assertRaisesRegex(RuntimeError, 'http_error'):
+            self.exchange(b'{"sapi":"fpm-fcgi"}', status=500)
+
+    def test_scalar_or_list_json_is_refused(self):
+        for body in [b'[]', b'null', b'42']:
+            with self.subTest(body=body), self.assertRaisesRegex(RuntimeError, 'json_object_required'):
+                self.exchange(body)
+
+    def test_json_with_fragmented_stderr_is_refused_and_redacted(self):
+        with self.assertRaisesRegex(RuntimeError, 'open_basedir_restriction') as caught:
+            self.exchange(b'{}', stderr=b'PHP Warning: open_basedir restriction private-secret')
+        self.assertNotIn('private-secret', str(caught.exception))
+
+    def test_large_stderr_is_bounded(self):
+        with self.assertRaisesRegex(RuntimeError, 'diagnostic response too large'):
+            self.exchange(b'{}', stderr=b'x' * 65537)
 
     def reopen_case(self, failure=None, account_status=200, interrupt=False):
         with tempfile.TemporaryDirectory() as name:

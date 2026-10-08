@@ -8,6 +8,7 @@ import os
 import pathlib
 import pwd
 import re
+import secrets
 import shutil
 import socket
 import stat
@@ -144,10 +145,28 @@ def fcgi_length(length):
     return bytes([length]) if length < 128 else struct.pack('!I', length | 0x80000000)
 
 
-def fcgi(sockpath, script):
-    params = {'SCRIPT_FILENAME': str(script), 'SCRIPT_NAME': '/internal-approval-runtime.php',
+def fpm_error(status, output, errors, reason):
+    combined = (output + b'\n' + errors).lower()
+    patterns = {'primary_script_unknown': b'primary script unknown', 'primary_script_unreadable': b'file not found',
+                'permission_denied': b'permission denied', 'open_basedir_restriction': b'open_basedir',
+                'extension_denied': b'security.limit_extensions', 'parse_error': b'parse error',
+                'fatal_error': b'fatal error', 'undefined_function': b'undefined function',
+                'access_denied': b'access denied', 'opcache_restricted': b'restrict_api'}
+    categories = [name for name, pattern in patterns.items() if pattern in combined]
+    return RuntimeError('FPM probe refused: ' + json.dumps({'http_status': status, 'reason': reason,
+                        'categories': categories, 'stdout_bytes': len(output), 'stderr_bytes': len(errors)}))
+
+
+def fcgi(sockpath, script, token=None):
+    need(script.parent == PUBLIC and script.name.endswith('.php'), 'Probe must use its matching public script path.')
+    script_name = '/' + script.name
+    params = {'SCRIPT_FILENAME': str(script), 'SCRIPT_NAME': script_name,
               'DOCUMENT_ROOT': str(PUBLIC), 'REQUEST_METHOD': 'GET', 'SERVER_NAME': DOMAIN,
+              'HTTP_HOST': DOMAIN, 'SERVER_PORT': '443', 'REMOTE_ADDR': '127.0.0.1',
+              'REQUEST_URI': script_name, 'GATEWAY_INTERFACE': 'CGI/1.1', 'REDIRECT_STATUS': '200',
               'SERVER_PROTOCOL': 'HTTP/1.1', 'HTTPS': 'on', 'QUERY_STRING': '', 'CONTENT_LENGTH': '0'}
+    if token is not None:
+        params['HTTP_X_SITESEE_RUNTIME_TOKEN'] = token
     encoded = b''
     for key, value in params.items():
         k, v = key.encode(), value.encode()
@@ -155,7 +174,7 @@ def fcgi(sockpath, script):
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
         s.settimeout(30); s.connect(sockpath)
         s.sendall(fcgi_record(1, struct.pack('!HB5x', 1, 0)) + fcgi_record(4, encoded) + fcgi_record(4) + fcgi_record(5))
-        output = b''
+        output = b''; errors = b''
         def exact(count):
             data = b''
             while len(data) < count:
@@ -168,21 +187,36 @@ def fcgi(sockpath, script):
             data = exact(length); exact(padding)
             if kind == 6:
                 output += data; need(len(output) <= 1024 * 1024, 'FPM response too large.')
+            if kind == 7:
+                errors += data; need(len(errors) <= 65536, 'FPM diagnostic response too large; no details exposed.')
             if kind == 3:
                 need(len(data) == 8 and struct.unpack('!IB3x', data) == (0, 0), 'FPM request did not complete.')
                 break
     parts = re.split(b'\r?\n\r?\n', output, maxsplit=1)
-    need(len(parts) == 2, 'FPM response headers unavailable.')
+    if len(parts) != 2:
+        raise fpm_error(None, output, errors, 'headers_unavailable')
+    match = re.search(rb'(?im)^Status:\s*([0-9]{3})\b', parts[0])
+    status = int(match[1]) if match else 200
+    if status != 200:
+        raise fpm_error(status, output, errors, 'http_error')
     try:
-        return json.loads(parts[1])
+        result = json.loads(parts[1])
     except (ValueError, UnicodeDecodeError):
-        raise RuntimeError('FPM runtime check did not return its expected JSON; no response details exposed.')
+        raise fpm_error(status, output, errors, 'invalid_json')
+    if not isinstance(result, dict):
+        raise fpm_error(status, output, errors, 'json_object_required')
+    if errors:
+        raise fpm_error(status, output, errors, 'php_diagnostic')
+    return result
 
 
 def runtime_probe(sockpath, account, action='read', files=()):
-    code = "<?php header('Content-Type: application/json'); $c=function_exists('opcache_get_status')?opcache_get_status(false):false;"
+    token = secrets.token_hex(32)
+    code = "<?php if(!hash_equals(" + php_string(token) + ", (string)($_SERVER['HTTP_X_SITESEE_RUNTIME_TOKEN']??''))){http_response_code(404);exit;}"
+    code += "header('Cache-Control: no-store');header('Content-Type: application/json'); $c=function_exists('opcache_get_status')?opcache_get_status(false):false;"
     code += "$configured=filter_var(ini_get('opcache.enable'),FILTER_VALIDATE_BOOLEAN);"
     code += "$out=['sapi'=>PHP_SAPI,'version'=>PHP_VERSION,'opcache_enabled'=>$configured,'cache_observable'=>!$configured||is_array($c)];"
+    code += "$out['probe_id']=" + php_string(token) + ';'
     if action == 'reset':
         code += "$out['cache_reset']=$c===false||(function_exists('opcache_reset')&&opcache_reset());"
     if action == 'verify':
@@ -191,13 +225,17 @@ def runtime_probe(sockpath, account, action='read', files=()):
         code += reflection_code(PRIVATE)
         code += 'site_application_bootstrap(' + php_string(str(PRIVATE)) + ');'
     code += 'echo json_encode($out);'
-    fd, filename = tempfile.mkstemp(prefix='approval-runtime-', suffix='.php', dir=PRIVATE / 'data')
+    # Match the actual vhost document root, including FPM doc_root/user.ini rules.
+    # The file is account-owned0600, random and token guarded; never expose probe output over ordinary HTTP.
+    fd, filename = tempfile.mkstemp(prefix='approval-runtime-', suffix='.php', dir=PUBLIC)
     path = pathlib.Path(filename)
     try:
         os.fchown(fd, account.pw_uid, account.pw_gid); os.fchmod(fd, 0o600)
         with os.fdopen(fd, 'w') as f:
             f.write(code); f.flush(); os.fsync(f.fileno())
-        result = fcgi(sockpath, path)
+        result = fcgi(sockpath, path, token)
+        identity = result.pop('probe_id', None)
+        need(isinstance(identity, str) and secrets.compare_digest(identity, token), 'FPM probe identity differs; no runtime evidence established.')
         need(result.get('sapi') == 'fpm-fcgi' and str(result.get('version', '')).startswith('8.2.'), 'Actual FPM PHP runtime differs.')
         need(result.get('cache_observable') is True, 'Enabled FPM compiled-code cache is not observable; no reset evidence established.')
         return result

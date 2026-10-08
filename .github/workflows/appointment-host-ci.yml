@@ -1,0 +1,40 @@
+name: Appointment Host Checks
+on:
+  push:
+    branches: ['feat/unified-*']
+    paths:
+      - 'tools/install-appointment-approval-host.py'
+      - 'tests/appointment-approval-host.test.py'
+      - 'tests/appointment-approval-fpm.test.py'
+      - '.github/workflows/appointment-host-ci.yml'
+  pull_request:
+    paths:
+      - 'tools/install-appointment-approval-host.py'
+      - 'tests/appointment-approval-host.test.py'
+      - 'tests/appointment-approval-fpm.test.py'
+      - '.github/workflows/appointment-host-ci.yml'
+permissions:
+  contents: read
+jobs:
+  fpm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_sqlite, curl, openssl, opcache
+      - name: Install the matching FPM runtime for isolated tests
+        run: sudo apt-get install -y php8.2-fpm
+      - name: Test protocol diagnostics and maintenance boundaries
+        run: python3 tests/appointment-approval-host.test.py
+      - name: Prove document-root behavior, token guard and code/cache refresh on actual FPM
+        env:
+          SITESEE_TEST_FPM: /usr/sbin/php-fpm8.2
+          SITESEE_TEST_OPCACHE: /usr/lib/php/20220829/opcache.so
+        run: python3 tests/appointment-approval-fpm.test.py
