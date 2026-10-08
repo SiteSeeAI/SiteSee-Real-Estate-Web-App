@@ -258,6 +258,8 @@ def canonical_schedule(line, source):
         command = command[len('sitesee '):]
     elif source != 'crontab:sitesee':
         return False
+    if command.startswith('umask 077; '):
+        command = command[len('umask 077; '):]
     return re.fullmatch(r'(?:/usr/bin/)?flock\s+-n\s+' + re.escape(str(PRIVATE / 'lifecycle-worker.lock'))
                         + r'\s+' + re.escape(PHP) + r'\s+' + re.escape(str(PRIVATE / 'server/booking-lifecycle-reconcile.php'))
                         + r'(?:\s*>>?\s*/home/sitesee/[A-Za-z0-9_./-]+\s*2>&1)?\s*', command) is not None

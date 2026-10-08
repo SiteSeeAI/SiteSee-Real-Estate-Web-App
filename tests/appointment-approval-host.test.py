@@ -90,6 +90,14 @@ class HostUpdate(unittest.TestCase):
         self.assertFalse(host.canonical_schedule('*/5 * * * * ' + command, 'crontab:root'))
         self.assertFalse(host.canonical_schedule('*/5 * * * * arbitrary; ' + command, 'crontab:sitesee'))
 
+    def test_preserved_worker_cron_bytes_are_accepted_without_rewriting(self):
+        spec = importlib.util.spec_from_file_location('historical_worker', ROOT / 'tools/repair-appointment-worker.py')
+        worker = importlib.util.module_from_spec(spec); spec.loader.exec_module(worker)
+        historical = worker.cron_bytes(host.PHP).decode()
+        line = next(line for line in historical.splitlines() if not line.startswith('#'))
+        self.assertTrue(host.canonical_schedule(line, '/etc/cron.d/sitesee-booking-reconcile'))
+        self.assertFalse(host.canonical_schedule(line.replace('umask 077;', 'umask 000;'), '/etc/cron.d/sitesee-booking-reconcile'))
+
     def test_unobservable_enabled_fpm_cache_is_refused_and_probe_removed(self):
         import pwd
         with tempfile.TemporaryDirectory() as directory:
