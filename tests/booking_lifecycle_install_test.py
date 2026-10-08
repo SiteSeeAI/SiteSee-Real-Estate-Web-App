@@ -1,7 +1,9 @@
-import errno,importlib.util,json,os,subprocess,tempfile,unittest
+import errno,importlib.util,json,os,subprocess,sys,tempfile,unittest
 from pathlib import Path
 from unittest.mock import patch
 PROJECT=Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(PROJECT/'tools'))
+from unified_source import before_unified_update
 def load(name,path):
  s=importlib.util.spec_from_file_location(name,path);m=importlib.util.module_from_spec(s);s.loader.exec_module(m);return m
 x=load('lifecycle_installer',PROJECT/'tools/install-appointment-management.py')
@@ -25,7 +27,8 @@ class LifecycleInstall(unittest.TestCase):
  def test_reproducible_payload(self):
   for n,b in self.files.items():
    frozen=PROJECT/'tests/fixtures/appointment-r1'/Path(n).name
-   self.assertEqual(b,(frozen if frozen.exists() else PROJECT/n if n.startswith('public/') else PROJECT/'_private'/n).read_bytes())
+   source=n if n.startswith('public/') else '_private/'+n
+   self.assertEqual(b,frozen.read_bytes() if frozen.exists() else before_unified_update(PROJECT,source))
   path=PROJECT/'tools/install-appointment-management.py';before=path.read_bytes();subprocess.run(['python3',str(PROJECT/'tools/build-appointment-management.py')],check=True);self.assertEqual(before,path.read_bytes())
  def test_install_rerun_and_preservation(self):
   self.assertEqual(self.scan().errors,[])

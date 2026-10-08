@@ -562,6 +562,8 @@ def main():
     parser.add_argument('--database', type=pathlib.Path)
     parser.add_argument('--account', default='sitesee')
     parser.add_argument('--php', default='/opt/cpanel/ea-php82/root/usr/bin/php')
+    parser.add_argument('--first-upgrade-drained', action='store_true',
+                        help='Attest the reviewed host traffic/worker pause and old PHP/OPCache drain completed before this predecessor upgrade.')
     actions = parser.add_mutually_exclusive_group(required=True)
     for action in ('preflight', 'install', 'resume', 'verify', 'rollback-code'):
         actions.add_argument('--' + action, action='store_true')
@@ -625,6 +627,8 @@ def main():
             print('CODE RESTORED: original file bytes and modes. Database, configurations, provider state and sessions were not restored.')
             return
         need(journal is None or journal['state'] in ('prepared', 'installed'), 'Code was restored; preserve journal and review before another installation.')
+        if before['private/unified-release.json'] is not None and before['private/unified-release.json'] != after['private/unified-release.json'] and (journal is None or journal['state'] == 'prepared'):
+            need(args.first_upgrade_drained, 'First predecessor upgrade requires the reviewed host traffic/worker pause and old PHP/OPCache drain; do not add --first-upgrade-drained until that procedure is complete.')
         if journal is None:
             journal = prepare(obj, args.sha256, root, public, db, uid, before, after, metas)
             need(read(journal_path, uid, True) is None, 'Another journal appeared; preserved.')

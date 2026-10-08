@@ -129,10 +129,12 @@ class UnifiedRelease(unittest.TestCase):
     def recovered(self, journal):
         return installer.recover_plan(self.obj, self.files, journal, self.package_sha, self.private, self.public, self.db, self.uid, self.manifest_sha)
 
-    def cli(self, action, success=True):
+    def cli(self, action, success=True, drained=True):
         command = ['python3', str(ROOT / 'tools/install-unified.py'), '--package', str(self.package), '--sha256', self.package_sha,
                    '--private-root', str(self.private), '--public-root', str(self.public), '--account', self.account,
                    '--php', shutil.which('php'), action]
+        if drained:
+            command.append('--first-upgrade-drained')
         result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, timeout=90)
         self.assertEqual(result.returncode, 0 if success else 1, result.stdout + result.stderr)
         return result.stdout
@@ -499,6 +501,13 @@ class UnifiedRelease(unittest.TestCase):
         self.assertEqual((self.private / 'unified-release.json').read_bytes(), original_record)
         with contextlib.closing(sqlite3.connect(self.db)) as connection:
             self.assertEqual(connection.execute('SELECT state FROM booking_change_requests').fetchone()[0], 'approved')
+
+    def test_first_predecessor_upgrade_requires_explicit_drain_attestation(self):
+        original = self.seed_installed_predecessor()
+        self.assertIn('First predecessor upgrade requires', self.cli('--install', success=False, drained=False))
+        self.assertEqual((self.private / 'unified-release.json').read_bytes(), original)
+        self.assertFalse(self.journal_path.exists())
+        self.assertFalse((self.private / '.unified-maintenance.json').exists())
 
     def bootstrap_probe(self):
         source = 'require $argv[1]."/server/application.php"; site_application_bootstrap($argv[1]); echo "ready";'

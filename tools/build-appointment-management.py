@@ -6,14 +6,15 @@ root=Path(__file__).resolve().parents[1]
 # Helpers first; existing controllers last; the installer writes its TEST switch last of all.
 new=['booking-lifecycle-store.php','booking-lifecycle.php','booking-lifecycle-ui.php','booking-manage.php','booking-lifecycle-reconcile.php']
 changed=['booking-schedule.php','booking-scheduling-provider.php','booking-confirmation.php','booking-communication.php','booking-invitation.php','booking-workflow.php','booking-staff.php']
-files={'server/'+n:((root/'tests/fixtures/appointment-r1'/n) if (root/'tests/fixtures/appointment-r1'/n).exists() else (root/'_private/server'/n)).read_text() for n in new+changed}
+files={'server/'+n:((root/'tests/fixtures/appointment-r1'/n).read_text() if (root/'tests/fixtures/appointment-r1'/n).exists()
+                  else before_unified_update(root,'_private/server/'+n).decode()) for n in new+changed}
 files['public/manage-appointment.php']=before_unified_update(root,'public/manage-appointment.php').decode()
 dependencies=['real-estate-form-config.php','real-estate-pricing.php']+['server/'+n for n in changed+['booking-store.php','booking-calendar-client.php','booking-microsoft-calendar.php','booking-mail-client.php','booking-crm.php','booking-availability.php']]
 before={}
 for n in dependencies:
  frozen=root/'tests/fixtures/lifecycle-before'/Path(n).name
  p=frozen if frozen.exists() else root/'_private'/n
- before[n]=hashlib.sha256(p.read_bytes()).hexdigest()
+ before[n]=hashlib.sha256(p.read_bytes() if frozen.exists() else before_unified_update(root,'_private/'+n)).hexdigest()
 bundle=json.dumps({'files':files,'before':before},sort_keys=False).encode()
 p=root/'tools/install-appointment-management.py';source=p.read_text()
 for key,raw in [('BASE',(root/'tests/fixtures/lifecycle-before/install-booking-workflow.py').read_bytes()),('BUNDLE',bundle)]:
