@@ -16,6 +16,28 @@ function booking_lifecycle_schema(PDO $db): void
         WHERE state IN ('prepared','uncertain')");
     $db->exec('CREATE TABLE IF NOT EXISTS booking_management_attempts (ip_hash TEXT NOT NULL, at INTEGER NOT NULL)');
     $db->exec('CREATE INDEX IF NOT EXISTS booking_management_rate ON booking_management_attempts(ip_hash,at)');
+    $db->exec("CREATE TABLE IF NOT EXISTS booking_change_requests (
+        request_id TEXT PRIMARY KEY, reference TEXT NOT NULL, state TEXT NOT NULL,
+        fingerprint TEXT NOT NULL, date TEXT NOT NULL, time TEXT NOT NULL,
+        window_end TEXT NOT NULL, created_at TEXT NOT NULL, resolved_at TEXT,
+        operation_id TEXT)");
+    $db->exec("CREATE UNIQUE INDEX IF NOT EXISTS booking_change_request_pending
+        ON booking_change_requests(reference) WHERE state IN ('pending','applying')");
+}
+function booking_change_request_get(PDO $db,string $reference,string $id): array|false
+{
+    $q=$db->prepare('SELECT * FROM booking_change_requests WHERE reference=? AND request_id=?');
+    $q->execute([$reference,$id]);return $q->fetch();
+}
+function booking_change_request_pending(PDO $db,string $reference): array|false
+{
+    $q=$db->prepare("SELECT * FROM booking_change_requests WHERE reference=? AND state IN ('pending','applying')");
+    $q->execute([$reference]);return $q->fetch();
+}
+function booking_change_request_latest(PDO $db,string $reference): array|false
+{
+    $q=$db->prepare('SELECT * FROM booking_change_requests WHERE reference=? ORDER BY created_at DESC,rowid DESC LIMIT 1');
+    $q->execute([$reference]);return $q->fetch();
 }
 function booking_lifecycle_state(PDO $db, string $reference): array
 {

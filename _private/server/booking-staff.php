@@ -97,7 +97,16 @@ if ($method === 'POST') {
             $reference=(string)($_POST['reference']??'');
             booking_lifecycle_row($db,$reference);
             $choice=substr($action,10);
-            if ($choice==='link') $issuedLink=booking_management_issue($db,$reference);
+            if($choice==='approve_request'){
+                $report=booking_change_request_approve($db,$reference,(string)($_POST['request_id']??''),($_POST['agreed']??'')==='yes');
+                $notice='Manager approval saved. '.implode(' ',array_filter($report,'is_string'));
+            }elseif($choice==='reject_request'){
+                booking_change_request_reject($db,$reference,(string)($_POST['request_id']??''),($_POST['agreed']??'')==='yes');
+                $notice='Requested window declined. Confirmed calendar and payment records remain unchanged.';
+            }elseif(in_array($choice,['request_notice','recover_request_notice'],true)){
+                $mail=booking_change_request_notify($db,$reference,(string)($_POST['request_id']??''),$choice==='request_notice');
+                $notice='Division request notification: '.$mail['submission_state'].'. Receipt: '.booking_communication_receipt_status($mail);
+            }elseif ($choice==='link') $issuedLink=booking_management_issue($db,$reference);
             elseif ($choice==='history') {
                 $ticket=$_SESSION['lifecycle_history_selection']??[];$id=(string)($_POST['message_id']??'');
                 if(($_POST['agreed']??'')!=='yes'||($ticket['reference']??'')!==$reference||($ticket['expires']??0)<time()||!in_array($id,$ticket['ids']??[],true))throw new InvalidArgumentException('Recover Notice & Zoho History again and verify the displayed candidate.');
@@ -294,6 +303,7 @@ if ($row) {
     $staffClaim = booking_confirmation_get($db, $reference);
     $staffLife = booking_lifecycle_state($db, $reference);
     $staffPending = booking_lifecycle_pending($db, $reference);
+    $staffChangeRequest = booking_change_request_pending($db, $reference);
     $staffMail = booking_communication_get($db, 'invitation:' . $reference);
     $calendarLabel = $staffPending ? 'Change needs verification' : ($staffLife['state'] !== 'active' ? ucfirst(str_replace('_', ' ', $staffLife['state'])) : ($staffClaim ? ($staffClaim['state'] === 'confirmed' ? 'Confirmed' : 'Needs verification') : 'Not confirmed'));
     $invitationLabel = !$staffClaim || $staffClaim['invitation_state'] === 'none' ? 'Not sent' : ($staffClaim['invitation_state'] === 'sent' ? 'Submitted' : 'Needs recovery');
@@ -329,7 +339,7 @@ if ($row) {
         $lifecycleClaim=booking_confirmation_get($db,$reference);
         if(booking_lifecycle_enabled() && $lifecycleClaim && $lifecycleClaim['state']==='confirmed') {
             $changeMail = booking_communication_get($db, 'lifecycle-' . $staffLife['revision'] . ':' . $reference);
-            $manageOpen = str_starts_with($postedAction, 'lifecycle_') || $staffPending || $staffLife['diagnostic'] || in_array($staffLife['state'], ['calendar_missing', 'calendar_changed'], true) || ($changeMail && ($changeMail['submission_state'] !== 'sent_observed' || (booking_communication_receipt_available($changeMail) && $changeMail['delivery_state'] !== 'recipient_copy_observed') || $changeMail['crm_state'] !== 'associated'));
+            $manageOpen = str_starts_with($postedAction, 'lifecycle_') || $staffChangeRequest || $staffPending || $staffLife['diagnostic'] || in_array($staffLife['state'], ['calendar_missing', 'calendar_changed'], true) || ($changeMail && ($changeMail['submission_state'] !== 'sent_observed' || (booking_communication_receipt_available($changeMail) && $changeMail['delivery_state'] !== 'recipient_copy_observed') || $changeMail['crm_state'] !== 'associated'));
             $lifecycleHtml = staff_disclosure('manage-appointment', 'Manage Appointment', booking_lifecycle_html($db,$row,staff_csrf(),true,$lifecycleWindows??[],$lifecycleHistory??[]), (bool)$manageOpen);
         }
     }
@@ -438,8 +448,9 @@ if ($row) {
     if (!$recent) $body .= '<p>No booking requests to review yet.</p>';
     foreach ($recent as $item) {
         $created = (new DateTimeImmutable($item['created_at']))->setTimezone(new DateTimeZone('America/Chicago'));
+        $changeRequested = booking_change_request_pending($db, $item['reference']);
         $body .= '<article class="request-item"><div><p class="eyebrow">' . staff_escape(ucfirst($item['market'])) . ' · ' . staff_escape($created->format('Y-m-d g:i A')) . ' Central</p><h3>' . staff_escape($item['reference']) . '</h3><p>' . staff_escape($item['email'])
-            . '</p><p class="help">' . staff_escape(ucfirst(str_replace('_', ' ', $item['status'])) . ($item['calendar_status'] ? ' · Calendar ' . str_replace('_', ' ', $item['calendar_status']) : '')) . '</p></div><a class="request-link" href="staff-bookings.php?reference=' . rawurlencode($item['reference']) . '" aria-label="Review request ' . staff_escape($item['reference']) . '">Review Request →</a></article>';
+            . '</p><p class="help">' . staff_escape(ucfirst(str_replace('_', ' ', $item['status'])) . ($item['calendar_status'] ? ' · Calendar ' . str_replace('_', ' ', $item['calendar_status']) : '') . ($changeRequested ? ' · Appointment change awaiting manager review' : '')) . '</p></div><a class="request-link" href="staff-bookings.php?reference=' . rawurlencode($item['reference']) . '" aria-label="Review request ' . staff_escape($item['reference']) . '">Review Request →</a></article>';
     }
     $body .= '</div>';
 }

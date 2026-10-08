@@ -48,6 +48,13 @@ $manifest = json_decode(file_get_contents($root.'/documents/unified/shell-source
 foreach ($manifest['files'] as $path=>$item) {
     $before = base64_decode($item['before'], true);
     $after = file_get_contents($root.'/'.$path);
+    if($path==='_private/server/booking-staff.php'){
+        $review=json_decode(file_get_contents($root.'/documents/unified/appointment-approval-source.json'),true,512,JSON_THROW_ON_ERROR)['files'][$path];
+        shell_check(hash('sha256',$after)===$review['after_sha256'],'Staff approval changes have reviewed source integrity');
+        $previous=base64_decode($review['before'],true);
+        shell_check(hash('sha256',$previous)===$review['before_sha256']&&hash('sha256',$previous)===$item['after_sha256'],'Prior staff shell/action contract is retained byte-exact');
+        $after=$previous; // The separately tested approval workflow is the only later staff change.
+    }
     shell_check(hash('sha256', $before) === $item['before_sha256'], $path.' original source integrity');
     shell_check(hash('sha256', $after) === $item['after_sha256'], $path.' reviewed source integrity');
     if ($path === '_private/views/portal.php') {

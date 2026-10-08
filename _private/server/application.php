@@ -28,6 +28,16 @@ function site_application_routes(): array
 function site_application_bootstrap(string $root): void
 {
     if (realpath($root) !== dirname(__DIR__)) throw new RuntimeException('Application root differs from loaded source.');
+    // Keep the same inode locked throughout each request; installer holds its exclusive lock.
+    static $applicationLock=null;
+    if($applicationLock===null){
+        $applicationLock=fopen($root,'r');
+        if(!$applicationLock||!flock($applicationLock,LOCK_SH|LOCK_NB)){
+            if($applicationLock)fclose($applicationLock);$applicationLock=null;
+            throw new RuntimeException('Application update is in progress.');
+        }
+    }
+    if(file_exists($root.'/.unified-maintenance.json'))throw new RuntimeException('Application update requires completion.');
     // Consolidation cannot enable a release or turn an integration on.
     $stage = getenv('SITESEE_APPLICATION_STAGE');
     if ($stage !== false && $stage !== '' && $stage !== 'TEST') {

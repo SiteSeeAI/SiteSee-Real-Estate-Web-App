@@ -457,6 +457,121 @@ class UnifiedRelease(unittest.TestCase):
         self.assertEqual(self.db.read_bytes(), original_db)
         for name, value in self.files.items(): self.assertEqual(installer.target(name, self.private, self.public).read_bytes(), value)
 
+    def seed_installed_predecessor(self):
+        previous = self.obj['predecessor']
+        for name, digest in previous['files'].items():
+            source = '_private/' + name[8:] if name.startswith('private/') else name
+            data = subprocess.check_output(['git', 'show', previous['commit'] + ':' + source], cwd=ROOT)
+            self.assertEqual(installer.sha(data), digest)
+            path = installer.target(name, self.private, self.public)
+            path.write_bytes(data); path.chmod(0o600 if name.startswith('private/') else 0o644)
+        for filename in self.obj['active_manifests']:
+            path = self.private / filename
+            record = json.loads(path.read_bytes())
+            for key in record['files']:
+                name = key if key.startswith(('private/', 'public/')) else 'private/' + key
+                record['files'][key] = previous['files'][name]
+            path.write_bytes(installer.encode(record))
+        old = {'release': 'unified-test-' + previous['commit'][:12], 'commit': previous['commit'],
+               'stage': 'TEST', 'manifest_sha256': previous['manifest_sha256'], 'migration': 'none',
+               'files': previous['files'],
+               'preserved_host_files': {n: previous['files'][n] for n in sorted(installer.PRESERVED_PUBLIC)}}
+        path = self.private / 'unified-release.json'; path.write_bytes(installer.encode(old)); path.chmod(0o600)
+        return path.read_bytes()
+
+    def test_installed_predecessor_upgrade_verify_and_code_restore(self):
+        original_record = self.seed_installed_predecessor()
+        with contextlib.closing(sqlite3.connect(self.db)) as connection:
+            original_data = installer.db_fingerprint(connection)
+        self.assertIn('PREFLIGHT PASS', self.cli('--preflight'))
+        self.assertIn('INSTALLED AND VERIFIED', self.cli('--install'))
+        self.assertIn('VERIFY PASS', self.cli('--verify'))
+        with contextlib.closing(sqlite3.connect(self.db)) as connection:
+            self.assertEqual(installer.db_fingerprint(connection), original_data)
+            connection.execute('CREATE TABLE booking_change_requests(request_id TEXT PRIMARY KEY, state TEXT)')
+            connection.execute("INSERT INTO booking_change_requests VALUES('later-request','pending')")
+            connection.commit()
+        self.assertIn('Pending manager requests preserved', self.cli('--rollback-code', success=False))
+        self.assertIn('VERIFY PASS', self.cli('--verify'))
+        with contextlib.closing(sqlite3.connect(self.db)) as connection:
+            connection.execute("UPDATE booking_change_requests SET state='approved'"); connection.commit()
+        self.assertIn('CODE RESTORED', self.cli('--rollback-code'))
+        self.assertEqual((self.private / 'unified-release.json').read_bytes(), original_record)
+        with contextlib.closing(sqlite3.connect(self.db)) as connection:
+            self.assertEqual(connection.execute('SELECT state FROM booking_change_requests').fetchone()[0], 'approved')
+
+    def bootstrap_probe(self):
+        source = 'require $argv[1]."/server/application.php"; site_application_bootstrap($argv[1]); echo "ready";'
+        return subprocess.run([shutil.which('php'), '-r', source, str(self.private)], capture_output=True, text=True)
+
+    def test_interrupted_upgrade_blocks_requests_and_worker_until_resume(self):
+        self.seed_installed_predecessor()
+        journal, before, after, metas = self.prepared()
+        marker, value = installer.maintenance_begin(self.private, self.uid, self.gid, self.obj, self.package_sha)
+        class Interrupted(Exception): pass
+        def first_write(path, data, metadata):
+            installer.atomic(path, data, metadata)
+            raise Interrupted()
+        with installer.calendar_boundary(self.private, self.uid, self.gid):
+            with self.assertRaises(Interrupted):
+                installer.apply(self.private, self.public, self.uid, before, after, metas, writer=first_write)
+        self.assertTrue(marker.exists())
+        probe = self.bootstrap_probe(); self.assertNotEqual(probe.returncode, 0)
+        self.assertIn('Application update requires completion', probe.stdout + probe.stderr)
+        # New worker and mixed customer route contracts are separately exercised against old/new core.
+        self.assertIn('INSTALLED AND VERIFIED', self.cli('--resume'))
+        self.assertFalse(marker.exists()); self.assertEqual(self.bootstrap_probe().stdout, 'ready')
+        self.assertIn('VERIFY PASS', self.cli('--verify'))
+
+    def test_application_directory_lock_blocks_new_web_bootstrap(self):
+        self.cli('--install')
+        fd = os.open(self.private, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            probe = self.bootstrap_probe(); self.assertNotEqual(probe.returncode, 0)
+            self.assertIn('Application update is in progress', probe.stdout + probe.stderr)
+        finally:
+            os.close(fd)
+
+    def test_existing_calendar_operation_blocks_update_and_retains_maintenance(self):
+        self.seed_installed_predecessor()
+        path = self.private / 'booking-confirmation.lock'; path.touch(mode=0o600)
+        fd = os.open(path, os.O_RDWR)
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            self.assertIn('An existing calendar operation must finish', self.cli('--install', success=False))
+            self.assertTrue((self.private / '.unified-maintenance.json').exists())
+            self.assertEqual((self.private / 'server/application.php').read_bytes(), self.files['private/server/application.php'])
+            self.assertNotEqual(self.bootstrap_probe().returncode, 0)
+        finally:
+            os.close(fd)
+        self.assertIn('INSTALLED AND VERIFIED', self.cli('--resume'))
+        self.assertFalse((self.private / '.unified-maintenance.json').exists())
+
+    def test_installed_predecessor_record_and_source_tampering_preserved(self):
+        self.seed_installed_predecessor()
+        path = self.private / 'unified-release.json'
+        original = path.read_bytes(); record = json.loads(original); record['commit'] = '0' * 40
+        corrupted = installer.encode(record); path.write_bytes(corrupted)
+        with self.assertRaisesRegex(installer.Stop, 'Different unified release record preserved'):
+            self.plan()
+        self.assertEqual(path.read_bytes(), corrupted); path.write_bytes(original)
+        changed = self.private / 'server/portal-service.php'
+        changed.write_bytes(self.files['private/server/portal-service.php'])
+        with self.assertRaisesRegex(installer.Stop, 'Installed predecessor file differs'):
+            self.plan()
+
+    def test_installed_predecessor_backup_record_checked_on_resume(self):
+        self.seed_installed_predecessor()
+        journal, _, _, _ = self.prepared()
+        name = 'private/unified-release.json'
+        path = self.private / 'unified-deployments' / journal['backup'] / (installer.sha(name.encode()) + '.bin')
+        record = json.loads(path.read_bytes()); record['manifest_sha256'] = '0' * 64
+        corrupted = installer.encode(record); path.write_bytes(corrupted)
+        journal['entries'][name]['before'] = installer.sha(corrupted)
+        with self.assertRaisesRegex(installer.Stop, 'Different unified release record preserved'):
+            self.recovered(journal)
+
     def test_cli_refuses_a_concurrent_deployment(self):
         fd = os.open(self.private, os.O_RDONLY | os.O_DIRECTORY)
         try:

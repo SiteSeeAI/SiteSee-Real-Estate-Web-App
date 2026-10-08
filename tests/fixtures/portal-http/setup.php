@@ -9,6 +9,13 @@ require $root.'/server/portal-phone.php';
 $db=booking_db();portal_access_schema($db);portal_profile_schema($db);portal_phone_schema($db);
 $command=$argv[1]??'seed';
 if($command==='reset-sms-rate'){$db->exec('DELETE FROM portal_phone_attempts');exit;}
+if($command==='service-approve-request'){
+    require_once $root.'/server/booking-lifecycle.php';booking_communication_schema($db);
+    $request=booking_change_request_pending($db,'DDDD000001');
+    if(!$request)throw new RuntimeException('Browser request was not saved.');
+    booking_change_request_approve($db,'DDDD000001',$request['request_id'],true,['calendar'=>'portal_fixture_calendar',
+        'graph'=>static function(){throw new RuntimeException('Synthetic mail boundary');},'lock_path'=>$root.'/data/fixture-lock']);exit;
+}
 if($command==='service-notice-observed'){
     booking_communication_schema($db);booking_communication_update($db,'lifecycle-1:DDDD000001',['submission_state'=>'sent_observed']);exit;
 }

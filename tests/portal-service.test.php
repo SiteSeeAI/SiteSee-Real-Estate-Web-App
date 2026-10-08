@@ -39,7 +39,16 @@ booking_confirm_appointment($db,$ref,booking_scheduling_ms_config(),$api,null,$d
 $n=$writes;rejects(fn()=>portal_appointment_windows($db,$two,$ref,$payload['appointment']['date'],$deps),'Foreign appointment');check($writes===$n,'Foreign appointment no calls');
 $windows=portal_appointment_windows($db,$one,$ref,$payload['appointment']['date'],$deps);check(count($windows)>0&&array_keys($windows[0])===['date','time','end_time'],'Public window projection');$w=array_values(array_filter($windows,static fn($w)=>$w['time']==='13:00'))[0];$fingerprint=booking_lifecycle_fingerprint($db,$ref);
 rejects(fn()=>portal_appointment_change($db,$one,$ref,'adopt',$fingerprint,true,'','',$deps),'No staff action');rejects(fn()=>portal_appointment_change($db,$one,$ref,'reschedule',$fingerprint,false,$w['date'],$w['time'],$deps),'Fresh consent');
-portal_appointment_change($db,$one,$ref,'reschedule',$fingerprint,true,$w['date'],$w['time'],$deps);check($writes===$n+1,'One owned appointment patch');rejects(fn()=>portal_appointment_change($db,$one,$ref,'reschedule',$fingerprint,true,$w['date'],$w['time'],$deps),'Repeat patch');
+$before=booking_get($db,$ref);$beforeClaim=booking_confirmation_get($db,$ref);
+$request=portal_appointment_change($db,$one,$ref,'reschedule',$fingerprint,true,$w['date'],$w['time'],$deps);
+check($writes===$n&&booking_get($db,$ref)===$before&&booking_confirmation_get($db,$ref)===$beforeClaim,'Customer request preserves calendar and financial records');
+check(!booking_communication_get($db,'lifecycle-1:'.$ref),'No customer RSVP before manager approval');
+$duplicate=portal_appointment_change($db,$one,$ref,'reschedule',$fingerprint,true,$w['date'],$w['time'],$deps);check($duplicate['request_id']===$request['request_id']&&$writes===$n,'Duplicate request never moves calendar');
+rejects(fn()=>portal_appointment_change($db,$two,$ref,'reschedule',$fingerprint,true,$w['date'],$w['time'],$deps),'Foreign request denied');
+rejects(fn()=>booking_change_request_approve($db,$ref,$request['request_id'],false,$deps),'Manager approval requires explicit consent');
+booking_change_request_approve($db,$ref,$request['request_id'],true,$deps);check($writes===$n+1,'Manager approval updates one owned event');
+booking_change_request_approve($db,$ref,$request['request_id'],true,$deps);check($writes===$n+1,'Repeated approval never patches twice');
+rejects(fn()=>portal_appointment_change($db,$one,$ref,'reschedule',$fingerprint,true,$w['date'],$w['time'],$deps),'Old customer form is stale after approval');
 booking_communication_update($db,'lifecycle-1:'.$ref,['submission_state'=>'sent_observed']);
 // Independent synthetic Stripe API. Every response derives from the exact trusted fixture ledger.
 $deposit=(int)booking_get($db,$ref)['deposit_cents'];$sessions=[];$keys=[];$refund=0;$disputed=false;$foreign=false;$unknown=false;$invoice=false;$badInvoice=false;$stripeMode='ok';$configuration=['id'=>'bpc_isolated','livemode'=>false,'active'=>true,'login_page'=>['enabled'=>false],'features'=>['payment_method_update'=>['enabled'=>true],'customer_update'=>['enabled'=>true,'allowed_updates'=>['address','name','phone']],'invoice_history'=>['enabled'=>false],'subscription_update'=>['enabled'=>false],'subscription_cancel'=>['enabled'=>false]]];

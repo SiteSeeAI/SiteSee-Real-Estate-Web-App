@@ -5,8 +5,16 @@ $root=getenv('STAFF_TEST_PRIVATE');
 if (!$root || !str_starts_with($root,sys_get_temp_dir().'/sitesee-staff-http-')) throw new RuntimeException('Isolated fixture directory required.');
 require $root.'/server/booking-lifecycle-ui.php';
 $db=booking_db();booking_communication_schema($db);
+if(($argv[1]??'')==='seed-change-request'){
+    $ref='AB0000000A';$row=booking_get($db,$ref);$id=str_repeat('a',32);
+    $request=['request_id'=>$id,'reference'=>$ref,'state'=>'pending','fingerprint'=>booking_lifecycle_fingerprint($db,$ref),
+        'date'=>booking_request($row)['appointment']['date'],'time'=>'13:00','window_end'=>'15:00','created_at'=>gmdate('c')];
+    $db->prepare('INSERT INTO booking_change_requests(request_id,reference,state,fingerprint,date,time,window_end,created_at) VALUES(?,?,?,?,?,?,?,?)')->execute(array_values($request));
+    $key=booking_communication_enqueue($db,$ref,'change-request-'.$id,booking_change_request_message($row,$request));
+    booking_communication_update($db,$key,['crm_state'=>'not_applicable']);echo $id;exit;
+}
 if (($argv[1]??'')==='snapshot') {
-    $all=[];foreach(['bookings','booking_scheduling','booking_confirmations','booking_lifecycle','booking_lifecycle_operations','booking_communications','booking_contact_links','booking_schedule_events','stripe_events'] as $t)$all[$t]=$db->query('SELECT * FROM '.$t.' ORDER BY rowid')->fetchAll();
+    $all=[];foreach(['bookings','booking_scheduling','booking_confirmations','booking_lifecycle','booking_lifecycle_operations','booking_communications','booking_contact_links','booking_schedule_events','stripe_events','booking_change_requests'] as $t)$all[$t]=$db->query('SELECT * FROM '.$t.' ORDER BY rowid')->fetchAll();
     echo hash('sha256',json_encode($all));exit;
 }
 $save=static function(string $name,array $value)use($root):void{file_put_contents($root.'/'.$name,json_encode($value));chmod($root.'/'.$name,0600);};

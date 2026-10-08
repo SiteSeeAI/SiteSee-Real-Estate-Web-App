@@ -3,6 +3,7 @@ declare(strict_types=1);
 require_once __DIR__.'/booking-lifecycle.php';
 function booking_lifecycle_html(PDO $db,array $row,string $csrf,bool $staff,array $windows=[],array $history=[]): string
 {
+    if(!function_exists('booking_change_request_create'))return '<p>Appointment management is being updated. Please try again shortly.</p>';
     $ref=$row['reference'];$s=booking_lifecycle_state($db,$ref);$claim=booking_confirmation_get($db,$ref);$pending=booking_lifecycle_pending($db,$ref);
     $e='booking_workflow_escape';$prefix=$staff?'lifecycle_':'';
     $form=static function($action,$label,$fields='')use($csrf,$ref,$prefix){return booking_workflow_form($csrf,$ref,$prefix.$action,$label,$fields);};
@@ -21,10 +22,31 @@ function booking_lifecycle_html(PDO $db,array $row,string $csrf,bool $staff,arra
         if($pending)$html.=$form('resolve_unchanged','Resolve Unapplied Change','<label><input type="checkbox" name="agreed" value="yes" required> I used Recover Change and reviewed the original appointment. Resolve only if its original provider version is unchanged.</label>');
         if($pending)$html.='<p>Do not repeat the calendar edit. Recover Change reads its existing result.</p>';
     }
-    if(!$pending&&$s['state']!=='cancelled'){
+    $request=booking_change_request_pending($db,$ref);$lastRequest=booking_change_request_latest($db,$ref);
+    if($request){
+        $html.='<section class="panel"><h3>Requested Appointment Change</h3><p>Requested window: <strong>'.$e($request['date'].' '.$request['time'].'–'.$request['window_end'].' Central Time').'</strong></p>';
+        $html.='<p>'.($request['state']==='pending'?'Awaiting manager approval. The confirmed appointment remains unchanged.':'Manager approval recorded; recover the saved calendar result before another change.').'</p>';
+        $requestField='<input type="hidden" name="request_id" value="'.$e($request['request_id']).'">';
+        if($staff&&$request['state']==='pending'){
+            $html.=$form('approve_request','Approve Requested Window',$requestField.'<label><input type="checkbox" name="agreed" value="yes" required> I approve the customer’s requested window. Update the existing calendar appointment and send the revised customer RSVP.</label>');
+            $html.=$form('reject_request','Decline Requested Window',$requestField.'<label><input type="checkbox" name="agreed" value="yes" required> I reviewed and decline this request. Keep the confirmed appointment unchanged.</label>');
+        }
+        $html.='</section>';
+    }
+    if($staff&&$lastRequest){
+        $mail=booking_communication_get($db,'change-request-'.$lastRequest['request_id'].':'.$ref);
+        if($mail){
+            $requestField='<input type="hidden" name="request_id" value="'.$e($lastRequest['request_id']).'">';
+            $html.='<p>Division request notification: '.$e($mail['submission_state']).'<br>Receipt: '.$e(booking_communication_receipt_status($mail)).'</p>';
+            if($mail['submission_state']==='prepared'||booking_communication_unsent_draft($mail))$html.=$form('request_notice','Send Saved Division Notification',$requestField);
+            $html.=$form('recover_request_notice','Check Division Notification',$requestField);
+        }
+    }
+    if(!$request&&$lastRequest&&$lastRequest['state']==='rejected')$html.='<p>The last requested window was not approved. The confirmed appointment remains unchanged.</p>';
+    if(!$request&&!$pending&&$s['state']!=='cancelled'){
         $html.=$form('windows','Check Available Alternatives','<label>Starting date <input type="date" name="date" value="'.$e(max($a['date'],(new DateTimeImmutable('now',new DateTimeZone('America/Chicago')))->format('Y-m-d'))).'" required></label>');
         if($windows)$html.='<p>Available two-hour arrival windows (Central Time). Availability is checked again when you confirm.</p>';
-        foreach($windows as$w)$html.=$form('reschedule','Confirm New Arrival Window',$hidden.'<input type="hidden" name="date" value="'.$e($w['date']).'"><input type="hidden" name="time" value="'.$e($w['time']).'"><p><strong>'.$e($w['date'].' '.$w['time'].'–'.$w['end_time']).' Central</strong></p><label><input type="checkbox" name="agreed" value="yes" required> '.($staff?'The customer agreed to this window.':'I want to change my appointment to this window.').'</label>');
+        foreach($windows as$w)$html.=$form('reschedule',$staff?'Confirm New Arrival Window':'Request New Arrival Window',$hidden.'<input type="hidden" name="date" value="'.$e($w['date']).'"><input type="hidden" name="time" value="'.$e($w['time']).'"><p><strong>'.$e($w['date'].' '.$w['time'].'–'.$w['end_time']).' Central</strong></p><label><input type="checkbox" name="agreed" value="yes" required> '.($staff?'The customer agreed to this window.':'I request this window for manager approval; my confirmed appointment stays unchanged until approval.').'</label>');
         if($staff&&$s['state']==='calendar_changed')$html.=$form('adopt','Adopt Calendar Move',$hidden.'<label>Customer-agreed date <input type="date" name="date" required></label><label>Arrival window starts <select name="time"><option>07:00</option><option>09:00</option><option>11:00</option><option>13:00</option><option>15:00</option><option>17:00</option></select></label><label><input type="checkbox" name="agreed" value="yes" required> I verified the calendar move and the customer agreed to this arrival window.</label>');
         $html.='<details><summary>Cancel Appointment</summary>'.$form('cancel','Confirm Cancellation',$hidden.'<label><input type="checkbox" name="agreed" value="yes" required> '.($staff?'The customer requested cancellation.':'I want to cancel this appointment.').'</label>').'</details>';
     }

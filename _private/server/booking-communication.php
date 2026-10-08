@@ -38,7 +38,8 @@ function booking_communication_update(PDO $db, string $key, array $values): void
 
 function booking_communication_enqueue(PDO $db, string $reference, string $kind, array $message, array $confirmation = []): string
 {
-    if ((!in_array($kind, ['invitation','probe','original'], true) && !preg_match('/^lifecycle-[1-9][0-9]{0,8}$/D',$kind)) || !preg_match('/^[A-F0-9]{10,32}$/D', $reference)) throw new InvalidArgumentException('Invalid communication identity.');
+    if ((!in_array($kind, ['invitation','probe','original'], true) && !preg_match('/^lifecycle-[1-9][0-9]{0,8}$/D',$kind)
+        && !preg_match('/^change-request-[a-f0-9]{32}$/D',$kind)) || !preg_match('/^[A-F0-9]{10,32}$/D', $reference)) throw new InvalidArgumentException('Invalid communication identity.');
     $key = $kind . ':' . $reference;
     $s = $db->prepare('INSERT INTO booking_communications (communication_key,reference,kind,sender,recipient,subject,message_json,calendar_uid,event_uid,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)');
     $s->execute([$key,$reference,$kind,$message['from'],$message['to'],$message['subject'],json_encode($message, JSON_THROW_ON_ERROR),
@@ -85,7 +86,10 @@ function booking_communication_unsent_draft(array $row): bool
     foreach (['submission_attempted_at','provider_accepted_at','sent_observed_at','sent_at'] as $field) {
         if (!empty($row[$field])) return false;
     }
-    return ($row['delivery_state'] ?? '') === 'unverified' && ($row['crm_state'] ?? '') === 'pending';
+    $crmReady=($row['crm_state']??'')==='pending'
+        || (($row['crm_state']??'')==='not_applicable'&&($row['recipient']??'')===BOOKING_MAIL_SENDER
+            &&preg_match('/^change-request-[a-f0-9]{32}$/D',$row['kind']??''));
+    return ($row['delivery_state'] ?? '') === 'unverified' && $crmReady;
 }
 
 /** Fill only absent envelope fields; wrong identities, extra recipients and sent items stop. */

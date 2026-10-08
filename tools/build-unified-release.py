@@ -15,7 +15,14 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 NEW_FILES = {'private/server/application.php', 'private/views/application-shell.php',
              'public/application-entry.php', 'public/portal-assets/application.css'}
 CHANGED_PRIVATE = {'private/views/portal.php', 'private/server/vendor-app.php',
-                   'private/server/booking-staff.php'}
+                   'private/server/booking-staff.php', 'private/server/booking-lifecycle.php',
+                   'private/server/booking-lifecycle-store.php', 'private/server/booking-lifecycle-ui.php',
+                   'private/server/booking-manage.php', 'private/server/booking-communication.php',
+                   'private/server/portal-service.php', 'private/views/portal-service.php',
+                   'private/server/booking-lifecycle-reconcile.php'}
+PREDECESSOR = {'commit': 'bd026c77d5963182000d06b58d80e9b7eb7fe944',
+               'manifest_sha256': '18319a55e72a262f908a99250e71125aa68bb8f30a59df060fbfda916dd376f9'}
+RUNTIME_SCHEMA = 'Additive booking_change_requests table and unique pending-request index on first normal application use; existing tables and rows unchanged.'
 ALIASES = {'account.php', 'vendor.php', 'staff-bookings.php', 'staff-production.php',
            'staff-vendors.php', 'manage-appointment.php', 'booking-pay.php',
            'booking-webhook.php', 'booking-availability.php', 'pricing.php',
@@ -63,9 +70,10 @@ def build(commit, output):
     if git('rev-parse', '--verify', commit + '^{commit}').decode().strip() != commit:
         raise RuntimeError('Commit resolution differs.')
     subprocess.run(['git', '-C', str(ROOT), 'merge-base', '--is-ancestor', BASELINE, commit], check=True)
-    current, original = tree(commit), tree(BASELINE)
+    current, original, previous = tree(commit), tree(BASELINE), tree(PREDECESSOR['commit'])
     runner = current['tools/install-unified.py']
     original_deploy = {deployment_name(k): v for k, v in original.items() if deployment_name(k)}
+    previous_deploy = {deployment_name(k): v for k, v in previous.items() if deployment_name(k)}
     members = {'install-unified.py': runner}
     files = {}
     changed = set()
@@ -76,13 +84,15 @@ def build(commit, output):
         before = original_deploy.get(target)
         if before != data:
             changed.add(target)
-        # Only the reviewed bootstrap and presentation layer may differ in this release.
+        # Bootstrap/shell plus the explicitly reviewed manager-approved reschedule correction.
         allowed = NEW_FILES | CHANGED_PRIVATE | {'public/' + a for a in ALIASES}
         if before != data and target not in allowed:
             raise RuntimeError('A new compatibility/migration review is required: ' + target)
         if before is None and target not in NEW_FILES:
             raise RuntimeError('Unexpected new deployment file: ' + target)
         variants = [data] if before is None else [before, data]
+        if target in previous_deploy:
+            variants.append(previous_deploy[target])
         if before is not None and name.endswith(('.php', '.css', '.js', '.html', '.txt', '.htaccess')):
             variants += [before.replace(b'\r\n', b'\n'), before.replace(b'\r\n', b'\n').replace(b'\n', b'\r\n')]
         files[target] = {'sha256': sha(data), 'bytes': len(data),
@@ -96,7 +106,9 @@ def build(commit, output):
     members['source-test-manifest.json'] = encode(source)
     manifest = {'format': 1, 'release': 'unified-test-' + commit[:12], 'commit': commit,
                 'baseline': BASELINE, 'stage': 'TEST', 'migration': 'none',
-                'compatibility': 'reviewed bootstrap and shell only; existing domain code retained',
+                'compatibility': 'reviewed bootstrap/shell and manager-approved reschedule requests; original financial/provider identities retained',
+                'runtime_schema': RUNTIME_SCHEMA,
+                'predecessor': PREDECESSOR | {'files': {n: sha(b) for n, b in sorted(previous_deploy.items())}},
                 'installer_sha256': sha(runner), 'source_manifest_sha256': sha(members['source-test-manifest.json']),
                 'files': files, 'changed_from_baseline': sorted(changed),
                 'active_manifests': ['calendar-confirmation-release.json', 'microsoft-scheduling-release.json',

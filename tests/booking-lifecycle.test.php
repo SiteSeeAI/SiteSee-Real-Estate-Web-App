@@ -47,7 +47,7 @@ $token=explode('.',parse_url($link2,PHP_URL_FRAGMENT),2)[1];booking_lifecycle_se
 $choices=booking_lifecycle_windows($db,$ref,$day,$deps);ok(count($choices)>0,'Own reservation excluded from alternatives.');
 $w=array_values(array_filter($choices,static fn($w)=>$w['time']==='13:00'))[0];$fp=booking_lifecycle_fingerprint($db,$ref);
 no(fn()=>booking_lifecycle_change($db,$ref,'reschedule','stale','customer',$w['date'],$w['time'],$deps),'Stale form denied.');
-$n=$writes;booking_lifecycle_change($db,$ref,'reschedule',$fp,'customer',$w['date'],$w['time'],$deps);ok($writes===$n+1,'One PATCH updates existing event.');
+$n=$writes;booking_lifecycle_change($db,$ref,'reschedule',$fp,'staff',$w['date'],$w['time'],$deps);ok($writes===$n+1,'One PATCH updates existing event.');
 $c=booking_confirmation_get($db,$ref);ok($c['event_uid']===$claim['event_uid']&&$c['calendar_uid']===$claim['calendar_uid'],'Calendar and event identities preserved.');
 foreach(['invitation_state','invitation_sent_at','invitation_recipient']as$k)ok($c[$k]===$claim[$k],'Original invitation preserved: '.$k);
 $after=booking_get($db,$ref);foreach(array_keys($before)as$k)if(!in_array($k,['requested_utc','schedule_appointment_json'],true))ok($before[$k]===$after[$k],'Preserved: '.$k);
@@ -62,7 +62,7 @@ ok(booking_management_notice_link($db,$ref)===$linkMatch[0]&&booking_lifecycle_s
 booking_lifecycle_set($db,$ref,['token_expires'=>time()-1]);$renewed=booking_management_notice_link($db,$ref);
 ok($renewed!==$linkMatch[0]&&!booking_management_auth($db,$ref,$linkMatch[1]),'Expired saved link replaced.');
 
-no(fn()=>booking_lifecycle_change($db,$ref,'reschedule',$fp,'customer',$w['date'],$w['time'],$deps),'Repeated reschedule denied without second PATCH.');
+no(fn()=>booking_lifecycle_change($db,$ref,'reschedule',$fp,'staff',$w['date'],$w['time'],$deps),'Repeated reschedule denied without second PATCH.');
 no(fn()=>booking_send_invitation($db,$ref),'Original invitation cannot be sent after update.');
 no(fn()=>booking_lifecycle_change($db,$ref,'cancel',booking_lifecycle_fingerprint($db,$ref),'customer','','',$deps),'Unfinished earlier notice blocks another change.');
 done_notice($ref);$fp=booking_lifecycle_fingerprint($db,$ref);$mode='lost';
@@ -119,7 +119,7 @@ $html=booking_lifecycle_html($db,booking_get($db,$ref),'csrf',true);ok(str_conta
 // Lost PATCH retains both holds; recovery must never submit a second PATCH.
 $ref='AAA0000006';paid($ref,'17:00');$old=booking_confirmation_get($db,$ref);$fp=booking_lifecycle_fingerprint($db,$ref);
 $next=(new DateTimeImmutable($day))->modify('+3 days')->format('Y-m-d');$choices=booking_lifecycle_windows($db,$ref,$next,$deps);$w=$choices[0];$mode='lost';
-no(fn()=>booking_lifecycle_change($db,$ref,'reschedule',$fp,'customer',$w['date'],$w['time'],$deps),'Lost PATCH recorded before recovery.');$mode='ok';
+no(fn()=>booking_lifecycle_change($db,$ref,'reschedule',$fp,'staff',$w['date'],$w['time'],$deps),'Lost PATCH recorded before recovery.');$mode='ok';
 $pending=booking_lifecycle_pending($db,$ref);$p=json_decode($pending['payload_json'],true);$busy=booking_lifecycle_busy($db,['busy'=>[]])['busy'];
 ok(in_array($p['old_interval'],$busy,true)&&in_array($p['new_interval'],$busy,true),'Old and proposed intervals both held after lost PATCH.');
 $n=$writes;booking_lifecycle_sync($db,$ref,$deps);ok($writes===$n&&!booking_lifecycle_pending($db,$ref),'Lost PATCH recovered with GET only.');

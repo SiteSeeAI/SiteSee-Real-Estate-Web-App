@@ -7,6 +7,7 @@ function portal_service_form(string $reference,string $action,string $fields,str
 }
 function portal_appointment_page(PDO $db,array $account,string $reference,array $windows=[],string $notice=''): never
 {
+    if(!function_exists('booking_change_request_create'))portal_page('Appointment Update','<p>Appointment management is being updated. Please try again shortly.</p>',$account,503);
     if(!portal_owns_order($db,$account['id'],$reference))portal_page('Order Unavailable','<p>This order is not available in your account.</p>',$account,404);
     $body=portal_service_back($reference);$e='portal_escape';
     if($notice)$body.='<p class="notice" role="status">'.$e($notice).'</p>';
@@ -20,7 +21,12 @@ function portal_appointment_page(PDO $db,array $account,string $reference,array 
     $state=booking_lifecycle_state($db,$reference);$pending=booking_lifecycle_pending($db,$reference);$claim=booking_confirmation_get($db,$reference);$a=booking_request($row)['appointment'];
     $unresolved=$db->prepare("SELECT 1 FROM booking_communications WHERE reference=? AND kind LIKE 'lifecycle-%' AND submission_state<>'sent_observed' LIMIT 1");$unresolved->execute([$reference]);$noticePending=(bool)$unresolved->fetchColumn();
     $body.='<section class="panel"><h2>Your Arrival Window</h2><p>'.$e($a['date'].' '.$a['time'].'–'.$a['windowEnd']).' Central Time</p><p>Cancellation does not automatically issue a refund or determine a fee.</p>';
-    if($pending){$body.='<p class="notice">Your last change is awaiting verification. Do not submit another change.</p>'.portal_service_form($reference,'appointment_sync','','Check Saved Change');}
+    $request=booking_change_request_pending($db,$reference);$lastRequest=booking_change_request_latest($db,$reference);
+    if($request){$body.='<p class="notice">Requested window: '.$e($request['date'].' '.$request['time'].'–'.$request['window_end']).' Central Time. '
+        .($request['state']==='pending'?'Awaiting SiteSee manager approval. Your confirmed appointment remains unchanged.':'Manager approved this request; the calendar result is awaiting verification.').'</p>';
+        if($pending)$body.=portal_service_form($reference,'appointment_sync','','Check Saved Change');
+    }
+    elseif($pending){$body.='<p class="notice">Your last change is awaiting verification. Do not submit another change.</p>'.portal_service_form($reference,'appointment_sync','','Check Saved Change');}
     elseif($state['state']==='cancelled')$body.='<p class="status">Cancelled</p>';
     elseif($noticePending||in_array($claim['invitation_state'],['sending','uncertain'],true))$body.='<p>SiteSee must verify the previous notice before another appointment change.</p>';
     elseif($state['state']!=='active'||!str_starts_with($claim['calendar_uid'],'microsoft:')||booking_calendar_date($a['date'])->setTime((int)substr($a['time'],0,2),0)->getTimestamp()<=time())$body.='<p>Contact SiteSee for appointment assistance.</p>';
@@ -29,10 +35,11 @@ function portal_appointment_page(PDO $db,array $account,string $reference,array 
         $body.=portal_service_form($reference,'appointment_windows','<label>Search From<input type="date" name="date" required value="'.$e(max($a['date'],date('Y-m-d'))).'"></label>','Find Available Windows');
         if($windows){
             $options='';foreach($windows as $w)$options.='<option value="'.$e($w['date'].'|'.$w['time']).'">'.$e($w['date'].' '.$w['time'].'–'.$w['end_time']).' Central</option>';
-            $body.='<h2>Choose Your New Window</h2><p>Availability is checked again when you confirm.</p>'.portal_service_form($reference,'appointment_reschedule',$fingerprint.'<label for="arrival-window">Arrival Window</label><select id="arrival-window" name="window">'.$options.'</select><label class="card-consent"><input type="checkbox" name="agreed" value="yes" required><span>I want to move my appointment to this window.</span></label>','Confirm New Window');
+            $body.='<h2>Request A New Window</h2><p>SiteSee must approve your request before your calendar appointment changes or a revised RSVP is sent.</p>'.portal_service_form($reference,'appointment_reschedule',$fingerprint.'<label for="arrival-window">Arrival Window</label><select id="arrival-window" name="window">'.$options.'</select><label class="card-consent"><input type="checkbox" name="agreed" value="yes" required><span>I want to request this arrival window for manager approval.</span></label>','Request New Window');
         }
         $body.='<details class="help"><summary>Cancel Appointment</summary>'.portal_service_form($reference,'appointment_cancel',$fingerprint.'<label class="card-consent"><input type="checkbox" name="agreed" value="yes" required><span>I want to cancel this appointment.</span></label>','Confirm Cancellation').'</details>';
     }
+    if(!$request&&($lastRequest['state']??'')==='rejected')$body.='<p>Your last requested window was not approved. Your confirmed appointment is unchanged.</p>';
     $mail=booking_communication_get($db,'lifecycle-'.$state['revision'].':'.$reference);
     if($mail&&$mail['submission_state']!=='sent_observed')$body.='<p class="notice">Your saved change notice needs a staff check. Your appointment status above reflects the saved result.</p>';
     portal_page('Manage Appointment',$body.'</section>',$account);

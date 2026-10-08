@@ -35,6 +35,7 @@ const reserve=()=>new Promise(resolve=>{const s=net.createServer();s.listen(0,'1
   await assertApplicationShell(page,'staff',false);
   assert.equal(first.headers()['referrer-policy'],'same-origin');assert.match(first.headers()['content-security-policy'],/font-src 'self'/);assert.equal(await page.getByRole('button',{name:'Sign In',exact:true}).count(),1);
   assert.equal((await page.request.post(origin+'/staff-bookings.php',{form:{action:'review_paid',reference:refs.paid}})).status(),403);
+  assert.equal((await page.request.post(origin+'/staff-bookings.php',{form:{action:'lifecycle_approve_request',reference:refs.complete,request_id:'a'.repeat(32),agreed:'yes'}})).status(),403,'Anonymous requests cannot approve an appointment change');
   await page.getByLabel('Password',{exact:true}).fill('isolated-staff-password');await page.getByRole('button',{name:'Sign In',exact:true}).click();await page.getByRole('heading',{name:'Recent Requests',exact:true}).waitFor({timeout:5000}).catch(async e=>{throw Error(e.message+' Page: '+await page.locator('body').innerText()+' Trace: '+JSON.stringify(requestTrace)+' Server: '+logs);});
   await assertApplicationShell(page,'staff',true);
   const cookies=await context.cookies();assert(cookies[0].secure&&cookies[0].httpOnly&&cookies[0].sameSite==='Strict');
@@ -103,6 +104,22 @@ const reserve=()=>new Promise(resolve=>{const s=net.createServer();s.listen(0,'1
   await page.getByRole('alert').waitFor();assert.match(await page.getByRole('alert').innerText(),/Confirm the customer-agreed/);assert.notEqual(await page.locator('#calendar-confirmation').getAttribute('open'),null);
   assert.equal(setup('snapshot'),snapshot,'Rejected consent/origin requests leave all bookings unchanged');
   assert(!fs.existsSync(path.join(current,'provider-blocked.txt')),'Rejected actions call no providers');
+  const requestId=setup('seed-change-request');await goto('/staff-bookings.php?reference='+refs.complete);
+  assert.notEqual(await page.locator('#manage-appointment').getAttribute('open'),null,'Customer requests open the manager review controls');
+  assert(await page.getByRole('button',{name:'Approve Requested Window',exact:true}).isVisible());
+  assert.match(await page.locator('#manage-appointment').innerText(),/Requested window:.*13:00–15:00/);
+  const pendingSnapshot=setup('snapshot');
+  assert.equal((await post({action:'lifecycle_approve_request',reference:refs.complete,request_id:requestId,agreed:'yes'},{headers:{Origin:'https://untrusted.example'}})).status(),403,'Manager approval retains same-origin protection');
+  const approvalForm=page.locator('form').filter({has:page.locator('input[name=action][value=lifecycle_approve_request]')});
+  assert.equal(await approvalForm.locator('input[name=agreed]').isChecked(),false);
+  await approvalForm.evaluate(f=>f.submit());await page.getByRole('alert').waitFor();assert.match(await page.getByRole('alert').innerText(),/Review and approve/);
+  assert.equal(setup('snapshot'),pendingSnapshot,'Rejected approval never applies the calendar request');
+  for(const width of [320,390,736,1200]){await page.setViewportSize({width,height:1000});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Request approval overflow '+width);}
+  const decline=page.locator('form').filter({has:page.locator('input[name=action][value=lifecycle_reject_request]')});
+  await decline.locator('input[name=agreed]').check();await decline.getByRole('button',{name:'Decline Requested Window',exact:true}).click();await page.locator('.note[role=status]').waitFor();
+  assert.match(await page.locator('.note[role=status]').innerText(),/Requested window declined/);
+  assert.equal(await page.getByRole('button',{name:'Approve Requested Window',exact:true}).count(),0);
+  assert(!fs.existsSync(path.join(current,'provider-blocked.txt')),'Request review and decline do not contact providers');
   assert.deepEqual(errors,[]);assert(!/PHP (?:Fatal error|Warning|Notice)/.test(logs),logs);
   console.log('portal-staff: PASS (19 baseline form contracts + 3 external-agent cases; unchanged ledgers; no GET/provider calls; real HTTPS login/CSRF/origin/consent; staged controls; recovery; Central Time; keyboard; 320/390/736/1200 layout)');
  }finally{if(browser)await browser.close();if(proxy)await new Promise(r=>proxy.close(r));if(php){php.kill();await new Promise(r=>php.once('exit',r));}fs.rmSync(temp,{recursive:true,force:true});}

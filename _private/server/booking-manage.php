@@ -48,9 +48,14 @@ if($method==='POST'){
             if(!$windows)$error='No fitting windows were found in the next 14 days. Try another starting date or contact SiteSee.';
         }elseif(in_array($action,['cancel','reschedule'],true)){
             if(($_POST['agreed']??'')!=='yes')throw new InvalidArgumentException('Confirm your appointment choice first.');
-            booking_lifecycle_change($db,$reference,$action,(string)($_POST['fingerprint']??''),'customer',(string)($_POST['date']??''),(string)($_POST['time']??''));
-            $notice=$action==='cancel'?'Your appointment is cancelled.':'Your arrival window has been updated.';
-            try{booking_lifecycle_notice($db,$reference,true);$notice.=' Your change notice is being verified.';}catch(Throwable){$notice.=' Staff must finish the change notice; your appointment result is saved.';}
+            if($action==='reschedule'){
+                if(!function_exists('booking_change_request_create'))throw new RuntimeException('Appointment update in progress.');
+                booking_change_request_create($db,$reference,(string)($_POST['fingerprint']??''),(string)($_POST['date']??''),(string)($_POST['time']??''));
+            }else booking_lifecycle_change($db,$reference,$action,(string)($_POST['fingerprint']??''),'customer');
+            $notice=$action==='cancel'?'Your appointment is cancelled.':'Your requested window is saved for SiteSee manager approval. Your confirmed appointment remains unchanged.';
+            if($action==='cancel'){
+                try{booking_lifecycle_notice($db,$reference,true);$notice.=' Your change notice is being verified.';}catch(Throwable){$notice.=' Staff must finish the change notice; your appointment result is saved.';}
+            }
             $_SESSION['notice']=$notice;header('Location: manage-appointment.php',true,303);exit;
         }else throw new InvalidArgumentException('Unknown action.');
     }catch(Throwable $e){$error=$e instanceof InvalidArgumentException||$e instanceof BookingCalendarUnavailable?$e->getMessage():'We could not verify the change. Please contact SiteSee before trying again.';}

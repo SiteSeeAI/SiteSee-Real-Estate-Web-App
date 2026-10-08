@@ -24,6 +24,8 @@ putenv('SITESEE_REAL_ESTATE_SITE_URL=https://re.sitesee.ai');
 putenv('SITESEE_REAL_ESTATE_PRICING_GATE_SECRET='.bin2hex(random_bytes(32)));
 putenv('SITESEE_REAL_ESTATE_BOOKING_TEST_ENABLED=1');
 require_once __DIR__.'/booking-lifecycle.php';
+require_once __DIR__.'/application.php';
+site_application_bootstrap(dirname(__DIR__));
 if(!booking_lifecycle_enabled()){echo "TEST lifecycle activation unavailable.\n";exit(1);}
 $workerStage='database';
 $db=booking_db();

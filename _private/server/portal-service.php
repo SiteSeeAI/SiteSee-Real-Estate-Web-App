@@ -24,10 +24,14 @@ function portal_appointment_change(PDO $db,string $account,string $reference,str
 {
     portal_appointment_guard($db,$account,$reference);
     if(!$agreed||!in_array($action,['cancel','reschedule'],true))throw new InvalidArgumentException('Review and accept the appointment change.');
+    if($action==='reschedule'){
+        if(!function_exists('booking_change_request_create'))throw new RuntimeException('Appointment update is in progress. Try again after it finishes.');
+        return booking_change_request_create($db,$reference,$fingerprint,$date,$time,$deps);
+    }
     $before=booking_lifecycle_state($db,$reference);
     $after=booking_lifecycle_change($db,$reference,$action,$fingerprint,'customer',$date,$time,$deps);
-    // A retry never resends a past notice. The canonical notice function independently prevents duplicate sends.
-    if((int)$after['revision']>(int)$before['revision']){
+    // Rescheduling saves a manager request, not a calendar change or customer invitation.
+    if($action!=='reschedule'&&(int)$after['revision']>(int)$before['revision']){
         try{booking_lifecycle_notice($db,$reference,true,$deps);}catch(Throwable){/* Saved change remains authoritative; staff can recover notice delivery. */}
     }
     return $after;

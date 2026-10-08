@@ -114,6 +114,12 @@ def load(package, expected):
             values[member.name] = archive.extractfile(member).read()
     obj = json.loads(values['manifest.json'])
     need(obj['format'] == 1 and obj['stage'] == 'TEST' and obj['migration'] == 'none', 'Release mode/migration differs.')
+    if 'predecessor' in obj:
+        previous = obj['predecessor']
+        need(previous.get('commit') == 'bd026c77d5963182000d06b58d80e9b7eb7fe944'
+             and previous.get('manifest_sha256') == '18319a55e72a262f908a99250e71125aa68bb8f30a59df060fbfda916dd376f9'
+             and set(previous.get('files', {})) == set(obj['files']), 'Reviewed predecessor differs.')
+        need(obj.get('runtime_schema') == 'Additive booking_change_requests table and unique pending-request index on first normal application use; existing tables and rows unchanged.', 'Runtime schema review differs.')
     need(re.fullmatch('[0-9a-f]{40}', obj['commit']) and obj['release'] == 'unified-test-' + obj['commit'][:12], 'Release identity differs.')
     need(sha(values['install-unified.py']) == obj['installer_sha256'] == sha(pathlib.Path(__file__).read_bytes()),
          'Use the installer belonging to this exact package.')
@@ -261,10 +267,26 @@ def preserved_public(name, source, current, accepted):
 
 
 def release_record(obj, files, deployed, manifest_sha):
-    return encode({'release': obj['release'], 'commit': obj['commit'], 'stage': 'TEST',
+    record = {'release': obj['release'], 'commit': obj['commit'], 'stage': 'TEST',
         'manifest_sha256': manifest_sha, 'migration': 'none',
         'files': {n: sha(deployed[n]) for n in files},
-        'preserved_host_files': {n: sha(deployed[n]) for n in sorted(PRESERVED_PUBLIC)}})
+        'preserved_host_files': {n: sha(deployed[n]) for n in sorted(PRESERVED_PUBLIC)}}
+    if 'runtime_schema' in obj:
+        record['runtime_schema'] = obj['runtime_schema']
+    return encode(record)
+
+
+def previous_record(obj, before, old):
+    previous = obj.get('predecessor')
+    need(previous is not None, 'Different unified release record preserved.')
+    for name, digest in previous['files'].items():
+        if name not in PRESERVED_PUBLIC:
+            need(sha(before[name]) == digest, 'Installed predecessor file differs: ' + name)
+    expected = {'release': 'unified-test-' + previous['commit'][:12], 'commit': previous['commit'],
+                'stage': 'TEST', 'manifest_sha256': previous['manifest_sha256'], 'migration': 'none',
+                'files': {n: sha(before[n]) for n in previous['files']},
+                'preserved_host_files': {n: sha(before[n]) for n in sorted(PRESERVED_PUBLIC)}}
+    need(old == encode(expected), 'Different unified release record preserved.')
 
 
 def inspect(obj, files, root, public, uid, manifest_sha):
@@ -296,7 +318,8 @@ def inspect(obj, files, root, public, uid, manifest_sha):
     name = 'private/unified-release.json'
     data = release_record(obj, files, after, manifest_sha)
     old = read(root / 'unified-release.json', uid, True)
-    need(old in (None, data), 'Different unified release record preserved.')
+    if old not in (None, data):
+        previous_record(obj, before, old)
     before[name], after[name] = old, data
     metas[name] = metadata(root / 'unified-release.json') if old is not None else {'uid': uid, 'gid': pwd.getpwuid(uid).pw_gid, 'mode': 0o600}
     return before, after, metas
@@ -416,6 +439,9 @@ def recover_plan(obj, files, journal, package_sha, root, public, db, uid, manife
                     record['files'][key] = sha(after[lookup]); changed = True
         after[name] = encode(record) if changed else before[name]
     after['private/unified-release.json'] = release_record(obj, files, after, manifest_sha)
+    prior = before['private/unified-release.json']
+    if prior not in (None, after['private/unified-release.json']):
+        previous_record(obj, before, prior)
     for name, value in after.items():
         item = journal['entries'][name]
         need(sha(value) == item['after'], 'Journal result differs: ' + name)
@@ -437,6 +463,61 @@ def installation_order(name):
     if name == 'private/unified-release.json':
         return 4, name
     return 1, name
+
+
+def maintenance_begin(root, uid, gid, obj, package_sha):
+    path = root / '.unified-maintenance.json'
+    value = encode({'format': 1, 'release': obj['release'], 'commit': obj['commit'], 'package_sha256': package_sha})
+    existing = read(path, uid, True)
+    need(existing in (None, value), 'Another maintenance boundary is preserved; finish its exact release first.')
+    if existing is None:
+        atomic(path, value, {'uid': uid, 'gid': gid, 'mode': 0o600})
+    return path, value
+
+
+def maintenance_finish(path, value, uid):
+    need(read(path, uid) == value, 'Maintenance boundary changed; preserved.')
+    path.unlink(); sync_dir(path.parent)
+
+
+def bootstrap_boundary(root, uid, before, after, metas):
+    name = 'private/server/application.php'
+    path = root / 'server/application.php'
+    current = read(path, uid, True)
+    need(current in (before[name], after[name]) and (current is None or metadata(path) == metas[name]), 'Bootstrap changed before maintenance; preserved.')
+    if current != after[name]:
+        atomic(path, after[name], metas[name])
+
+
+@contextlib.contextmanager
+def calendar_boundary(root, uid, gid):
+    path = root / 'booking-confirmation.lock'
+    safe(path)
+    existing = read(path, uid, True)
+    if existing is not None:
+        need(metadata(path)['mode'] == 0o600, 'Calendar lock metadata differs.')
+    fd = os.open(path, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+    try:
+        if existing is None:
+            os.fchown(fd, uid, gid); os.fsync(fd); sync_dir(root)
+        info = os.fstat(fd)
+        need(stat.S_ISREG(info.st_mode) and info.st_uid == uid and info.st_nlink == 1
+             and stat.S_IMODE(info.st_mode) == 0o600, 'Calendar lock ownership differs.')
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise Stop('An existing calendar operation must finish before this update can resume.')
+        yield
+    finally:
+        os.close(fd)
+
+
+def rollback_request_guard(db):
+    with contextlib.closing(readonly_db(db)) as connection:
+        exists = connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='booking_change_requests'").fetchone()
+        if exists:
+            count = connection.execute("SELECT count(*) FROM booking_change_requests WHERE state IN ('pending','applying')").fetchone()[0]
+            need(count == 0, 'Pending manager requests preserved: repair forward; restoring the previous code would bypass their approval flow.')
 
 
 def apply(root, public, uid, before, after, metas, rollback=False, writer=atomic):
@@ -529,13 +610,18 @@ def main():
             return
         if args.verify:
             need(journal is not None and journal['state'] == 'installed', 'Installation is not complete.')
+            need(read(root / '.unified-maintenance.json', uid, True) is None, 'Maintenance is still active; finish the same package with --resume.')
             print('VERIFY PASS: exact release files, ownership/modes, backup integrity and TEST gates. Connected acceptance pending.')
             return
         if args.rollback_code:
             need(journal is not None, 'Backup journal required.')
-            journal['state'] = 'restoring'; atomic(journal_path, encode(journal), owner)
-            apply(root, public, uid, before, after, metas, rollback=True)
-            journal['state'] = 'restored'; atomic(journal_path, encode(journal), owner)
+            rollback_request_guard(db)
+            marker, value = maintenance_begin(root, uid, gid, obj, args.sha256)
+            with calendar_boundary(root, uid, gid):
+                journal['state'] = 'restoring'; atomic(journal_path, encode(journal), owner)
+                apply(root, public, uid, before, after, metas, rollback=True)
+                journal['state'] = 'restored'; atomic(journal_path, encode(journal), owner)
+                maintenance_finish(marker, value, uid)
             print('CODE RESTORED: original file bytes and modes. Database, configurations, provider state and sessions were not restored.')
             return
         need(journal is None or journal['state'] in ('prepared', 'installed'), 'Code was restored; preserve journal and review before another installation.')
@@ -543,10 +629,16 @@ def main():
             journal = prepare(obj, args.sha256, root, public, db, uid, before, after, metas)
             need(read(journal_path, uid, True) is None, 'Another journal appeared; preserved.')
             atomic(journal_path, encode(journal), owner)
-        apply(root, public, uid, before, after, metas)
-        journal['state'] = 'installed'; atomic(journal_path, encode(journal), owner)
+        marker, value = maintenance_begin(root, uid, gid, obj, args.sha256)
+        bootstrap_boundary(root, uid, before, after, metas)
+        with calendar_boundary(root, uid, gid):
+            apply(root, public, uid, before, after, metas)
+            journal['state'] = 'installed'; atomic(journal_path, encode(journal), owner)
+            maintenance_finish(marker, value, uid)
         print('INSTALLED AND VERIFIED: ' + obj['release'] + '; Stripe TEST. Backup: ' + str(root / 'unified-deployments' / journal['backup']))
         print('No database migration, provider operation, configuration/gate change, session reset, new worker or callback change.')
+        if obj.get('runtime_schema'):
+            print('On next normal application use: ' + obj['runtime_schema'])
     finally:
         os.close(lock)
 
