@@ -49,4 +49,8 @@ expect(!str_contains($html,'step=readiness"'),'Unreviewed booking does not offer
 $screens['readiness']['available']=true;
 $html=staff_booking_screens('AB0000000A',$screens,$next(),'review_paid');
 expect(str_contains($html,'data-booking-screen="readiness" aria-labelledby'),'Successful paid review proceeds to readiness.');
+expect(staff_booking_next($row,$claim,$life,false,null,$mail,['submission_state'=>'sent_observed','crm_state'=>'pending'],$workflow,false)[0]==='appointment','Saved change still directs CRM recovery after sent-copy verification.');
+expect(staff_booking_next($row,$claim,$life,false,null,$mail,['submission_state'=>'sent_observed','crm_state'=>'associated','delivery_state'=>'unverified'],$workflow,false,false,true)[0]==='appointment','Observable missing change receipt directs recovery.');
+expect(staff_booking_next($row,$claim,$life,false,null,$mail,null,$workflow,false,true)[0]==='readiness','Observable missing original invitation receipt directs recovery.');
+expect(staff_booking_next($row,$claim,$life,false,null,$mail,null,$workflow,false,false)[1]==='Appointment confirmed','Unavailable external recipient evidence does not force endless recovery.');
 echo "booking-review-ui: PASS ($checks checks)\n";

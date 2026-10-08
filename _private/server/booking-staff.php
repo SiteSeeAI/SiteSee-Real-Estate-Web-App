@@ -462,7 +462,7 @@ if ($row) {
         $screens['review'] = ['label'=>'Review Request', 'html'=>'<p>The checkout link is ready. Wait for the verified TEST deposit before schedule review.</p>'];
     }
     if ($postedAction === 'rotate') $screens['review'] = ['label'=>'Review Request', 'html'=>'<p>The replacement link is shown above. Keep it private.</p>'];
-    $next = staff_booking_next($row, $staffClaim ?: null, $staffLife, (bool)$staffPending, $staffChangeRequest ?: null, $staffMail ?: null, $changeMail ?: null, $workflowStatus, (bool)booking_job_get($db,$reference));
+    $next = staff_booking_next($row, $staffClaim ?: null, $staffLife, (bool)$staffPending, $staffChangeRequest ?: null, $staffMail ?: null, $changeMail ?: null, $workflowStatus, (bool)booking_job_get($db,$reference), (bool)($staffMail && booking_communication_receipt_available($staffMail)), (bool)($changeMail && booking_communication_receipt_available($changeMail)));
     $body .= staff_booking_screens($reference, $screens, $next, $postedAction);
     $body .= '<script src="/portal-assets/booking-review.js?v=booking-steps-r1" defer></script>';
 } else {

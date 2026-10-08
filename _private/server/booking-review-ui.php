@@ -2,11 +2,11 @@
 declare(strict_types=1);
 
 /** Select the next screen from recorded state, without querying providers or changing data. */
-function staff_booking_next(array $row, ?array $claim, array $life, bool $pending, ?array $change, ?array $mail, ?array $changeMail, ?array $workflow, bool $job): array
+function staff_booking_next(array $row, ?array $claim, array $life, bool $pending, ?array $change, ?array $mail, ?array $changeMail, ?array $workflow, bool $job, bool $invitationReceiptAvailable = false, bool $changeReceiptAvailable = false): array
 {
     if ($pending) return ['appointment', 'Verify the saved appointment change', 'Check the existing calendar result before another change.'];
     if ($change) return ['appointment', 'Review the customer’s requested window', 'Compare the requested window with the confirmed appointment, then approve or decline.'];
-    if ($changeMail && $changeMail['submission_state'] !== 'sent_observed') return ['appointment', 'Verify the previous change notice', 'Check the saved notice before another appointment change. Do not resend it.'];
+    if ($changeMail && ($changeMail['submission_state'] !== 'sent_observed' || ($changeMail['crm_state'] ?? 'pending') !== 'associated' || ($changeReceiptAvailable && ($changeMail['delivery_state'] ?? 'unverified') !== 'recipient_copy_observed'))) return ['appointment', 'Verify the previous change notice', 'Check the saved notice before another appointment change. Do not resend it.'];
     if ($life['state'] !== 'active' && $claim) return ['appointment', 'Review the appointment status', 'Check the saved calendar status and any notice that needs attention.'];
     if ($row['reschedule_required']) return ['review', 'Request another arrival window', 'Keep the recorded deposit and provide the customer with a rescheduling link.'];
     if (!$row['deposit_paid_at']) return ['review', 'Review the request and deposit', 'The appointment can be reviewed after the TEST deposit is recorded.'];
@@ -18,7 +18,7 @@ function staff_booking_next(array $row, ?array $claim, array $life, bool $pendin
     if ($claim['invitation_state'] === 'none') return ($workflow['can_send'] ?? false)
         ? ['calendar', 'Review and send the invitation', 'Confirm the recipient before sending the saved calendar invitation.']
         : ['readiness', 'Check invitation readiness', 'Review the prerequisite that is blocking the invitation.'];
-    if ($claim['invitation_state'] !== 'sent' || !$mail || $mail['submission_state'] !== 'sent_observed' || $mail['crm_state'] !== 'associated') return ['readiness', 'Verify the saved invitation', 'Check the sent copy and CRM history without sending another invitation.'];
+    if ($claim['invitation_state'] !== 'sent' || !$mail || $mail['submission_state'] !== 'sent_observed' || $mail['crm_state'] !== 'associated' || ($invitationReceiptAvailable && ($mail['delivery_state'] ?? 'unverified') !== 'recipient_copy_observed')) return ['readiness', 'Verify the saved invitation', 'Check the sent copy and CRM history without sending another invitation.'];
     if ($job) return ['onsite', 'Review the completed onsite job', 'Check final payment and continue to Production.'];
     return ['appointment', 'Appointment confirmed', 'The saved appointment is confirmed. Open appointment management only if a change or status check is needed.'];
 }
