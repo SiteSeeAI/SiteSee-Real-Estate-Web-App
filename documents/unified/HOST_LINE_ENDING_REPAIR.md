@@ -1,3 +1,5 @@
+Historical record: current candidate is bd026c77d596 with installed Turnstile/SVG preservation. See HOST_BINDING_REVIEW.md; do not run the superseded SVG-normalization helper.
+
 # Existing-host SVG line-ending repair
 
 The selected release remains frozen d380d41 with the same package and installer hashes in HOST_TEST_REVIEW.md. No new application release or installation is introduced. Matching downloads are now verified on cPanel. The public Apache file already has separate correct first directives and its preflight validation passes; do not change it.

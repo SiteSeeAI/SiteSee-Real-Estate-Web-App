@@ -1,3 +1,5 @@
+Historical record: current candidate is bd026c77d596 with installed Turnstile/SVG preservation. See HOST_BINDING_REVIEW.md; do not run the superseded SVG-normalization helper.
+
 # cPanel Apache preservation review
 
 Candidate source is `d380d41a090342d82255906f73fad518d722020d`; package SHA-256 is `3a33d161bcd2ed96485bb23b6560eef63df6a5c844a33313dfb1b475c4fd83ae`. It contains 267 deployment payloads and 634 exact source/test manifest entries. All application payload bytes match the previously reviewed c81 candidate. The change affects the standalone installer, tests and later review documents; there is no application/domain/route, provider or database migration change.

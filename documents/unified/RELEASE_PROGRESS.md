@@ -1,3 +1,7 @@
+Current candidate: bd026c77d5963182000d06b58d80e9b7eb7fe944; see HOST_BINDING_REVIEW.md and HOST_TEST_REVIEW.md. Preserves all reviewed installed public bindings/formatting; no manual file repair. Successful host preflight and connected acceptance remain pending.
+
+Previous d380 milestone history follows:
+
 # Fixed-commit TEST release and consolidated installer
 
 The application release is built from `d380d41a090342d82255906f73fad518d722020d`, which retains the inherited fixture repairs, closed shared bootstrap, common role shell and original domain modules. The artifact is `unified-test-d380d41a0903.tar.gz`; SHA-256: `3a33d161bcd2ed96485bb23b6560eef63df6a5c844a33313dfb1b475c4fd83ae`. It contains 267 deployment files, one matching installer, a deployment manifest and a manifest of all 634 source/test files at that exact commit. Runtime records, settings, credentials, sessions and historical backups are excluded from the package.

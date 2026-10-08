@@ -1,150 +1,200 @@
 {
-  "scope": "Fixed-commit TEST release with reviewed cPanel Apache configuration preservation",
+  "scope": "Fixed-source TEST candidate preserving reviewed installed public bindings and formatting",
   "artifact": {
-    "commit": "d380d41a090342d82255906f73fad518d722020d",
-    "release": "unified-test-d380d41a0903",
-    "path": "/workspace/.sitesee-onboarding/unified-release-host-d380d41/unified-test-d380d41a0903.tar.gz",
-    "sha256": "3a33d161bcd2ed96485bb23b6560eef63df6a5c844a33313dfb1b475c4fd83ae",
+    "commit": "bd026c77d5963182000d06b58d80e9b7eb7fe944",
+    "release": "unified-test-bd026c77d596",
+    "path": "/workspace/.sitesee-onboarding/unified-release-bindings-bd026c7/unified-test-bd026c77d596.tar.gz",
+    "sha256": "9c6f292d4b78324c8a1f2794de4de1d5755701becb2a29729dff626ce25945c0",
+    "installer_sha256": "75b62c0188c2daa0fdf2d2375263f7da161599a189cbdaada4605103769b5cd6",
     "deployment_files": 267,
+    "source_test_files": 639,
     "changed_from_baseline": 24,
     "migration": "none",
-    "stage": "TEST",
-    "source_test_files": 634
+    "stage": "TEST"
   },
   "runs": [
     {
       "php": "8.2",
-      "cases": 44,
-      "passed": 43,
+      "cases": 48,
+      "passed": 47,
       "skipped": 1,
       "failed": 0,
       "interrupted_write_boundaries": 30,
-      "source_commit": "d380d41a090342d82255906f73fad518d722020d",
-      "log": "release-host-php82.log"
+      "source_commit": "bd026c77d5963182000d06b58d80e9b7eb7fe944",
+      "log": "binding-release-php82.log"
     },
     {
       "php": "8.3",
-      "cases": 44,
-      "passed": 43,
+      "cases": 48,
+      "passed": 47,
       "skipped": 1,
       "failed": 0,
       "interrupted_write_boundaries": 30,
-      "source_commit": "d380d41a090342d82255906f73fad518d722020d",
-      "log": "release-host-php83.log"
+      "source_commit": "bd026c77d5963182000d06b58d80e9b7eb7fe944",
+      "log": "binding-release-php83.log"
     }
   ],
-  "application_parity": "Application deployment bytes match c81 exactly; original shell evidence remains applicable. All legacy production source and guards are unchanged.",
-  "independent_review": "Complete for d380d41 implementation and final artifact/evidence closure; see HOST_COMPATIBILITY_REVIEW.md. All eight selected hashes, exact-source CI logs, source/payload parity and archived evidence independently verified.",
-  "privileged_CI": {
-    "commit": "d380d41a090342d82255906f73fad518d722020d",
-    "release": {
-      "id": 37702986877,
+  "privileged_CI": [
+    {
+      "id": 37796132411,
+      "name": "Unified Release Checks",
+      "status": "completed",
       "conclusion": "success",
-      "url": "https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/actions/runs/37702986877",
+      "source": "bd026c77d5963182000d06b58d80e9b7eb7fe944",
+      "url": "https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/actions/runs/37796132411",
       "jobs": [
         {
-          "id": 113070602793,
-          "name": "release (8.2)",
-          "conclusion": "success",
-          "root_cases": 44,
-          "root_skips": 0,
-          "interrupted_write_boundaries": 30,
-          "log": "release-host-ci-php82.log"
+          "id": 113375939305,
+          "name": "release (8.3)",
+          "status": "completed",
+          "conclusion": "success"
         },
         {
-          "id": 113070603053,
-          "name": "release (8.3)",
-          "conclusion": "success",
-          "root_cases": 44,
-          "root_skips": 0,
-          "interrupted_write_boundaries": 30,
-          "log": "release-host-ci-php83.log"
+          "id": 113375939658,
+          "name": "release (8.2)",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ],
+      "logs": [
+        {
+          "name": "binding-ci-release-113375939305.log",
+          "job": 113375939305,
+          "markers": [
+            "2026-10-08T14:55:04.8369576Z Unified release: 48 cases completed; 1 privileged skips.",
+            "2026-10-08T14:55:04.8372604Z Ran 48 tests in 107.983s",
+            "2026-10-08T14:56:53.4920827Z Unified release: 48 cases completed; 0 privileged skips.",
+            "2026-10-08T14:56:53.4921635Z Ran 48 tests in 108.538s"
+          ]
+        },
+        {
+          "name": "binding-ci-release-113375939658.log",
+          "job": 113375939658,
+          "markers": [
+            "2026-10-08T14:55:21.7310019Z Unified release: 48 cases completed; 1 privileged skips.",
+            "2026-10-08T14:55:21.7312719Z Ran 48 tests in 121.630s",
+            "2026-10-08T14:57:49.6214934Z Unified release: 48 cases completed; 0 privileged skips.",
+            "2026-10-08T14:57:49.6215892Z Ran 48 tests in 147.764s"
+          ]
         }
       ]
     },
-    "server": {
-      "id": 37702986932,
+    {
+      "id": 37796132344,
+      "name": "Server Form CI",
+      "status": "completed",
       "conclusion": "success",
-      "url": "https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/actions/runs/37702986932",
-      "historical_root_cases": 168,
-      "historical_root_skips": 0
+      "source": "bd026c77d5963182000d06b58d80e9b7eb7fe944",
+      "url": "https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/actions/runs/37796132344",
+      "jobs": [
+        {
+          "id": 113375939036,
+          "name": "Historical Installer Ownership CI",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 113375939392,
+          "name": "validate",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ],
+      "logs": [
+        {
+          "name": "binding-ci-server-113375939036.log",
+          "job": 113375939036,
+          "markers": [
+            "2026-10-08T14:54:00.6180789Z PASS: 168 privileged installer cases completed; no skips."
+          ]
+        },
+        {
+          "name": "binding-ci-server-113375939392.log",
+          "job": 113375939392,
+          "markers": []
+        }
+      ]
     }
-  },
+  ],
+  "application_parity": "All application payload bytes match d380/c81; no domain, provider, frontend source or database changes. Original shell evidence remains applicable.",
+  "independent_review": "Complete: final implementation, exact-source artifact, all639 source entries/267payloads, nine evidence hashes, archived d380 record and successful privileged CI independently verified; no actionable defect.",
+  "preserved_host_files": [
+    "public/.htaccess",
+    "public/assets/js/turnstile.js",
+    "public/assets/images/platform/notes-collaboration.svg"
+  ],
   "host_preflight": {
-    "status": "matching downloads verified; Apache passed; SVG CRLF normalization repair and complete inventory pending operator",
+    "status": "New candidate not yet run on host",
     "hosting": "cPanel account sitesee",
     "account_uid": 1009,
     "account_gid": 1011,
     "staging_directory": "/home/sitesee/staging",
     "php_cli": "/opt/cpanel/ea-php82/root/usr/bin/php",
-    "public_htaccess_before_sha256": "e640befd468cd72a53a925ae633490e09fae922c7bf7299e9d73b523178c7ee2",
-    "exact_host_bytes_reconstructed": false,
-    "public_htaccess_review": "Operator confirmed the first two physical lines are already correct; leave unchanged. Latest d380 preflight passed the reviewed Apache handler gate. Earlier pasted joined text was not proof of physical file corruption.",
-    "inventory": "bounded repair helper scans all payloads; pending operator execution",
-    "staged_upload_backup": "/home/sitesee/staging/verified-download-nwsh5cdz",
-    "svg_review": {
-      "file": "public/assets/images/platform/notes-collaboration.svg",
-      "served_bytes": 6240,
-      "served_sha256": "0fd47ceb96ace2afc73878e1be338d037140472c4b90e12471c75730049a9f4e",
-      "normalized_bytes": 6158,
-      "normalized_sha256": "b9cba09d64909add099515d23df994ab9a3673f9fbc829bcf8922737f1212cce",
-      "difference": "82 CRLF endings only; exact canonical payload after normalization",
-      "local_repair_validation": "eleven disposable scenarios passed; see HOST_LINE_ENDING_REPAIR.md",
-      "real_host_repair": "pending"
-    }
+    "source_inventory": "All267 paths examined by prior helper. Only Turnstile public-key substitution reported as remaining difference; SVG CRLF equivalence recognized. No server files changed.",
+    "turnstile_host_sha256": "106d79ade29b3139805004ed44cc6c185709622fe32d1df70d667c92f4840c73",
+    "turnstile_review": "Captured HTTPS bytes match operator hash and exact canonical code with only the legacy Corporate/Audit public-key replacement; do not replace with template.",
+    "svg_review": "Exact source after only CRLF normalization; retain actual bytes without manual normalization.",
+    "apache_review": "Operator confirmed separate correct physical directives; latest prior preflight passed the reviewed cPanel82 Apache gate; leave unchanged.",
+    "active_records_and_SQLite": "Complete successful new host preflight remains pending."
   },
   "installed_connected_TEST": "pending; existing re.sitesee.ai",
-  "server_update": "not executed; user performed one private-file mode repair only",
-  "previous_release_evidence": "archive/RELEASE_TEST_RESULTS_c81c4e2.json",
+  "server_update": "not authorized or executed; only earlier private-file mode repair was performed",
+  "previous_release_evidence": "archive/RELEASE_TEST_RESULTS_d380d41.json",
+  "evidence_directory": "/workspace/.sitesee-onboarding/unified-host-evidence",
   "logs": [
     {
-      "name": "release-host-php82.log",
-      "sha256": "f79609e4a579fc6f160fd25d0094d8c59d215940ee24a87f62b24e0ec19b4c7b",
-      "bytes": 5889,
+      "name": "binding-release-php82.log",
+      "sha256": "e62e9e6abe1bfbcf9d649a795b76008e1556d38d96b1dc18b89af3e0bcc99dd7",
+      "bytes": 6528,
       "phase": "final"
     },
     {
-      "name": "release-host-php83.log",
-      "sha256": "635e58e7fc10e6ced5eb5ae05381bb9122ec6f0f308e28d2a63c38242ddea95b",
-      "bytes": 5889,
+      "name": "binding-release-php83.log",
+      "sha256": "904915910b85446d016a9a5f5b277a2c8da37b3c12213f88543cc8ba346dfeef",
+      "bytes": 6527,
       "phase": "final"
     },
     {
-      "name": "release-host-ci-php82.log",
-      "sha256": "0fe2650c5d4a00916fcc135702bd032a71e904ec4a67019999fa297d584adb56",
-      "bytes": 31013,
+      "name": "binding-package-verification.json",
+      "sha256": "beca8fc9ac4f739855c8bb182a6a697b0a60598c558445355c44fdcf2c335b77",
+      "bytes": 517,
       "phase": "final"
     },
     {
-      "name": "release-host-ci-php83.log",
-      "sha256": "5c6c2049b6a080a5e131b4ff0d61165107e377f12d2b06152106911f1e89c445",
-      "bytes": 31014,
+      "name": "binding-source-ci.json",
+      "sha256": "7a55ec77113b200961f5b235bbd9aff46b3f96ae4bc4d0da9f129ab9f13e0f8b",
+      "bytes": 2490,
       "phase": "final"
     },
     {
-      "name": "server-host-validate.log",
-      "sha256": "3f907830b03c4cb173d3c4912850da3cd04db4b579ec033cf9e26fa34aee14ce",
-      "bytes": 54105,
+      "name": "host-turnstile.js",
+      "sha256": "106d79ade29b3139805004ed44cc6c185709622fe32d1df70d667c92f4840c73",
+      "bytes": 4793,
       "phase": "final"
     },
     {
-      "name": "server-host-ownership.log",
-      "sha256": "9a555041858b2a55d7bb65558934b19163481de40fbe21f34c29481058ebd5a6",
-      "bytes": 47130,
+      "name": "binding-ci-release-113375939305.log",
+      "sha256": "79fcd985e9795e8f1e788bcaeaf13a8f39d87801502ec349c08230740fd52c4b",
+      "bytes": 32797,
       "phase": "final"
     },
     {
-      "name": "package-verification.json",
-      "sha256": "1c179b00233ee4d5a9f06c9a0ddaf195fa7ba778de4d59c6beafa9d1801614b6",
-      "bytes": 539,
+      "name": "binding-ci-release-113375939658.log",
+      "sha256": "944c4be0de251a179e32a521f73020446265e15d328c73a08edf144daa169b55",
+      "bytes": 32793,
       "phase": "final"
     },
     {
-      "name": "source-ci-summary.json",
-      "sha256": "c35cb3f22f0d72e63223567f532765f6fedafc92a53988ced855a71182cc2b1a",
-      "bytes": 2439,
+      "name": "binding-ci-server-113375939036.log",
+      "sha256": "41f2d07c546765df27b444f52ed0acbdb4d506d6c7429736a49f74fdaf62642a",
+      "bytes": 47094,
+      "phase": "final"
+    },
+    {
+      "name": "binding-ci-server-113375939392.log",
+      "sha256": "6ae95b39f38b28d01b96da65de076f124bda19d9ef336805cce01a0aae97373c",
+      "bytes": 54108,
       "phase": "final"
     }
-  ],
-  "evidence_directory": "/workspace/.sitesee-onboarding/unified-host-evidence"
+  ]
 }

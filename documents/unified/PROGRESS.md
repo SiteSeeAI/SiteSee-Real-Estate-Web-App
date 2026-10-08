@@ -1,4 +1,4 @@
-Current TEST candidate: `d380d41a090342d82255906f73fad518d722020d`, with reviewed cPanel handler preservation. See RELEASE_PROGRESS.md and HOST_COMPATIBILITY_REVIEW.md. Host repair, inventory and installed acceptance remain pending.
+Current TEST candidate: bd026c77d5963182000d06b58d80e9b7eb7fe944, preserving configured Turnstile, Apache and SVG bytes. See HOST_BINDING_REVIEW.md. Successful host preflight and installed acceptance remain pending.
 
 Current local release and remaining gates: [RELEASE_PROGRESS.md](RELEASE_PROGRESS.md). This file retains the bootstrap milestone history.
 
