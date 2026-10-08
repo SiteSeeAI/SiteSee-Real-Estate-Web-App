@@ -1,0 +1,61 @@
+name: Publish reviewed WHM helper
+on:
+  push:
+    branches: ['feat/unified-host-downloads-a752058']
+    paths: ['.github/workflows/unified-host-downloads.yml']
+permissions:
+  contents: write
+  actions: read
+jobs:
+  downloads:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: a752058b663d5775f0ddbe359a77dfd1d31bd1d4
+      - name: Require tested helper and upload exact verified downloads
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: python
+        run: |
+          import pathlib,os,json,hashlib,base64,urllib.request,urllib.parse,time
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/'reviewed-host-helper';root.mkdir()
+          commit='a752058b663d5775f0ddbe359a77dfd1d31bd1d4'
+          expected={'install-appointment-approval-host.py': 'b37ec08f3d3842bd0c43d392757bfa8743161a18044967239ad4d42aa8d1ebcb', 'HOST_HELPER_REVIEW.md': '8ed7f247a78748fb773ce59a6e422ffd14547359d4cc9affbd4c5b68eb6c02f8'}
+          (root/'install-appointment-approval-host.py').write_bytes(pathlib.Path('tools/install-appointment-approval-host.py').read_bytes())
+          (root/'HOST_HELPER_REVIEW.md').write_bytes(base64.b64decode('IyBDb3JyZWN0ZWQgV0hNIEZQTSBwcm9iZSBoZWxwZXIKClVzZSB0aGlzIGhlbHBlciBmb3IgdGhlIGFscmVhZHktYXBwcm92ZWQgdW5pZmllZC10ZXN0LTJkZTExMzUwMzA1MCBhcHAgdXBkYXRlLiBUaGUgYXBwIHBhY2thZ2UgYW5kIGluc3RhbGwtdW5pZmllZC5weSByZW1haW4gdW5jaGFuZ2VkIGFuZCBTSEEyNTYgdmVyaWZpZWQ7IHByZXZpb3VzbHkgdmVyaWZpZWQgcHJpdmF0ZSBzdGFnZWQgZG93bmxvYWRzIGFyZSByZXVzZWQuIE9yaWdpbmFsIGhlbHBlci9kb3dubG9hZHMgcmVtYWluIHByZXNlcnZlZC4KClRoZSBmb3JtZXIgaGVscGVyIHN0b3BwZWQgYXQgdGhlIGZpcnN0IFBIUC1GUE0gcmVhZCBhZnRlciBzb3VyY2UvZGF0YWJhc2UgcHJlZmxpZ2h0IHBhc3NlZCwgYmVmb3JlIHRyYWZmaWMgcGF1c2Ugb3IgaW5zdGFsbGF0aW9uLiBJdHMgcHJpdmF0ZSBwcm9iZSBhbmQgcHVibGljIHNjcmlwdCBuYW1lIGNhbiBmYWlsIHdoZW4gRlBNIGRvY19yb290IGlzIGNvbmZpZ3VyZWQ7IHRoYXQgZmFpbHVyZSB3YXMgcmVwcm9kdWNlZCBvbiByZWFsIGlzb2xhdGVkIFBIUDguMiBGUE0uIFRoaXMgaXMgYSByZXByb2R1Y2VkIGNvbXBhdGliaWxpdHkgbWVjaGFuaXNtLCBub3QgYSBjb25maXJtZWQgcmVhZG91dCBvZiB0aGUgaG9zdCBjb25maWd1cmF0aW9uLgoKVGhlIGNvcnJlY3RlZCBoZWxwZXIgY3JlYXRlcyBhIHJhbmRvbSBhY2NvdW50LW93bmVkMDYwMCBQSFAgZmlsZSB1bmRlciB0aGUgZXhhY3QgcHVibGljIHJvb3Qgd2l0aCBtYXRjaGluZyBTQ1JJUFRfTkFNRS9TQ1JJUFRfRklMRU5BTUUuIEEgcmFuZG9tMjU2Yml0IGhlYWRlciB0b2tlbiBnYXRlcyBhbGwgb3BlcmF0aW9ucyBiZWZvcmUgb3V0cHV0OyB0aGUgcmVwbHkgbm9uY2UgaXMgdmVyaWZpZWQgYW5kIHJlbW92ZWQuIE9yZGluYXJ5IHJlcXVlc3RzIHdpdGhvdXQgdGhlIHRva2VuIHJlY2VpdmU0MDQuIFRoZSB0ZW1wb3JhcnkgcHJvYmUgaXMgZGVsZXRlZCBpbiBmaW5hbGx5LCBpbmNsdWRpbmcgb24gZXhjZXB0aW9ucy9pbnRlcnJ1cHRpb24uIEl0IHVzZXMgdGhlIGFjdHVhbCB2aG9zdCB1c2VyLmluaSBhbmQgRlBNIGNhY2hlIHJlc3RyaWN0aW9ucy4gUmVhbCBGUE0gcmVhZC9yZXNldC9mdW5jdGlvbiBjaGVja3MsIG1pc3Npbmcvd3Jvbmd0b2tlbiByZWplY3Rpb24sIHB1YmxpY3VzZXIuaW5pLCBjbGVhbnVwIGFuZCB0aGUgb2xkIGZhaWx1cmUgcmVwcm9kdWN0aW9uIHBhc3NlZC4gRGlhZ25vc3RpY3Mgbm93IHJlcG9ydCBvbmx5IGZpeGVkIHN0YXR1cy9jYXRlZ29yeS9ieXRlIGNvdW50cywgbmV2ZXIgcmVzcG9uc2UgYm9keSwgUEhQIGVycm9ycywgc2VjcmV0cyBvciBhcmJpdHJhcnkgZXhjZXJwdHM7IG5vbjIwMCBhbmQgaW52YWxpZCByZXBsaWVzIHJlbWFpbiBmYXRhbC4KClRoZSBhcHByb3ZlZCB1cGRhdGUgc3RpbGwgYnJpZWZseSBwYXVzZXMgcmUuc2l0ZXNlZS5haSwgZ3JhY2VmdWxseSByZWxvYWRzIEFwYWNoZSBzZXJ2ZXItd2lkZSBhbmQgc2hhcmVkIFBIUDguMkZQTSwgZHJhaW5zIG9sZCByZXF1ZXN0cy93b3JrZXJzLCB1c2VzIHRoZSBleGlzdGluZyByZWNvbmNpbGlhdGlvbiBsb2NrLCBiYWNrcyB1cCBhbmQgaW5zdGFsbHMvdmVyaWZpZXMgdGhlIGV4YWN0IGFwcCBwYWNrYWdlLCBjaGVja3MgRlBNIGNvZGUvY2FjaGUsIHRoZW4gcmVvcGVucyB0aGUgc2l0ZS4gTm8gcG9vbCByZXN0cmljdGlvbiwgcHVibGljLmh0YWNjZXNzLCBwcm92aWRlciBzZXR0aW5ncywgc2Vzc2lvbnMgb3Igc2NoZWR1bGVzIGFyZSByZXdyaXR0ZW4uIE5vIG5ldyB3b3JrZXIgc2NoZWR1bGUgaXMgYWRkZWQuIFN0cmlwZSByZW1haW5zIFRFU1QuIEtlZXAgc3RhZ2VkIGZpbGVzL2pvdXJuYWwvbWFpbnRlbmFuY2Ugb24gZmFpbHVyZTsgcmV2aWV3IGJlZm9yZSByZXN1bWluZyB0aGUgc2FtZSBhcHAgcGFja2FnZS4gQWN0dWFsIGhvc3QgY29tcGxldGlvbiBhbmQgY29ubmVjdGVkIGN1c3RvbWVyIHJlcXVlc3QvZGl2aXNpb24gbm90aWZpY2F0aW9uL3N0YWZmIGFwcHJvdmFsL25vZWFybHlSU1ZQL2RlY2xpbmUgYWNjZXB0YW5jZSByZW1haW4gcGVuZGluZy4K'))
+          files=[root/name for name in expected]
+          for path in files: assert hashlib.sha256(path.read_bytes()).hexdigest()==expected[path.name]
+          (root/'DOWNLOADS_SHA256SUMS.txt').write_text(''.join(expected[p.name]+'  '+p.name+'\n' for p in files))
+          files.append(root/'DOWNLOADS_SHA256SUMS.txt')
+          def api(url,method='GET',obj=None,data=None,content_type='application/json'):
+              if obj is not None:data=json.dumps(obj).encode()
+              request=urllib.request.Request(url,data=data,method=method,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'User-Agent':'SiteSee-reviewed-WHM-helper','Accept':'application/vnd.github+json','Content-Type':content_type})
+              with urllib.request.urlopen(request,timeout=120) as response:return json.load(response)
+          for attempt in range(90):
+              runs=api('https://api.github.com/repos/SiteSeeAI/SiteSee-Real-Estate-Web-App/actions/runs?branch=feat/unified-server-app-20261007&per_page=100')['workflow_runs']
+              matches=[r for r in runs if r['head_sha']==commit and r['name']=='Appointment Host Checks']
+              if matches and matches[0]['status']=='completed':
+                  assert matches[0]['conclusion']=='success','Required real FPM helper checks failed'
+                  break
+              time.sleep(10)
+          else:raise RuntimeError('Exact helper FPM CI not completed; no publication')
+          release_url='https://api.github.com/repos/SiteSeeAI/SiteSee-Real-Estate-Web-App/releases/407238934'
+          release=api(release_url)
+          assert release['tag_name']=='unified-host-a752058b663d' and release['target_commitish']==commit and release['prerelease'] is True
+          assets={a['name']:a for a in release['assets']}
+          for path in files:
+              data=path.read_bytes();digest=hashlib.sha256(data).hexdigest();asset=assets.get(path.name)
+              if asset is None:
+                  assert release['draft'] is True
+                  url=release['upload_url'].split('{',1)[0]+'?'+urllib.parse.urlencode({'name':path.name})
+                  asset=api(url,'POST',data=data,content_type='application/octet-stream')
+              assert asset['state']=='uploaded' and asset['size']==len(data) and asset.get('digest')=='sha256:'+digest
+              print(path.name+': verified SHA256/upload')
+          release=api(release_url)
+          assert set(a['name'] for a in release['assets'])==set(p.name for p in files)
+          if release['draft']:release=api(release_url,'PATCH',obj={'draft':False,'prerelease':True,'make_latest':'false'})
+          assert release['draft'] is False and release['prerelease'] is True
+          print('Published helper-only TEST downloads: '+release['html_url'])
