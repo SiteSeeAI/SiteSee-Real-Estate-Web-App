@@ -587,10 +587,22 @@ class UnifiedRelease(unittest.TestCase):
         with self.assertRaisesRegex(installer.Stop, 'Different unified release record preserved'):
             self.plan()
         self.assertEqual(path.read_bytes(), corrupted); path.write_bytes(original)
-        changed = self.private / 'server/portal-service.php'
-        changed.write_bytes(self.files['private/server/portal-service.php'])
+        name = 'private/server/booking-staff.php'
+        changed = installer.target(name, self.private, self.public)
+        self.assertNotEqual(installer.sha(changed.read_bytes()), installer.sha(self.files[name]))
+        changed.write_bytes(self.files[name])
+        # Even if active manifests are advanced to an accepted new source, the exact
+        # installed predecessor record must reject a mixed, unjournaled deployment.
+        for filename in self.obj['active_manifests']:
+            manifest = self.private / filename
+            record = json.loads(manifest.read_bytes())
+            for key in record['files']:
+                lookup = key if key.startswith(('private/', 'public/')) else 'private/' + key
+                if lookup == name: record['files'][key] = installer.sha(self.files[name])
+            manifest.write_bytes(installer.encode(record))
         with self.assertRaisesRegex(installer.Stop, 'Installed predecessor file differs'):
             self.plan()
+        self.assertEqual(changed.read_bytes(), self.files[name])
 
     def test_installed_predecessor_backup_record_checked_on_resume(self):
         self.seed_installed_predecessor()

@@ -49,11 +49,15 @@ foreach ($manifest['files'] as $path=>$item) {
     $before = base64_decode($item['before'], true);
     $after = file_get_contents($root.'/'.$path);
     if($path==='_private/server/booking-staff.php'){
+        $ux=json_decode(file_get_contents($root.'/documents/unified/booking-review-source.json'),true,512,JSON_THROW_ON_ERROR)['files'][$path];
+        shell_check(hash('sha256',$after)===$ux['after_sha256']&&$after===base64_decode($ux['after'],true),'Staff Booking UX changes have reviewed source integrity');
+        $after=base64_decode($ux['before'],true);
+        shell_check(hash('sha256',$after)===$ux['before_sha256'],'Prior appointment-approval source is retained byte-exact');
         $review=json_decode(file_get_contents($root.'/documents/unified/appointment-approval-source.json'),true,512,JSON_THROW_ON_ERROR)['files'][$path];
         shell_check(hash('sha256',$after)===$review['after_sha256'],'Staff approval changes have reviewed source integrity');
         $previous=base64_decode($review['before'],true);
         shell_check(hash('sha256',$previous)===$review['before_sha256']&&hash('sha256',$previous)===$item['after_sha256'],'Prior staff shell/action contract is retained byte-exact');
-        $after=$previous; // The separately tested approval workflow is the only later staff change.
+        $after=$previous; // Reverse the separately tested UX and approval layers before checking the original shell contract.
     }
     shell_check(hash('sha256', $before) === $item['before_sha256'], $path.' original source integrity');
     shell_check(hash('sha256', $after) === $item['after_sha256'], $path.' reviewed source integrity');
