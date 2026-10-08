@@ -64,6 +64,17 @@ class HostUpdate(unittest.TestCase):
         values = {1: {'argv': [b'php-fpm: pool re_sitesee_ai']}, 2: {'argv': [b'php-fpm: pool other']}, 3: {'argv': [b'']}}
         self.assertEqual(set(host.pool_processes(values)), {1})
 
+    def test_apache_drain_excludes_persistent_logger_and_keeps_late_worker(self):
+        with tempfile.TemporaryDirectory() as directory:
+            httpd = pathlib.Path(directory) / 'httpd'; httpd.write_bytes(b'synthetic executable')
+            info = httpd.stat(); identity = (info.st_dev, info.st_ino)
+            values = {10: {'parent': 1, 'exe': identity}, 11: {'parent': 10, 'exe': identity},
+                      12: {'parent': 10, 'exe': (999, 999)}, 13: {'parent': 10, 'exe': identity}}
+            self.assertEqual(set(host.apache_workers(values, 10, str(httpd))), {11, 13})
+            values[10]['exe'] = (888, 888)
+            with self.assertRaisesRegex(RuntimeError, 'master executable differs'):
+                host.apache_workers(values, 10, str(httpd))
+
     def test_final_worker_drain_rechecks_processes_after_first_generation(self):
         path = str(host.PRIVATE / 'server/booking-lifecycle-reconcile.php').encode()
         first = {41: {'argv': [b'php', path], 'start': '100'}}
@@ -73,6 +84,12 @@ class HostUpdate(unittest.TestCase):
         self.assertEqual(drain.call_count, 2)
         self.assertEqual(drain.call_args_list[0].args[0], first)
         self.assertEqual(drain.call_args_list[1].args[0], second)
+
+    def test_worker_drain_includes_relative_and_inline_php_invocations(self):
+        values = {1: {'argv': [b'php', b'booking-lifecycle-reconcile.php']},
+                  2: {'argv': [b'php', b'-r', b"require '/home/sitesee/.sitesee-real-estate/server/booking-lifecycle-reconcile.php';"]},
+                  3: {'argv': [b'php', b'unrelated.php']}}
+        self.assertEqual(set(host.worker_processes(values)), {1, 2})
 
     def test_unreadable_root_crontab_blocks_update_before_any_mutation(self):
         result = subprocess.CompletedProcess([], 1, stdout='', stderr='permission denied')
@@ -148,7 +165,7 @@ class HostUpdate(unittest.TestCase):
             self.exchange(b'private credentials should never appear')
         self.assertNotIn('credentials', str(caught.exception))
 
-    def reopen_case(self, failure=None, account_status=200):
+    def reopen_case(self, failure=None, account_status=200, interrupt=False):
         with tempfile.TemporaryDirectory() as name:
             includes = [pathlib.Path(name) / n for n in ['std.conf', 'ssl.conf']]
             gate = b'Redirect 503 /\n'
@@ -158,6 +175,8 @@ class HostUpdate(unittest.TestCase):
             def run(command):
                 commands.append(command)
                 if failure and len(commands) == failure:
+                    if interrupt:
+                        raise KeyboardInterrupt()
                     raise RuntimeError('synthetic command failure')
                 return ''
             def checked(path, uid):
@@ -184,6 +203,11 @@ class HostUpdate(unittest.TestCase):
 
     def test_failed_account_request_restores_maintenance(self):
         self.reopen_case(account_status=500)
+
+    def test_operator_interrupt_during_each_unpause_stage_restores_maintenance(self):
+        for stage in [1, 2, 3]:
+            with self.subTest(stage=stage):
+                self.reopen_case(failure=stage, interrupt=True)
 
 
 if __name__ == '__main__':

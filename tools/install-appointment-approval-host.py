@@ -113,7 +113,12 @@ def processes():
         try:
             fields = (p / 'stat').read_text().rsplit(')', 1)[1].split()
             argv = (p / 'cmdline').read_bytes().split(b'\0')
-            result[int(p.name)] = {'parent': int(fields[1]), 'start': fields[19], 'argv': argv}
+            try:
+                executable = (p / 'exe').stat()
+                identity = (executable.st_dev, executable.st_ino)
+            except FileNotFoundError:
+                identity = None  # Kernel thread or already exited.
+            result[int(p.name)] = {'parent': int(fields[1]), 'start': fields[19], 'argv': argv, 'exe': identity}
         except (FileNotFoundError, ProcessLookupError):
             continue
     return result
@@ -231,9 +236,16 @@ def pool_processes(current):
             if v['argv'] and v['argv'][0].rstrip() == ('php-fpm: pool ' + POOL).encode()}
 
 
+def apache_workers(current, master, httpd):
+    info = pathlib.Path(httpd).stat()
+    identity = (info.st_dev, info.st_ino)
+    need(master in current and current[master]['exe'] == identity, 'Apache master executable differs; no code update advanced.')
+    return {pid: v for pid, v in current.items() if v['parent'] == master and v['exe'] == identity}
+
+
 def worker_processes(current):
-    worker = str(PRIVATE / 'server/booking-lifecycle-reconcile.php').encode()
-    return {pid: v for pid, v in current.items() if worker in v['argv']}
+    worker = b'booking-lifecycle-reconcile.php'
+    return {pid: v for pid, v in current.items() if any(worker in arg for arg in v['argv'])}
 
 
 def drain_workers(timeout=45):
@@ -311,7 +323,7 @@ def reopen(includes, gate, rebuild, httpd, graceful):
             p.unlink()
         run([rebuild]); run([httpd, '-t']); run([graceful, '--graceful'])
         need(web_status('/account.php') == 200, 'Anonymous account check failed.')
-    except Exception:
+    except BaseException:
         for p in includes:
             if not p.exists() and not p.is_symlink():
                 atomic(p, gate, 0, 0, 0o644)
@@ -391,14 +403,16 @@ def main():
                 need(time.monotonic() < until, 'Existing reconciliation lock did not drain; no traffic pause started.')
                 time.sleep(0.25)
         current = processes()
-        apache_old = {pid: v for pid, v in current.items() if v['parent'] == int(apache['MainPID'])}
         worker_old = worker_processes(current)
         for p in includes:
             include_parent(p)
             if not p.exists():
                 atomic(p, gate, 0, 0, 0o644)
         print('Pausing re.sitesee.ai and draining old requests.', flush=True)
-        run([rebuild]); run([httpd, '-t']); run([graceful, '--graceful'])
+        run([rebuild]); run([httpd, '-t'])
+        need(service('httpd').get('MainPID') == apache.get('MainPID'), 'Apache master changed during preparation; review before resuming.')
+        apache_old = apache_workers(processes(), int(apache['MainPID']), httpd)
+        run([graceful, '--graceful'])
         need(web_status('/portal-assets/application.css') == 503, 'Host traffic pause is not proven; code was not changed.')
         wait_gone(apache_old, 'Old Apache executions'); wait_gone(worker_old, 'Existing reconciliation executions')
         php_old = pool_processes(processes())
