@@ -71,7 +71,7 @@
     }
   },
   "host_preflight": {
-    "status": "pending corrected public Apache first line and read-only inventory",
+    "status": "matching downloads verified; Apache passed; SVG CRLF normalization repair and complete inventory pending operator",
     "hosting": "cPanel account sitesee",
     "account_uid": 1009,
     "account_gid": 1011,
@@ -79,8 +79,19 @@
     "php_cli": "/opt/cpanel/ea-php82/root/usr/bin/php",
     "public_htaccess_before_sha256": "e640befd468cd72a53a925ae633490e09fae922c7bf7299e9d73b523178c7ee2",
     "exact_host_bytes_reconstructed": false,
-    "public_htaccess_review": "Joined Options/DirectoryIndex first line plus reviewed cPanel ea-php82 handler. Correct only joined header after a private backup; preserve handler. Representative fixtures are not claimed to be exact host bytes.",
-    "inventory": "requested; pending user output"
+    "public_htaccess_review": "Operator confirmed the first two physical lines are already correct; leave unchanged. Latest d380 preflight passed the reviewed Apache handler gate. Earlier pasted joined text was not proof of physical file corruption.",
+    "inventory": "bounded repair helper scans all payloads; pending operator execution",
+    "staged_upload_backup": "/home/sitesee/staging/verified-download-nwsh5cdz",
+    "svg_review": {
+      "file": "public/assets/images/platform/notes-collaboration.svg",
+      "served_bytes": 6240,
+      "served_sha256": "0fd47ceb96ace2afc73878e1be338d037140472c4b90e12471c75730049a9f4e",
+      "normalized_bytes": 6158,
+      "normalized_sha256": "b9cba09d64909add099515d23df994ab9a3673f9fbc829bcf8922737f1212cce",
+      "difference": "82 CRLF endings only; exact canonical payload after normalization",
+      "local_repair_validation": "eleven disposable scenarios passed; see HOST_LINE_ENDING_REPAIR.md",
+      "real_host_repair": "pending"
+    }
   },
   "installed_connected_TEST": "pending; existing re.sitesee.ai",
   "server_update": "not executed; user performed one private-file mode repair only",

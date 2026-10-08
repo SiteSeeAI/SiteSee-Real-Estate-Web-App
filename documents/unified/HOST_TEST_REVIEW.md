@@ -13,19 +13,13 @@ mkdir -p /home/sitesee/staging
 chmod 700 /home/sitesee/staging
 ```
 
-The first host preflight discovered an existing private `.htaccess` mode of 0666. The operator set that one file to 0600; the private source checks then passed. The public `.htaccess` has a malformed first line, `Options -IndexesDirectoryIndex index.html`, and a legitimate cPanel PHP 8.2 handler. Its reported pre-repair SHA-256 is `e640befd468cd72a53a925ae633490e09fae922c7bf7299e9d73b523178c7ee2`. The raw host bytes have not been independently reconstructed.
+The first host preflight discovered an existing private `.htaccess` mode of 0666. The operator set that one file to 0600; the private source checks then passed. The pasted public Apache output appeared to join the first two directives, but the operator subsequently confirmed both physical lines already existed correctly. Do not edit the public `.htaccess`; the latest d380 preflight passed its Apache validation, including the cPanel `ea-php82` handler. The raw host bytes have not been independently reconstructed.
 
-Before another preflight, use File Manager to copy `/home/sitesee/public_html/re/.htaccess` into `/home/sitesee/staging/re-htaccess-before.txt`; preserve any existing backup instead of overwriting it. The staging folder must be 0700 and the backup 0600. In the original public file, replace only the joined first line with these two lines followed by one blank line:
+Both matching d380 downloads are now verified on the server. The previous staged uploads are retained in `/home/sitesee/staging/verified-download-nwsh5cdz`. The next file check stopped at `public/assets/images/platform/notes-collaboration.svg`. Its anonymously served HTTPS representation is 6240 bytes with SHA-256 `0fd47ceb96ace2afc73878e1be338d037140472c4b90e12471c75730049a9f4e`; replacing its 82 CRLF line endings with LF gives the exact 6158-byte canonical d380 payload. The frozen builder permits historical LF/CRLF for several text suffixes but omitted SVG. There is only one SVG among the 267 payloads.
 
-```apache
-Options -Indexes
-DirectoryIndex index.html
+[HOST_LINE_ENDING_REPAIR.md](HOST_LINE_ENDING_REPAIR.md) describes the bounded repair helper, which verifies the matching installer and entire frozen archive, checks all payloads and preserves every file if any genuine edit remains. It durably backs up only a proven CRLF-equivalent public SVG before atomic newline normalization and repeats read-only preflight. It requires no replacement application package, does not call `--install`, and retains all existing path/ownership/TEST/journal/concurrency guards. The operator has not run this repair yet.
 
-```
-
-Retain every later line, including the full cPanel-generated `ea-php82` handler block. This is a targeted repair of existing Apache syntax, not application installation. If the file no longer matches the reported text/hash, stop and review the new differences. The revised installer validates all application directives and exactly the reviewed handler, preserves the original host bytes/mode/owner/inode/mtime during application installation and code recovery, and records their actual digest. Other changes still stop preflight.
-
-A read-only inventory of all 267 payload paths has been requested to collect any remaining host differences together. No application deployment is approved by a file repair, an inventory, or a successful preflight.
+The repair helper collects all 267 payload path differences together; that server output remains pending. No application deployment is approved by a file repair, an inventory, or a successful preflight.
 
 Run this read-only preflight after the upload:
 

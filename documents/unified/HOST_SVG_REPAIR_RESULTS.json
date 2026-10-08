@@ -1,0 +1,35 @@
+{
+  "helper": "tools/fix-host-svg-line-endings.py",
+  "helper_sha256": "4f149a6ab6651e6afe84e3749b409d2127464027237c08fee469af0a0b8a261c",
+  "frozen_source": "d380d41a090342d82255906f73fad518d722020d",
+  "package_sha256": "3a33d161bcd2ed96485bb23b6560eef63df6a5c844a33313dfb1b475c4fd83ae",
+  "installer_sha256": "ef9442311d50a44f4b3b7352550fee0fe9c81b68cf2c9d1dd44642cdda7a2503",
+  "local_cases": 11,
+  "local_passed": 11,
+  "local_failed": 0,
+  "evidence_directory": "/workspace/.sitesee-onboarding/unified-host-evidence",
+  "evidence": [
+    {
+      "name": "svg-repair-verification.json",
+      "sha256": "8739b3cb6a2cabd82911e6216444e24e9c65590273cadbfce7f51569f33fd6c3",
+      "bytes": 2847
+    },
+    {
+      "name": "served-svg-inventory.json",
+      "sha256": "6fc2cce4c60c45164644afdf1456b57c4ecb7eabc5b90ffddf9352164b5279fa",
+      "bytes": 227
+    },
+    {
+      "name": "host-notes-collaboration.svg",
+      "sha256": "0fd47ceb96ace2afc73878e1be338d037140472c4b90e12471c75730049a9f4e",
+      "bytes": 6240
+    }
+  ],
+  "real_host_repair": "pending operator execution",
+  "server_full_inventory": "pending operator output",
+  "application_installation": "not authorized or executed",
+  "stripe": "TEST",
+  "post_repair_cli_source": "d380d41a090342d82255906f73fad518d722020d",
+  "post_repair_cli_package": "exact staged frozen d380 package and matching installer, with disposable fixture roots",
+  "independent_review": "Complete: all three first-draft guard findings corrected before publication, source/hash and three evidence records verified, verified-byte loader race independently reproduced; no unresolved actionable defect."
+}
