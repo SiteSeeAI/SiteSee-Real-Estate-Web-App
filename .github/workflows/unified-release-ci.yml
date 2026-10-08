@@ -6,6 +6,8 @@ on:
       - 'public/**'
       - 'tools/build-unified-release.py'
       - 'tools/install-unified.py'
+      - 'tools/install-appointment-approval-host.py'
+      - 'tests/appointment-approval-host.test.py'
       - 'tests/unified-release.test.py'
       - 'tests/booking_crm_recovery_test.py'
       - 'tests/fixtures/booking-crm-before/**'
@@ -18,6 +20,8 @@ on:
       - 'public/**'
       - 'tools/build-unified-release.py'
       - 'tools/install-unified.py'
+      - 'tools/install-appointment-approval-host.py'
+      - 'tests/appointment-approval-host.test.py'
       - 'tests/unified-release.test.py'
       - 'tests/booking_crm_recovery_test.py'
       - 'tests/fixtures/booking-crm-before/**'
@@ -40,6 +44,8 @@ jobs:
         with:
           php-version: '${{ matrix.php }}'
           extensions: pdo_sqlite, curl, openssl
+      - name: Check host protocol, drain and failed traffic reopening
+        run: python3 tests/appointment-approval-host.test.py
       - name: Rehearse release and every interrupted replacement
         run: python3 tests/unified-release.test.py
       - name: Require real privileged ownership checks without skips
