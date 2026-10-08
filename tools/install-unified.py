@@ -563,7 +563,7 @@ def main():
     parser.add_argument('--account', default='sitesee')
     parser.add_argument('--php', default='/opt/cpanel/ea-php82/root/usr/bin/php')
     parser.add_argument('--first-upgrade-drained', action='store_true',
-                        help='Attest the reviewed host traffic/worker pause and old PHP/OPCache drain completed before this predecessor upgrade.')
+                        help='Attest the reviewed host traffic/worker pause and old PHP/OPCache drain completed before a first predecessor upgrade or code rollback.')
     actions = parser.add_mutually_exclusive_group(required=True)
     for action in ('preflight', 'install', 'resume', 'verify', 'rollback-code'):
         actions.add_argument('--' + action, action='store_true')
@@ -617,6 +617,7 @@ def main():
             return
         if args.rollback_code:
             need(journal is not None, 'Backup journal required.')
+            need(args.first_upgrade_drained, 'Code rollback requires the reviewed host traffic/worker pause and PHP drain; older restored routes do not enforce the new maintenance boundary.')
             rollback_request_guard(db)
             marker, value = maintenance_begin(root, uid, gid, obj, args.sha256)
             with calendar_boundary(root, uid, gid):

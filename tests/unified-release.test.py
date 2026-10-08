@@ -509,6 +509,14 @@ class UnifiedRelease(unittest.TestCase):
         self.assertFalse(self.journal_path.exists())
         self.assertFalse((self.private / '.unified-maintenance.json').exists())
 
+    def test_code_rollback_requires_explicit_host_drain_attestation(self):
+        self.cli('--install')
+        original = self.journal_path.read_bytes()
+        self.assertIn('Code rollback requires', self.cli('--rollback-code', success=False, drained=False))
+        self.assertEqual(self.journal_path.read_bytes(), original)
+        self.assertFalse((self.private / '.unified-maintenance.json').exists())
+        self.assertIn('VERIFY PASS', self.cli('--verify'))
+
     def bootstrap_probe(self):
         source = 'require $argv[1]."/server/application.php"; site_application_bootstrap($argv[1]); echo "ready";'
         return subprocess.run([shutil.which('php'), '-r', source, str(self.private)], capture_output=True, text=True)
