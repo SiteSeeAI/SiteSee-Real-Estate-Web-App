@@ -236,11 +236,35 @@ def preserved_apache(source, current, accepted):
     return current
 
 
+PRESERVED_PUBLIC = {'public/.htaccess', 'public/assets/js/turnstile.js',
+                    'public/assets/images/platform/notes-collaboration.svg'}
+
+
+def preserved_public(name, source, current, accepted):
+    if name == 'public/.htaccess':
+        return preserved_apache(source, current, accepted)
+    need(name in PRESERVED_PUBLIC and current is not None, 'Required preserved file missing: ' + name)
+    if sha(current) in accepted:
+        return current
+    normalized = current.replace(b'\r\n', b'\n')
+    canonical = source.replace(b'\r\n', b'\n')
+    if name.endswith('.svg'):
+        need(normalized == canonical, 'Unknown deployed edit preserved: ' + name)
+    else:
+        marker = b'__SITESEE_AUDIT_SITEKEY__'
+        need(canonical.count(marker) == 1, 'Turnstile template differs.')
+        match = re.search(rb"(?m)^  const SITESEE_SITEKEY = '([A-Za-z0-9_-]{10,200})';$", normalized)
+        need(match is not None and not re.match(rb'^[123]x0{8,}', match.group(1)) and
+             canonical.replace(marker, match.group(1)) == normalized,
+             'Unknown deployed edit preserved: ' + name)
+    return current
+
+
 def release_record(obj, files, deployed, manifest_sha):
     return encode({'release': obj['release'], 'commit': obj['commit'], 'stage': 'TEST',
         'manifest_sha256': manifest_sha, 'migration': 'none',
         'files': {n: sha(deployed[n]) for n in files},
-        'preserved_host_files': {'public/.htaccess': sha(deployed['public/.htaccess'])}})
+        'preserved_host_files': {n: sha(deployed[n]) for n in sorted(PRESERVED_PUBLIC)}})
 
 
 def inspect(obj, files, root, public, uid, manifest_sha):
@@ -248,8 +272,8 @@ def inspect(obj, files, root, public, uid, manifest_sha):
     for name, item in obj['files'].items():
         path = target(name, root, public)
         data = read(path, uid, item['allow_missing'])
-        if name == 'public/.htaccess':
-            after[name] = preserved_apache(files[name], data, item['accepted_before'])
+        if name in PRESERVED_PUBLIC:
+            after[name] = preserved_public(name, files[name], data, item['accepted_before'])
         else:
             need((data is None and item['allow_missing']) or sha(data) in item['accepted_before'], 'Unknown deployed edit preserved: ' + name)
         before[name] = data
@@ -378,8 +402,8 @@ def recover_plan(obj, files, journal, package_sha, root, public, db, uid, manife
         before[name], metas[name] = data, meta
     # Recompute active manifest updates from the immutable original backups.
     after = dict(files)
-    after['public/.htaccess'] = preserved_apache(files['public/.htaccess'], before['public/.htaccess'],
-                                               obj['files']['public/.htaccess']['accepted_before'])
+    for name in sorted(PRESERVED_PUBLIC):
+        after[name] = preserved_public(name, files[name], before[name], obj['files'][name]['accepted_before'])
     for filename in obj['active_manifests']:
         name = 'private/' + filename
         record = json.loads(before[name]); changed = False
@@ -495,7 +519,7 @@ def main():
             print(json.dumps({'result': 'PREFLIGHT PASS', 'release': obj['release'], 'commit': obj['commit'],
                   'stage': 'TEST', 'deployment_files': len(files), 'changed_files': sum(before[n] != after[n] for n in after),
                   'journal': None if journal is None else journal['state'], 'database': 'read-only integrity checked',
-                  'preserved_host_files': {'public/.htaccess': sha(after['public/.htaccess'])},
+                  'preserved_host_files': {n: sha(after[n]) for n in sorted(PRESERVED_PUBLIC)},
                   'fpm_and_connected_acceptance': 'pending; CLI is not FPM evidence'}))
             return
         if args.restore_rehearsal:

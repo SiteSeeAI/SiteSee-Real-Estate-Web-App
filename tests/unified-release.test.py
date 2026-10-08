@@ -326,6 +326,69 @@ class UnifiedRelease(unittest.TestCase):
         self.assertEqual(installer.metadata(path), original_meta)
         self.assertEqual(json.loads(manifest_path.read_bytes())['files']['public/.htaccess'], installer.sha(data))
 
+    def test_configured_turnstile_and_crlf_svg_preserved_through_all_actions(self):
+        names = ['public/assets/js/turnstile.js', 'public/assets/images/platform/notes-collaboration.svg']
+        original = {}
+        for name in names:
+            path = installer.target(name, self.private, self.public)
+            data = path.read_bytes().replace(b'__SITESEE_AUDIT_SITEKEY__', b'0x4ABCDEFGHIJKLMNOPQRSTUV').replace(b'\n', b'\r\n')
+            path.write_bytes(data)
+            info = path.stat()
+            original[name] = (data, installer.metadata(path), info.st_ino, info.st_mtime_ns)
+        manifest = self.private / self.obj['active_manifests'][0]
+        record = json.loads(manifest.read_bytes())
+        record['files'].update({name: installer.sha(values[0]) for name, values in original.items()})
+        manifest.write_bytes(installer.encode(record))
+        result = json.loads(self.cli('--preflight'))
+        self.assertFalse(self.journal_path.exists())
+        for name, values in original.items():
+            self.assertEqual(result['preserved_host_files'][name], installer.sha(values[0]))
+        for action in ('--install', '--verify', '--resume', '--rollback-code'):
+            self.cli(action)
+            for name, (data, meta, inode, mtime) in original.items():
+                path = installer.target(name, self.private, self.public)
+                self.assertEqual(path.read_bytes(), data)
+                self.assertEqual(installer.metadata(path), meta)
+                self.assertEqual((path.stat().st_ino, path.stat().st_mtime_ns), (inode, mtime))
+                self.assertEqual(json.loads(manifest.read_bytes())['files'][name], installer.sha(data))
+
+    def test_turnstile_other_code_changes_and_cloudflare_test_keys_refused(self):
+        name = 'public/assets/js/turnstile.js'
+        path = installer.target(name, self.private, self.public)
+        source = self.files[name]
+        configured = source.replace(b'__SITESEE_AUDIT_SITEKEY__', b'0x4ABCDEFGHIJKLMNOPQRSTUV')
+        variants = [configured.replace(b"token.value = '';", b"token.value = 'bypass';", 1),
+                    configured.replace(b'submit.disabled = true;', b'submit.disabled = false;', 1),
+                    source.replace(b'__SITESEE_AUDIT_SITEKEY__', b'1x00000000000000000000AA'),
+                    source.replace(b'__SITESEE_AUDIT_SITEKEY__', b"validkey123';evil();//")]
+        for data in variants:
+            with self.subTest(digest=installer.sha(data)):
+                path.write_bytes(data)
+                with self.assertRaisesRegex(installer.Stop, 'Unknown deployed edit preserved'):
+                    self.plan()
+                self.assertEqual(path.read_bytes(), data)
+                self.assertFalse(self.journal_path.exists())
+
+    def test_svg_changes_beyond_line_endings_preserved_and_refused(self):
+        name = 'public/assets/images/platform/notes-collaboration.svg'
+        path = installer.target(name, self.private, self.public)
+        changed = path.read_bytes().replace(b'SiteSee', b'EditedArtwork', 1).replace(b'\n', b'\r\n')
+        path.write_bytes(changed)
+        with self.assertRaisesRegex(installer.Stop, 'Unknown deployed edit preserved'):
+            self.plan()
+        self.assertEqual(path.read_bytes(), changed)
+
+    def test_configured_turnstile_concurrent_key_change_preserved(self):
+        name = 'public/assets/js/turnstile.js'
+        path = installer.target(name, self.private, self.public)
+        path.write_bytes(self.files[name].replace(b'__SITESEE_AUDIT_SITEKEY__', b'0x4ABCDEFGHIJKLMNOPQRSTUV'))
+        journal, _, _, _ = self.prepared()
+        changed = self.files[name].replace(b'__SITESEE_AUDIT_SITEKEY__', b'0x4ZYXWVUTSRQPONMLKJIHGF')
+        path.write_bytes(changed)
+        with self.assertRaisesRegex(installer.Stop, 'Concurrent/unknown edit preserved'):
+            self.recovered(journal)
+        self.assertEqual(path.read_bytes(), changed)
+
     def test_plain_crlf_apache_file_is_not_rewritten(self):
         path = self.public / '.htaccess'; data = path.read_bytes().replace(b'\n', b'\r\n'); path.write_bytes(data)
         before, after, _ = self.plan()
