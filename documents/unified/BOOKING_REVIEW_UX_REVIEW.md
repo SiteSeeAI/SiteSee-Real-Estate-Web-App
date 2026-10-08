@@ -1,0 +1,17 @@
+# Booking Review: steps and relevant actions
+
+The previous page combined booking review, connection checks, calendar confirmation, appointment changes, vendor access, onsite closeout and communication history. A checked alternative-window consent box could also look like a saved customer selection. The revised page starts with the booking summary and one next action selected from recorded state. Selecting that action opens the relevant screen; other action screens stay hidden. Staff can return to Overview or open secondary booking details without changing any record.
+
+Unpaid requests lead to review/deposit; paid requests need staff review before readiness navigation appears. Saving a valid paid review advances to readiness results. Rejected review stays with the form needing correction. Contact/connection problems lead to readiness, unconfirmed appointments to calendar confirmation, saved uncertain operations to recovery, and customer change requests to explicit Approve/Decline. Original confirmation, invitation send, recipient-copy evidence and CRM history remain separate. Customer requests never turn into automatic calendar edits or early RSVPs.
+
+Onsite Closeout starts collapsed, including when its screen is opened. A closeout POST opens its own section so validation, saved services, payment recovery and Production handoff remain visible. Original pricing, services, commission, payment consent, provider idempotency and vendor grants are unchanged. Booking Details keeps property access, communication history and prices in collapsed disclosures.
+
+Both initial calendar alternatives and later appointment alternatives use a blank window picker. Choosing a window reveals only its original confirmation form. Every change of selection and browser page restoration clears consent. The checkbox is a staff assertion for the exact displayed window, not evidence of a saved customer choice. Without JavaScript the original individually labelled forms remain usable; no default consent is generated.
+
+The design applies Hick's Law by reducing simultaneous visible choices, progressive disclosure by showing the relevant action screen, familiar browser navigation under Jakob's Law, and at least44px controls with visible keyboard focus under Fitts's Law. These are design choices, not a claim of formal UX research or universal compliance. Responsive checks cover320,390,736 and1200px.
+
+## Preservation and deployment
+
+Authentication and all POST handlers in booking-staff.php are byte-identical to the installed2de source. Domain, calendar/mail/CRM/payment functions and tables are unchanged. Navigation and window selection do not contact providers, send notices, change bookings or collect payment. The reviewed reversal layer preserves historical builders and rejects unknown edits.
+
+The upgrade targets exact installed unified-test-2de113503050, manifestSHA f07088f5da66cf17565e0bde7860f590e7f99d40fcf8f8282de00c5f1412186c. Two new payloads are explicitly reviewed: private/server/booking-review-ui.php and public/portal-assets/booking-review.js. The installer checks the predecessor record, preserves host variants and operational SQLite, backs up both new/existing paths and removes only its own unchanged new files on code rollback. Pending/applying manager requests still prohibit rollback. Existing root updater supplies traffic/worker pause and actualFPM verification. Stripe staysTEST; no new schedule or provider operation is added. This review is not host installation or connected acceptance evidence.

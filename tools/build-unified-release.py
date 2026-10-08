@@ -13,15 +13,16 @@ import tarfile
 BASELINE = 'ff5e625a8ff4c51af336e9203fa4be29b3611570'
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 NEW_FILES = {'private/server/application.php', 'private/views/application-shell.php',
-             'public/application-entry.php', 'public/portal-assets/application.css'}
+             'public/application-entry.php', 'public/portal-assets/application.css',
+             'private/server/booking-review-ui.php', 'public/portal-assets/booking-review.js'}
 CHANGED_PRIVATE = {'private/views/portal.php', 'private/server/vendor-app.php',
                    'private/server/booking-staff.php', 'private/server/booking-lifecycle.php',
                    'private/server/booking-lifecycle-store.php', 'private/server/booking-lifecycle-ui.php',
                    'private/server/booking-manage.php', 'private/server/booking-communication.php',
                    'private/server/portal-service.php', 'private/views/portal-service.php',
                    'private/server/booking-lifecycle-reconcile.php'}
-PREDECESSOR = {'commit': 'bd026c77d5963182000d06b58d80e9b7eb7fe944',
-               'manifest_sha256': '18319a55e72a262f908a99250e71125aa68bb8f30a59df060fbfda916dd376f9'}
+PREDECESSOR = {'commit': '2de113503050b4ca5a63ad0aaa1b14705a3726e0',
+               'manifest_sha256': 'f07088f5da66cf17565e0bde7860f590e7f99d40fcf8f8282de00c5f1412186c'}
 RUNTIME_SCHEMA = 'Additive booking_change_requests table and unique pending-request index on first normal application use; existing tables and rows unchanged.'
 ALIASES = {'account.php', 'vendor.php', 'staff-bookings.php', 'staff-production.php',
            'staff-vendors.php', 'manage-appointment.php', 'booking-pay.php',
@@ -106,7 +107,7 @@ def build(commit, output):
     members['source-test-manifest.json'] = encode(source)
     manifest = {'format': 1, 'release': 'unified-test-' + commit[:12], 'commit': commit,
                 'baseline': BASELINE, 'stage': 'TEST', 'migration': 'none',
-                'compatibility': 'reviewed bootstrap/shell and manager-approved reschedule requests; original financial/provider identities retained',
+                'compatibility': 'reviewed bootstrap/shell, manager-approved reschedule requests and stepped Booking Review; original financial/provider identities retained',
                 'runtime_schema': RUNTIME_SCHEMA,
                 'predecessor': PREDECESSOR | {'files': {n: sha(b) for n, b in sorted(previous_deploy.items())}},
                 'installer_sha256': sha(runner), 'source_manifest_sha256': sha(members['source-test-manifest.json']),

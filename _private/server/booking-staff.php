@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/booking-lifecycle-ui.php';
 require_once __DIR__ . '/booking-job-ui.php';
+require_once __DIR__ . '/booking-review-ui.php';
 require_once __DIR__ . '/vendor-admin.php';
 require_once dirname(__DIR__).'/views/application-shell.php';
 header('Cache-Control: no-store, private, max-age=0');
@@ -22,6 +23,7 @@ function staff_page(string $body, int $status = 200): never
 @font-face{font-family:Poppins;src:url(/assets/fonts/Poppins-SemiBold.ttf) format("truetype");font-weight:600 700;font-display:swap}
 :root{color-scheme:light;font:16px/1.6 Inter,Arial,sans-serif;color:#17252e;background:#f7f8f9}*{box-sizing:border-box}body{margin:0}header{background:#01111e;color:#fff;padding:24px max(6%,calc((100% - 1080px)/2));border-bottom:4px solid #ffc107}.brand{font:600 30px/1.2 Poppins,Arial,sans-serif}.brand span{color:#ffc107}header small{display:block;font-size:12px;margin-top:5px}main{max-width:1080px;margin:auto;padding:32px 24px 60px}h1,h2,h3{font-family:Poppins,Arial,sans-serif;color:#01111e;line-height:1.3;font-weight:500}h1{font-size:30px;margin:0 0 20px}h2{font-size:22px}h3{font-size:18px}p{margin:0 0 18px}a{color:#07517d;text-underline-offset:4px}a,button,summary,input,select{touch-action:manipulation}button,input,select{font:inherit}label{display:grid;gap:7px;margin:18px 0;max-width:680px}label:has(input[type=checkbox]){display:flex;gap:12px;align-items:flex-start}input:not([type=checkbox]),select{padding:10px 12px;border:1px solid #9faab1;border-radius:5px;min-height:46px;max-width:100%;width:100%;min-width:0}input[type=checkbox]{width:20px;height:20px;flex:0 0 20px;margin:3px 0}button{background:#01111e;color:#fff;padding:12px 18px;border:1px solid #01111e;border-radius:6px;min-height:46px;max-width:100%;cursor:pointer;text-align:left}button:hover{background:#163142}.quiet button{background:#fff;color:#17252e;border-color:#a6afb5}form{margin:16px 0}.topline{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:24px}.topline form{margin:0}.test-label{font-size:13px;font-weight:600;letter-spacing:1px}.help,.eyebrow{color:#58636b;font-size:14px}.eyebrow{font-size:12px;letter-spacing:.6px}.note,.error{padding:16px 20px;border-left:4px solid #ba8b00;background:#fff8dd;margin:20px 0}.error{background:#fff0f0;border-color:#9a1825;color:#9a1825}.card,.staff-fold{background:#fff;border:1px solid #d9dfe2;border-radius:8px;margin:20px 0;padding:24px}.next-step{border-left:4px solid #ffc107}.facts,.progress{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 28px;margin:18px 0}.progress{grid-template-columns:repeat(4,minmax(0,1fr));padding-top:18px;border-top:1px solid #d9dfe2}.progress dt{font-size:12px}.progress dd{font-size:14px;font-weight:600}dt{font-size:13px;color:#58636b}dd{margin:3px 0 0;overflow-wrap:anywhere}summary{cursor:pointer;min-height:44px;padding:8px 0;color:#01111e;font-weight:600}details[open]>summary{margin-bottom:16px}.staff-fold{padding:12px 24px}.staff-fold>summary{font-family:Poppins,Arial,sans-serif;font-size:18px}.section-body>h2:first-child,.section-body>section>h2:first-child{display:none}.section-body{padding:0 0 8px}details details{border-top:1px solid #d9dfe2;padding-top:8px;margin-top:20px}pre{overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;background:#f4f6f7;padding:16px;font:14px/1.6 Inter,Arial,sans-serif}li{margin:10px 0}.request-list{display:grid;gap:14px}.request-item{background:#fff;border:1px solid #d9dfe2;border-radius:8px;padding:20px 24px;display:grid;grid-template-columns:1fr auto;gap:10px 24px;align-items:center}.request-item h3{margin:4px 0 8px;overflow-wrap:anywhere}.request-item p{margin:4px 0;overflow-wrap:anywhere}.request-link{padding:10px 0;min-height:44px;white-space:nowrap}footer{border-top:1px solid #d9dfe2;padding:24px;color:#58636b;font-size:13px;text-align:center}:focus-visible{outline:3px solid #147eb3;outline-offset:4px}.skip{position:absolute;left:12px;top:-100px;background:#fff;padding:12px;z-index:1}.skip:focus{top:12px}
 [hidden]{display:none!important}#job-service-items fieldset{border:1px solid #d9dfe2;border-radius:6px;padding:14px 18px;margin:18px 0}#job-service-items legend{font-weight:600;padding:0 6px}#job-service-items button{background:#fff;color:#17252e;border-color:#a6afb5}#job-commission input{background:#f7f8f9}button:disabled{opacity:.55;cursor:wait}
+.booking-steps{display:flex;flex-wrap:wrap;gap:8px;margin:24px 0}.booking-steps a{display:inline-flex;align-items:center;min-height:44px;padding:9px 14px;border:1px solid #d9dfe2;border-radius:6px;background:#fff;text-decoration:none;overflow-wrap:anywhere}.booking-steps a[aria-current=step]{background:#01111e;color:#fff;border-color:#01111e}.step-primary{display:inline-block;background:#01111e;color:#fff;border-radius:6px;padding:12px 20px;min-height:46px;text-decoration:none}.step-continue{padding-top:20px;border-top:1px solid #d9dfe2}.booking-screen>h2{margin-bottom:8px}.booking-screen>.eyebrow{margin-bottom:4px}
 @media(max-width:650px){main{padding:26px 6% 44px}h1{font-size:25px}h2{font-size:20px}.card,.staff-fold{padding:18px}.staff-fold{padding:10px 18px}.facts{grid-template-columns:1fr}.progress{grid-template-columns:1fr 1fr;gap:16px}.request-item{grid-template-columns:1fr;padding:18px}.request-link{justify-self:start}.topline{align-items:flex-start}button{font-size:14px}header{padding:22px 6%}#job-service-items fieldset{padding:10px}}
 CSS;
     $staffTitle=defined('SITESEE_VENDOR_ADMIN_PAGE')&&SITESEE_VENDOR_ADMIN_PAGE?'Vendor Accounts':(defined('SITESEE_PRODUCTION_PAGE')&&SITESEE_PRODUCTION_PAGE?'Production':'Booking Review');
@@ -310,22 +312,25 @@ if ($row) {
     $body .= '<p><a href="staff-bookings.php">← All Requests</a></p><section class="card"><p class="eyebrow">Request ' . staff_escape($reference) . ' · ' . staff_escape(ucfirst($row['market'])) . '</p>'
         . '<h2>' . staff_escape(trim($details['street'] . ' ' . $details['unit'])) . '</h2><p class="help">' . staff_escape($details['city'] . ', ' . $details['state'] . ' ' . $details['zip']) . '</p><dl class="facts">'
         . '<div><dt>Customer</dt><dd>' . staff_escape($details['first'] . ' ' . $details['last']) . '<br>' . staff_escape($row['email']) . '</dd></div>'
-        . '<div><dt>Requested Arrival Window · Central Time</dt><dd>' . staff_escape($request['appointment']['date'] . ' ' . $request['appointment']['time'] . (isset($request['appointment']['windowEnd']) ? '–' . $request['appointment']['windowEnd'] : '')) . '</dd></div>'
+        . '<div><dt>' . ($staffClaim && $staffClaim['state'] === 'confirmed' ? 'Confirmed' : 'Requested') . ' Arrival Window · Central Time</dt><dd>' . staff_escape($request['appointment']['date'] . ' ' . $request['appointment']['time'] . (isset($request['appointment']['windowEnd']) ? '–' . $request['appointment']['windowEnd'] : '')) . '</dd></div>'
         . '<div><dt>Quote</dt><dd>' . staff_money((int)$row['quote_cents']) . '</dd></div><div><dt>Rush Service</dt><dd>' . staff_escape(ucfirst(str_replace('_', ' ', $row['rush_status']))) . ((int)$row['rush_fee_cents'] > 0 ? ' · ' . staff_money((int)$row['rush_fee_cents']) . ' approved fee' : '') . '</dd></div></dl>'
         . '<dl class="progress"><div><dt>Deposit</dt><dd>' . ($row['deposit_paid_at'] ? 'Recorded' : 'Not recorded') . '</dd></div><div><dt>Staff Review</dt><dd>' . ($row['approved_at'] ? 'Recorded' : 'Pending') . '</dd></div><div><dt>Calendar</dt><dd>' . staff_escape($calendarLabel) . '</dd></div><div><dt>Invitation</dt><dd>' . staff_escape($invitationLabel) . '</dd></div></dl></section>';
     $requestHtml = '<p>Saved booking status: <strong>' . staff_escape($row['status']) . '</strong><br>Window start UTC: ' . staff_escape($row['requested_utc']) . '.</p><p>Server quote: <strong>' . staff_money((int)$row['quote_cents']) . '</strong>'
         . ($row['platform_monthly_cents'] ? '; residential platform separately ' . staff_money((int)$row['platform_monthly_cents']) . '/month if selected and published' : '')
         . '<br>Estimated on site: ' . staff_escape((string)($quote['knownMinutes'] ?? 0)) . '–' . staff_escape((string)($quote['knownMinutesMax'] ?? $quote['knownMinutes'] ?? 0)) . ' minutes, plus any capture that requires confirmation.</p>'
         . '<p class="help">Staff only. Includes the customer’s property access instructions.</p><pre>' . staff_escape($request['salesPlain']) . '</pre>';
-    $body .= staff_disclosure('request-details', 'Services & Property Access', $requestHtml);
-    $body .= staff_job_panel($db,$reference);
-    $body .= vendor_admin_assignment($db,$reference);
+    $reviewHtml = '';
+    $detailsHtml = staff_disclosure('request-details', 'Services & Property Access', $requestHtml);
+    $jobHtml = staff_job_panel($db,$reference);
+    $onsiteHtml = $jobHtml !== '' ? staff_disclosure('onsite-closeout', 'Onsite Closeout', $jobHtml, str_starts_with($postedAction, 'job_')) : '';
+    $onsiteHtml .= vendor_admin_assignment($db,$reference);
+    $changeMail = booking_communication_get($db, 'lifecycle-' . $staffLife['revision'] . ':' . $reference);
     if ($row['reschedule_required']) {
-        $body .= '<p class="note">Rush declined. No rush fee is charged. The agent must request another standard window at least 72 hours ahead. Their existing deposit remains credited; do not create a new booking.</p>'
+        $reviewHtml .= '<p class="note">Rush declined. No rush fee is charged. The agent must request another standard window at least 72 hours ahead. Their existing deposit remains credited; do not create a new booking.</p>'
             . '<form method="post"><input type="hidden" name="csrf" value="' . $csrf . '"><input type="hidden" name="action" value="reschedule_link"><input type="hidden" name="reference" value="' . staff_escape($reference) . '"><button>Create Rescheduling Link</button></form>';
     }
     if ($row['status'] === 'awaiting_deposit_test') {
-        $body .= '<p class="note">Waiting for the test deposit. Schedule review becomes available only after the verified payment notification.</p>';
+        $reviewHtml .= '<p class="note">Waiting for the test deposit. Schedule review becomes available only after the verified payment notification.</p>';
     }
     $workflowStatus = null;
     $workflowHtml = $lifecycleHtml = '';
@@ -345,7 +350,7 @@ if ($row) {
     }
     if ($row['status'] === 'deposit_paid_test' && !$row['approved_at'] && !$row['reschedule_required']) {
         $duration = max(15, (int)($quote['knownMinutesMax'] ?? $quote['knownMinutes'] ?? 60));
-        $body .= '<section class="card next-step"><p class="eyebrow">NEXT STEP</p><h2>Review Paid Request</h2><p>Assign the photographer and check the requested arrival window. Saving this review does not confirm the calendar or send an invitation.</p>'
+        $reviewHtml .= '<section class="card next-step"><p class="eyebrow">NEXT STEP</p><h2>Review Paid Request</h2><p>Assign the photographer and check the requested arrival window. Saving this review does not confirm the calendar or send an invitation.</p>'
             . '<form method="post"><input type="hidden" name="csrf" value="' . $csrf . '"><input type="hidden" name="action" value="review_paid"><input type="hidden" name="reference" value="' . staff_escape($reference) . '">'
             . '<label>Photographer <input name="photographer" maxlength="120" value="David J Cro" required></label>'
             . '<label>Planned shoot duration (minutes) <input name="duration" type="number" min="15" max="1440" value="' . $duration . '" required></label>'
@@ -353,11 +358,10 @@ if ($row) {
             . ($row['rush_status'] === 'pending' ? '<label><input type="checkbox" name="rush_decision" value="approve" required> I approve rush service and the $59 fee on the remaining balance. No charge is made by this review.</label>' : '')
             . '<button>' . ($row['rush_status'] === 'pending' ? 'Approve Rush &amp; Save Test Review' : 'Save Test Review — No Invitation') . '</button></form>';
         if ($row['rush_status'] === 'pending') {
-            $body .= '<details' . ($postedAction === 'decline_rush' ? ' open' : '') . '><summary>Decline Rush Service</summary><form method="post"><input type="hidden" name="csrf" value="' . $csrf . '"><input type="hidden" name="action" value="decline_rush"><input type="hidden" name="reference" value="' . staff_escape($reference) . '"><label>Reason <input name="reason" maxlength="500" required></label><button>Decline Rush — Request Another Window</button></form></details>';
+            $reviewHtml .= '<details' . ($postedAction === 'decline_rush' ? ' open' : '') . '><summary>Decline Rush Service</summary><form method="post"><input type="hidden" name="csrf" value="' . $csrf . '"><input type="hidden" name="action" value="decline_rush"><input type="hidden" name="reference" value="' . staff_escape($reference) . '"><label>Reason <input name="reason" maxlength="500" required></label><button>Decline Rush — Request Another Window</button></form></details>';
         }
-        $body .= '</section>';
+        $reviewHtml .= '</section>';
     }
-    $body .= $workflowHtml;
     $calendarHtml = '';
     if ($row['status'] === 'deposit_paid_test' && $row['approved_at'] && booking_lifecycle_state($db,$reference)['state']==='active' && (int)booking_lifecycle_state($db,$reference)['revision']===0 && !booking_lifecycle_pending($db,$reference)) {
         $confirmation = booking_confirmation_get($db, $reference);
@@ -370,12 +374,18 @@ if ($row) {
             if (isset($alternatives)) {
                 $calendarHtml .= '<h3>Available Alternatives</h3><p>Central Time. Suggestions are checked again when selected and when confirmed. Agree a change with the customer first.</p>';
                 if (!$alternatives) $calendarHtml .= '<p>No fitting windows were found in the next 14 days from the requested date.</p>';
+                if ($alternatives) {
+                    $options = '<option value="">Choose an arrival window</option>';
+                    foreach ($alternatives as $alternative) $options .= '<option value="' . staff_escape($alternative['date'] . '|' . $alternative['time']) . '">' . staff_escape($alternative['date'] . ' ' . $alternative['time'] . '–' . $alternative['end_time']) . ' Central</option>';
+                    $calendarHtml .= '<div data-window-choices><label hidden>Customer-agreed arrival window<select data-window-picker aria-label="Customer-agreed arrival window" autocomplete="off">' . $options . '</select></label>';
+                }
                 foreach ($alternatives as $alternative) {
-                    $calendarHtml .= '<form method="post"><input type="hidden" name="csrf" value="' . $csrf . '"><input type="hidden" name="action" value="select_window"><input type="hidden" name="reference" value="' . staff_escape($reference)
+                    $calendarHtml .= '<form data-window-option="' . staff_escape($alternative['date'] . '|' . $alternative['time']) . '" method="post"><input type="hidden" name="csrf" value="' . $csrf . '"><input type="hidden" name="action" value="select_window"><input type="hidden" name="reference" value="' . staff_escape($reference)
                         . '"><input type="hidden" name="date" value="' . staff_escape($alternative['date']) . '"><input type="hidden" name="time" value="' . staff_escape($alternative['time'])
                         . '"><input type="hidden" name="booking_fingerprint" value="' . hash('sha256',json_encode($row,JSON_THROW_ON_ERROR)) . '"><p><strong>' . staff_escape($alternative['date'] . ' ' . $alternative['time'] . '–' . $alternative['end_time'])
                         . ' Central</strong></p><label><input type="checkbox" name="customer_agreed" value="yes" required> The customer agreed to this arrival window.</label><button>Use This Window — Review Again</button></form>';
                 }
+                if ($alternatives) $calendarHtml .= '</div>';
             }
             $calendarHtml .= '</details><p>Final confirmation checks the calendar again and blocks the full shoot duration inside the customer-agreed arrival window. It does not send an invitation.</p>';
             if ($canConfirm) {
@@ -402,11 +412,8 @@ if ($row) {
         }
     }
     if ($calendarHtml !== '') {
-        $calendarOpen = in_array($postedAction, ['confirm_calendar', 'reconcile_calendar', 'check_windows', 'select_window', 'send_invitation'], true)
-            || (!$staffClaim && (!$workflowStatus || $workflowStatus['link'])) || ($staffClaim && $staffClaim['state'] !== 'confirmed' && !$workflowStatus) || ($workflowStatus['can_send'] ?? false);
-        $body .= staff_disclosure('calendar-confirmation', 'Calendar & Invitation', $calendarHtml, (bool)$calendarOpen);
+        $calendarHtml = staff_disclosure('calendar-confirmation', 'Calendar & Invitation', $calendarHtml, true);
     }
-    $body .= $lifecycleHtml;
     $communicationsHtml = '';
     $communications = $db->prepare('SELECT * FROM booking_communications WHERE reference=? ORDER BY created_at');
     $communications->execute([$reference]);
@@ -417,7 +424,7 @@ if ($row) {
             . '<br>CRM: ' . staff_escape($communication['crm_state']) . '</p>';
         if ($communication['kind'] === 'invitation') $communicationsHtml .= '<p>Use Recover Booking Status above to check the sent copy, recipient evidence and CRM history together. Receipt and calendar acceptance are separate.</p>';
     }
-    if ($communicationsHtml !== '') $body .= staff_disclosure('communication-history', 'Communication History', $communicationsHtml);
+    if ($communicationsHtml !== '') $detailsHtml .= staff_disclosure('communication-history', 'Communication History', $communicationsHtml);
     $paymentHtml = '';
     if ($row['status'] === 'pending_review') {
         $duration = max(15, (int)($quote['knownMinutesMax'] ?? $quote['knownMinutes'] ?? 60));
@@ -441,7 +448,23 @@ if ($row) {
                 . staff_escape($reference) . '"><button>Replace Lost Test Link</button></form>';
         }
     }
-    $body .= staff_disclosure('payment-details', 'Price & Payment', $paymentHtml, $row['status'] === 'pending_review' || in_array($postedAction, ['rotate', 'approve'], true));
+    if ($row['status'] === 'pending_review') $reviewHtml .= staff_disclosure('payment-details', 'Price & Payment', $paymentHtml, true);
+    else $detailsHtml .= staff_disclosure('payment-details', 'Price & Payment', $paymentHtml, in_array($postedAction, ['rotate', 'approve'], true));
+    $screens = [];
+    if ($reviewHtml !== '') $screens['review'] = ['label'=>'Review Request', 'html'=>$reviewHtml];
+    if ($workflowHtml !== '') $screens['readiness'] = ['label'=>'Readiness & Recovery', 'html'=>$workflowHtml, 'available'=>(bool)$row['approved_at']];
+    if ($calendarHtml !== '') $screens['calendar'] = ['label'=>'Calendar & Invitation', 'html'=>$calendarHtml];
+    if ($lifecycleHtml !== '') $screens['appointment'] = ['label'=>'Manage Appointment', 'html'=>$lifecycleHtml];
+    if ($onsiteHtml !== '') $screens['onsite'] = ['label'=>'Onsite & Vendor', 'html'=>$onsiteHtml];
+    $screens['details'] = ['label'=>'Booking Details', 'html'=>$detailsHtml];
+    // Price-link replacement remains reachable even when no review is pending.
+    if ($reviewHtml === '' && in_array($row['status'], ['approved_test', 'awaiting_deposit_test'], true)) {
+        $screens['review'] = ['label'=>'Review Request', 'html'=>'<p>The checkout link is ready. Wait for the verified TEST deposit before schedule review.</p>'];
+    }
+    if ($postedAction === 'rotate') $screens['review'] = ['label'=>'Review Request', 'html'=>'<p>The replacement link is shown above. Keep it private.</p>'];
+    $next = staff_booking_next($row, $staffClaim ?: null, $staffLife, (bool)$staffPending, $staffChangeRequest ?: null, $staffMail ?: null, $changeMail ?: null, $workflowStatus, (bool)booking_job_get($db,$reference));
+    $body .= staff_booking_screens($reference, $screens, $next, $postedAction);
+    $body .= '<script src="/portal-assets/booking-review.js?v=booking-steps-r1" defer></script>';
 } else {
     $body .= '<h2>Recent Requests</h2><div class="request-list">';
     $recent = booking_recent($db);

@@ -46,7 +46,16 @@ function booking_lifecycle_html(PDO $db,array $row,string $csrf,bool $staff,arra
     if(!$request&&!$pending&&$s['state']!=='cancelled'){
         $html.=$form('windows','Check Available Alternatives','<label>Starting date <input type="date" name="date" value="'.$e(max($a['date'],(new DateTimeImmutable('now',new DateTimeZone('America/Chicago')))->format('Y-m-d'))).'" required></label>');
         if($windows)$html.='<p>Available two-hour arrival windows (Central Time). Availability is checked again when you confirm.</p>';
-        foreach($windows as$w)$html.=$form('reschedule',$staff?'Confirm New Arrival Window':'Request New Arrival Window',$hidden.'<input type="hidden" name="date" value="'.$e($w['date']).'"><input type="hidden" name="time" value="'.$e($w['time']).'"><p><strong>'.$e($w['date'].' '.$w['time'].'–'.$w['end_time']).' Central</strong></p><label><input type="checkbox" name="agreed" value="yes" required> '.($staff?'The customer agreed to this window.':'I request this window for manager approval; my confirmed appointment stays unchanged until approval.').'</label>');
+        if($windows&&$staff){
+            $options='<option value="">Choose an arrival window</option>';
+            foreach($windows as $w)$options.='<option value="'.$e($w['date'].'|'.$w['time']).'">'.$e($w['date'].' '.$w['time'].'–'.$w['end_time']).' Central</option>';
+            $html.='<div data-window-choices><p>Choose an alternative only after agreeing it with the customer. This is separate from a customer’s pending change request.</p><label hidden>Customer-agreed arrival window<select data-window-picker aria-label="Customer-agreed arrival window" autocomplete="off">'.$options.'</select></label>';
+        }
+        foreach($windows as $w){
+            $windowForm=$form('reschedule',$staff?'Confirm New Arrival Window':'Request New Arrival Window',$hidden.'<input type="hidden" name="date" value="'.$e($w['date']).'"><input type="hidden" name="time" value="'.$e($w['time']).'"><p><strong>'.$e($w['date'].' '.$w['time'].'–'.$w['end_time']).' Central</strong></p><label><input type="checkbox" name="agreed" value="yes" required autocomplete="off"> '.($staff?'The customer agreed to this window.':'I request this window for manager approval; my confirmed appointment stays unchanged until approval.').'</label>');
+            $html.=$staff?str_replace('<form ', '<form data-window-option="'.$e($w['date'].'|'.$w['time']).'" ', $windowForm):$windowForm;
+        }
+        if($windows&&$staff)$html.='</div>';
         if($staff&&$s['state']==='calendar_changed')$html.=$form('adopt','Adopt Calendar Move',$hidden.'<label>Customer-agreed date <input type="date" name="date" required></label><label>Arrival window starts <select name="time"><option>07:00</option><option>09:00</option><option>11:00</option><option>13:00</option><option>15:00</option><option>17:00</option></select></label><label><input type="checkbox" name="agreed" value="yes" required> I verified the calendar move and the customer agreed to this arrival window.</label>');
         $html.='<details><summary>Cancel Appointment</summary>'.$form('cancel','Confirm Cancellation',$hidden.'<label><input type="checkbox" name="agreed" value="yes" required> '.($staff?'The customer requested cancellation.':'I want to cancel this appointment.').'</label>').'</details>';
     }

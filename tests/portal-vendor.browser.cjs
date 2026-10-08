@@ -51,7 +51,7 @@ const reserve=()=>new Promise(resolve=>{const s=net.createServer();s.listen(0,'1
   await login(vendor,'3125550130');assert.match(await vendor.locator('main').innerText(),/No jobs are assigned/);
   await assertApplicationShell(vendor,'vendor',true);
   await login(foreign,'3125550131');
-  const assign=async(name)=>{await go(staff,staffUrl);await staff.locator('#vendor-assignment summary').click();const select=staff.getByLabel('Vendor Account',{exact:true});await select.selectOption({label:name},{timeout:5000}).catch(async e=>{throw Error(e.message+' BODY: '+await staff.locator('main').innerText());});await staff.getByRole('button',{name:'Assign Vendor',exact:true}).click();await staff.getByText('Vendor access updated. The booking, calendar and customer payment records are preserved.',{exact:true}).waitFor();};
+  const assign=async(name)=>{await go(staff,staffUrl+'&step=onsite');await staff.locator('#vendor-assignment summary').click();const select=staff.getByLabel('Vendor Account',{exact:true});await select.selectOption({label:name},{timeout:5000}).catch(async e=>{throw Error(e.message+' BODY: '+await staff.locator('main').innerText());});await staff.getByRole('button',{name:'Assign Vendor',exact:true}).click();await staff.getByText('Vendor access updated. The booking, calendar and customer payment records are preserved.',{exact:true}).waitFor();};
   await assign('Vendor One · +13125550130');
   await go(vendor,'/vendor.php');assert.equal(await vendor.getByRole('link',{name:'Open Job →',exact:true}).count(),1);
   const url='/vendor.php?reference='+ref;

@@ -45,7 +45,8 @@ const reserve=()=>new Promise(resolve=>{const s=net.createServer();s.listen(0,'1
   const login=async(p,phone)=>{fixture('portal-http','reset-sms-rate');await go(p,'/account.php');await p.getByLabel('Cell Phone Number',{exact:true}).fill(phone);await p.getByLabel('Text me a one-time sign-in code.',{exact:false}).check();await p.getByRole('button',{name:'Text My Sign In Code'}).click();await p.getByRole('heading',{name:'Enter Your Text Code'}).waitFor();const code=Object.values(JSON.parse(fs.readFileSync(path.join(root,'data/sms-fixture.json')))).at(-1).code;await p.getByLabel('Sign In Code',{exact:true}).fill(code);await p.getByRole('button',{name:'Sign In',exact:true}).click();await p.getByRole('heading',{name:'My Orders',exact:true}).waitFor().catch(async e=>{throw Error(e.message+' Page: '+await p.locator('body').innerText()+' PHP: '+logs);});};
   await login(customer,'3125550102');await login(foreign,'3125550101');
   const denied=await go(foreign,jobUrl);assert.equal(denied.status(),400);const denial=await denied.text();const absent=await go(foreign,'/account.php?view=job&reference=FFFFFFFFFF');assert.equal(absent.status(),400);assert.equal(await absent.text(),denial,'Foreign and missing jobs use the same generic response');
-  await go(staff,staffUrl);
+  await go(staff,staffUrl+'&step=onsite');
+  await staff.locator('#onsite-closeout>summary').click();
   const verified=()=>staff.getByText('Fees verified. Confirm the displayed total with the agent before Job Complete.',{exact:true}).waitFor();
   const onsite=staff.locator('#job-onsite');await verified();
   const keys=['photo','platform','website','drone','zillow','video','floor','twilight','mp'];
@@ -88,7 +89,7 @@ const reserve=()=>new Promise(resolve=>{const s=net.createServer();s.listen(0,'1
   fixture('job-http','refund');await go(customer,jobUrl);assert.equal(await customer.getByRole('link',{name:'Photo Download',exact:true}).count(),0);assert.match(await customer.locator('main').innerText(),/Under Billing Review/);
   await go(customer,'/account.php?view=billing&reference='+ref);assert.equal(await customer.getByRole('link',{name:'View Receipt',exact:true}).count(),2,'Deposit and final receipts stay accessible during review');
   assert.equal(fixture('job-http','snapshot'),baseline,'Original booking, calendar, CRM and mail records unchanged');provider=JSON.parse(fs.readFileSync(path.join(root,'data/job-provider.json')));assert.equal(provider.creates,1);assert.equal(provider.confirms,1);
-  fixture('job-http','commercial-preview');await go(staff,staffUrl);await verified();
+  fixture('job-http','commercial-preview');await go(staff,staffUrl+'&step=onsite');await staff.locator('#onsite-closeout>summary').click();await verified();
   const commercialKeys=['photo','platform','mp','views360','drone','video','floor','website'];
   assert.deepEqual(await staff.getByLabel('Service 1',{exact:true}).locator('option').evaluateAll(options=>options.map(o=>o.value).filter(Boolean)),commercialKeys);
   for(let i=0;i<commercialKeys.length;i++){

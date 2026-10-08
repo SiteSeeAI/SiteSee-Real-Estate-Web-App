@@ -476,7 +476,7 @@ class UnifiedRelease(unittest.TestCase):
             path.write_bytes(installer.encode(record))
         old = {'release': 'unified-test-' + previous['commit'][:12], 'commit': previous['commit'],
                'stage': 'TEST', 'manifest_sha256': previous['manifest_sha256'], 'migration': 'none',
-               'files': previous['files'],
+               'files': previous['files'], 'runtime_schema': self.obj['runtime_schema'],
                'preserved_host_files': {n: previous['files'][n] for n in sorted(installer.PRESERVED_PUBLIC)}}
         path = self.private / 'unified-release.json'; path.write_bytes(installer.encode(old)); path.chmod(0o600)
         return path.read_bytes()
@@ -501,6 +501,20 @@ class UnifiedRelease(unittest.TestCase):
         self.assertEqual((self.private / 'unified-release.json').read_bytes(), original_record)
         with contextlib.closing(sqlite3.connect(self.db)) as connection:
             self.assertEqual(connection.execute('SELECT state FROM booking_change_requests').fetchone()[0], 'approved')
+
+    def test_reviewed_new_view_files_are_added_and_removed_on_code_restore(self):
+        original_record = self.seed_installed_predecessor()
+        added = ['private/server/booking-review-ui.php', 'public/portal-assets/booking-review.js']
+        for name in added:
+            self.assertNotIn(name, self.obj['predecessor']['files'])
+            self.assertFalse(installer.target(name, self.private, self.public).exists())
+        self.assertIn('INSTALLED AND VERIFIED', self.cli('--install'))
+        for name in added:
+            self.assertEqual(installer.target(name, self.private, self.public).read_bytes(), self.files[name])
+        self.assertIn('CODE RESTORED', self.cli('--rollback-code'))
+        for name in added:
+            self.assertFalse(installer.target(name, self.private, self.public).exists())
+        self.assertEqual((self.private / 'unified-release.json').read_bytes(), original_record)
 
     def test_first_predecessor_upgrade_requires_explicit_drain_attestation(self):
         original = self.seed_installed_predecessor()
