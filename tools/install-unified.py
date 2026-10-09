@@ -519,6 +519,12 @@ def rollback_request_guard(db):
         if exists:
             count = connection.execute("SELECT count(*) FROM booking_change_requests WHERE state IN ('pending','applying')").fetchone()[0]
             need(count == 0, 'Pending manager requests preserved: repair forward; restoring the previous code would bypass their approval flow.')
+        exists = connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='booking_communications'").fetchone()
+        if exists:
+            count = connection.execute("""SELECT count(*) FROM booking_communications
+                WHERE kind LIKE 'change-declined-%' AND (submission_state<>'sent_observed'
+                OR crm_state<>'associated' OR (recipient='sales@re.sitesee.ai' AND delivery_state<>'recipient_copy_observed'))""").fetchone()[0]
+            need(count == 0, 'Unresolved customer decline notices preserved: repair forward; restoring the previous code would remove their recovery controls.')
 
 
 def apply(root, public, uid, before, after, metas, rollback=False, writer=atomic):

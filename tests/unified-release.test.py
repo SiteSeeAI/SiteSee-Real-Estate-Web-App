@@ -518,6 +518,36 @@ class UnifiedRelease(unittest.TestCase):
             self.assertEqual(installer.target(name, self.private, self.public).read_bytes(), original[name])
         self.assertEqual((self.private / 'unified-release.json').read_bytes(), original_record)
 
+    def test_code_rollback_preserves_unresolved_decline_notices(self):
+        self.seed_installed_predecessor()
+        self.cli('--install')
+        with contextlib.closing(sqlite3.connect(self.db)) as connection:
+            connection.execute('CREATE TABLE booking_communications(kind TEXT,submission_state TEXT,crm_state TEXT,recipient TEXT,delivery_state TEXT)')
+            connection.execute("INSERT INTO booking_communications VALUES(?,?,?,?,?)", ('change-declined-'+'a'*32,'prepared','pending','info@1789media.com','unverified'))
+            connection.commit()
+            for submission, crm, recipient, delivery in [('prepared','pending','info@1789media.com','unverified'),
+                    ('uncertain','pending','info@1789media.com','unverified'),
+                    ('sent_observed','pending','info@1789media.com','unverified'),
+                    ('sent_observed','associated','sales@re.sitesee.ai','unverified')]:
+                connection.execute('UPDATE booking_communications SET submission_state=?,crm_state=?,recipient=?,delivery_state=?', (submission,crm,recipient,delivery))
+                connection.commit()
+                self.assertIn('Unresolved customer decline notices preserved', self.cli('--rollback-code', success=False))
+                self.assertIn('VERIFY PASS', self.cli('--verify'))
+                self.assertEqual(json.loads(self.journal_path.read_bytes())['state'],'installed')
+
+    def test_completed_external_decline_survives_code_restore(self):
+        original = self.seed_installed_predecessor()
+        self.cli('--install')
+        with contextlib.closing(sqlite3.connect(self.db)) as connection:
+            connection.execute('CREATE TABLE booking_communications(kind TEXT,submission_state TEXT,crm_state TEXT,recipient TEXT,delivery_state TEXT)')
+            saved = ('change-declined-'+'b'*32,'sent_observed','associated','info@1789media.com','unverified')
+            connection.execute('INSERT INTO booking_communications VALUES(?,?,?,?,?)',saved)
+            connection.commit()
+        self.assertIn('CODE RESTORED', self.cli('--rollback-code'))
+        self.assertEqual((self.private / 'unified-release.json').read_bytes(),original)
+        with contextlib.closing(sqlite3.connect(self.db)) as connection:
+            self.assertEqual(connection.execute('SELECT * FROM booking_communications').fetchone(),saved)
+
     def test_first_predecessor_upgrade_requires_explicit_drain_attestation(self):
         original = self.seed_installed_predecessor()
         self.assertIn('First predecessor upgrade requires', self.cli('--install', success=False, drained=False))
