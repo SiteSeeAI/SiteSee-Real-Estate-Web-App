@@ -387,18 +387,72 @@ function booking_change_request_approve(PDO $db,string $reference,string $id,boo
         return ['notice'=>'Request already approved; no earlier invitation was resent.'];
     try{return booking_lifecycle_notice($db,$reference,true,array_replace($deps,['notice_revision'=>(int)$saved['revision']]));}catch(Throwable){return ['notice'=>'Approved window saved. The customer notice needs staff recovery; do not repeat the calendar change.'];}
 }
-function booking_change_request_reject(PDO $db,string $reference,string $id,bool $agreed,array $deps=[]): void
+function booking_change_request_reject(PDO $db,string $reference,string $id,bool $agreed,array $deps=[]): array
 {
     if(!$agreed)throw new InvalidArgumentException('Review the request before declining it.');
     $lock=booking_confirmation_lock($deps['lock_path']??null);
     try{
-        booking_lifecycle_row($db,$reference);$db->exec('BEGIN IMMEDIATE');
+        $row=booking_lifecycle_row($db,$reference);$db->exec('BEGIN IMMEDIATE');
         try{
             $q=$db->prepare("UPDATE booking_change_requests SET state='rejected',resolved_at=? WHERE reference=? AND request_id=? AND state='pending'");
             $q->execute([gmdate('c'),$reference,$id]);if($q->rowCount()!==1)throw new InvalidArgumentException('The request is no longer awaiting review.');
+            $request=booking_change_request_get($db,$reference,$id);
+            booking_communication_enqueue($db,$reference,'change-declined-'.$id,booking_change_request_decline_message($row,$request));
             booking_schedule_event($db,$reference,'appointment_change_declined',['request_id'=>$id]);$db->exec('COMMIT');
         }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
     }finally{fclose($lock);}
+    try{return booking_change_request_decline_notice($db,$reference,$id,true,$deps);}
+    catch(Throwable){return ['notice'=>'The decline is saved. Its customer email needs recovery in Manage Appointment.'];}
+}
+/** Declining a proposed change is not a calendar cancellation or a new RSVP. */
+function booking_change_request_decline_message(array $row,array $request): array
+{
+    $a=booking_request($row)['appointment'];
+    $plain="Your requested appointment change was declined.\n\nReference: ".$row['reference']
+        ."\nProperty: ".booking_confirmation_property(booking_request($row)['details'])
+        ."\nDeclined requested window: ".$request['date'].' '.$request['time'].'–'.$request['window_end'].' Central Time'
+        ."\nConfirmed window when this request was declined: ".$a['date'].' '.$a['time'].'–'.$a['windowEnd'].' Central Time'
+        ."\n\nThis decline did not change your confirmed appointment or payment records.\n"
+        ."Check your current appointment status or request another available window in Customer Account:\n".SITESEE_REAL_ESTATE_SITE_URL.'/account.php';
+    return ['from'=>BOOKING_MAIL_SENDER,'to'=>$row['email'],
+        'subject'=>'[TEST] Appointment Change Declined | '.$row['reference'].' | '.$request['request_id'],
+        'plain'=>$plain,'body'=>$plain,'html'=>nl2br(htmlspecialchars($plain,ENT_QUOTES,'UTF-8')),'headers'=>['From: SiteSee Real Estate <'.BOOKING_MAIL_SENDER.'>',
+            'Reply-To: '.BOOKING_MAIL_SENDER,'MIME-Version: 1.0','Content-Type: text/plain; charset=UTF-8']];
+}
+/** Explicit staff send/recovery only. Historical missing notices are never queued on GET or installation. */
+function booking_change_request_decline_notice(PDO $db,string $reference,string $id,bool $send,array $deps=[]): array
+{
+    $lock=booking_confirmation_lock($deps['lock_path']??null);
+    try{
+        $row=booking_lifecycle_row($db,$reference);$request=booking_change_request_get($db,$reference,$id);
+        if(!$request||$request['state']!=='rejected')throw new InvalidArgumentException('A saved declined request for this booking is required.');
+        $key='change-declined-'.$id.':'.$reference;$mail=booking_communication_get($db,$key);
+        if(!$mail){
+            $latest=booking_change_request_latest($db,$reference);
+            if(!$send||empty($deps['prepare_missing'])||$latest['request_id']!==$id
+                ||!hash_equals($request['fingerprint'],booking_lifecycle_fingerprint($db,$reference)))
+                throw new InvalidArgumentException('No saved decline email exists for this unchanged appointment.');
+            booking_communication_enqueue($db,$reference,'change-declined-'.$id,booking_change_request_decline_message($row,$request));
+            $mail=booking_communication_get($db,$key);
+        }
+        if($mail['reference']!==$reference||$mail['kind']!=='change-declined-'.$id
+            ||$mail['sender']!==BOOKING_MAIL_SENDER||$mail['recipient']!==$row['email'])
+            throw new InvalidArgumentException('Saved decline email identity differs.');
+        return booking_customer_notice_locked($db,$reference,$key,$mail,$send,$deps);
+    }finally{fclose($lock);}
+}
+/** Include older unsent/unverified notices even after a newer request was created. */
+function booking_change_request_decline_notices(PDO $db,string $reference): array
+{
+    $latest=booking_change_request_latest($db,$reference);$q=$db->prepare("SELECT * FROM booking_change_requests WHERE reference=? AND state='rejected' ORDER BY created_at DESC,rowid DESC");
+    $q->execute([$reference]);$notices=[];
+    foreach($q->fetchAll() as $request){
+        $mail=booking_communication_get($db,'change-declined-'.$request['request_id'].':'.$reference);
+        $needs=$mail&&($mail['submission_state']!=='sent_observed'||$mail['crm_state']!=='associated'
+            ||(booking_communication_receipt_available($mail)&&$mail['delivery_state']!=='recipient_copy_observed'));
+        if($needs||$request['request_id']===($latest['request_id']??null))$notices[]=['request'=>$request,'mail'=>$mail?:null,'needs_recovery'=>(bool)$needs];
+    }
+    return $notices;
 }
 function booking_lifecycle_change(PDO $db,string $reference,string $action,string $fingerprint,string $actor,string $date='',string $time='',array $deps=[]): array
 {
@@ -509,34 +563,44 @@ function booking_lifecycle_notice(PDO $db,string $reference,bool $send,array $de
         booking_lifecycle_row($db,$reference);$s=booking_lifecycle_state($db,$reference);$key='lifecycle-'.$s['revision'].':'.$reference;
         if(isset($deps['notice_revision'])&&(int)$s['revision']!==$deps['notice_revision'])return ['notice'=>'Appointment revision changed; no earlier invitation was resent.'];
         $m=booking_communication_get($db,$key);if(!$m)return ['notice'=>'No change notice exists.'];
-        $result=[];$graph=$deps['graph']??booking_graph_client(booking_mail_config($send));
-        if($send&&$m['submission_state']==='prepared'){
-            $config=$deps['crm_config']??booking_crm_config();$crm=$deps['crm']??booking_crm_client($config);
-            booking_crm_verify_org($config,$crm);$link=booking_crm_linked($db,$reference,$m['recipient'],$config);booking_crm_verify_contact($link['contact_id'],$m['recipient'],$crm);
-            booking_communication_submit($db,$key,$graph);
-        }
-        try{booking_communication_reconcile($db,$key,$graph);$result['notice']='Sent copy verified.';}catch(Throwable){$result['notice']='Sent copy not yet verified. No resend attempted.';}
-        if(!booking_communication_receipt_available($m))$result['delivery']=booking_communication_receipt_status($m);
-        else try{booking_communication_delivery($db,$key,$graph);$result['delivery']='Recipient copy verified.';}catch(Throwable){$result['delivery']='Receipt is not yet verified.';}
-        try{$config=$deps['crm_config']??booking_crm_config();$crm=$deps['crm']??booking_crm_client($config);booking_communication_crm($db,$key,$config,$crm);
-            $result['crm']='CRM: '.booking_communication_get($db,$key)['crm_state'];}catch(Throwable){$result['crm']='CRM history needs recovery. Calendar and mail results remain saved.';}
-        $current=booking_communication_get($db,$key);
-        if(in_array($current['crm_state'],['provider_duplicate','existing_candidate_review'],true)){
-            try{
-                $config=$deps['crm_config']??booking_crm_config();$crm=$deps['crm']??booking_crm_client($config);
-                booking_crm_verify_org($config,$crm);$link=booking_crm_linked($db,$reference,$current['recipient'],$config);booking_crm_verify_contact($link['contact_id'],$current['recipient'],$crm);
-                $history=array_values(array_filter(booking_crm_history($link['contact_id'],$crm),static fn($h)=>booking_crm_history_candidate($h,$current)));
-                $exact=array_values(array_filter($history,static fn($h)=>($h['original_message_id']??'')===$current['internet_message_id']));
-                if(count($exact)===1 && is_string($exact[0]['message_id']??null)){
-                    booking_communication_crm($db,$key,$config,$crm,$exact[0]['message_id']);$result['crm']='CRM: '.booking_communication_get($db,$key)['crm_state'];
-                }else{
-                    $result['history']=array_map(static fn($h)=>['id'=>(string)($h['message_id']??''),'subject'=>(string)($h['subject']??''),'time'=>(string)($h['time']??$h['sent_time']??'')],$history);
-                    $result['crm']='Matching Zoho history requires explicit staff review below; no email was resent.';
-                }
-            }catch(Throwable){$result['crm']='Existing Zoho history could not be verified. Keep the saved notice; do not resend it.';}
-        }
-        return $result;
+        return booking_customer_notice_locked($db,$reference,$key,$m,$send,$deps);
     }finally{fclose($lock);}
+}
+
+/** Caller holds the booking lock and validates this saved customer communication identity. */
+function booking_customer_notice_locked(PDO $db,string $reference,string $key,array $m,bool $send,array $deps=[]): array
+{
+    $result=[];$graph=$deps['graph']??booking_graph_client(booking_mail_config($send));
+    if($send&&$m['submission_state']==='prepared'){
+        $config=$deps['crm_config']??booking_crm_config();$crm=$deps['crm']??booking_crm_client($config);
+        booking_crm_verify_org($config,$crm);$link=booking_crm_linked($db,$reference,$m['recipient'],$config);booking_crm_verify_contact($link['contact_id'],$m['recipient'],$crm);
+        booking_communication_submit($db,$key,$graph);
+    }elseif($send&&str_starts_with($m['kind'],'change-declined-')&&booking_communication_unsent_draft($m)){
+        $config=$deps['crm_config']??booking_crm_config();$crm=$deps['crm']??booking_crm_client($config);
+        booking_crm_verify_org($config,$crm);$link=booking_crm_linked($db,$reference,$m['recipient'],$config);booking_crm_verify_contact($link['contact_id'],$m['recipient'],$crm);
+        booking_communication_send_saved_draft($db,$key,$graph);
+    }
+    try{booking_communication_reconcile($db,$key,$graph);$result['notice']='Sent copy verified.';}catch(Throwable){$result['notice']='Sent copy not yet verified. No resend attempted.';}
+    if(!booking_communication_receipt_available($m))$result['delivery']=booking_communication_receipt_status($m);
+    else try{booking_communication_delivery($db,$key,$graph);$result['delivery']='Recipient copy verified.';}catch(Throwable){$result['delivery']='Receipt is not yet verified.';}
+    try{$config=$deps['crm_config']??booking_crm_config();$crm=$deps['crm']??booking_crm_client($config);booking_communication_crm($db,$key,$config,$crm);
+        $result['crm']='CRM: '.booking_communication_get($db,$key)['crm_state'];}catch(Throwable){$result['crm']='CRM history needs recovery. Calendar and mail results remain saved.';}
+    $current=booking_communication_get($db,$key);
+    if(in_array($current['crm_state'],['provider_duplicate','existing_candidate_review'],true)){
+        try{
+            $config=$deps['crm_config']??booking_crm_config();$crm=$deps['crm']??booking_crm_client($config);
+            booking_crm_verify_org($config,$crm);$link=booking_crm_linked($db,$reference,$current['recipient'],$config);booking_crm_verify_contact($link['contact_id'],$current['recipient'],$crm);
+            $history=array_values(array_filter(booking_crm_history($link['contact_id'],$crm),static fn($h)=>booking_crm_history_candidate($h,$current)));
+            $exact=array_values(array_filter($history,static fn($h)=>($h['original_message_id']??'')===$current['internet_message_id']));
+            if(count($exact)===1 && is_string($exact[0]['message_id']??null)){
+                booking_communication_crm($db,$key,$config,$crm,$exact[0]['message_id']);$result['crm']='CRM: '.booking_communication_get($db,$key)['crm_state'];
+            }else{
+                $result['history']=array_map(static fn($h)=>['id'=>(string)($h['message_id']??''),'subject'=>(string)($h['subject']??''),'time'=>(string)($h['time']??$h['sent_time']??'')],$history);
+                $result['crm']='Matching Zoho history requires explicit staff review below; no email was resent.';
+            }
+        }catch(Throwable){$result['crm']='Existing Zoho history could not be verified. Keep the saved notice; do not resend it.';}
+    }
+    return $result;
 }
 
 /** Explicit staff fallback for old Zoho credentials: no event or identity is rewritten. */

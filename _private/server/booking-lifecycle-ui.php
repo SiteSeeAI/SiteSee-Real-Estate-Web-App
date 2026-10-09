@@ -43,6 +43,20 @@ function booking_lifecycle_html(PDO $db,array $row,string $csrf,bool $staff,arra
         }
     }
     if(!$request&&$lastRequest&&$lastRequest['state']==='rejected')$html.='<p>The last requested window was not approved. The confirmed appointment remains unchanged.</p>';
+    if($staff)foreach(booking_change_request_decline_notices($db,$ref) as $decline){
+        $saved=$decline['request'];$mail=$decline['mail'];
+        $field='<input type="hidden" name="request_id" value="'.$e($saved['request_id']).'">';
+        $html.='<details'.($decline['needs_recovery']?' open':'').'><summary>Customer Decline Notice — '.$e($saved['date'].' '.$saved['time'].'–'.$saved['window_end']).' Central</summary>';
+        if($mail){
+            $html.='<p>Email status: '.$e($mail['submission_state']).'<br>Receipt: '.$e(booking_communication_receipt_status($mail)).'<br>Zoho history: '.$e($mail['crm_state']).'</p>';
+            if($mail['submission_state']==='prepared'||booking_communication_unsent_draft($mail))$html.=$form('decline_notice','Send Saved Decline Notice',$field.'<label><input type="checkbox" name="agreed" value="yes" required> I reviewed this declined request and its saved customer notice.</label>');
+            $html.=$form('recover_decline_notice','Check Decline Notice & Zoho History',$field);
+        }elseif(hash_equals($saved['fingerprint'],$fingerprint)){
+            $html.='<p>No customer decline email was prepared by the earlier version. The confirmed window is unchanged.</p>';
+            $html.=$form('decline_notice','Send Decline Notice',$field.'<label><input type="checkbox" name="agreed" value="yes" required> Send the customer a plain notice for this saved decline. Keep the appointment unchanged.</label>');
+        }else $html.='<p>No decline email was prepared by the earlier version. The appointment has since changed; contact the customer directly.</p>';
+        $html.='</details>';
+    }
     if(!$request&&!$pending&&$s['state']!=='cancelled'){
         $html.=$form('windows','Check Available Alternatives','<label>Starting date <input type="date" name="date" value="'.$e(max($a['date'],(new DateTimeImmutable('now',new DateTimeZone('America/Chicago')))->format('Y-m-d'))).'" required></label>');
         if($windows)$html.='<p>Available two-hour arrival windows (Central Time). Availability is checked again when you confirm.</p>';

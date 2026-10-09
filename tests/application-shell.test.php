@@ -49,6 +49,10 @@ foreach ($manifest['files'] as $path=>$item) {
     $before = base64_decode($item['before'], true);
     $after = file_get_contents($root.'/'.$path);
     if($path==='_private/server/booking-staff.php'){
+        $decline=json_decode(file_get_contents($root.'/documents/unified/decline-notice-source.json'),true,512,JSON_THROW_ON_ERROR)['files'][$path];
+        shell_check(hash('sha256',$after)===$decline['after_sha256']&&$after===base64_decode($decline['after'],true),'Staff decline notification changes have reviewed source integrity');
+        $after=base64_decode($decline['before'],true);
+        shell_check(hash('sha256',$after)===$decline['before_sha256'],'Installed stepped staff source is retained byte-exact');
         $ux=json_decode(file_get_contents($root.'/documents/unified/booking-review-source.json'),true,512,JSON_THROW_ON_ERROR)['files'][$path];
         shell_check(hash('sha256',$after)===$ux['after_sha256']&&$after===base64_decode($ux['after'],true),'Staff Booking UX changes have reviewed source integrity');
         $after=base64_decode($ux['before'],true);

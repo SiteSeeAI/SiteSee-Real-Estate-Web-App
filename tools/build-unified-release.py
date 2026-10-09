@@ -21,8 +21,8 @@ CHANGED_PRIVATE = {'private/views/portal.php', 'private/server/vendor-app.php',
                    'private/server/booking-manage.php', 'private/server/booking-communication.php',
                    'private/server/portal-service.php', 'private/views/portal-service.php',
                    'private/server/booking-lifecycle-reconcile.php'}
-PREDECESSOR = {'commit': '2de113503050b4ca5a63ad0aaa1b14705a3726e0',
-               'manifest_sha256': 'f07088f5da66cf17565e0bde7860f590e7f99d40fcf8f8282de00c5f1412186c'}
+PREDECESSOR = {'commit': 'd1408d070d5028351e447cca7096b780984ced8e',
+               'manifest_sha256': 'd040068e9783c46792289709d5198ed95263480bb42862df9743bcefd66bd7e4'}
 RUNTIME_SCHEMA = 'Additive booking_change_requests table and unique pending-request index on first normal application use; existing tables and rows unchanged.'
 ALIASES = {'account.php', 'vendor.php', 'staff-bookings.php', 'staff-production.php',
            'staff-vendors.php', 'manage-appointment.php', 'booking-pay.php',
@@ -107,7 +107,7 @@ def build(commit, output):
     members['source-test-manifest.json'] = encode(source)
     manifest = {'format': 1, 'release': 'unified-test-' + commit[:12], 'commit': commit,
                 'baseline': BASELINE, 'stage': 'TEST', 'migration': 'none',
-                'compatibility': 'reviewed bootstrap/shell, manager-approved reschedule requests and stepped Booking Review; original financial/provider identities retained',
+                'compatibility': 'reviewed bootstrap/shell, manager-approved reschedule requests stepped Booking Review and tracked plain decline notices; original financial/provider identities retained',
                 'runtime_schema': RUNTIME_SCHEMA,
                 'predecessor': PREDECESSOR | {'files': {n: sha(b) for n, b in sorted(previous_deploy.items())}},
                 'installer_sha256': sha(runner), 'source_manifest_sha256': sha(members['source-test-manifest.json']),

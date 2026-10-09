@@ -103,8 +103,14 @@ if ($method === 'POST') {
                 $report=booking_change_request_approve($db,$reference,(string)($_POST['request_id']??''),($_POST['agreed']??'')==='yes');
                 $notice='Manager approval saved. '.implode(' ',array_filter($report,'is_string'));
             }elseif($choice==='reject_request'){
-                booking_change_request_reject($db,$reference,(string)($_POST['request_id']??''),($_POST['agreed']??'')==='yes');
-                $notice='Requested window declined. Confirmed calendar and payment records remain unchanged.';
+                $report=booking_change_request_reject($db,$reference,(string)($_POST['request_id']??''),($_POST['agreed']??'')==='yes');
+                $notice='Requested window declined. Confirmed calendar and payment records remain unchanged. '.implode(' ',array_filter($report,'is_string'));
+            }elseif(in_array($choice,['decline_notice','recover_decline_notice'],true)){
+                if($choice==='decline_notice'&&($_POST['agreed']??'')!=='yes')throw new InvalidArgumentException('Review the saved decline email before sending.');
+                $id=(string)($_POST['request_id']??'');
+                $report=booking_change_request_decline_notice($db,$reference,$id,$choice==='decline_notice',['prepare_missing'=>$choice==='decline_notice']);
+                $notice=implode(' ',array_filter($report,'is_string'));
+                $lifecycleHistory=$report['history']??[];$_SESSION['lifecycle_history_selection']=['reference'=>$reference,'expires'=>time()+900,'ids'=>array_column($lifecycleHistory,'id'),'key'=>'change-declined-'.$id.':'.$reference];
             }elseif(in_array($choice,['request_notice','recover_request_notice'],true)){
                 $mail=booking_change_request_notify($db,$reference,(string)($_POST['request_id']??''),$choice==='request_notice');
                 $notice='Division request notification: '.$mail['submission_state'].'. Receipt: '.booking_communication_receipt_status($mail);
@@ -306,6 +312,10 @@ if ($row) {
     $staffLife = booking_lifecycle_state($db, $reference);
     $staffPending = booking_lifecycle_pending($db, $reference);
     $staffChangeRequest = booking_change_request_pending($db, $reference);
+    $declineAttention=false;
+    if($staffClaim)foreach(booking_change_request_decline_notices($db,$reference) as $decline){
+        if($decline['needs_recovery']||(!$decline['mail']&&hash_equals($decline['request']['fingerprint'],booking_lifecycle_fingerprint($db,$reference))))$declineAttention=true;
+    }
     $staffMail = booking_communication_get($db, 'invitation:' . $reference);
     $calendarLabel = $staffPending ? 'Change needs verification' : ($staffLife['state'] !== 'active' ? ucfirst(str_replace('_', ' ', $staffLife['state'])) : ($staffClaim ? ($staffClaim['state'] === 'confirmed' ? 'Confirmed' : 'Needs verification') : 'Not confirmed'));
     $invitationLabel = !$staffClaim || $staffClaim['invitation_state'] === 'none' ? 'Not sent' : ($staffClaim['invitation_state'] === 'sent' ? 'Submitted' : 'Needs recovery');
@@ -344,7 +354,7 @@ if ($row) {
         $lifecycleClaim=booking_confirmation_get($db,$reference);
         if(booking_lifecycle_enabled() && $lifecycleClaim && $lifecycleClaim['state']==='confirmed') {
             $changeMail = booking_communication_get($db, 'lifecycle-' . $staffLife['revision'] . ':' . $reference);
-            $manageOpen = str_starts_with($postedAction, 'lifecycle_') || $staffChangeRequest || $staffPending || $staffLife['diagnostic'] || in_array($staffLife['state'], ['calendar_missing', 'calendar_changed'], true) || ($changeMail && ($changeMail['submission_state'] !== 'sent_observed' || (booking_communication_receipt_available($changeMail) && $changeMail['delivery_state'] !== 'recipient_copy_observed') || $changeMail['crm_state'] !== 'associated'));
+            $manageOpen = str_starts_with($postedAction, 'lifecycle_') || $declineAttention || $staffChangeRequest || $staffPending || $staffLife['diagnostic'] || in_array($staffLife['state'], ['calendar_missing', 'calendar_changed'], true) || ($changeMail && ($changeMail['submission_state'] !== 'sent_observed' || (booking_communication_receipt_available($changeMail) && $changeMail['delivery_state'] !== 'recipient_copy_observed') || $changeMail['crm_state'] !== 'associated'));
             $lifecycleHtml = staff_disclosure('manage-appointment', 'Manage Appointment', booking_lifecycle_html($db,$row,staff_csrf(),true,$lifecycleWindows??[],$lifecycleHistory??[]), (bool)$manageOpen);
         }
     }
@@ -462,7 +472,7 @@ if ($row) {
         $screens['review'] = ['label'=>'Review Request', 'html'=>'<p>The checkout link is ready. Wait for the verified TEST deposit before schedule review.</p>'];
     }
     if ($postedAction === 'rotate') $screens['review'] = ['label'=>'Review Request', 'html'=>'<p>The replacement link is shown above. Keep it private.</p>'];
-    $next = staff_booking_next($row, $staffClaim ?: null, $staffLife, (bool)$staffPending, $staffChangeRequest ?: null, $staffMail ?: null, $changeMail ?: null, $workflowStatus, (bool)booking_job_get($db,$reference), (bool)($staffMail && booking_communication_receipt_available($staffMail)), (bool)($changeMail && booking_communication_receipt_available($changeMail)));
+    $next = staff_booking_next($row, $staffClaim ?: null, $staffLife, (bool)$staffPending, $staffChangeRequest ?: null, $staffMail ?: null, $changeMail ?: null, $workflowStatus, (bool)booking_job_get($db,$reference), (bool)($staffMail && booking_communication_receipt_available($staffMail)), (bool)($changeMail && booking_communication_receipt_available($changeMail)), $declineAttention);
     $body .= staff_booking_screens($reference, $screens, $next, $postedAction);
     $body .= '<script src="/portal-assets/booking-review.js?v=booking-steps-r1" defer></script>';
 } else {

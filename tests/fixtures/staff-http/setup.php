@@ -13,9 +13,9 @@ if(($argv[1]??'')==='seed-change-request'){
     $key=booking_communication_enqueue($db,$ref,'change-request-'.$id,booking_change_request_message($row,$request));
     booking_communication_update($db,$key,['crm_state'=>'not_applicable']);echo $id;exit;
 }
-if (($argv[1]??'')==='snapshot') {
+if (in_array($argv[1]??'',['snapshot','snapshot-data'],true)) {
     $all=[];foreach(['bookings','booking_scheduling','booking_confirmations','booking_lifecycle','booking_lifecycle_operations','booking_communications','booking_contact_links','booking_schedule_events','stripe_events','booking_change_requests'] as $t)$all[$t]=$db->query('SELECT * FROM '.$t.' ORDER BY rowid')->fetchAll();
-    echo hash('sha256',json_encode($all));exit;
+    echo $argv[1]==='snapshot-data'?json_encode($all):hash('sha256',json_encode($all));exit;
 }
 $save=static function(string $name,array $value)use($root):void{file_put_contents($root.'/'.$name,json_encode($value));chmod($root.'/'.$name,0600);};
 $save('microsoft-scheduling.json',booking_scheduling_ms_config());

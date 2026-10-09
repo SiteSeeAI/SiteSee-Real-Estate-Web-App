@@ -9,6 +9,7 @@ $claim=['state'=>'confirmed','invitation_state'=>'sent'];
 $life=['state'=>'active'];
 $mail=['submission_state'=>'sent_observed','crm_state'=>'associated'];
 $workflow=['link'=>true,'can_send'=>false,'can_resume_draft'=>false];
+expect(staff_booking_next($row,$claim,$life,false,null,$mail,null,$workflow,false,false,false,true)[1]==='Review the customer decline notice','Unverified decline notices lead to the existing appointment recovery screen');
 $next=static fn(array $r=[],?array $c=null,array $l=[],bool $pending=false,?array $change=null,?array $m=null,?array $cm=null,?array $w=null,bool $job=false):array=>staff_booking_next(array_replace($row,$r),$c??$claim,array_replace($life,$l),$pending,$change,$m??$mail,$cm,$w??$workflow,$job);
 expect($next()[1]==='Appointment confirmed','Confirmed appointment offers management without manufacturing another required action.');
 expect($next([],null,[],true,['state'=>'applying'])[1]==='Verify the saved appointment change','Uncertain operation takes priority over manager actions.');

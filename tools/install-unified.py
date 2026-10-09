@@ -116,9 +116,9 @@ def load(package, expected):
     need(obj['format'] == 1 and obj['stage'] == 'TEST' and obj['migration'] == 'none', 'Release mode/migration differs.')
     if 'predecessor' in obj:
         previous = obj['predecessor']
-        need(previous.get('commit') == '2de113503050b4ca5a63ad0aaa1b14705a3726e0'
-             and previous.get('manifest_sha256') == 'f07088f5da66cf17565e0bde7860f590e7f99d40fcf8f8282de00c5f1412186c'
-             and set(previous.get('files', {})) == set(obj['files']) - {'private/server/booking-review-ui.php', 'public/portal-assets/booking-review.js'}, 'Reviewed predecessor differs.')
+        need(previous.get('commit') == 'd1408d070d5028351e447cca7096b780984ced8e'
+             and previous.get('manifest_sha256') == 'd040068e9783c46792289709d5198ed95263480bb42862df9743bcefd66bd7e4'
+             and set(previous.get('files', {})) == set(obj['files']), 'Reviewed predecessor differs.')
         need(obj.get('runtime_schema') == 'Additive booking_change_requests table and unique pending-request index on first normal application use; existing tables and rows unchanged.', 'Runtime schema review differs.')
     need(re.fullmatch('[0-9a-f]{40}', obj['commit']) and obj['release'] == 'unified-test-' + obj['commit'][:12], 'Release identity differs.')
     need(sha(values['install-unified.py']) == obj['installer_sha256'] == sha(pathlib.Path(__file__).read_bytes()),

@@ -2,10 +2,11 @@
 declare(strict_types=1);
 
 /** Select the next screen from recorded state, without querying providers or changing data. */
-function staff_booking_next(array $row, ?array $claim, array $life, bool $pending, ?array $change, ?array $mail, ?array $changeMail, ?array $workflow, bool $job, bool $invitationReceiptAvailable = false, bool $changeReceiptAvailable = false): array
+function staff_booking_next(array $row, ?array $claim, array $life, bool $pending, ?array $change, ?array $mail, ?array $changeMail, ?array $workflow, bool $job, bool $invitationReceiptAvailable = false, bool $changeReceiptAvailable = false, bool $declineNoticeNeedsRecovery = false): array
 {
     if ($pending) return ['appointment', 'Verify the saved appointment change', 'Check the existing calendar result before another change.'];
     if ($change) return ['appointment', 'Review the customer’s requested window', 'Compare the requested window with the confirmed appointment, then approve or decline.'];
+    if ($declineNoticeNeedsRecovery) return ['appointment', 'Review the customer decline notice', 'Send a saved unsent notice or verify its existing result. The appointment remains unchanged.'];
     if ($changeMail && ($changeMail['submission_state'] !== 'sent_observed' || ($changeMail['crm_state'] ?? 'pending') !== 'associated' || ($changeReceiptAvailable && ($changeMail['delivery_state'] ?? 'unverified') !== 'recipient_copy_observed'))) return ['appointment', 'Verify the previous change notice', 'Check the saved notice before another appointment change. Do not resend it.'];
     if ($life['state'] !== 'active' && $claim) return ['appointment', 'Review the appointment status', 'Check the saved calendar status and any notice that needs attention.'];
     if ($row['reschedule_required']) return ['review', 'Request another arrival window', 'Keep the recorded deposit and provide the customer with a rescheduling link.'];

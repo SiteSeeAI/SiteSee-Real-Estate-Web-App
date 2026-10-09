@@ -502,18 +502,20 @@ class UnifiedRelease(unittest.TestCase):
         with contextlib.closing(sqlite3.connect(self.db)) as connection:
             self.assertEqual(connection.execute('SELECT state FROM booking_change_requests').fetchone()[0], 'approved')
 
-    def test_reviewed_new_view_files_are_added_and_removed_on_code_restore(self):
+    def test_installed_stepped_view_files_survive_upgrade_and_code_restore(self):
         original_record = self.seed_installed_predecessor()
-        added = ['private/server/booking-review-ui.php', 'public/portal-assets/booking-review.js']
-        for name in added:
-            self.assertNotIn(name, self.obj['predecessor']['files'])
-            self.assertFalse(installer.target(name, self.private, self.public).exists())
+        names = ['private/server/booking-review-ui.php', 'public/portal-assets/booking-review.js']
+        original = {}
+        for name in names:
+            self.assertIn(name, self.obj['predecessor']['files'])
+            original[name] = installer.target(name, self.private, self.public).read_bytes()
+            self.assertEqual(installer.sha(original[name]), self.obj['predecessor']['files'][name])
         self.assertIn('INSTALLED AND VERIFIED', self.cli('--install'))
-        for name in added:
+        for name in names:
             self.assertEqual(installer.target(name, self.private, self.public).read_bytes(), self.files[name])
         self.assertIn('CODE RESTORED', self.cli('--rollback-code'))
-        for name in added:
-            self.assertFalse(installer.target(name, self.private, self.public).exists())
+        for name in names:
+            self.assertEqual(installer.target(name, self.private, self.public).read_bytes(), original[name])
         self.assertEqual((self.private / 'unified-release.json').read_bytes(), original_record)
 
     def test_first_predecessor_upgrade_requires_explicit_drain_attestation(self):

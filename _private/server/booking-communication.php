@@ -39,7 +39,7 @@ function booking_communication_update(PDO $db, string $key, array $values): void
 function booking_communication_enqueue(PDO $db, string $reference, string $kind, array $message, array $confirmation = []): string
 {
     if ((!in_array($kind, ['invitation','probe','original'], true) && !preg_match('/^lifecycle-[1-9][0-9]{0,8}$/D',$kind)
-        && !preg_match('/^change-request-[a-f0-9]{32}$/D',$kind)) || !preg_match('/^[A-F0-9]{10,32}$/D', $reference)) throw new InvalidArgumentException('Invalid communication identity.');
+        && !preg_match('/^change-(?:request|declined)-[a-f0-9]{32}$/D',$kind)) || !preg_match('/^[A-F0-9]{10,32}$/D', $reference)) throw new InvalidArgumentException('Invalid communication identity.');
     $key = $kind . ':' . $reference;
     $s = $db->prepare('INSERT INTO booking_communications (communication_key,reference,kind,sender,recipient,subject,message_json,calendar_uid,event_uid,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)');
     $s->execute([$key,$reference,$kind,$message['from'],$message['to'],$message['subject'],json_encode($message, JSON_THROW_ON_ERROR),
