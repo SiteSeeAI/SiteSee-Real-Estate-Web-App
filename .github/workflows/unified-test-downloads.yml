@@ -1,0 +1,79 @@
+name: Publish reviewed decline notice TEST downloads
+on:
+  push:
+    branches: ['feat/unified-test-downloads-87d1be8']
+    paths: ['.github/workflows/unified-test-downloads.yml']
+permissions:
+  contents: write
+jobs:
+  downloads:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: '87d1be8848d5d2f91434d1c0b6691b87b399479d'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build exact reviewed source
+        run: python3 tools/build-unified-release.py --commit 87d1be8848d5d2f91434d1c0b6691b87b399479d --output "$RUNNER_TEMP/unified-test-downloads"
+      - name: Verify, wait for exact-source CI and publish TEST downloads
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import os, pathlib, json, hashlib, urllib.request, urllib.parse, urllib.error, base64, time
+          root = pathlib.Path(os.environ['RUNNER_TEMP']) / 'unified-test-downloads'
+          expected = {'unified-test-87d1be8848d5.tar.gz': '35a2274c90231413635e87f7b01d4898f7d0ee118da5a430c75be643f3bf7234', 'install-unified.py': '923d38b4781d93541c321a281ca2ccbd34b55f02d11313fb3edace0e1268ec9c', 'install-appointment-approval-host.py': 'b37ec08f3d3842bd0c43d392757bfa8743161a18044967239ad4d42aa8d1ebcb', 'HOST_TEST_REVIEW.md': 'b3778fbc1bbccdbd55670899dde6d890d9473a5298158dc3116ea889102261f3'}
+          commit = '87d1be8848d5d2f91434d1c0b6691b87b399479d'
+          tag = 'unified-test-87d1be8848d5'
+          base = 'https://api.github.com/repos/SiteSeeAI/SiteSee-Real-Estate-Web-App'
+          (root / 'HOST_TEST_REVIEW.md').write_bytes(base64.b64decode('IyBDdXN0b21lciBkZWNsaW5lIG5vdGljZSBjb3JyZWN0aW9uIChURVNUKQoKVGhlIGluc3RhbGxlZCBCb29raW5nIFJldmlldyBjb3JyZWN0bHkgZGVjbGluZXMgYSBjdXN0b21lcidzIHByb3Bvc2VkIGFycml2YWwgd2luZG93IGFuZCBrZWVwcyB0aGUgY29uZmlybWVkIGFwcG9pbnRtZW50LCBidXQgaXRzIGRlY2xpbmUgaGFuZGxlciBkb2VzIG5vdCBxdWV1ZSBhIGN1c3RvbWVyIGVtYWlsLiBUaGUgY3VzdG9tZXIgY2FuIHNlZSB0aGUgZGVjbGluZWQgcmVxdWVzdCBvbmx5IGluIEFjY291bnQuCgpUaGUgY29ycmVjdGlvbiByZWNvcmRzIGEgcGxhaW4gY3VzdG9tZXIgZGVjbGluZSBub3RpY2UgaW4gdGhlIGV4aXN0aW5nIGNvbW11bmljYXRpb25zIG91dGJveCBpbiB0aGUgc2FtZSBTUUxpdGUgdHJhbnNhY3Rpb24gYXMgdGhlIG1hbmFnZXIncyBkZWNpc2lvbi4gQWZ0ZXIgY29tbWl0LCB0aGUgZXhwbGljaXQgc3RhZmYgYWN0aW9uIHN1Ym1pdHMgdGhhdCBzYXZlZCBtZXNzYWdlIHRocm91Z2ggdGhlIGV4aXN0aW5nIGRlZGljYXRlZCBzZW5kZXIgYW5kIGFwcHJvdmVkIFRFU1QgcmVjaXBpZW50L0NSTSBndWFyZHMuIEl0IGluY2x1ZGVzIHRoZSByZXF1ZXN0ZWQgd2luZG93LCB0aGUgY29uZmlybWVkIHdpbmRvdyBhdCB0aGUgdGltZSBvZiBkZWNsaW5lIGFuZCBhIGxpbmsgdG8gQWNjb3VudCBmb3IgY3VycmVudCBzdGF0dXMuIEl0IGNvbnRhaW5zIG5vIGNhbGVuZGFyIGF0dGFjaG1lbnQsIFJTVlAgb3IgY2FuY2VsbGF0aW9uLiBUaGUgc2VwYXJhdGUgZXNjYXBlZCBIVE1MIHJlcHJlc2VudGF0aW9uIHByZXNlcnZlcyB0aGUgc2FtZSB0ZXh0IGZvciBDUk0gaGlzdG9yeS4KCkNhbGVuZGFyL2V2ZW50IGlkZW50aXRpZXMsIGNvbmZpcm1lZCBib29raW5nIGFuZCBmaW5hbmNpYWwgZmllbGRzLCB0aGUgY3VzdG9tZXIncyBvcmlnaW5hbCBpbnZpdGF0aW9uIGFuZCBvdGhlciBhcHBvaW50bWVudCBvcGVyYXRpb25zIHJlbWFpbiB1bmNoYW5nZWQgYnkgZGVjbGluZS4gQSBub3RpZmljYXRpb24gZmFpbHVyZSBkb2VzIG5vdCB1bmRvIHRoZSBkZWNpc2lvbi4gTWlzc2luZyBwcmVyZXF1aXNpdGVzIHJldGFpbiBhIHByZXBhcmVkIG5vdGljZTsgYSBsb3N0IGRyYWZ0L3NlbmQgcmVzcG9uc2UgcmVtYWlucyB1bmNlcnRhaW4gYW5kIGNhbm5vdCBjYXVzZSBhdXRvbWF0aWMgcmVzdWJtaXNzaW9uLiBFeHBsaWNpdCBzdGFmZiByZWNvdmVyeSB2ZXJpZmllcyB0aGUgc2F2ZWQgc2VudCBjb3B5LCBhdmFpbGFibGUgcmVjaXBpZW50LWNvcHkgZXZpZGVuY2UgYW5kIGV4aXN0aW5nIENSTSBhc3NvY2lhdGlvbi4gT25seSBhIHZlcmlmaWVkIHVuc2VudCBkcmFmdCB3aXRoIG5vIHByaW9yIHNlbmQgYXR0ZW1wdCBtYXkgY29udGludWUgdW5kZXIgaXRzIG9yaWdpbmFsIHByb3ZpZGVyIElELiBFeHRlcm5hbCBpbmJveCByZWNlaXB0IGlzIG5ldmVyIGluZmVycmVkIGZyb20gYSBzZW50IGNvcHkuCgpNYW5hZ2UgQXBwb2ludG1lbnQgZGlzcGxheXMgbm90aWNlIHN0YXR1cyBhbmQgY29uZGl0aW9uYWwgU2VuZC9DaGVjayBhY3Rpb25zLiBPdmVydmlldyBkaXJlY3RzIHN0YWZmIHRvIHVucmVzb2x2ZWQgbm90aWNlcywgaW5jbHVkaW5nIG9sZGVyIG5vdGljZXMgc3RpbGwgbmVlZGluZyByZWNvdmVyeSBhZnRlciBhIG5ld2VyIHJlcXVlc3QuIEFsbCBub3RpY2UgYWN0aW9ucyByZXRhaW4gc3RhZmYgYXV0aGVudGljYXRpb24sIENTUkYsIHNhbWUtb3JpZ2luIGFuZCBmcmVzaCBzZW5kIGNvbnNlbnQgY2hlY2tzLiBDdXN0b21lciBwYWdlcyBleHBvc2Ugbm8gc2VuZC9yZWNvdmVyeSBhY3Rpb25zLgoKVGhlIGVhcmxpZXIgdmVyc2lvbiBjcmVhdGVkIG5vIG91dGJveCByZWNvcmQgZm9yIGEgZGVjbGluZS4gUmVuZGVyaW5nIG9yIGluc3RhbGxpbmcgdGhpcyBjb3JyZWN0aW9uIGRvZXMgbm90IHNlbmQgaGlzdG9yaWNhbCBub3RpY2VzLiBTdGFmZiBtYXkgZXhwbGljaXRseSBwcmVwYXJlIGFuZCBzZW5kIHRoZSBsYXRlc3Qgc2F2ZWQgZGVjbGluZWQgcmVxdWVzdCBvbmx5IHdoaWxlIGl0cyBvcmlnaW5hbCBhcHBvaW50bWVudCBmaW5nZXJwcmludCBzdGlsbCBtYXRjaGVzLiBUaGlzIGxldHMgdGhlIGN1cnJlbnQgYWNjZXB0YW5jZSBib29raW5nIHJlY2VpdmUgaXRzIG1pc3Npbmcgbm90aWNlIHdpdGhvdXQgcmVwZWF0aW5nIHRoZSBhcHBvaW50bWVudCByZXF1ZXN0LiBNaXNzaW5nIG9sZGVyL3N0YWxlIG5vdGljZXMgcmVxdWlyZSBkaXJlY3QgY3VzdG9tZXIgY29udGFjdC4gRXhpc3Rpbmcgc2F2ZWQgbm90aWNlcyByZW1haW4gaW1tdXRhYmxlOyBkZWxheWVkIHNlbmRzIGxhYmVsIHRoZWlyIHdpbmRvdyBhcyBoaXN0b3JpY2FsIGFuZCBkaXJlY3QgdGhlIGN1c3RvbWVyIHRvIGN1cnJlbnQgQWNjb3VudCBzdGF0dXMuCgpEZXBsb3ltZW50IHVzZXMgdGhlIGV4YWN0IGluc3RhbGxlZCBwcmVkZWNlc3NvciBkMTQwOGQwNzBkNTAyODM1MWU0NDdjY2E3MDk2Yjc4MDk4NGNlZDhlIHdpdGggbWFuaWZlc3QgU0hBMjU2IGQwNDAwNjhlOTc4M2M0Njc5MjI4OTcwOWQ1MTk4ZWQ5NTI2MzQ4MGJiNDI4NjJkZjk3NDNiY2VmZDY2YmQ3ZTQuIFRoZXJlIGFyZSAyNjkgcGF5bG9hZHMgYW5kIG5vIG5ldyBkZXBsb3ltZW50IHBhdGhzLCBkYXRhYmFzZSBzY2hlbWEsIGRlcGVuZGVuY2llcywgZ2F0ZXMsIHNlc3Npb25zLCBzY2hlZHVsZXMgb3IgcHJvdmlkZXIgb3BlcmF0aW9ucyBkdXJpbmcgaW5zdGFsbGF0aW9uLiBUaGUgaW5zdGFsbGVyIHByZXNlcnZlcyBob3N0IHZhcmlhbnRzLCBwYWlkIHJlY29yZHMsIGR1cmFibGUgam91cm5hbHMgYW5kIGNvbnNpc3RlbnQgYmFja3Vwcy4gUGVuZGluZy9hcHBseWluZyByZXF1ZXN0cyBzdGlsbCBwcmV2ZW50IGNvZGUgcm9sbGJhY2s7IG9sZGVyIG9wZXJhdGlvbmFsIGRhdGEgaXMgbmV2ZXIgcmVzdG9yZWQgb3ZlciBuZXdlciByZWNvcmRzLgoKVGhlIHJldmlld2VkIGRlY2xpbmUtbm90aWNlIHNvdXJjZSBsYXllciByZXZlcnNlcyBleGFjdGx5IHRvIHRoZSBpbnN0YWxsZWQgcHJlZGVjZXNzb3IgYmVmb3JlIHRoZSBleGlzdGluZyBVWC9hcHByb3ZhbC9ib290c3RyYXAgaGlzdG9yeSBsYXllcnMuIEhpc3RvcmljYWwgYnVpbGRlcnMgYW5kIHVua25vd24tZWRpdCByZWplY3Rpb24gcmVtYWluIGVuZm9yY2VkLiBUZXN0IGV2aWRlbmNlIGNvdmVycyB0aGUgcmVhbCBjdXN0b21lciBkZWNsaW5lIG1lc3NhZ2UgYW5kIENSTSBjb250ZW50LCBhdG9taWMgcmVjb3JkaW5nLCBwcmVyZXF1aXNpdGVzLCBpZGVudGl0aWVzLCBkdXBsaWNhdGVzLCBvdXRhZ2VzLCBsb3N0IHJlc3BvbnNlcywgc2FmZSBkcmFmdCByZWNvdmVyeSwgaGlzdG9yaWNhbCBwcmVwYXJhdGlvbiwgbGF0ZXIgYXBwcm92YWwgZm9sbG93ZWQgYnkgZGVsYXllZCByZWNvdmVyeSwgc3RhZmYgY29uc2VudC9vcmlnaW4vQ1NSRiBhbmQgcHJlc2VydmVkIG9yaWdpbmFsIGZvcm1zLgoKU3RyaXBlIHJlbWFpbnMgVEVTVC4gVGhlIGNvcnJlY3Rpb24gcmVxdWlyZXMgYSByZXZpZXdlZCBURVNUIHNlcnZlciB1cGRhdGUgYW5kIG9uZSBhY3R1YWwgaW5ib3ggY2hlY2s7IHNvdXJjZS9zeW50aGV0aWMgc3VjY2VzcyBkb2VzIG5vdCBlc3RhYmxpc2ggZGVsaXZlcnkgdG8gdGhlIGN1c3RvbWVyLiBEbyBub3QgcmVwZWF0IHRoZSBwcmV2aW91c2x5IHN1Y2Nlc3NmdWwgaW5zdGFsbGF0aW9uIG1lcmVseSB0byBjYXB0dXJlIG91dHB1dC4K'))
+          (root / 'install-appointment-approval-host.py').write_bytes(pathlib.Path('tools/install-appointment-approval-host.py').read_bytes())
+          files = [root / name for name in expected]
+          for path in files:
+              assert hashlib.sha256(path.read_bytes()).hexdigest() == expected[path.name], path.name + ' checksum differs'
+          (root / 'DOWNLOADS_SHA256SUMS.txt').write_text(''.join(expected[p.name] + '  ' + p.name + '\n' for p in files))
+          files.append(root / 'DOWNLOADS_SHA256SUMS.txt')
+          def api(url, method='GET', obj=None, data=None, content_type='application/json'):
+              if obj is not None: data = json.dumps(obj).encode()
+              headers = {'Authorization': 'Bearer ' + os.environ['GH_TOKEN'], 'Accept': 'application/vnd.github+json', 'Content-Type': content_type, 'User-Agent': 'SiteSee-reviewed-TEST-downloads', 'X-GitHub-Api-Version': '2022-11-28'}
+              request = urllib.request.Request(url, data=data, method=method, headers=headers)
+              with urllib.request.urlopen(request, timeout=120) as response: return json.load(response)
+          for attempt in range(90):
+              runs = api(base + '/actions/runs?branch=feat/unified-server-app-20261007&per_page=100')['workflow_runs']
+              selected = {r['name']: r for r in runs if r['head_sha'] == commit}
+              required = ['Unified Release Checks', 'Server Form CI', 'Customer Portal Checks']
+              if all(name in selected and selected[name]['status'] == 'completed' for name in required):
+                  assert all(selected[name]['conclusion'] == 'success' for name in required), 'Exact-source CI did not pass'
+                  break
+              time.sleep(10)
+          else: raise RuntimeError('Exact-source CI not complete; no download publication')
+          try:
+              release = api(base + '/releases/tags/' + tag)
+          except urllib.error.HTTPError as error:
+              if error.code != 404: raise
+              release = api(base + '/releases', 'POST', obj={'tag_name': tag, 'target_commitish': commit, 'name': 'TEST customer decline notice correction ' + commit[:12], 'body': 'Plain customer decline notices with durable recovery. Exact source and installer recovery CI verified. Stripe TEST; operator installation and actual inbox acceptance remain separate.', 'draft': True, 'prerelease': True, 'make_latest': 'false'})
+          release_url = base + '/releases/' + str(release['id'])
+          assert release['tag_name'] == tag and release['target_commitish'] == commit and release['prerelease'] is True
+          assets = {a['name']: a for a in release['assets']}
+          assert set(assets).issubset(set(p.name for p in files)), 'Unknown assets preserved'
+          for path in files:
+              data = path.read_bytes(); digest = hashlib.sha256(data).hexdigest()
+              asset = assets.get(path.name)
+              if asset is None:
+                  assert release['draft'] is True, 'Do not add files to an already published candidate'
+                  url = release['upload_url'].split('{', 1)[0] + '?' + urllib.parse.urlencode({'name': path.name})
+                  asset = api(url, 'POST', data=data, content_type='application/octet-stream')
+              assert asset['state'] == 'uploaded' and asset['size'] == len(data)
+              assert asset.get('digest') == 'sha256:' + digest
+              print(path.name + ': exact SHA256 verified and uploaded')
+          release = api(release_url)
+          assert set(a['name'] for a in release['assets']) == set(p.name for p in files)
+          if release['draft']:
+              release = api(release_url, 'PATCH', obj={'draft': False, 'prerelease': True, 'make_latest': 'false'})
+          assert release['draft'] is False and release['prerelease'] is True
+          print('Published reviewed TEST downloads: ' + release['html_url'])
+          PY
