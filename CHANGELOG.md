@@ -8,23 +8,25 @@ Each iteration records its ID, purpose, status, source/release, changes, validat
 
 ### UX-001 — Application workspace
 
-Status: design scope defined; implementation and visual acceptance pending. Stripe remains TEST.
+Status: implemented locally; targeted automated checks passed; visual acceptance and installation pending. Stripe remains TEST.
 
 Purpose: replace the long form-and-card layouts with a coherent software interface, starting with management Bookings/Booking Review and the Agent Account/Orders pages. The user rejected the current presentation; functional success does not establish UX acceptance.
 
-Planned components:
+Implemented components:
 
-- Consistent application navigation, page header and compact action toolbar.
-- Open Orders and Previous Orders in separate columns with independent 5/25/All pagination.
+- Responsive role navigation with a desktop rail and active section; Corporate charcoal/yellow/off-white/gray palette, Poppins/Inter, separated panels and consistent controls.
+- Wider, separated Open Orders and Previous Orders panels with independent 5/25/All pagination. Compact display controls sit below the lists and update automatically, preserving the other group’s page.
 - Compact order rows with property address, readable order number, arrival window, amount and clear status.
-- Booking detail workspace with a concise summary, visible progress and one primary next action appropriate to the saved state.
+- Four numbered, non-clickable progress stages; state-selected next action; dedicated action choices that open one existing form at a time. Desktop booking context sits beside the action; mobile summary details collapse while property/window remain visible.
 - Focused review, appointment, closeout and billing screens. Recovery details are disclosed when needed.
 - Open Onsite Closeout on its selected screen; collapsed overview shortcut; no duplicate Vendor Access section.
 - Consistent controls, accessible status indicators, keyboard focus, responsive navigation and mobile layouts.
 
 Design and acceptance contract: [UX iteration brief](documents/ux/ITERATIONS.md).
 
-Validation: relevant existing browser/workflow checks after implementation; visual review at 320/390/736/1200 widths; user acceptance before a server update. Previously passed functional checks remain evidence for their exact releases; the redesign requires checks for its changed presentation and interactions.
+Validation: customer/staff/vendor/onsite-payment HTTPS journeys passed with synthetic providers and blocked external browser egress. Staff coverage retains all nineteen original form contracts, three external-agent cases, consent/origin/CSRF negatives, unchanged ledgers on navigation, automatic pagination, future-step gating, and stable identity for two saved decline notices. Responsive checks cover 320/390/736/1200/1600. PHP 8.2/8.3 presentation checks: 40 booking-step, 72 account-workflow and 96 shell assertions each. Historical staff/source-layer checks pass. Saved-result recovery remains primary; completed Vendor management and existing Job/Deliverables remain reachable as relevant secondary context.
+
+Deployment preparation pins the exact installed `0ddef26c59a1` predecessor, including its original manifest/schema and independently reproduced package; the new shared script is the sole added deployment file. Exact fixed-commit installation/recovery validation is recorded in the review after execution. No provider/domain/financial transition was changed. Independent review and user visual acceptance are required before installation. CTC’s authenticated workspace could not be inspected; this implements the user’s requirements using the Corporate site’s effective palette.
 
 ### Future feature — Refund and credit automation
 

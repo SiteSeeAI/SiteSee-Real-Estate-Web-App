@@ -105,7 +105,7 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   if(shots)fs.mkdirSync(shots,{recursive:true});
   for(const view of ['','?view=order&reference=AAAAAAAAAA','?view=profile']){
     await goto(page,'/account.php'+view);
-    for(const width of [320,390,736,1200]) {await page.setViewportSize({width,height:950});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No overflow '+width+' '+view);}
+    for(const width of [320,390,736,1200,1600]) {await page.setViewportSize({width,height:950});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No overflow '+width+' '+view);}
     if(shots){const name=view.includes('order')?'account-order':view.includes('profile')?'account-profile':'account-orders';await page.evaluate(()=>document.fonts.ready);assert(await page.evaluate(()=>document.fonts.check('16px Inter') && document.fonts.check('21px Poppins')));await page.screenshot({path:path.join(shots,name+'.png'),fullPage:true});console.log('PORTAL_VISUAL_'+name+':'+(await page.screenshot({type:'jpeg',quality:45,fullPage:true})).toString('base64'));}
   }
   await goto(page);await page.setViewportSize({width:390,height:844});if(shots){await page.screenshot({path:path.join(shots,'account-mobile.png'),fullPage:true});console.log('PORTAL_VISUAL_account-mobile:'+(await page.screenshot({type:'jpeg',quality:55,fullPage:true})).toString('base64'));}
@@ -120,11 +120,11 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   await goto(service,'/account.php?view=order&reference=DDDD000001&step=payment');
   const paymentPanel=service.locator('section.panel').filter({has:service.getByRole('heading',{name:'Payment',exact:true})});
   assert.match(await paymentPanel.innerText(),/Approved Rush Fee\s+\$59\.00/);
-  assert.equal(await service.getByRole('link',{name:'Job & Deliverables',exact:true}).count(),1);
+  assert.equal(await service.getByRole('link',{name:'Job & Deliverables',exact:true}).count(),0,'Job action waits for onsite trigger');
   assert.equal(await service.locator('.payment-action').count(),0,'No final payment control before onsite completion');
-  for(const width of [320,390,736,1200]){await service.setViewportSize({width,height:950});assert(await service.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Unpaid order overflow '+width);}
+  for(const width of [320,390,736,1200,1600]){await service.setViewportSize({width,height:950});assert(await service.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Unpaid order overflow '+width);}
   if(shots)console.log('PORTAL_VISUAL_polish-unpaid:'+(await service.screenshot({type:'jpeg',quality:65,fullPage:true})).toString('base64'));
-  await service.getByRole('link',{name:'Job & Deliverables',exact:true}).press('Enter');
+  await goto(service,'/account.php?view=job&reference=DDDD000001');
   assert.match(await service.locator('h1').innerText(),/Job Status/);
   await goto(service,'/account.php?view=balance&reference=DDDD000001');
   await service.getByRole('heading',{name:'Your Test Balance',exact:true}).waitFor();
@@ -138,23 +138,23 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   if(shots)console.log('PORTAL_VISUAL_service-balance:'+(await service.screenshot({type:'jpeg',quality:45,fullPage:true})).toString('base64'));
   await goto(service,'/account.php?view=order&reference=DDDD000001&step=payment');
   assert.match(await paymentPanel.innerText(),/Test Deposit Recorded/);
-  assert.equal(await service.getByRole('link',{name:'Job & Deliverables',exact:true}).count(),1,'Open checkout does not imply paid');
+  assert.equal(await service.getByRole('link',{name:'Job & Deliverables',exact:true}).count(),0,'Open checkout does not unlock the delivery action');
   setup('service-balance-paid');await goto(service,'/account.php?view=order&reference=DDDD000001&step=payment');
   assert.equal(await paymentPanel.locator('.status').innerText(),'Test Balance Recorded');
   assert.match(await paymentPanel.innerText(),/Remaining Job Balance\s+\$0\.00/);
   assert.equal(await service.locator('.payment-action').count(),0,'Paid order cannot offer another payment');
-  for(const width of [320,390,736,1200]){await service.setViewportSize({width,height:950});assert(await service.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Paid order overflow '+width);}
+  for(const width of [320,390,736,1200,1600]){await service.setViewportSize({width,height:950});assert(await service.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Paid order overflow '+width);}
   await service.setViewportSize({width:390,height:950});
   if(shots)console.log('PORTAL_VISUAL_polish-paid:'+(await service.screenshot({type:'jpeg',quality:65,fullPage:true})).toString('base64'));
   await goto(service);assert.match(await service.locator('article.order').innerText(),/Test Balance Recorded/);
   await goto(two);assert(!(await two.locator('main').innerText()).includes('DDDD000001'),'Paid status stays with its owner');
   await goto(service,'/account.php?view=appointment&reference=DDDD000001');
-  await service.getByRole('button',{name:'Find Available Windows'}).click();await service.getByRole('heading',{name:'Request A New Window'}).waitFor();
+  await service.getByRole('link',{name:'Find available windows →',exact:true}).click();await service.getByRole('button',{name:'Find Available Windows'}).click();await service.getByRole('heading',{name:'Request A New Window'}).waitFor();
   const options=await service.locator('select[name=window] option').evaluateAll(os=>os.map(o=>o.value));const chosen=options.find(x=>x.endsWith('|13:00'));assert(chosen);await service.getByLabel('Arrival Window',{exact:true}).selectOption(chosen);await service.getByLabel('I want to request this arrival window for manager approval.',{exact:true}).check();
   await service.getByRole('button',{name:'Request New Window'}).click();await service.getByRole('status').waitFor();assert.match(await service.locator('main').textContent(),/Awaiting SiteSee manager approval/);assert.match(await service.locator('main').textContent(),/confirmed appointment remains unchanged/);assert.match(await service.locator('main').textContent(),/Requested window:.*13:00–15:00/);assert.equal(await service.getByRole('button',{name:'Confirm Cancellation'}).count(),0,'Pending request cannot bypass approval');
   if(shots)console.log('PORTAL_VISUAL_service-appointment:'+(await service.screenshot({type:'jpeg',quality:45,fullPage:true})).toString('base64'));
   assert(await service.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Service mobile overflow');
-  setup('service-approve-request');setup('service-notice-observed');await goto(service,'/account.php?view=appointment&reference=DDDD000001');await service.getByText('Cancel Appointment',{exact:true}).click();await service.getByLabel('I want to cancel this appointment.',{exact:true}).check();await service.getByRole('button',{name:'Confirm Cancellation'}).click();await service.getByText('Cancelled',{exact:true}).waitFor();
+  setup('service-approve-request');setup('service-notice-observed');await goto(service,'/account.php?view=appointment&reference=DDDD000001');await service.getByRole('link',{name:'Cancel appointment →',exact:true}).click();await service.getByLabel('I want to cancel this appointment.',{exact:true}).check();await service.getByRole('button',{name:'Confirm Cancellation'}).click();await service.getByText('Cancelled',{exact:true}).waitFor();
   await goto(service,'/account.php?view=order&reference=DDDD000001&step=payment');assert.equal(await service.locator('.payment-action').count(),0,'Cancelled order does not offer payment');
   await serviceContext.close();
   await goto(page,'/account.php?view=profile');await goto(two,'/account.php?view=profile');
@@ -184,7 +184,7 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
     assert.equal(reviewHttp.status(),200,await reviewHttp.text());const review=await reviewHttp.json();
     await page.getByRole('heading',{name:'Review your order',exact:true}).waitFor();
     assert.equal('$'+(review.quote.totalCents/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}),estimated,'Actual server and engine price parity');
-    for(const width of [320,390,736,1200]){await page.setViewportSize({width,height:950});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Wizard overflow '+width);}
+    for(const width of [320,390,736,1200,1600]){await page.setViewportSize({width,height:950});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Wizard overflow '+width);}
     if(shots&&market==='residential'){await page.screenshot({path:path.join(shots,'purchase-review.png'),fullPage:true});console.log('PORTAL_VISUAL_purchase-review:'+(await page.screenshot({type:'jpeg',quality:45,fullPage:true})).toString('base64'));}
     await page.getByRole('button',{name:'Place order & continue to deposit',exact:true}).click();
     await page.getByRole('heading',{name:'Your Test Deposit',exact:true}).waitFor();
@@ -216,7 +216,7 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   const smsPath=path.join(privateRoot,'data/sms-fixture.json'),before=fs.readFileSync(smsPath,'utf8');await post(page,{action:'request_sms',phone:'3125550100',sms_consent:'yes'});assert.equal(fs.readFileSync(smsPath,'utf8'),before,'Disabled account SMS suppressed');
   assert.equal(setup('snapshot'),baseline,'Bookings, scheduling, lifecycle and payment evidence unchanged');
   assert.deepEqual(errors,[]);assert(!/PHP (?:Warning|Fatal|Parse)/.test(serverLog),serverLog);
-  console.log('portal-http: PASS (actual HTTPS phone-code journey; two customers; email routes disabled; both existing proof adapters; CSRF/origin; single use; expiry; logout replay; profile isolation; synthetic ordering; no external provider writes; 320/390/736/1200 layout)');
+  console.log('portal-http: PASS (actual HTTPS phone-code journey; two customers; email routes disabled; both existing proof adapters; CSRF/origin; single use; expiry; logout replay; profile isolation; synthetic ordering; no external provider writes; 320/390/736/1200/1600 layout)');
 
  } finally {
   if(browser)await browser.close();if(proxy)await new Promise(r=>proxy.close(r));if(php)php.kill();fs.rmSync(temp,{recursive:true,force:true});

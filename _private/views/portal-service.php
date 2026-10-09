@@ -20,7 +20,10 @@ function portal_appointment_page(PDO $db,array $account,string $reference,array 
     try{$row=portal_appointment_guard($db,$account['id'],$reference);}catch(InvalidArgumentException){portal_page('Manage Appointment',$body.'<p>Contact SiteSee for help with this appointment.</p>',$account);}
     $state=booking_lifecycle_state($db,$reference);$pending=booking_lifecycle_pending($db,$reference);$claim=booking_confirmation_get($db,$reference);$a=booking_request($row)['appointment'];
     $unresolved=$db->prepare("SELECT 1 FROM booking_communications WHERE reference=? AND kind LIKE 'lifecycle-%' AND submission_state<>'sent_observed' LIMIT 1");$unresolved->execute([$reference]);$noticePending=(bool)$unresolved->fetchColumn();
-    $body.='<section class="panel"><h2>Your Arrival Window</h2><p>'.$e($a['date'].' '.$a['time'].'–'.$a['windowEnd']).' Central Time</p><p>Cancellation does not automatically issue a refund or determine a fee.</p>';
+    $focusAction = is_string($_POST['action'] ?? null) ? $_POST['action'] : '';
+    if ($windows && $focusAction === 'appointment_windows') $focusAction = 'appointment_reschedule';
+    if ($state['state'] !== 'cancelled') $body .= site_workflow_progress(['Deposit', 'SiteSee review', 'Appointment', 'Delivery'], 3);
+    $body.='<section class="panel"><div data-focus-actions data-focus-kind="customer" data-current-action="'.$e($focusAction).'"><h2>Your Arrival Window</h2><p>'.$e($a['date'].' '.$a['time'].'–'.$a['windowEnd']).' Central Time</p><p>Cancellation does not automatically issue a refund or determine a fee.</p>';
     $request=booking_change_request_pending($db,$reference);$lastRequest=booking_change_request_latest($db,$reference);
     if($request){$body.='<p class="notice">Requested window: '.$e($request['date'].' '.$request['time'].'–'.$request['window_end']).' Central Time. '
         .($request['state']==='pending'?'Awaiting SiteSee manager approval. Your confirmed appointment remains unchanged.':'Manager approved this request; the calendar result is awaiting verification.').'</p>';
@@ -42,7 +45,7 @@ function portal_appointment_page(PDO $db,array $account,string $reference,array 
     if(!$request&&($lastRequest['state']??'')==='rejected')$body.='<p>Your last requested window was not approved. Your confirmed appointment is unchanged.</p>';
     $mail=booking_communication_get($db,'lifecycle-'.$state['revision'].':'.$reference);
     if($mail&&$mail['submission_state']!=='sent_observed')$body.='<p class="notice">Your saved change notice needs a staff check. Your appointment status above reflects the saved result.</p>';
-    portal_page('Manage Appointment',$body.'</section>',$account);
+    portal_page('Manage Appointment',$body.'</div></section>',$account);
 }
 function portal_billing_page(PDO $db,array $account,string $reference): never
 {

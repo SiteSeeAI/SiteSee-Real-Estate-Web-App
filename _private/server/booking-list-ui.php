@@ -12,17 +12,20 @@ function booking_list_options(array $input): array
 function booking_lists_html(array $groups,array $options,string $path,array $base,callable $render): string
 {
     $e=static fn($v)=>htmlspecialchars((string)$v,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8');
-    $html='<form method="get" class="order-list-options">';
-    foreach($base as $key=>$value)$html.='<input type="hidden" name="'.$e($key).'" value="'.$e($value).'">';
-    $html.='<label>Show orders<select name="show">';
-    foreach(['both'=>'Open and previous','open'=>'Open only','previous'=>'Previous only'] as $key=>$label)$html.='<option value="'.$key.'"'.($options['show']===$key?' selected':'').'>'.$label.'</option>';
-    $html.='</select></label>';
+    $controls='<form method="get" action="'.$e($path).'" class="order-list-options" data-auto-list aria-label="Order display options">';
+    $controls.='<p id="order-list-hint" class="list-options-hint">Choose how many orders to show.</p>';
+    foreach(['open_page','previous_page'] as $key)$controls.='<input type="hidden" name="'.$key.'" value="'.$options[$key].'">';
+    foreach($base as $key=>$value)$controls.='<input type="hidden" name="'.$e($key).'" value="'.$e($value).'">';
+    $controls.='<label>Show orders<select name="show" aria-describedby="order-list-hint">';
+    foreach(['both'=>'Open and previous','open'=>'Open only','previous'=>'Previous only'] as $key=>$label)$controls.='<option value="'.$key.'"'.($options['show']===$key?' selected':'').'>'.$label.'</option>';
+    $controls.='</select></label>';
     foreach(['open'=>'Open orders per page','previous'=>'Previous orders per page'] as $group=>$label){
-        $html.='<label>'.$label.'<select name="'.$group.'_size">';
-        foreach(['5'=>'5','25'=>'25','all'=>'All'] as $value=>$text)$html.='<option value="'.$value.'"'.($options[$group.'_size']===(string)$value?' selected':'').'>'.$text.'</option>';
-        $html.='</select></label>';
+        $controls.='<label>'.$label.'<select name="'.$group.'_size" aria-describedby="order-list-hint">';
+        foreach(['5'=>'5','25'=>'25','all'=>'All'] as $value=>$text)$controls.='<option value="'.$value.'"'.($options[$group.'_size']===(string)$value?' selected':'').'>'.$text.'</option>';
+        $controls.='</select></label>';
     }
-    $html.='<button>Update Lists</button></form><div class="order-columns">';
+    $controls.='<noscript><button>Update Lists</button></noscript><span class="list-feedback" aria-live="polite"></span></form>';
+    $html='<div class="order-columns" data-show="'.$options['show'].'">';
     foreach(['open'=>'Open Orders','previous'=>'Previous Orders'] as $group=>$label){
         if($options['show']!=='both'&&$options['show']!==$group)continue;
         $result=$groups[$group];$html.='<section class="order-column" aria-labelledby="orders-'.$group.'"><h2 id="orders-'.$group.'">'.$label.'</h2><p class="help">'.$result['total'].' '.($group==='open'?'orders awaiting SiteSee closeout':'completed or staff-closed orders').'</p><div class="order-list">';
@@ -34,5 +37,5 @@ function booking_lists_html(array $groups,array $options,string $path,array $bas
         }
         $html.='</nav></section>';
     }
-    return $html.'</div>';
+    return $html.'</div>'.$controls;
 }

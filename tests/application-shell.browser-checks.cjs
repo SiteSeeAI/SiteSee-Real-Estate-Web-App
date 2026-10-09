@@ -17,7 +17,7 @@ async function assertApplicationShell(page, role, authenticated) {
   if (authenticated) assert.deepEqual(await nav.locator('a').evaluateAll(links => links.map(a => a.getAttribute('href'))), navigation[role]);
   assert.equal(await page.locator('a.skip').getAttribute('href'), '#content');
   assert.equal(await page.locator('#content').count(), 1);
-  const css = '/portal-assets/application.css?v=account-workflow-r1';
+  const css = '/portal-assets/application.css?v=ux-001';
   assert.equal(await page.locator('head link[rel=stylesheet][href="' + css + '"]').count(), 1);
   assert.equal((await page.request.get(new URL(css, page.url()).href)).status(), 200, 'shared stylesheet is served');
   await page.waitForFunction(href => [...document.styleSheets].some(sheet => {

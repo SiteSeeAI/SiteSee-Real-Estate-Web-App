@@ -54,4 +54,14 @@ expect(staff_booking_next($row,$claim,$life,false,null,$mail,['submission_state'
 expect(staff_booking_next($row,$claim,$life,false,null,$mail,['submission_state'=>'sent_observed','crm_state'=>'associated','delivery_state'=>'unverified'],$workflow,false,false,true)[0]==='appointment','Observable missing change receipt directs recovery.');
 expect(staff_booking_next($row,$claim,$life,false,null,$mail,null,$workflow,false,true)[0]==='readiness','Observable missing original invitation receipt directs recovery.');
 expect(staff_booking_next($row,$claim,$life,false,null,$mail,null,$workflow,false,false)[1]==='Appointment confirmed','Unavailable external recipient evidence does not force endless recovery.');
+$_GET=['step'=>'onsite'];
+$html=staff_booking_screens('AB0000000A',$screens,['review','Review the paid request','Review first.'],'',1);
+expect(str_contains($html,'data-booking-screen="overview"><section'),'Future closeout cannot be selected before review.');
+expect(substr_count($html,'class="step-number"')===4&&!str_contains($html,'<a class="step-number"'),'Four stages describe progress without exposing future actions.');
+$screens['review']['secondary']=true;$_GET=['step'=>'review'];
+$html=staff_booking_screens('AB0000000A',$screens,$next(),'');
+expect(str_contains($html,'data-booking-screen="review" aria-labelledby'),'Saved vendor management remains reachable after initial review.');
+expect(staff_booking_primary_actions('Verify the saved appointment change')===['lifecycle_sync','lifecycle_resolve_unchanged'],'Uncertain calendar recovery is primary before another edit.');
+expect(staff_booking_primary_actions('Verify the previous change notice')===['lifecycle_notice','lifecycle_recover_notice'],'Saved notice recovery replaces change/cancel actions.');
+expect(staff_booking_primary_actions('Review the customer decline notice')===['lifecycle_decline_notice','lifecycle_recover_decline_notice'],'Decline recovery directs its exact existing notice.');
 echo "booking-review-ui: PASS ($checks checks)\n";

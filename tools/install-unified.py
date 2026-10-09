@@ -116,10 +116,10 @@ def load(package, expected):
     need(obj['format'] == 1 and obj['stage'] == 'TEST' and obj['migration'] == 'none', 'Release mode/migration differs.')
     if 'predecessor' in obj:
         previous = obj['predecessor']
-        need(previous.get('commit') == '631aee7c49924bc123ba335fb24eb918f7e2d314'
-             and previous.get('manifest_sha256') == 'c648d75b352a4fd0d3faffc86b8984bf26e95a3062689f8c8435a982366167bb'
-             and previous.get('runtime_schema') == 'Additive booking_change_requests table and unique pending-request index on first normal application use; existing tables and rows unchanged.'
-             and set(previous.get('files', {})) == set(obj['files']) - {'private/server/booking-hours.php','private/server/booking-identifiers.php','private/server/booking-list-ui.php'}, 'Reviewed predecessor differs.')
+        need(previous.get('commit') == '0ddef26c59a1ee10c8d0c8656e9d8e49420ba827'
+             and previous.get('manifest_sha256') == '7901f10c248466ea9d137f7fde54181ec18f136909bfb67a430f365d133c37b0'
+             and previous.get('runtime_schema') == 'Additive booking_order_numbers, booking_order_closures and vendor_review_grants tables plus existing booking_change_requests schema on first normal application use; original references, tables and payment rows unchanged.'
+             and set(previous.get('files', {})) == set(obj['files']) - {'public/portal-assets/application.js'}, 'Reviewed predecessor differs.')
         need(obj.get('runtime_schema') == 'Additive booking_order_numbers, booking_order_closures and vendor_review_grants tables plus existing booking_change_requests schema on first normal application use; original references, tables and payment rows unchanged.', 'Runtime schema review differs.')
     need(re.fullmatch('[0-9a-f]{40}', obj['commit']) and obj['release'] == 'unified-test-' + obj['commit'][:12], 'Release identity differs.')
     need(sha(values['install-unified.py']) == obj['installer_sha256'] == sha(pathlib.Path(__file__).read_bytes()),

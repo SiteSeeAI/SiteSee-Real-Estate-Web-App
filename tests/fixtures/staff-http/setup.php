@@ -64,4 +64,10 @@ foreach($cases as $i=>$case){
         if($stage==='cancelled')booking_communication_update($db,$key,['submission_state'=>'sent_observed','delivery_state'=>'recipient_copy_observed','crm_state'=>'associated']);
     }
 }
+// Exercise both populated columns and independent previous-order pagination.
+booking_job_schema($db);
+for ($i=0; $i<6; $i++) {
+    $previous=sprintf('EA%08X',$i);booking_capture($db,$s,$previous,true);
+    $db->prepare("INSERT INTO booking_jobs(reference,scope,bill_json,amount,customer,completed_at,production_complete_at) VALUES(?,'fixture',?,0,'fixture','complete','published')")->execute([$previous,json_encode(['total_cents'=>0,'extras'=>[]])]);
+}
 echo json_encode(['hash'=>'base64:'.base64_encode(password_hash('isolated-staff-password',PASSWORD_DEFAULT)),'refs'=>$refs]);

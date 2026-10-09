@@ -67,6 +67,8 @@ try{
  $q=booking_list_options(['open_size'=>'25','previous_page'=>'2','show'=>'both']);
  $html=booking_lists_html(['open'=>booking_order_list($db,$one,'open',1,'25'),'previous'=>booking_order_list($db,$one,'previous',2)],$q,'/account.php',[],fn($r)=>'<p>'.$r['order_number'].'</p>');
  check(str_contains($html,'open_page=2')&&str_contains($html,'previous_page=2'),'Open paging preserves previous column position');
+ check(strpos($html,'class="order-list-options"')>strpos($html,'aria-label="Previous Orders Pages"'),'Display preferences follow both lists');
+ check(str_contains($html,'data-auto-list')&&str_contains($html,'name="previous_page" value="2"'),'Automatic GET preferences preserve the other page');
  $db->prepare('DELETE FROM booking_order_numbers WHERE reference=?')->execute([$numbers[30]]);$attempt=0;
  $collision=booking_order_number($db,$numbers[30],static function()use(&$attempt,$alias){return $attempt++===0?$alias:'Z9Y8X7W6';});
  check($collision==='Z9Y8X7W6'&&$attempt===2,'Collision retries safely and never changes another order number');
@@ -89,6 +91,9 @@ try{
  $order=portal_owned_order($db,$one,$ref)+['can_manage_appointment'=>false,'can_view_job'=>false];$order['deposit_paid_cents']=0;$order['portal_payment']=true;
  $page=portal_order_body($order,['profile_complete'=>true]);check(!str_contains($page,'Manage Appointment')&&!str_contains($page,'Job &amp; Deliverables')&&!str_contains($page,'Order Again'),'Untriggered customer actions absent');
  check(str_contains($page,'Pay Test Deposit')&&str_contains($page,$alias),'Eligible deposit step and public number rendered');
+ $saved=$order;$saved['job_closed']=true;$saved['appointment_status']='Cancelled';
+ $page=portal_order_body($saved,['profile_complete'=>true]);
+ check(str_contains($page,'Job & Deliverables')&&str_contains($page,'view=job'),'Saved job recovery and deliverables remain reachable after cancellation');
  check(booking_property_subject('[TEST] Appointment Declined',['street'=>"101 Example\r\nBcc: bad",'city'=>'Chicago'])==='[TEST] Appointment Declined | 101 Example Bcc: bad Chicago','Subject cannot inject headers');
  $complete=true;echo "Account workflow: $checks checks passed (profile, scoped paging, collision, state triggers, Vendor review, identity preservation, holidays/minutes and legacy drafts).\n";
 }finally{unset($db);foreach(glob($dir.'/*')?:[] as $p)unlink($p);rmdir($dir);}

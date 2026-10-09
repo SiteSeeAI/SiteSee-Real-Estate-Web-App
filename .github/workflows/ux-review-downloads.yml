@@ -1,0 +1,34 @@
+name: Publish UX visual review
+on:
+  push:
+    branches: ['feat/unified-server-app-20261007']
+    paths:
+      - 'documents/ux/review/UX-001-review.html'
+      - 'documents/ux/review/SHA256SUMS.txt'
+      - '.github/workflows/ux-review-downloads.yml'
+permissions:
+  contents: read
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify review bytes
+        run: sha256sum --check documents/ux/review/SHA256SUMS.txt
+      - name: Publish downloadable visual review
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="ux-001-review-${GITHUB_SHA:0:12}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release download "$tag" --pattern UX-001-review.html --dir "$RUNNER_TEMP/ux-review-existing"
+            cmp documents/ux/review/UX-001-review.html "$RUNNER_TEMP/ux-review-existing/UX-001-review.html"
+          else
+            gh release create "$tag" documents/ux/review/UX-001-review.html documents/ux/review/SHA256SUMS.txt --target "$GITHUB_SHA" --prerelease --latest=false --title "UX-001 desktop and mobile visual review" --notes-file documents/ux/review/README.md
+          fi

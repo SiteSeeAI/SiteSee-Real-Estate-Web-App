@@ -14,7 +14,7 @@ function site_application_shell(string $role, string $title, string $body, bool 
     $page = $roles[$role];
     $escape = static fn(string $value): string => htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     $head = $page['asset'] ? '<link rel="stylesheet" href="'.$page['asset'].'">' : '<style>'.$staffStyle.'</style>';
-    $head .= '<link rel="stylesheet" href="/portal-assets/application.css?v=account-workflow-r1">';
+    $head .= '<link rel="stylesheet" href="/portal-assets/application.css?v=ux-001"><script src="/portal-assets/application.js?v=ux-001" defer></script>';
     if ($role === 'customer') $head .= '<script src="/portal-assets/portal.js?v=account-workflow-r1" defer></script>';
     $nav = '';
     if ($authenticated) {
@@ -23,9 +23,28 @@ function site_application_shell(string $role, string $title, string $body, bool 
             'vendor' => '<nav aria-label="Vendor Navigation"><a href="/vendor.php">My Jobs</a></nav>',
             'staff' => '<nav aria-label="Staff Navigation"><a href="/staff-bookings.php">Bookings</a><a href="/staff-production.php">Production</a><a href="/staff-vendors.php">Vendors</a></nav>',
         };
+        $view = is_string($_GET['view'] ?? null) ? $_GET['view'] : '';
+        $current = match ($role) {
+            'customer' => match ($view) {'profile'=>'/account.php?view=profile', 'billing'=>'/account.php?view=billing', 'new'=>'/account.php?view=new', default=>'/account.php'},
+            'vendor' => '/vendor.php',
+            'staff' => str_contains($title, 'Production') ? '/staff-production.php' : (str_contains($title, 'Vendor') ? '/staff-vendors.php' : '/staff-bookings.php'),
+        };
+        $nav = str_replace('href="'.$current.'"', 'href="'.$current.'" aria-current="page"', $nav);
     }
     return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><title>'.$escape($title).' | SiteSee</title>'.$head.'</head>'
-        .'<body class="site-shell role-'.$role.'"><a class="skip" href="#content">Skip To Content</a><header><a class="brand" href="'.$page['home'].'" aria-label="SiteSee '.$page['label'].'">SiteSee<span>.</span><small>Show More. Decide Faster.</small></a>'.$nav.'</header>'
+        .'<body class="site-shell role-'.$role.($authenticated ? ' is-authenticated' : '').'"><a class="skip" href="#content">Skip To Content</a><header><a class="brand" href="'.$page['home'].'" aria-label="SiteSee '.$page['label'].'">SiteSee<span>.</span><small>Show More. Decide Faster.</small></a>'.$nav.'</header>'
         .'<div class="test-notice">TEST ACCESS <span>Orders and payments remain in test mode.</span></div><main id="content"><h1>'.$escape($title).'</h1>'.$body.'</main>'
         .'<footer><span>SiteSee Real Estate · '.$page['label'].'</span><a href="mailto:sales@re.sitesee.ai">sales@re.sitesee.ai</a></footer></body></html>';
+}
+
+/** Recorded-state progress, not links to unavailable operations. */
+function site_workflow_progress(array $labels, int $current): string
+{
+    $html = '<ol class="workflow-progress" aria-label="Order progress">';
+    foreach ($labels as $index => $label) {
+        $number = $index + 1;
+        $state = $number < $current ? 'complete' : ($number === $current ? 'current' : 'upcoming');
+        $html .= '<li data-state="'.$state.'"'.($state === 'current' ? ' aria-current="step"' : '').'><span class="step-number">'.$number.'</span><span>'.htmlspecialchars($label, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'<small>'.($state === 'complete' ? 'Completed' : ($state === 'current' ? 'Current step' : 'Up next')).'</small></span></li>';
+    }
+    return $html.'</ol>';
 }

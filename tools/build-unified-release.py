@@ -13,7 +13,7 @@ import tarfile
 BASELINE = 'ff5e625a8ff4c51af336e9203fa4be29b3611570'
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 NEW_FILES = {'private/server/application.php', 'private/views/application-shell.php',
-             'public/application-entry.php', 'public/portal-assets/application.css',
+             'public/application-entry.php', 'public/portal-assets/application.css', 'public/portal-assets/application.js',
              'private/server/booking-review-ui.php', 'public/portal-assets/booking-review.js', 'private/server/booking-hours.php', 'private/server/booking-identifiers.php', 'private/server/booking-list-ui.php'}
 CHANGED_PRIVATE = {'private/views/portal.php', 'private/server/vendor-app.php',
                    'private/server/booking-staff.php', 'private/server/booking-lifecycle.php',
@@ -25,9 +25,9 @@ CHANGED_PRIVATE |= {'private/server/booking-lifecycle.php', 'private/views/appli
 CHANGED_PUBLIC = {'public/portal-assets/booking-notice.js', 'public/portal-assets/order.js', 'public/portal-assets/application.css'}
 CHANGED_PRIVATE.add('private/pricing-assets/scheduling.js')
 CHANGED_PUBLIC.add('public/portal-assets/portal.js')
-PREDECESSOR = {'commit': '631aee7c49924bc123ba335fb24eb918f7e2d314',
-               'manifest_sha256': 'c648d75b352a4fd0d3faffc86b8984bf26e95a3062689f8c8435a982366167bb',
-               'runtime_schema': 'Additive booking_change_requests table and unique pending-request index on first normal application use; existing tables and rows unchanged.'}
+PREDECESSOR = {'commit': '0ddef26c59a1ee10c8d0c8656e9d8e49420ba827',
+               'manifest_sha256': '7901f10c248466ea9d137f7fde54181ec18f136909bfb67a430f365d133c37b0',
+               'runtime_schema': 'Additive booking_order_numbers, booking_order_closures and vendor_review_grants tables plus existing booking_change_requests schema on first normal application use; original references, tables and payment rows unchanged.'}
 RUNTIME_SCHEMA = 'Additive booking_order_numbers, booking_order_closures and vendor_review_grants tables plus existing booking_change_requests schema on first normal application use; original references, tables and payment rows unchanged.'
 ALIASES = {'account.php', 'vendor.php', 'staff-bookings.php', 'staff-production.php',
            'staff-vendors.php', 'manage-appointment.php', 'booking-pay.php',

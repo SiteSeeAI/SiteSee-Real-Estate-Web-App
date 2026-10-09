@@ -21,5 +21,5 @@ if(in_array($path,['/staff-bookings.php','/staff-before.php'],true)){
 }
 if(preg_match('~^/assets/fonts/(?:Inter-Regular|Poppins-Regular|Poppins-SemiBold)\.ttf$~D',(string)$path))return false;
 if(in_array($path,['/portal-assets/onsite-services.js','/portal-assets/booking-review.js'],true))return false;
-if($path==='/portal-assets/application.css')return false;
+if(in_array($path,['/portal-assets/application.css','/portal-assets/application.js'],true))return false;
 http_response_code(404);return true;

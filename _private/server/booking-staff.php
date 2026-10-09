@@ -330,12 +330,14 @@ if ($row) {
     $staffMail = booking_communication_get($db, 'invitation:' . $reference);
     $calendarLabel = $staffPending ? 'Change needs verification' : ($staffLife['state'] !== 'active' ? ucfirst(str_replace('_', ' ', $staffLife['state'])) : ($staffClaim ? ($staffClaim['state'] === 'confirmed' ? 'Confirmed' : 'Needs verification') : 'Not confirmed'));
     $invitationLabel = !$staffClaim || $staffClaim['invitation_state'] === 'none' ? 'Not sent' : ($staffClaim['invitation_state'] === 'sent' ? 'Submitted' : 'Needs recovery');
-    $body .= '<p><a href="staff-bookings.php">← All Requests</a></p><section class="card"><p class="eyebrow">Request ' . staff_escape(booking_order_number($db,$reference)) . ' · ' . staff_escape(ucfirst($row['market'])) . '</p>'
-        . '<h2>' . staff_escape(trim($details['street'] . ' ' . $details['unit'])) . '</h2><p class="help">' . staff_escape($details['city'] . ', ' . $details['state'] . ' ' . $details['zip']) . '</p><dl class="facts">'
+    $body .= '<p><a href="staff-bookings.php">← All Requests</a></p><div class="booking-workspace"><aside class="booking-summary"><section class="card booking-summary-card"><p class="eyebrow">Request ' . staff_escape(booking_order_number($db,$reference)) . ' · ' . staff_escape(ucfirst($row['market'])) . '</p>'
+        . '<h2>' . staff_escape(trim($details['street'] . ' ' . $details['unit'])) . '</h2><p class="help">' . staff_escape($details['city'] . ', ' . $details['state'] . ' ' . $details['zip']) . '</p><p class="summary-window">'.staff_escape($request['appointment']['date'].' '.$request['appointment']['time'].'–'.($request['appointment']['windowEnd'] ?? '')).' Central Time</p><details class="summary-more" open><summary>Order details &amp; status</summary><dl class="facts">'
         . '<div><dt>Customer</dt><dd>' . staff_escape($details['first'] . ' ' . $details['last']) . '<br>' . staff_escape($row['email']) . '</dd></div>'
         . '<div><dt>' . ($staffClaim && $staffClaim['state'] === 'confirmed' ? 'Confirmed' : 'Requested') . ' Arrival Window · Central Time</dt><dd>' . staff_escape($request['appointment']['date'] . ' ' . $request['appointment']['time'] . (isset($request['appointment']['windowEnd']) ? '–' . $request['appointment']['windowEnd'] : '')) . '</dd></div>'
         . '<div><dt>Quote</dt><dd>' . staff_money((int)$row['quote_cents']) . '</dd></div><div><dt>Rush Service</dt><dd>' . staff_escape(ucfirst(str_replace('_', ' ', $row['rush_status']))) . ((int)$row['rush_fee_cents'] > 0 ? ' · ' . staff_money((int)$row['rush_fee_cents']) . ' approved fee' : '') . '</dd></div></dl>'
-        . '<dl class="progress"><div><dt>Deposit</dt><dd>' . ($row['deposit_paid_at'] ? 'Recorded' : 'Not recorded') . '</dd></div><div><dt>Staff Review</dt><dd>' . ($row['approved_at'] ? 'Recorded' : 'Pending') . '</dd></div><div><dt>Calendar</dt><dd>' . staff_escape($calendarLabel) . '</dd></div><div><dt>Invitation</dt><dd>' . staff_escape($invitationLabel) . '</dd></div></dl></section>';
+        . '<dl class="progress"><div><dt>Deposit</dt><dd>' . ($row['deposit_paid_at'] ? 'Recorded' : 'Not recorded') . '</dd></div><div><dt>Staff Review</dt><dd>' . ($row['approved_at'] ? 'Recorded' : 'Pending') . '</dd></div><div><dt>Calendar</dt><dd>' . staff_escape($calendarLabel) . '</dd></div><div><dt>Invitation</dt><dd>' . staff_escape($invitationLabel) . '</dd></div></dl></details>';
+    if ($staffChangeRequest) $body .= '<p class="note">Requested change · awaiting review<br><strong>'.staff_escape($staffChangeRequest['date'].' '.$staffChangeRequest['time'].'–'.$staffChangeRequest['window_end']).' Central Time</strong><br>The confirmed appointment above remains unchanged.</p>';
+    $body .= '</section></aside><div class="booking-flow">';
     $requestHtml = '<p>Saved booking status: <strong>' . staff_escape($row['status']) . '</strong><br>Window start UTC: ' . staff_escape($row['requested_utc']) . '.</p><p>Server quote: <strong>' . staff_money((int)$row['quote_cents']) . '</strong>'
         . ($row['platform_monthly_cents'] ? '; residential platform separately ' . staff_money((int)$row['platform_monthly_cents']) . '/month if selected and published' : '')
         . '<br>Estimated on site: ' . staff_escape((string)($quote['knownMinutes'] ?? 0)) . '–' . staff_escape((string)($quote['knownMinutesMax'] ?? $quote['knownMinutes'] ?? 0)) . ' minutes, plus any capture that requires confirmation.</p>'
@@ -472,11 +474,11 @@ if ($row) {
     if ($row['status'] === 'pending_review') $reviewHtml .= staff_disclosure('payment-details', 'Price & Payment', $paymentHtml, true);
     else $detailsHtml .= staff_disclosure('payment-details', 'Price & Payment', $paymentHtml, in_array($postedAction, ['rotate', 'approve'], true));
     $screens = [];
-    if ($reviewHtml !== '') $screens['review'] = ['label'=>'Review Request', 'html'=>$reviewHtml];
+    if ($reviewHtml !== '') $screens['review'] = ['label'=>$row['approved_at'] && !$row['reschedule_required'] ? 'Assigned Vendor' : 'Review Request', 'html'=>$reviewHtml, 'secondary'=>(bool)$row['approved_at']];
     if ($workflowHtml !== '') $screens['readiness'] = ['label'=>'Readiness & Recovery', 'html'=>$workflowHtml, 'available'=>(bool)$row['approved_at']];
     if ($calendarHtml !== '') $screens['calendar'] = ['label'=>'Calendar & Invitation', 'html'=>$calendarHtml];
     if ($lifecycleHtml !== '') $screens['appointment'] = ['label'=>'Manage Appointment', 'html'=>$lifecycleHtml];
-    if ($onsiteHtml !== '') $screens['onsite'] = ['label'=>'Onsite Closeout', 'html'=>$onsiteHtml];
+    if ($onsiteHtml !== '') $screens['onsite'] = ['label'=>'Onsite Closeout', 'html'=>$onsiteHtml, 'secondary'=>(bool)($staffClaim && $staffClaim['state'] === 'confirmed' && $row['approved_at'] && $staffLife['state'] === 'active' && !$staffPending && !$staffChangeRequest)];
     $screens['details'] = ['label'=>'Booking Details', 'html'=>$detailsHtml];
     // Price-link replacement remains reachable even when no review is pending.
     if ($reviewHtml === '' && in_array($row['status'], ['approved_test', 'awaiting_deposit_test'], true)) {
@@ -484,7 +486,9 @@ if ($row) {
     }
     if ($postedAction === 'rotate') $screens['review'] = ['label'=>'Review Request', 'html'=>'<p>The replacement link is shown above. Keep it private.</p>'];
     $next = staff_booking_next($row, $staffClaim ?: null, $staffLife, (bool)$staffPending, $staffChangeRequest ?: null, $staffMail ?: null, $changeMail ?: null, $workflowStatus, (bool)booking_job_get($db,$reference), (bool)($staffMail && booking_communication_receipt_available($staffMail)), (bool)($changeMail && booking_communication_receipt_available($changeMail)), $declineAttention);
-    $body .= staff_booking_screens($reference, $screens, $next, $postedAction);
+    $phase = match ($next[0]) {'review'=>1, 'readiness'=>2, 'calendar'=>3, default=>4};
+    $body .= staff_booking_screens($reference, $screens, $next, $postedAction, $phase);
+    $body .= '</div></div>';
     $body .= '<script src="/portal-assets/booking-review.js?v=booking-steps-r1" defer></script>';
 } else {
     $options=booking_list_options($_GET);$groups=[];

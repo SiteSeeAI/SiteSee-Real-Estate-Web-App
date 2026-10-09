@@ -26,7 +26,7 @@ foreach ($links as $role=>$expected) {
         shell_check(str_contains($html, $form) && substr_count($html, 'value="logout"') === 1, $role.' retains body/form bytes once');
         shell_check(str_contains($html, 'noindex,nofollow,noarchive'), $role.' excludes private pages from indexing');
         shell_check(str_contains($html, 'TEST ACCESS') && str_contains($html, 'payments remain in test mode'), $role.' retains TEST label');
-        shell_check(str_contains($html, '/portal-assets/application.css?v=account-workflow-r1'), $role.' shares shell asset');
+        shell_check(str_contains($html, '/portal-assets/application.css?v=ux-001'), $role.' shares shell asset');
         shell_check(str_contains($html, 'portal.js') === ($role === 'customer'), $role.' keeps customer script confined');
         preg_match('~<nav\b[^>]*>(.*?)</nav>~s', $html, $nav);
         shell_check(isset($nav[1]) === $authenticated, $role.' navigation requires caller authentication');
@@ -48,6 +48,12 @@ $manifest = json_decode(file_get_contents($root.'/documents/unified/shell-source
 foreach ($manifest['files'] as $path=>$item) {
     $before = base64_decode($item['before'], true);
     $after = file_get_contents($root.'/'.$path);
+    $workspace=json_decode(file_get_contents($root.'/documents/unified/ux-workspace-source.json'),true,512,JSON_THROW_ON_ERROR)['files'][$path]??null;
+    if($workspace){
+        shell_check(hash('sha256',$after)===$workspace['after_sha256']&&$after===base64_decode($workspace['after'],true),'UX-001 source integrity: '.$path);
+        $after=base64_decode($workspace['before'],true);
+        shell_check(hash('sha256',$after)===$workspace['before_sha256'],'Installed workspace predecessor retained: '.$path);
+    }
     $current=json_decode(file_get_contents($root.'/documents/unified/account-workflow-source.json'),true,512,JSON_THROW_ON_ERROR)['files'][$path]??null;
     if($current){
         shell_check(hash('sha256',$after)===$current['after_sha256']&&$after===base64_decode($current['after'],true),'Account workflow source integrity: '.$path);

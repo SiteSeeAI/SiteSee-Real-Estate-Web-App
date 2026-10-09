@@ -53,7 +53,7 @@ class UnifiedRelease(unittest.TestCase):
         cls.obj, cls.files, cls.manifest_sha = installer.load(cls.package, cls.package_sha)
         # Build the installed release using its own pinned builder and installer.
         # Never derive historical record metadata from the candidate being tested.
-        cls.previous_commit = '631aee7c49924bc123ba335fb24eb918f7e2d314'
+        cls.previous_commit = '0ddef26c59a1ee10c8d0c8656e9d8e49420ba827'
         previous_builder = cls.base / 'previous-builder.py'
         previous_builder.write_bytes(subprocess.check_output(
             ['git', 'show', cls.previous_commit + ':tools/build-unified-release.py'], cwd=ROOT))
@@ -63,7 +63,7 @@ class UnifiedRelease(unittest.TestCase):
         historical_builder.ROOT = ROOT
         cls.previous_package = historical_builder.build(cls.previous_commit, cls.base / 'previous-release')
         cls.previous_package_sha = installer.sha(cls.previous_package.read_bytes())
-        if cls.previous_package_sha != 'd06bacaf255acd851c46cabc2cb2456a5cc956a6eaa119f0300c35ba91168a50':
+        if cls.previous_package_sha != 'bb1027ae030ff67c690ebb83a77bd49aeea43358b68e3a85850014f690e530b8':
             raise RuntimeError('Historical installed package differs from the verified operator release.')
         previous_installer = cls.previous_package.parent / 'install-unified.py'
         previous_spec = importlib.util.spec_from_file_location('previous_installer', previous_installer)
@@ -503,11 +503,11 @@ class UnifiedRelease(unittest.TestCase):
         old = json.loads(original)
         self.assertEqual(old['manifest_sha256'], self.obj['predecessor']['manifest_sha256'])
         self.assertEqual(old['runtime_schema'], self.previous_obj['runtime_schema'])
-        self.assertNotEqual(old['runtime_schema'], self.obj['runtime_schema'])
+        self.assertEqual(old['runtime_schema'], self.obj['predecessor']['runtime_schema'])
         self.assertIn('PREFLIGHT PASS', self.cli('--preflight'))
         self.assertEqual((self.private / 'unified-release.json').read_bytes(), original)
         self.assertFalse(self.journal_path.exists())
-        old['runtime_schema'] = self.obj['runtime_schema']
+        old['runtime_schema'] = 'Additive booking_change_requests table and unique pending-request index on first normal application use; existing tables and rows unchanged.'
         altered = installer.encode(old)
         (self.private / 'unified-release.json').write_bytes(altered)
         self.assertIn('Different unified release record preserved', self.cli('--preflight', success=False))

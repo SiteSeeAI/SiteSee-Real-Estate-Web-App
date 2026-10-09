@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once dirname(__DIR__).'/views/application-shell.php';
 
 /** Select the next screen from recorded state, without querying providers or changing data. */
 function staff_booking_next(array $row, ?array $claim, array $life, bool $pending, ?array $change, ?array $mail, ?array $changeMail, ?array $workflow, bool $job, bool $invitationReceiptAvailable = false, bool $changeReceiptAvailable = false, bool $declineNoticeNeedsRecovery = false): array
@@ -34,25 +35,60 @@ function staff_booking_step_for_action(string $action): string
     return 'overview';
 }
 
-function staff_booking_screens(string $reference, array $screens, array $next, string $action): string
+function staff_booking_primary_actions(string $title): ?array
+{
+    return match ($title) {
+        'Verify the saved appointment change' => ['lifecycle_sync', 'lifecycle_resolve_unchanged'],
+        'Review the customer’s requested window' => ['lifecycle_approve_request', 'lifecycle_reject_request'],
+        'Review the customer decline notice' => ['lifecycle_decline_notice', 'lifecycle_recover_decline_notice'],
+        'Verify the previous change notice' => ['lifecycle_notice', 'lifecycle_recover_notice'],
+        'Review the appointment status' => ['lifecycle_sync', 'lifecycle_notice', 'lifecycle_recover_notice', 'lifecycle_adopt', 'lifecycle_legacy_deleted', 'lifecycle_close_order'],
+        'Review the saved invitation draft' => ['resume_invitation'],
+        'Verify the saved invitation' => ['workflow_recover'],
+        'Check invitation readiness', 'Check readiness and the CRM contact' => ['workflow_check', 'workflow_link'],
+        'Verify the saved calendar result' => ['reconcile_calendar'],
+        'Confirm the appointment' => ['confirm_calendar'],
+        'Review and send the invitation' => ['send_invitation'],
+        default => null,
+    };
+}
+
+function staff_booking_screens(string $reference, array $screens, array $next, string $action, int $phase = 0): string
 {
     $e = 'staff_escape';
     $url = static fn(string $step): string => 'staff-bookings.php?reference=' . rawurlencode($reference) . '&amp;step=' . rawurlencode($step);
-    $selected = $action !== '' ? staff_booking_step_for_action($action) : ($_GET['step'] ?? 'overview');
-    if (!is_string($selected) || ($selected !== 'overview' && (!isset($screens[$selected]) || ($action === '' && !($screens[$selected]['available'] ?? true))))) $selected = 'overview';
     [$nextStep, $title, $help] = $next;
+    $identity = [];
+    if ($action !== '') foreach (['request_id','message_id','contact_id','notice_revision'] as $name) {
+        $value = $_POST[$name] ?? null;
+        if ((is_string($value) || is_int($value)) && (string)$value !== '' && strlen((string)$value) <= 1024) $identity[$name] = (string)$value;
+    }
+    $phase = $phase ?: match ($nextStep) {'review'=>1, 'readiness'=>2, 'calendar'=>3, 'onsite'=>4, default=>4};
+    $allowed = array_fill_keys(['overview', 'details', $nextStep], true);
+    foreach ($screens as $key => $screen) if ($screen['secondary'] ?? false) $allowed[$key] = true;
+    // Saved verification remains reachable; future operational screens do not.
+    if ($phase >= 3) $allowed['readiness'] = true;
+    if ($phase === 4 && $title === 'Appointment confirmed') $allowed['onsite'] = true;
+    if ($phase === 4 && $nextStep === 'onsite') $allowed['appointment'] = true;
+    $selected = $action !== '' ? staff_booking_step_for_action($action) : ($_GET['step'] ?? 'overview');
+    if (!is_string($selected) || ($selected !== 'overview' && (!isset($screens[$selected]) || ($action === '' && (!isset($allowed[$selected]) || !($screens[$selected]['available'] ?? true)))))) $selected = 'overview';
     if ($action === 'review_paid' && !($screens['readiness']['available'] ?? false) && isset($screens['review'])) $selected = 'review';
-    $html = '<nav class="booking-steps" aria-label="Booking review steps"><a href="' . $url('overview') . '"' . ($selected === 'overview' ? ' aria-current="step"' : '') . '>Overview</a>';
-    foreach ($screens as $key => $screen) if ($screen['available'] ?? true) $html .= '<a href="' . $url($key) . '"' . ($selected === $key ? ' aria-current="step"' : '') . '>' . $e($screen['label']) . '</a>';
+    $html = site_workflow_progress(['Review request', 'Prepare booking', 'Confirm appointment', 'Onsite closeout'], $phase);
+    $html .= '<nav class="booking-steps" aria-label="Booking context"><a href="' . $url('overview') . '"' . ($selected === 'overview' ? ' aria-current="page"' : '') . '>Overview</a>';
+    if (isset($screens['details'])) $html .= '<a href="'.$url('details').'"'.($selected === 'details' ? ' aria-current="page"' : '').'>Booking Details</a>';
     $html .= '</nav>';
     $html .= '<section class="booking-screen" data-booking-screen="overview"' . ($selected !== 'overview' ? ' hidden' : '') . '><section class="card next-step"><p class="eyebrow">NEXT ACTION</p><h2>' . $e($title) . '</h2><p>' . $e($help) . '</p>';
-    if (isset($screens[$nextStep])) $html .= '<a class="step-primary" href="' . $url($nextStep) . '">' . ($title === 'Appointment confirmed' ? 'Manage Appointment' : 'Continue') . ' →</a>';
+    if (isset($screens[$nextStep]) && ($screens[$nextStep]['available'] ?? true)) $html .= '<a class="step-primary" href="' . $url($nextStep) . '">' . ($title === 'Appointment confirmed' ? 'Manage Appointment' : 'Continue') . ' →</a>';
     $html .= '</section>';
-    if (isset($screens['onsite'])) $html .= '<details class="staff-fold" id="closeout-shortcut"><summary>Onsite Closeout</summary><p>Open this step when the onsite work is ready for review. Confirm the services and amount with the agent before Job Complete.</p><a href="' . $url('onsite') . '">Open Onsite Closeout →</a></details>';
+    if (isset($screens['onsite']) && isset($allowed['onsite'])) $html .= '<details class="staff-fold" id="closeout-shortcut"><summary>Onsite Closeout</summary><p>Open this step when the onsite work is ready for review. Confirm the services and amount with the agent before Job Complete.</p><a href="' . $url('onsite') . '">Open Onsite Closeout →</a></details>';
     $html .= '</section>';
     foreach ($screens as $key => $screen) {
-        $html .= '<section class="booking-screen" data-booking-screen="' . $e($key) . '"' . ($selected !== $key ? ' hidden' : '') . ' aria-labelledby="step-' . $e($key) . '"><p class="eyebrow">BOOKING STEP</p><h2 id="step-' . $e($key) . '">' . $e($screen['label']) . '</h2>' . $screen['html'];
-        if ($nextStep !== $key && isset($screens[$nextStep])) $html .= '<p class="step-continue"><a href="' . $url($nextStep) . '">Next: ' . $e($title) . ' →</a></p>';
+        $focused = in_array($key, ['review', 'readiness', 'calendar', 'appointment'], true);
+        $html .= '<section class="booking-screen" data-booking-screen="' . $e($key) . '"' . ($selected !== $key ? ' hidden' : '') . ' aria-labelledby="step-' . $e($key) . '"><p class="eyebrow">'.($key === 'details' ? 'ORDER INFORMATION' : 'STEP '.$phase.' OF 4').'</p><h2 id="step-' . $e($key) . '">' . $e($screen['label']) . '</h2>';
+        $primary = $key === $nextStep ? staff_booking_primary_actions($title) : null;
+        $html .= $focused ? '<div data-focus-actions data-focus-kind="'.$e($key).'"'.($primary !== null ? ' data-focus-primary="'.$e(json_encode($primary, JSON_THROW_ON_ERROR)).'"' : '').' data-current-action="'.$e($action).'" data-current-identity="'.$e(json_encode($identity ?: new stdClass(), JSON_THROW_ON_ERROR)).'">'.($key === $nextStep ? '<p class="flow-guidance">'.$e($help).'</p>' : '').$screen['html'].'</div>' : $screen['html'];
+        if ($key === 'details' && ($screens['review']['secondary'] ?? false)) $html .= '<p><a href="'.$url('review').'">Manage Assigned Vendor →</a></p>';
+        if ($nextStep !== $key && isset($screens[$nextStep]) && ($screens[$nextStep]['available'] ?? true)) $html .= '<p class="step-continue"><a href="' . $url($nextStep) . '">Next: ' . $e($title) . ' →</a></p>';
         $html .= '<p><a href="' . $url('overview') . '">← Booking Overview</a></p></section>';
     }
     return $html;

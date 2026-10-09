@@ -61,12 +61,14 @@ function portal_order_body(array $order,array $account,array $input=[]): string
     $e='portal_escape';$money='real_estate_money';$ref=$order['reference'];$balance=(int)($order['balance_paid_cents']??0);
     $url=static fn($view)=>'/account.php?view='.$view.'&amp;reference='.rawurlencode($ref);
     $tabs=['overview'=>'Overview','services'=>'Services & Access'];
-    if($order['can_manage_appointment']??false)$tabs['appointment']='Manage Appointment';
-    if($order['can_view_job']??false)$tabs['job']='Job & Deliverables';
+    if ($order['job_closed'] ?? false) $tabs['job'] = 'Job & Deliverables';
     $tabs['payment']='Payment Summary';$tabs['billing']='Billing & Receipts';
     $selected=is_string($input['step']??null)&&isset($tabs[$input['step']])?$input['step']:'overview';
     if(in_array($selected,['appointment','job','billing'],true))$selected='overview';
-    $body='<p><a href="/account.php">← My Orders</a></p><section class="panel"><p class="eyebrow">Order '.$e($order['order_number']).'</p><h2>'.$e($order['property']).'</h2><p class="status">'.$e($order['appointment_status']).'</p><p>'.$e($order['date'].' '.$order['time'].($order['window_end']?'–'.$order['window_end']:'')).' Central Time</p><p class="help">'.$e($order['review_status']).' · '.$e(portal_payment_label($order,$balance)).'</p></section><nav class="order-step-nav" aria-label="Order Steps">';
+    $phase = !$order['deposit_paid_cents'] ? 1 : ($order['appointment_status'] === 'Confirmed' ? (($order['job_closed'] ?? false) || ($order['extras_need_approval'] ?? false) ? 4 : 3) : 2);
+    $body='<p><a href="/account.php">← My Orders</a></p><section class="panel order-summary"><p class="eyebrow">Order '.$e($order['order_number']).'</p><h2>'.$e($order['property']).'</h2><p class="status">'.$e($order['appointment_status']).'</p><p>'.$e($order['date'].' '.$order['time'].($order['window_end']?'–'.$order['window_end']:'')).' Central Time</p><p class="help">'.$e($order['review_status']).' · '.$e(portal_payment_label($order,$balance)).'</p></section>';
+    if ($order['appointment_status'] !== 'Cancelled') $body .= site_workflow_progress(['Deposit', 'SiteSee review', 'Appointment', 'Delivery'], $phase);
+    $body.='<nav class="order-step-nav" aria-label="Order information">';
     foreach($tabs as $step=>$label){$href=in_array($step,['appointment','job','billing'],true)?$url($step):$url('order').'&amp;step='.$step;
         $body.='<a href="'.$href.'"'.($selected===$step?' aria-current="step"':'').'>'.$label.'</a>';}
     $body.='</nav>';

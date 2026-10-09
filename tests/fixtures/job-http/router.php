@@ -14,5 +14,5 @@ if(in_array($path,['/account.php','/staff-bookings.php','/staff-production.php',
 }
 if(preg_match('~^/assets/fonts/(?:Inter-Regular|Poppins-Regular|Poppins-SemiBold)\.ttf$~D',(string)$path))return false;
 if(preg_match('~^/portal-assets/(?:portal|order|payment|job-payment|onsite-services|vendor)\.(?:css|js)$~D',(string)$path))return false;
-if($path==='/portal-assets/application.css')return false;
+if(in_array($path,['/portal-assets/application.css','/portal-assets/application.js'],true))return false;
 http_response_code(404);return true;
