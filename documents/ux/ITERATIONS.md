@@ -39,7 +39,7 @@ The user rejects the current long, stacked layouts. The intended result is a rec
 4. Requested and confirmed appointment windows remain clearly distinct; consent is explicit and never defaulted to an unrelated window.
 5. Onsite Closeout remains open only on the selected closeout screen; the overview stays compact.
 6. Relevant existing interaction/role/workflow checks pass after implementation, including responsive 320/390/736/1200/1600 checks. Preserve every original authorization, financial, provider-identity and recovery guard.
-7. The user reviews representative screens and confirms the UX before a TEST server update. A future LIVE release is a separate scope and decision.
+7. Record the user's representative-screen UX acceptance separately from automated validation and installation. The later direct request for an installable GitHub package and installation command authorizes preparing the TEST update without another approval question. A future LIVE release is a separate scope and decision.
 
 Do not add new financial automation or production-mode support as an incidental UI change. The user asked whether automatic refunds and credits are possible; that answer does not mean they are already implemented. Keep Stripe TEST throughout this iteration.
 
