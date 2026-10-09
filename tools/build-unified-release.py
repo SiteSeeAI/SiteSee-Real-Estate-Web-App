@@ -26,7 +26,8 @@ CHANGED_PUBLIC = {'public/portal-assets/booking-notice.js', 'public/portal-asset
 CHANGED_PRIVATE.add('private/pricing-assets/scheduling.js')
 CHANGED_PUBLIC.add('public/portal-assets/portal.js')
 PREDECESSOR = {'commit': '631aee7c49924bc123ba335fb24eb918f7e2d314',
-               'manifest_sha256': 'c648d75b352a4fd0d3faffc86b8984bf26e95a3062689f8c8435a982366167bb'}
+               'manifest_sha256': 'c648d75b352a4fd0d3faffc86b8984bf26e95a3062689f8c8435a982366167bb',
+               'runtime_schema': 'Additive booking_change_requests table and unique pending-request index on first normal application use; existing tables and rows unchanged.'}
 RUNTIME_SCHEMA = 'Additive booking_order_numbers, booking_order_closures and vendor_review_grants tables plus existing booking_change_requests schema on first normal application use; original references, tables and payment rows unchanged.'
 ALIASES = {'account.php', 'vendor.php', 'staff-bookings.php', 'staff-production.php',
            'staff-vendors.php', 'manage-appointment.php', 'booking-pay.php',

@@ -51,6 +51,26 @@ class UnifiedRelease(unittest.TestCase):
         cls.package = pathlib.Path(cls.packages[0]['package'])
         cls.package_sha = cls.packages[0]['sha256']
         cls.obj, cls.files, cls.manifest_sha = installer.load(cls.package, cls.package_sha)
+        # Build the installed release using its own pinned builder and installer.
+        # Never derive historical record metadata from the candidate being tested.
+        cls.previous_commit = '631aee7c49924bc123ba335fb24eb918f7e2d314'
+        previous_builder = cls.base / 'previous-builder.py'
+        previous_builder.write_bytes(subprocess.check_output(
+            ['git', 'show', cls.previous_commit + ':tools/build-unified-release.py'], cwd=ROOT))
+        previous_spec = importlib.util.spec_from_file_location('previous_builder', previous_builder)
+        historical_builder = importlib.util.module_from_spec(previous_spec)
+        previous_spec.loader.exec_module(historical_builder)
+        historical_builder.ROOT = ROOT
+        cls.previous_package = historical_builder.build(cls.previous_commit, cls.base / 'previous-release')
+        cls.previous_package_sha = installer.sha(cls.previous_package.read_bytes())
+        if cls.previous_package_sha != 'd06bacaf255acd851c46cabc2cb2456a5cc956a6eaa119f0300c35ba91168a50':
+            raise RuntimeError('Historical installed package differs from the verified operator release.')
+        previous_installer = cls.previous_package.parent / 'install-unified.py'
+        previous_spec = importlib.util.spec_from_file_location('previous_installer', previous_installer)
+        cls.historical_installer = importlib.util.module_from_spec(previous_spec)
+        previous_spec.loader.exec_module(cls.historical_installer)
+        cls.previous_obj, cls.previous_files, cls.previous_manifest_sha = cls.historical_installer.load(
+            cls.previous_package, cls.previous_package_sha)
         cls.original = {}
         for name in cls.files:
             source = '_private/' + name[8:] if name.startswith('private/') else name
@@ -462,8 +482,7 @@ class UnifiedRelease(unittest.TestCase):
     def seed_installed_predecessor(self):
         previous = self.obj['predecessor']
         for name, digest in previous['files'].items():
-            source = '_private/' + name[8:] if name.startswith('private/') else name
-            data = subprocess.check_output(['git', 'show', previous['commit'] + ':' + source], cwd=ROOT)
+            data = self.previous_files[name]
             self.assertEqual(installer.sha(data), digest)
             path = installer.target(name, self.private, self.public)
             path.write_bytes(data); path.chmod(0o600 if name.startswith('private/') else 0o644)
@@ -474,12 +493,25 @@ class UnifiedRelease(unittest.TestCase):
                 name = key if key.startswith(('private/', 'public/')) else 'private/' + key
                 record['files'][key] = previous['files'][name]
             path.write_bytes(installer.encode(record))
-        old = {'release': 'unified-test-' + previous['commit'][:12], 'commit': previous['commit'],
-               'stage': 'TEST', 'manifest_sha256': previous['manifest_sha256'], 'migration': 'none',
-               'files': previous['files'], 'runtime_schema': self.obj['runtime_schema'],
-               'preserved_host_files': {n: previous['files'][n] for n in sorted(installer.PRESERVED_PUBLIC)}}
-        path = self.private / 'unified-release.json'; path.write_bytes(installer.encode(old)); path.chmod(0o600)
+        old = self.historical_installer.release_record(self.previous_obj, self.previous_files,
+                                                       self.previous_files, self.previous_manifest_sha)
+        path = self.private / 'unified-release.json'; path.write_bytes(old); path.chmod(0o600)
         return path.read_bytes()
+
+    def test_predecessor_schema_comes_from_exact_installed_release(self):
+        original = self.seed_installed_predecessor()
+        old = json.loads(original)
+        self.assertEqual(old['manifest_sha256'], self.obj['predecessor']['manifest_sha256'])
+        self.assertEqual(old['runtime_schema'], self.previous_obj['runtime_schema'])
+        self.assertNotEqual(old['runtime_schema'], self.obj['runtime_schema'])
+        self.assertIn('PREFLIGHT PASS', self.cli('--preflight'))
+        self.assertEqual((self.private / 'unified-release.json').read_bytes(), original)
+        self.assertFalse(self.journal_path.exists())
+        old['runtime_schema'] = self.obj['runtime_schema']
+        altered = installer.encode(old)
+        (self.private / 'unified-release.json').write_bytes(altered)
+        self.assertIn('Different unified release record preserved', self.cli('--preflight', success=False))
+        self.assertEqual((self.private / 'unified-release.json').read_bytes(), altered)
 
     def test_installed_predecessor_upgrade_verify_and_code_restore(self):
         original_record = self.seed_installed_predecessor()

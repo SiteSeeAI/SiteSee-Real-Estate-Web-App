@@ -118,6 +118,7 @@ def load(package, expected):
         previous = obj['predecessor']
         need(previous.get('commit') == '631aee7c49924bc123ba335fb24eb918f7e2d314'
              and previous.get('manifest_sha256') == 'c648d75b352a4fd0d3faffc86b8984bf26e95a3062689f8c8435a982366167bb'
+             and previous.get('runtime_schema') == 'Additive booking_change_requests table and unique pending-request index on first normal application use; existing tables and rows unchanged.'
              and set(previous.get('files', {})) == set(obj['files']) - {'private/server/booking-hours.php','private/server/booking-identifiers.php','private/server/booking-list-ui.php'}, 'Reviewed predecessor differs.')
         need(obj.get('runtime_schema') == 'Additive booking_order_numbers, booking_order_closures and vendor_review_grants tables plus existing booking_change_requests schema on first normal application use; original references, tables and payment rows unchanged.', 'Runtime schema review differs.')
     need(re.fullmatch('[0-9a-f]{40}', obj['commit']) and obj['release'] == 'unified-test-' + obj['commit'][:12], 'Release identity differs.')
@@ -286,7 +287,7 @@ def previous_record(obj, before, old):
                 'stage': 'TEST', 'manifest_sha256': previous['manifest_sha256'], 'migration': 'none',
                 'files': {n: sha(before[n]) for n in previous['files']},
                 'preserved_host_files': {n: sha(before[n]) for n in sorted(PRESERVED_PUBLIC)}}
-    expected['runtime_schema'] = obj['runtime_schema']
+    expected['runtime_schema'] = previous['runtime_schema']
     need(old == encode(expected), 'Different unified release record preserved.')
 
 

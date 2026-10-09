@@ -39,7 +39,21 @@ def need(value, message):
 
 def run(command):
     r = subprocess.run(command, capture_output=True, text=True, timeout=120)
-    need(r.returncode == 0, 'Command failed: ' + pathlib.Path(command[0]).name + '; no further stage executed.')
+    if r.returncode != 0:
+        # Report known failure categories, never raw provider/configuration output.
+        output = (r.stdout + '\n' + r.stderr).lower()
+        patterns = {'installed_release_record_differs': 'stopped: different unified release record preserved.',
+                    'installed_file_differs': 'stopped: installed predecessor file differs:',
+                    'unknown_deployed_edit': 'stopped: unknown deployed edit preserved:',
+                    'unsafe_file_or_owner': 'stopped: unsafe file or ownership preserved:',
+                    'required_path_missing': 'stopped: required path missing:',
+                    'package_checksum_differs': 'stopped: package checksum differs.',
+                    'permission_denied': 'permission denied', 'python_syntax_error': 'syntaxerror:',
+                    'python_not_found': 'no such file or directory', 'pam_failure': 'pam failure'}
+        detail = {'command': pathlib.Path(command[0]).name, 'exit_code': r.returncode,
+                  'categories': [name for name, pattern in patterns.items() if pattern in output],
+                  'stdout_bytes': len(r.stdout.encode()), 'stderr_bytes': len(r.stderr.encode())}
+        raise RuntimeError('Command failed: ' + json.dumps(detail) + '; no further stage executed.')
     return r.stdout
 
 

@@ -19,6 +19,25 @@ spec.loader.exec_module(host)
 
 
 class HostUpdate(unittest.TestCase):
+    def test_failed_installer_reports_known_cause_without_raw_output(self):
+        result = subprocess.CompletedProcess([], 1,
+            stdout='STOPPED: Different unified release record preserved.\nprivate-secret',
+            stderr='credentials must not be printed')
+        with mock.patch.object(host.subprocess, 'run', return_value=result):
+            with self.assertRaisesRegex(RuntimeError, 'installed_release_record_differs') as caught:
+                host.run(['/usr/sbin/runuser', '-u', 'sitesee', '--', 'python3', 'installer', '--preflight'])
+        self.assertNotIn('private-secret', str(caught.exception))
+        self.assertNotIn('credentials', str(caught.exception))
+        self.assertIn('"exit_code": 1', str(caught.exception))
+
+    def test_unknown_command_failure_does_not_expose_output(self):
+        result = subprocess.CompletedProcess([], 2, stdout='private-secret', stderr='credentials')
+        with mock.patch.object(host.subprocess, 'run', return_value=result):
+            with self.assertRaisesRegex(RuntimeError, '"categories": \\[\\]') as caught:
+                host.run(['/usr/sbin/runuser'])
+        self.assertNotIn('private-secret', str(caught.exception))
+        self.assertNotIn('credentials', str(caught.exception))
+
     def test_reflection_works_without_apache_signing_environment(self):
         environment = dict(os.environ)
         for name in ['SITESEE_REAL_ESTATE_SITE_URL', 'SITESEE_REAL_ESTATE_PRICING_GATE_SECRET']:
