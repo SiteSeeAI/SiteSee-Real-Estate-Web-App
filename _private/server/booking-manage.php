@@ -56,6 +56,7 @@ if($method==='POST'){
             if($action==='cancel'){
                 try{booking_lifecycle_notice($db,$reference,true);$notice.=' Your change notice is being verified.';}catch(Throwable){$notice.=' Staff must finish the change notice; your appointment result is saved.';}
             }
+            if($action==='cancel')booking_finance_process($db,$reference);
             $_SESSION['notice']=$notice;header('Location: manage-appointment.php',true,303);exit;
         }else throw new InvalidArgumentException('Unknown action.');
     }catch(Throwable $e){$error=$e instanceof InvalidArgumentException||$e instanceof BookingCalendarUnavailable?$e->getMessage():'We could not verify the change. Please contact SiteSee before trying again.';}

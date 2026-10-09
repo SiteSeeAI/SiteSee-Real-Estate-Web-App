@@ -34,6 +34,7 @@ $api=static function($method,$path,$body=null,$etag=null)use(&$events,&$writes,&
     return ['status'=>200,'body'=>['id'=>BOOKING_MS_CALENDAR,'canEdit'=>true,'isDefaultCalendar'=>true,'owner'=>['address'=>BOOKING_MS_MAILBOX]]];
 };
 $deps=['calendar'=>$api,'lock_path'=>$tmp.'/lock','now'=>$now];
+$deps['finance_api']=static function(){throw new RuntimeException('Isolated financial transport is unavailable; no external request.');};
 
 $deps['graph']=static function(){throw new RuntimeException('Isolated notice capture unavailable');};$deps['crm_config']=[];$deps['crm']=$deps['graph'];
 booking_confirm_appointment($db,$ref,booking_scheduling_ms_config(),$api,null,$deps['lock_path']);$db->prepare("UPDATE booking_confirmations SET invitation_state='sent' WHERE reference=?")->execute([$ref]);

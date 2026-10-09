@@ -9,7 +9,7 @@ fs.writeFileSync(path.join(temp,'application-entry.php'),fs.readFileSync(path.jo
 const vendorEntry=path.join(temp,'vendor.php');fs.writeFileSync(vendorEntry,fs.readFileSync(path.join(repo,'public/vendor.php'),'utf8').replaceAll('/home/sitesee/.sitesee-real-estate',root));
 const entry=path.join(temp,'account.php');fs.writeFileSync(entry,fs.readFileSync(path.join(repo,'public/account.php'),'utf8').replaceAll('/home/sitesee/.sitesee-real-estate',root));
 fs.writeFileSync(path.join(root,'portal-test.json'),JSON.stringify({release:'portal-20260929-r2',stage:'TEST',enabled:true}),{mode:0o600});
-for(const [file,name]of [['portal-billing.php','portal_stripe'],['booking-job.php','booking_job_stripe'],['booking-lifecycle.php','booking_lifecycle_connection'],['portal-sms.php','portal_sms_send'],['portal-sms.php','portal_sms_check']]){
+for(const [file,name]of [['booking-finance.php','booking_finance_stripe'],['portal-billing.php','portal_stripe'],['booking-job.php','booking_job_stripe'],['booking-lifecycle.php','booking_lifecycle_connection'],['portal-sms.php','portal_sms_send'],['portal-sms.php','portal_sms_check']]){
  const f=path.join(root,'server',file);fs.writeFileSync(f,fs.readFileSync(f,'utf8').replace('function '+name+'(','function '+name+'_unused_fixture('));
 }
 fs.writeFileSync(path.join(root,'fixture-providers.php'),fs.readFileSync(path.join(__dirname,'fixtures/portal-http/service-providers.php'),'utf8').replace('function portal_stripe(','function portal_fixture_base_stripe('));

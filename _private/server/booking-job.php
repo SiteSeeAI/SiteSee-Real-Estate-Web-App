@@ -72,7 +72,8 @@ function booking_job_approve_extras(PDO $db,string $account,string $reference,st
 }
 function booking_job_bill(PDO $db,string $reference): array
 {
-    return booking_job_bill_from(booking_job_guard($db,$reference),booking_job_extras($db,$reference),portal_balance_paid($db,$reference));
+    $row=booking_job_guard($db,$reference);$draft=booking_job_extras($db,$reference);
+    return booking_job_bill_from($row,$draft,booking_finance_bill_paid($db,$row,$draft));
 }
 function booking_job_bill_from(array $row,array $draft,int $paid): array
 {
@@ -90,7 +91,18 @@ function booking_job_bill_from(array $row,array $draft,int $paid): array
 function booking_job_complete(PDO $db,string $reference,string $scope,bool $agreed,?callable $api=null,?array $onsite=null,?callable $authorize=null): array
 {
     if(!$agreed)throw new InvalidArgumentException('Confirm the onsite work and displayed final bill.');
-    booking_job_schema($db);portal_billing_schema($db);$db->exec('BEGIN IMMEDIATE');
+    booking_job_schema($db);portal_billing_schema($db);
+    if(!booking_job_get($db,$reference)){
+        $pre=$onsite===null?booking_job_bill($db,$reference):booking_job_onsite_preview($db,$reference,$onsite['items'],$onsite['draft_scope'])['bill'];
+        if(!hash_equals($pre['scope'],$scope))throw new InvalidArgumentException('The final amount changed. Refresh and review it.');
+        booking_finance_prepare_balance($db,$reference,$pre['total_cents']-$pre['deposit_cents']-portal_balance_paid($db,$reference),$api??'booking_job_stripe',static function()use($db,$reference,$onsite,$scope,$authorize):void{
+            if($authorize!==null)$authorize($reference);
+            $fresh=$onsite===null?booking_job_bill($db,$reference):booking_job_onsite_preview($db,$reference,$onsite['items'],$onsite['draft_scope'])['bill'];
+            if(!hash_equals($fresh['scope'],$scope))throw new InvalidArgumentException('The final amount changed. Refresh and review it.');
+        });
+    }
+    booking_finance_verify_credits($db,$reference,$api??'booking_job_stripe','balance',true);
+    $db->exec('BEGIN IMMEDIATE');
     try{
         $actor=$authorize===null?null:$authorize($reference);
         $job=booking_job_get($db,$reference);
@@ -112,6 +124,7 @@ function booking_job_complete(PDO $db,string $reference,string $scope,bool $agre
                 $bill['onsite_authorization']['vendor']=$actor;
             }
         }
+        booking_finance_use_balance($db,$reference,max(0,(int)$bill['prior_balance_cents']-portal_balance_paid($db,$reference)));
         $db->prepare('INSERT INTO booking_jobs(reference,scope,bill_json,amount,customer,completed_at) VALUES (?,?,?,?,?,?)')->execute([$reference,$scope,json_encode($bill,JSON_THROW_ON_ERROR),$bill['due_cents'],$row['stripe_customer_id'],gmdate('c')]);
         $db->exec('COMMIT');
     }catch(Throwable $e){if($db->inTransaction())$db->rollBack();else {try{$db->exec('ROLLBACK');}catch(Throwable){}}throw $e;}
@@ -128,8 +141,9 @@ function booking_job_validate_intent(array $p,array $job): void
 function booking_job_verify_prior(PDO $db,array $job,callable $api,bool $allowAdjustments=false): bool
 {
     $row=booking_get($db,$job['reference']);$bill=json_decode($job['bill_json'],true,16,JSON_THROW_ON_ERROR);
-    $records=[portal_payment_evidence($row,(int)$row['deposit_cents'],$row['stripe_session_id'],$row['stripe_payment_intent_id'],$job['customer'],$api)];
-    $q=$db->prepare('SELECT * FROM portal_balance_attempts WHERE reference=? AND paid_at IS NOT NULL');$q->execute([$job['reference']]);$prior=0;
+    $records=[booking_finance_deposit_evidence($db,$row,$api)];
+    booking_finance_verify_credits($db,$row['reference'],$api,'balance');
+    $q=$db->prepare('SELECT * FROM portal_balance_attempts WHERE reference=? AND paid_at IS NOT NULL');$q->execute([$job['reference']]);$prior=booking_finance_credit_sum($db,$row['reference'],'balance');
     foreach($q->fetchAll(PDO::FETCH_ASSOC) as $b){$prior+=(int)$b['amount'];$records[]=portal_payment_evidence($row,(int)$b['amount'],$b['session_id'],$b['payment_intent'],$b['customer'],$api,'balance',(int)$b['attempt']);}
     portal_billing_need($prior===$bill['prior_balance_cents']);
     $clear=true;
@@ -185,9 +199,9 @@ function booking_job_collect(PDO $db,string $reference,?callable $api=null): arr
         $p=$api('GET','/payment_intents/'.$job['payment_intent']);booking_job_validate_intent($p,$job);
         if(in_array($p['status'],['requires_payment_method','requires_confirmation'],true)&&!$job['recovery_at']&&!$job['confirm_at']){
             $row=booking_get($db,$reference);
-            if(!$row['consent_at']||$row['consent_version']!==BOOKING_CONSENT_VERSION)throw new InvalidArgumentException('Saved-card permission requires customer review.');
-            $deposit=$api('GET','/payment_intents/'.$row['stripe_payment_intent_id']);$pm=(string)($deposit['payment_method']??'');
-            portal_billing_need(($deposit['id']??'')===$row['stripe_payment_intent_id']&&($deposit['livemode']??null)===false&&($deposit['customer']??'')===$job['customer']&&($deposit['setup_future_usage']??'')==='off_session'&&(bool)preg_match('/^pm_[A-Za-z0-9_]+$/D',$pm));
+            if(!$row['consent_at']||!in_array($row['consent_version'],[BOOKING_CONSENT_VERSION,'test-card-reuse-v1'],true))throw new InvalidArgumentException('Saved-card permission requires customer review.');
+            $deposit=$api('GET','/payment_intents/'.($row['stripe_payment_intent_id']??$row['credit_card_intent']??''));$pm=(string)($deposit['payment_method']??'');
+            portal_billing_need(($deposit['id']??'')===($row['stripe_payment_intent_id']??$row['credit_card_intent']??'')&&($deposit['livemode']??null)===false&&($deposit['customer']??'')===$job['customer']&&($deposit['setup_future_usage']??'')==='off_session'&&(bool)preg_match('/^pm_[A-Za-z0-9_]+$/D',$pm));
             $method=$api('GET','/payment_methods/'.$pm);portal_billing_need(($method['id']??'')===$pm&&($method['livemode']??null)===false&&($method['customer']??'')===$job['customer']&&($method['type']??'')==='card');
             $claim=$db->prepare('UPDATE booking_jobs SET confirm_at=? WHERE reference=? AND recovery_at IS NULL AND confirm_at IS NULL');$claim->execute([time(),$reference]);
             if($claim->rowCount()===1){

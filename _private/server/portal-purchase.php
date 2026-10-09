@@ -138,7 +138,7 @@ function portal_purchase_notify(PDO $db,string $accountId,string $reference,?cal
         $db->prepare("UPDATE portal_submissions SET $column=? WHERE id=?")->execute([$ok?'sent':'review_required',$intent['id']]);
     }
 }
-function portal_purchase_checkout(PDO $db,string $accountId,string $reference,bool $consent,string $ip,?callable $embedded=null,?callable $hosted=null,?array $config=null): array
+function portal_purchase_checkout(PDO $db,string $accountId,string $reference,bool $consent,string $ip,?callable $embedded=null,?callable $hosted=null,?array $config=null,?callable $financeApi=null): array
 {
     $intent=portal_purchase_intent_for_order($db,$accountId,$reference);
     if(!$intent)throw new InvalidArgumentException('This order is unavailable.');
@@ -150,6 +150,9 @@ function portal_purchase_checkout(PDO $db,string $accountId,string $reference,bo
     if(!in_array($row['status'],['awaiting_deposit_test','approved_test'],true))throw new InvalidArgumentException('A deposit is not available for this order.');
     $token=portal_purchase_token($intent);
     if(!hash_equals((string)$row['agent_token_hash'],hash('sha256',$token)))throw new InvalidArgumentException('The payment link was updated. Contact SiteSee to continue.');
+    require_once __DIR__.'/portal-billing.php';
+    booking_finance_reserve($db,$accountId,$reference,$financeApi??'portal_stripe');
+    if(booking_finance_credit_checkout($db,$accountId,$reference,$ip,$financeApi??'portal_stripe'))return ['mode'=>'paid'];
     // Renew only the capability this adapter established, after current account/ownership checks.
     $db->prepare('UPDATE bookings SET agent_token_expires=? WHERE reference=? AND agent_token_hash=?')->execute([time()+7*86400,$reference,hash('sha256',$token)]);
     $url=SITESEE_REAL_ESTATE_SITE_URL.'/account.php?view=payment&reference='.rawurlencode($reference).'&result=return';

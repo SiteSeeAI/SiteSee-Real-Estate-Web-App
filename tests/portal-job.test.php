@@ -37,7 +37,7 @@ $deps=['calendar'=>$api,'lock_path'=>$tmp.'/lock','now'=>$now];
 
 $deps['graph']=static function(){throw new RuntimeException('Isolated notice capture unavailable');};$deps['crm_config']=[];$deps['crm']=$deps['graph'];
 booking_confirm_appointment($db,$ref,booking_scheduling_ms_config(),$api,null,$deps['lock_path']);$db->prepare("UPDATE booking_confirmations SET invitation_state='sent' WHERE reference=?")->execute([$ref]);
-$db->prepare('UPDATE bookings SET consent_at=?,consent_version=? WHERE reference=?')->execute([gmdate('c'),BOOKING_CONSENT_VERSION,$ref]);
+$db->prepare('UPDATE bookings SET consent_at=?,consent_version=? WHERE reference=?')->execute([gmdate('c'),'test-card-reuse-v1',$ref]); // Retain original cash-deposit consent compatibility.
 $pristine=booking_get($db,$ref);$calendarBefore=$events;$calendarWrites=$writes;$deposit=(int)$pristine['deposit_cents'];
 $mode='success';$intents=[];$createKeys=[];$confirmCount=0;$calls=0;$refund=0;$depositRefund=0;$disputed=false;$methodMissing=false;
 $stripe=static function($method,$path,$body=[],$key='')use(&$mode,&$intents,&$createKeys,&$confirmCount,&$calls,&$refund,&$depositRefund,&$disputed,&$methodMissing,$ref,$deposit,$db):array{

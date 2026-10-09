@@ -14,7 +14,7 @@ fs.writeFileSync(accountEntry,fs.readFileSync(path.join(repo,'public/account.php
 const releaseFlag=path.join(privateRoot,'portal-test.json');
 fs.writeFileSync(releaseFlag,JSON.stringify({release:'portal-20260929-r2',stage:'TEST',enabled:true}),{mode:0o600});
 // Replace provider boundaries only in the throwaway copy; production has no test override.
-for(const [file,name] of [['portal-billing.php','portal_stripe'],['booking-lifecycle.php','booking_lifecycle_connection'],['portal-sms.php','portal_sms_send'],['portal-sms.php','portal_sms_check'],['portal-mail.php','portal_send_email_code']]){
+for(const [file,name] of [['booking-finance.php','booking_finance_stripe'],['portal-billing.php','portal_stripe'],['booking-lifecycle.php','booking_lifecycle_connection'],['portal-sms.php','portal_sms_send'],['portal-sms.php','portal_sms_check'],['portal-mail.php','portal_send_email_code']]){
  const target=path.join(privateRoot,'server',file);fs.writeFileSync(target,fs.readFileSync(target,'utf8').replace('function '+name+'(', 'function '+name+'_unused_fixture('));
 }
 const longEmail='a'.repeat(60)+'@'+'b'.repeat(60)+'.example';

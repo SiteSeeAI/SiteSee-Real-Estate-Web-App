@@ -96,7 +96,7 @@ $url = booking_start_checkout($db, $reference, $token, '127.0.0.1', $transport);
 $assert($url === 'https://checkout.stripe.com/c/pay/first', 'Agent is redirected to the test session.');
 $assert(booking_start_checkout($db, $reference, $token, '127.0.0.1', $transport) === $url && $called === 1, 'Repeated submission reuses same session.');
 $reject(static fn() => booking_rotate_test_link($db, $reference), 'An open Checkout cannot be replaced with a new link.');
-$assert(booking_get($db, $reference)['consent_version'] === 'test-card-reuse-v1', 'Consent version is recorded.');
+$assert(booking_get($db, $reference)['consent_version'] === BOOKING_CONSENT_VERSION && BOOKING_CONSENT_VERSION === 'test-card-reuse-v2', 'Current consent version is recorded.');
 
 $event = [
     'id'=>'evt_first','livemode'=>false,'type'=>'checkout.session.completed','data'=>['object'=>[

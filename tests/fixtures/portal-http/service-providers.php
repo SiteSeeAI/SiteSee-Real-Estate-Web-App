@@ -15,12 +15,25 @@ function portal_fixture_calendar(string $method,string $path,?array $body=null,?
     return ['status'=>200,'body'=>['id'=>BOOKING_MS_CALENDAR,'canEdit'=>true,'isDefaultCalendar'=>true,'owner'=>['address'=>BOOKING_MS_MAILBOX]]];
 }
 function booking_lifecycle_connection(array $claim): callable {return 'portal_fixture_calendar';}
+function booking_finance_stripe(string $method,string $path,array $body=[],string $key=''): array
+{
+    if($method==='GET'&&!str_starts_with($path,'/refunds'))return portal_stripe($method,$path,$body,$key);
+    throw new RuntimeException('Browser fixture blocked refund transport; no external request.');
+}
 function portal_stripe(string $method,string $path,array $body=[],string $key=''): array
 {
     $db=booking_db();$ref='DDDD000001';$row=booking_get($db,$ref);$amount=(int)$row['deposit_cents'];
     if($path==='/checkout/sessions/cs_test_http_deposit')return ['id'=>'cs_test_http_deposit','livemode'=>false,'mode'=>'payment','status'=>'complete','payment_status'=>'paid','currency'=>'usd','amount_total'=>$amount,'client_reference_id'=>$ref,'metadata'=>['booking_reference'=>$ref],'customer'=>'cus_http','payment_intent'=>'pi_http'];
     if($path==='/payment_intents/pi_http')return ['id'=>'pi_http','livemode'=>false,'customer'=>'cus_http','status'=>'succeeded','currency'=>'usd','amount_received'=>$amount,'latest_charge'=>'ch_http'];
     if($path==='/charges/ch_http')return ['id'=>'ch_http','livemode'=>false,'customer'=>'cus_http','payment_intent'=>'pi_http','paid'=>true,'captured'=>true,'currency'=>'usd','amount'=>$amount,'amount_captured'=>$amount,'amount_refunded'=>0,'disputed'=>false,'receipt_url'=>'https://pay.stripe.com/receipts/payment/synthetic-http'];
+    // The browser now verifies Billing after a paid balance and cancellation.
+    $balance=portal_billing_latest($db,$ref);
+    if($balance&&$balance['paid_at']){
+        $cash=(int)$balance['amount'];
+        if($path==='/checkout/sessions/'.$balance['session_id'])return ['id'=>$balance['session_id'],'livemode'=>false,'mode'=>'payment','status'=>'complete','payment_status'=>'paid','currency'=>'usd','amount_total'=>$cash,'client_reference_id'=>$ref,'metadata'=>['booking_reference'=>$ref,'portal_payment_kind'=>'balance','portal_attempt'=>(string)$balance['attempt']],'customer'=>$balance['customer'],'payment_intent'=>$balance['payment_intent']];
+        if($path==='/payment_intents/'.$balance['payment_intent'])return ['id'=>$balance['payment_intent'],'livemode'=>false,'customer'=>$balance['customer'],'status'=>'succeeded','currency'=>'usd','amount_received'=>$cash,'latest_charge'=>'ch_http_balance'];
+        if($path==='/charges/ch_http_balance')return ['id'=>'ch_http_balance','livemode'=>false,'customer'=>$balance['customer'],'payment_intent'=>$balance['payment_intent'],'paid'=>true,'captured'=>true,'currency'=>'usd','amount'=>$cash,'amount_captured'=>$cash,'amount_refunded'=>0,'disputed'=>false];
+    }
     if(str_starts_with($path,'/checkout/sessions?'))return ['has_more'=>false,'data'=>[portal_stripe('GET','/checkout/sessions/cs_test_http_deposit')]];
     if(str_starts_with($path,'/payment_intents?'))return ['has_more'=>false,'data'=>[['id'=>'pi_http','customer'=>'cus_http','livemode'=>false]]];
     if(str_starts_with($path,'/invoices?')||str_starts_with($path,'/subscriptions?'))return ['has_more'=>false,'data'=>[]];

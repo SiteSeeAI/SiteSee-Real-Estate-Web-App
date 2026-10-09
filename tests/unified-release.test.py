@@ -53,7 +53,7 @@ class UnifiedRelease(unittest.TestCase):
         cls.obj, cls.files, cls.manifest_sha = installer.load(cls.package, cls.package_sha)
         # Build the installed release using its own pinned builder and installer.
         # Never derive historical record metadata from the candidate being tested.
-        cls.previous_commit = '0ddef26c59a1ee10c8d0c8656e9d8e49420ba827'
+        cls.previous_commit = 'c40236e0937546e14ebb50d835e3b911f700d616'
         previous_builder = cls.base / 'previous-builder.py'
         previous_builder.write_bytes(subprocess.check_output(
             ['git', 'show', cls.previous_commit + ':tools/build-unified-release.py'], cwd=ROOT))
@@ -63,7 +63,7 @@ class UnifiedRelease(unittest.TestCase):
         historical_builder.ROOT = ROOT
         cls.previous_package = historical_builder.build(cls.previous_commit, cls.base / 'previous-release')
         cls.previous_package_sha = installer.sha(cls.previous_package.read_bytes())
-        if cls.previous_package_sha != 'bb1027ae030ff67c690ebb83a77bd49aeea43358b68e3a85850014f690e530b8':
+        if cls.previous_package_sha != 'e97785fb54e95b9862a865bdabd0ebb57eec84b60f494b30e15735a2e5bbb2aa':
             raise RuntimeError('Historical installed package differs from the verified operator release.')
         previous_installer = cls.previous_package.parent / 'install-unified.py'
         previous_spec = importlib.util.spec_from_file_location('previous_installer', previous_installer)
@@ -605,6 +605,20 @@ class UnifiedRelease(unittest.TestCase):
             db.execute("INSERT INTO booking_communications(kind,submission_state,crm_state,recipient,delivery_state,message_json) VALUES(?,?,?,?,?,?)",('lifecycle-1','prepared','pending','info@1789media.com','unverified',json.dumps({'ical':'METHOD:CANCEL'})))
             db.commit()
         original=self.db.read_bytes();self.assertIn('CODE RESTORED',self.cli('--rollback-code'));self.assertEqual(self.db.read_bytes(),original)
+
+    def test_financial_activity_refuses_old_code_restore_without_mutation(self):
+        self.seed_installed_predecessor();self.cli('--install')
+        for table in ('booking_finance_cancellations','booking_finance_refunds','booking_finance_credits','booking_finance_allocations','booking_finance_funding'):
+            with self.subTest(table=table):
+                with contextlib.closing(sqlite3.connect(self.db)) as db:
+                    db.execute('CREATE TABLE '+table+'(identity TEXT)');db.execute('INSERT INTO '+table+' VALUES (?)',('retained',));db.commit()
+                prior=self.db.read_bytes()
+                self.assertIn('Financial ledger preserved',self.cli('--rollback-code',success=False))
+                self.assertEqual(self.db.read_bytes(),prior)
+                self.assertIn('VERIFY PASS',self.cli('--verify'))
+                with contextlib.closing(sqlite3.connect(self.db)) as db:
+                    self.assertEqual(db.execute('SELECT identity FROM '+table).fetchone()[0],'retained')
+                    db.execute('DROP TABLE '+table);db.commit()
 
     def test_half_hour_booking_blocks_code_restore(self):
         self.seed_installed_predecessor();self.cli('--install')

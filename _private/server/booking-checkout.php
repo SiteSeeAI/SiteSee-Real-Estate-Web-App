@@ -40,7 +40,7 @@ function booking_checkout_validate(array $session, array $row, ?string $id = nul
         || ($session['metadata']['booking_reference'] ?? '') !== $row['reference']
         || ($session['currency'] ?? '') !== 'usd'
         || !is_int($session['amount_total'] ?? null)
-        || $session['amount_total'] !== (int)$row['deposit_cents']
+        || $session['amount_total'] !== booking_finance_cash($row)
         || !in_array($session['status'] ?? '', ['open','complete','expired'], true)) {
         throw new RuntimeException('Stripe session did not match the booking.');
     }
@@ -73,6 +73,7 @@ function booking_checkout_start(PDO $db, string $reference, string $token, strin
     $transactionOpen = true;
     try {
         $row = booking_agent_record($db, $reference, $token);
+        if($row && booking_finance_cash($row)===0 && !$row['deposit_paid_at'])throw new InvalidArgumentException('Open your account to approve this credit payment.');
         if (!$row) throw new InvalidArgumentException('This payment link is invalid or expired.');
         if ($row['status'] === 'deposit_paid_test') {
             $db->exec('COMMIT'); $transactionOpen = false;
@@ -97,6 +98,7 @@ function booking_checkout_start(PDO $db, string $reference, string $token, strin
                 $db->prepare("UPDATE bookings SET checkout_state='expired', stripe_checkout_url=NULL
                     WHERE reference=? AND stripe_session_id=? AND checkout_state='open'
                     AND status IN ('awaiting_deposit_test','approved_test')")->execute([$reference,$id]);
+                booking_finance_expire($db,booking_get($db,$reference));
             }
             return $result;
         }
@@ -123,7 +125,7 @@ function booking_checkout_start(PDO $db, string $reference, string $token, strin
         'customer_creation'=>'always', 'customer_email'=>$row['email'],
         'client_reference_id'=>$reference, 'metadata[booking_reference]'=>$reference,
         'line_items[0][price_data][currency]'=>'usd',
-        'line_items[0][price_data][unit_amount]'=>(string)$row['deposit_cents'],
+        'line_items[0][price_data][unit_amount]'=>(string)booking_finance_cash($row),
         'line_items[0][price_data][product_data][name]'=>'SiteSee ' . ucfirst($row['market']) . ' shoot deposit',
         'line_items[0][quantity]'=>'1',
         'payment_intent_data[setup_future_usage]'=>'off_session',
@@ -146,6 +148,7 @@ function booking_checkout_start(PDO $db, string $reference, string $token, strin
         if ($result['mode'] === 'expired') {
             $db->prepare("UPDATE bookings SET checkout_state='expired' WHERE reference=? AND stripe_session_id=? AND checkout_state='open'")
                 ->execute([$reference,$session['id']]);
+            booking_finance_expire($db,booking_get($db,$reference));
         }
         return $result;
     } catch (Throwable $error) {

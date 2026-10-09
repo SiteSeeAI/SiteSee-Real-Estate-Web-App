@@ -220,7 +220,7 @@ function booking_lifecycle_message(array $row,array $claim,int $revision,string 
     $plain='This is a SiteSee TEST appointment. No live payment has been collected.' . "\n\n"
         .($cancel?'Your appointment is cancelled.':'Your appointment arrival window has been updated to '.booking_request($row)['appointment']['date'].' '.booking_request($row)['appointment']['time'].'–'.booking_request($row)['appointment']['windowEnd'].' Central Time.')
         ."\nReference: ".$row['reference']."\nProperty: ".booking_confirmation_property(booking_request($row)['details'])
-        ."\nPayment records are unchanged. This notice does not issue a refund or determine any cancellation fee."
+        ."\nCancellation billing is processed separately under the refund and credit policy. View Billing in your account for verified results. This notice does not confirm that a refund has completed."
         .( !$cancel && $managementLink !== '' ? "\n\nManage your appointment securely: ".$managementLink."\nThis private link expires seven days after it was issued. Contact SiteSee for a replacement." : '')
         ."\nFor help, reply to this message.";
     $ical=preg_replace_callback('/DESCRIPTION:.*?(?=\r\nORGANIZER;)/s',static fn()=>booking_ical_fold('DESCRIPTION:'.booking_ical_text($plain)),$m['ical']);
@@ -266,6 +266,7 @@ function booking_lifecycle_finish(PDO $db,array $op): void
             'old_window'=>booking_request($p['row'])['appointment'],'new_window'=>$cancel?null:$p['appointment'],
             'calendar_uid'=>$p['claim']['calendar_uid'],'event_uid'=>$p['claim']['event_uid']]);
         booking_communication_enqueue($db,$ref,'lifecycle-'.$op['revision'],booking_lifecycle_message(booking_get($db,$ref),booking_confirmation_get($db,$ref),(int)$op['revision'],$op['action'],$cancel?'':booking_management_notice_link($db,$ref)),$p['claim']);
+        if($cancel)booking_finance_queue($db,$pending,$p);
         $db->exec('COMMIT');
     }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
 }
@@ -454,7 +455,14 @@ function booking_change_request_decline_notices(PDO $db,string $reference): arra
     }
     return $notices;
 }
+/** Provision recovery before an authorized cancellation can become uncertain. */
 function booking_lifecycle_change(PDO $db,string $reference,string $action,string $fingerprint,string $actor,string $date='',string $time='',array $deps=[]): array
+{
+    if($action==='cancel'&&!isset($deps['finance_api'])){try{booking_finance_worker_key(true);}catch(Throwable){/* Preserve the cancellation even if credentials need staff review. */}}
+    $result=booking_lifecycle_change_calendar($db,$reference,$action,$fingerprint,$actor,$date,$time,$deps);
+    return $result;
+}
+function booking_lifecycle_change_calendar(PDO $db,string $reference,string $action,string $fingerprint,string $actor,string $date='',string $time='',array $deps=[]): array
 {
     if($actor==='customer'&&$action==='reschedule')return booking_change_request_create($db,$reference,$fingerprint,$date,$time,$deps);
     if(booking_job_get($db,$reference))throw new InvalidArgumentException('Onsite work is complete. Contact SiteSee for help with this completed job.');
@@ -519,7 +527,7 @@ function booking_lifecycle_change(PDO $db,string $reference,string $action,strin
         try{
             if(booking_job_get($db,$reference))throw new InvalidArgumentException('Onsite work was completed. The appointment cannot be changed.');
             if(!hash_equals(booking_lifecycle_fingerprint($db,$reference),$fingerprint))throw new InvalidArgumentException('Appointment changed during the check. Reload.');
-            $db->prepare('INSERT INTO booking_lifecycle_operations(operation_id,reference,revision,action,actor,state,payload_json,created_at) VALUES(?,?,?,?,?,?,?,?)')->execute([...array_values($op),gmdate('c')]);
+            $db->prepare('INSERT INTO booking_lifecycle_operations(operation_id,reference,revision,action,actor,state,payload_json,created_at) VALUES(?,?,?,?,?,?,?,?)')->execute([...array_values($op),gmdate('c',$now)]);
             if($request){
                 $q=$db->prepare("UPDATE booking_change_requests SET state='applying',operation_id=? WHERE request_id=? AND reference=? AND state='pending'");
                 $q->execute([$op['operation_id'],$request['request_id'],$reference]);
@@ -576,6 +584,7 @@ function booking_staff_cancel(PDO $db,string $reference,string $fingerprint,arra
     $revision=(int)$state['revision'];
     try{$report=booking_lifecycle_notice($db,$reference,true,['notice_revision'=>$revision]+$deps);}
     catch(Throwable){$report=['notice'=>'Cancellation is saved; the customer notice needs recovery. Do not repeat the calendar deletion.'];}
+    booking_finance_process($db,$reference,$deps['finance_api']??null,$deps['now']??null);
     return ['state'=>$state,'notice'=>$report];
 }
 

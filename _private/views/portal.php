@@ -49,6 +49,7 @@ function portal_billing_index_page(PDO $db,array $account): never
     $options=booking_list_options($_GET);$groups=[];$e='portal_escape';
     foreach(['open','previous'] as $group)$groups[$group]=booking_order_list($db,$account['id'],$group,$options[$group.'_page'],$options[$group.'_size']);
     $body='<p class="lead">Job totals and receipts for your open and previous orders. Open a job for verified payments, refunds and invoices.</p>';
+    $body.='<section class="panel"><h2>Available Credit</h2><p>'.real_estate_money(booking_finance_available($db,$account['id'])).'</p><p class="help">Credit applies automatically to your replacement deposit first, then its balance. Reserved credit stays with that order until payment or cancellation.</p></section>';
     $body.=booking_lists_html($groups,$options,'/account.php',['view'=>'billing'],static function($row)use($e){
         $summary=portal_order_summary($row);$total=$row['bill_json']?json_decode($row['bill_json'],true,32,JSON_THROW_ON_ERROR)['total_cents']:($row['approved_at']?(int)$row['approved_cents']+(int)$row['rush_fee_cents']:null);
         return '<article class="order"><div><p class="eyebrow">Order '.$e($row['order_number']).'</p><h3>'.$e($summary['property']).'</h3><p>Job Total: '.($total===null?'Awaiting Staff Review':real_estate_money($total)).'</p><p>'.$e($summary['payment_status']).'</p></div><a class="view-order" href="/account.php?view=billing&amp;reference='.$e($row['reference']).'">Billing &amp; Receipts<span class="sr-only"> '.$e($row['order_number']).'</span> →</a></article>';
@@ -90,11 +91,12 @@ function portal_order_body(array $order,array $account,array $input=[]): string
         $body.='<dt>Test Deposit Recorded</dt><dd>'.$money($order['deposit_paid_cents']).'</dd>';
         if($balance>0)$body.='<dt>Test Balance Recorded</dt><dd>'.$money($balance).'</dd>';
         if($order['remaining_cents']!==null)$body.='<dt>Remaining Job Balance</dt><dd>'.(!empty($order['payment_review'])?'Under Billing Review':$money($order['remaining_cents'])).'</dd>';
-        $body.='</dl><p><a href="'.$url('billing').'">Billing &amp; Receipts</a></p><p class="help">Cancellation refunds or credits are processed separately. Verified refunds appear in Billing.</p></section>';
+        $body.='</dl><p><a href="'.$url('billing').'">Billing &amp; Receipts</a></p><p class="help">Cancellation refunds and credits are verified separately from calendar changes. Their status appears in Billing.</p></section>';
         return $body;
     }
     $next=['SiteSee Is Reviewing Your Request','Your deposit is recorded. We will confirm your appointment after reviewing scope and availability.',null];
-    if($order['appointment_status']==='Cancelled')$next=['Appointment Cancelled','Your appointment is cancelled. Review payments and any manually processed refund in Billing.', $url('billing')];
+    if($order['expired_credit']??false)$next=['Payment Expired','Your unpaid checkout expired and held credit was returned. Start a new order to apply your available credit.','/account.php?view=new'];
+    elseif($order['appointment_status']==='Cancelled')$next=['Appointment Cancelled','Your appointment is cancelled. Review payments and refund and credit status in Billing.', $url('billing')];
     elseif($order['change_request']??null){$request=$order['change_request'];$next=['Appointment Change Awaiting Review','Requested: '.$request['date'].' '.$request['time'].'–'.$request['window_end'].' Central Time. Your confirmed appointment remains unchanged until SiteSee approves the change.',$url('appointment')];}
     elseif($order['change_pending']??false)$next=['Appointment Change Being Verified','SiteSee is checking the saved calendar result before another change.',$url('appointment')];
     elseif(!$order['deposit_paid_cents'])$next=($account['profile_complete']??false)
@@ -106,7 +108,7 @@ function portal_order_body(array $order,array $account,array $input=[]): string
     elseif($order['job_closed']??false)$next=[($order['job_status']??'Production'),!empty($order['payment_review'])?'Your payment needs a billing check. Contact SiteSee.':(($order['remaining_cents']??0)>0?'Review your completed job and final payment.':'Open your job to check Production and available deliverables.'),$url('job')];
     else $next=['Appointment Confirmed','Your confirmed arrival window is shown above. Manage your appointment when you need to request a change.',$url('appointment')];
     $body.='<section class="panel next-action"><p class="eyebrow">NEXT STEP</p><h2>'.$e($next[0]).'</h2><p>'.$e($next[1]).'</p>';
-    if($next[2])$body.='<a class="'.(!$order['deposit_paid_cents']&&($account['profile_complete']??false)?'payment-action':'step-primary').'" href="'.$next[2].'">'.(!$order['deposit_paid_cents']&&($account['profile_complete']??false)?'Pay Test Deposit':'Continue →').'</a>';
+    if($next[2])$body.='<a class="'.(!$order['deposit_paid_cents']&&($account['profile_complete']??false)?'payment-action':'step-primary').'" href="'.$next[2].'">'.(!$order['deposit_paid_cents']&&($account['profile_complete']??false)?(($order['expired_credit']??false)?'Start New Order':'Pay Test Deposit'):'Continue →').'</a>';
     return $body.'</section>';
 }
 function portal_order_page(array $order,array $account): never

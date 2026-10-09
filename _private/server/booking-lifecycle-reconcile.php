@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-/** Scheduled local reconciliation; provider GETs only, never calendar writes, email or Stripe. */
+/** Scheduled calendar GET reconciliation and durable TEST refund outbox; no calendar/mail writes. */
 if(PHP_SAPI!=='cli'){http_response_code(404);error_log('SiteSee reconciliation requires the PHP CLI executable.');exit;}
 echo gmdate('c')." Worker started.\n";
 $workerStage='bootstrap';
@@ -46,3 +46,12 @@ foreach($eligible as$row){
     catch(Throwable){++$errors;booking_lifecycle_set($db,$row['reference'],['checked_at'=>time(),'diagnostic'=>'Scheduled reconciliation could not verify this appointment. Existing reservations remain held; staff review is required.']);}
 }
 echo gmdate('c')." Reconciled: $count; review required: $errors. No calendar or mail writes.\n";
+
+$workerStage='financial-outbox';
+$financialCount=0;$financialStarted=microtime(true);
+try{
+    booking_finance_worker_key();
+    $financial=$db->query("SELECT reference FROM booking_finance_cancellations WHERE state<>'completed' ORDER BY COALESCE(checked_at,0),requested_at LIMIT 10")->fetchAll(PDO::FETCH_COLUMN);
+    foreach($financial as $reference){if(microtime(true)-$financialStarted>45)break;booking_finance_process($db,$reference);++$financialCount;}
+    echo gmdate('c')." Financial TEST outbox checked: $financialCount. Original refund keys preserved.\n";
+}catch(Throwable){echo gmdate('c')." Financial outbox needs private credential/staff review. No secrets exposed.\n";}

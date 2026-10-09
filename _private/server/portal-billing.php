@@ -21,7 +21,7 @@ function portal_billing_latest(PDO $db,string $reference): array|false
 }
 function portal_balance_paid(PDO $db,string $reference): int
 {
-    $q=$db->prepare('SELECT COALESCE(SUM(amount),0) FROM portal_balance_attempts WHERE reference=? AND paid_at IS NOT NULL');$q->execute([$reference]);return (int)$q->fetchColumn();
+    $q=$db->prepare('SELECT COALESCE(SUM(amount),0) FROM portal_balance_attempts WHERE reference=? AND paid_at IS NOT NULL');$q->execute([$reference]);return (int)$q->fetchColumn()+booking_finance_credit_sum($db,$reference,'balance');
 }
 function portal_billing_url(string $url,array $hosts): string
 {
@@ -54,7 +54,7 @@ function portal_payment_evidence(array $row,int $amount,string $sessionId,string
     portal_billing_need(($p['id']??'')===$intent&&($p['livemode']??null)===false&&($p['customer']??'')===$customer&&($p['status']??'')==='succeeded'&&($p['currency']??'')==='usd'&&($p['amount_received']??null)===$amount&&(bool)preg_match('/^ch_[A-Za-z0-9_]+$/D',(string)($p['latest_charge']??'')));
     $c=$api('GET','/charges/'.$p['latest_charge']);
     portal_billing_need(($c['id']??'')===$p['latest_charge']&&($c['livemode']??null)===false&&($c['customer']??'')===$customer&&($c['payment_intent']??'')===$intent&&($c['paid']??false)===true&&($c['captured']??false)===true&&($c['currency']??'')==='usd'&&($c['amount']??null)===$amount&&($c['amount_captured']??null)===$amount&&is_int($c['amount_refunded']??null)&&$c['amount_refunded']>=0&&$c['amount_refunded']<=$amount&&is_bool($c['disputed']??null));
-    $result=['kind'=>$kind,'amount'=>$amount,'refunded'=>$c['amount_refunded'],'disputed'=>$c['disputed'],'receipt'=>null,'invoice'=>null,'pdf'=>null];
+    $result=['charge'=>$c['id'],'payment_intent'=>$intent,'kind'=>$kind,'amount'=>$amount,'refunded'=>$c['amount_refunded'],'disputed'=>$c['disputed'],'receipt'=>null,'invoice'=>null,'pdf'=>null];
     if(!empty($c['receipt_url']))$result['receipt']=portal_billing_url($c['receipt_url'],['pay.stripe.com']);
     if(!empty($s['invoice'])){
         portal_billing_need(is_string($s['invoice'])&&(bool)preg_match('/^in_[A-Za-z0-9_]+$/D',$s['invoice']));$i=$api('GET','/invoices/'.$s['invoice']);
@@ -66,7 +66,7 @@ function portal_payment_evidence(array $row,int $amount,string $sessionId,string
 function portal_billing_records(PDO $db,string $account,string $reference,?callable $api=null): array
 {
     $row=portal_service_owned($db,$account,$reference);$api??='portal_stripe';$out=[];
-    if($row['deposit_paid_at'])$out[]=portal_payment_evidence($row,(int)$row['deposit_cents'],$row['stripe_session_id'],$row['stripe_payment_intent_id'],$row['stripe_customer_id'],$api);
+    if($row['deposit_paid_at'])$out[]=booking_finance_deposit_evidence($db,$row,$api);
     $q=$db->prepare("SELECT * FROM portal_balance_attempts WHERE reference=? AND paid_at IS NOT NULL ORDER BY attempt");$q->execute([$reference]);
     foreach($q->fetchAll(PDO::FETCH_ASSOC) as $b)$out[]=portal_payment_evidence($row,(int)$b['amount'],$b['session_id'],$b['payment_intent'],$b['customer'],$api,'balance',(int)$b['attempt']);
     $job=booking_job_get($db,$reference);
@@ -82,9 +82,10 @@ function portal_balance_scope(PDO $db,string $account,string $reference): array
     if(booking_job_get($db,$reference))throw new InvalidArgumentException('The onsite final bill now controls this balance. Open Job Status in Order Details.');
     if(!booking_test_enabled()||!$row['deposit_paid_at']||!$row['approved_at']||$row['status']!=='deposit_paid_test'||!$s||($s['reschedule_required']??0)||($s['rush_status']??'')==='pending'||$life['state']!=='active'||booking_lifecycle_pending($db,$reference))throw new InvalidArgumentException('Your order needs staff review before balance payment.');
     $amount=(int)$row['approved_cents']+(int)$s['rush_fee_cents']-(int)$row['deposit_cents'];
+    $credit=booking_finance_balance_credit($db,$reference,$amount);
     if($amount<=0)throw new InvalidArgumentException('No balance payment is due.');
-    $scope=hash('sha256',json_encode([$reference,$row['approved_at'],(int)$row['approved_cents'],(int)$row['deposit_cents'],(int)$s['rush_fee_cents'],$row['request_json']],JSON_THROW_ON_ERROR));
-    return ['row'=>$row,'amount'=>$amount,'scope'=>$scope];
+    $scope=hash('sha256',json_encode([$reference,$row['approved_at'],(int)$row['approved_cents'],(int)$row['deposit_cents'],(int)$s['rush_fee_cents'],$row['request_json'],$credit],JSON_THROW_ON_ERROR));
+    return ['row'=>$row,'amount'=>$amount-$credit,'credit'=>$credit,'scope'=>$scope];
 }
 function portal_balance_validate(array $s,array $b): void
 {
@@ -111,6 +112,10 @@ function portal_balance_checkout(PDO $db,string $account,string $reference,strin
     $current=portal_balance_scope($db,$account,$reference);if(!hash_equals($current['scope'],$scope))throw new InvalidArgumentException('The approved amount changed. Refresh and review it.');
     $api??='portal_stripe';$config??=booking_checkout_config();
     portal_billing_customer($db,$account,$reference,$api);
+    booking_finance_prepare_balance($db,$reference,$current['amount']+$current['credit'],$api,static function()use($db,$account,$reference,$scope):void{
+        if(portal_balance_scope($db,$account,$reference)['scope']!==$scope)throw new InvalidArgumentException('Refresh the approved balance.');
+    });
+    booking_finance_verify_credits($db,$reference,$api,'balance',true);
     $records=portal_billing_records($db,$account,$reference,$api);
     foreach($records as $payment)if($payment['refunded']||$payment['disputed'])throw new InvalidArgumentException('A payment adjustment needs staff review before any new payment.');
     if($latest&&$latest['state']==='open'){
@@ -130,6 +135,7 @@ function portal_balance_checkout(PDO $db,string $account,string $reference,strin
             if($latest['scope']!==$scope||time()-(int)$latest['created_at']>23*3600)throw new InvalidArgumentException('The previous payment needs staff review before retrying.');
         }else{
             $fresh=portal_balance_scope($db,$account,$reference);if($fresh['scope']!==$scope)throw new InvalidArgumentException('Refresh the approved amount.');
+            if($fresh['amount']===0){booking_finance_use_balance($db,$reference,$fresh['credit']);$db->exec('COMMIT');return ['mode'=>'paid'];}
             $attempt=$latest?(int)$latest['attempt']+1:1;
             $body=['mode'=>'payment','customer'=>$fresh['row']['stripe_customer_id'],'client_reference_id'=>$reference,'metadata[booking_reference]'=>$reference,'metadata[portal_payment_kind]'=>'balance','metadata[portal_attempt]'=>(string)$attempt,'payment_method_types[0]'=>'card','invoice_creation[enabled]'=>'true','line_items[0][quantity]'=>'1','line_items[0][price_data][currency]'=>'usd','line_items[0][price_data][unit_amount]'=>(string)$fresh['amount'],'line_items[0][price_data][product_data][name]'=>'SiteSee approved job balance','payment_intent_data[metadata][booking_reference]'=>$reference,'payment_intent_data[metadata][portal_payment_kind]'=>'balance'];
             $return=SITESEE_REAL_ESTATE_SITE_URL.'/account.php?view=balance&reference='.$reference.'&result=return';
@@ -165,8 +171,14 @@ function portal_balance_event(PDO $db,array $event): bool
         }else{
             portal_billing_need(($s['payment_status']??'')==='paid'&&($s['status']??'')==='complete'&&(bool)preg_match('/^pi_[A-Za-z0-9_]+$/D',(string)($s['payment_intent']??'')));
             if($b['paid_at'])portal_billing_need($b['payment_intent']===$s['payment_intent']);
+            if(!$b['paid_at']&&!booking_finance_plan($db,$b['reference'])){
+                $gross=(int)booking_get($db,$b['reference'])['approved_cents']+(int)booking_get($db,$b['reference'])['rush_fee_cents']-(int)booking_get($db,$b['reference'])['deposit_cents'];
+                booking_finance_use_balance($db,$b['reference'],max(0,$gross-(int)$b['amount']));
+            }
             $db->prepare("UPDATE portal_balance_attempts SET session_id=?,payment_intent=?,state='paid',paid_at=COALESCE(paid_at,?) WHERE reference=? AND attempt=?")->execute([$s['id'],$s['payment_intent'],gmdate('c'),$b['reference'],$b['attempt']]);
         }
+        // Durable wake-up inside the payment transaction: a crash before the worker handoff cannot strand late cash.
+        $db->prepare("UPDATE booking_finance_cancellations SET state='queued' WHERE reference=?")->execute([$b['reference']]);
         $db->prepare('INSERT INTO portal_balance_events VALUES (?,?,?)')->execute([$event['id'],$b['reference'],time()]);$db->exec('COMMIT');return true;
     }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
 }
@@ -174,7 +186,7 @@ function portal_balance_event(PDO $db,array $event): bool
 function portal_billing_customer(PDO $db,string $account,string $reference,callable $api): string
 {
     $row=portal_service_owned($db,$account,$reference);portal_billing_need((bool)$row['deposit_paid_at']);
-    portal_payment_evidence($row,(int)$row['deposit_cents'],$row['stripe_session_id'],$row['stripe_payment_intent_id'],$row['stripe_customer_id'],$api);
+    booking_finance_deposit_evidence($db,$row,$api);
     $customer=$row['stripe_customer_id'];$q=$db->prepare('SELECT reference FROM bookings WHERE stripe_customer_id=?');$q->execute([$customer]);foreach($q->fetchAll(PDO::FETCH_COLUMN) as $ref)portal_billing_need(portal_owns_order($db,$account,$ref));
     $sessions=$api('GET','/checkout/sessions?customer='.$customer.'&limit=100');portal_billing_need(($sessions['has_more']??null)===false&&is_array($sessions['data']??null)&&count($sessions['data'])>0);
     $intents=[];$invoices=[];

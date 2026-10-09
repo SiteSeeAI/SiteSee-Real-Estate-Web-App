@@ -24,6 +24,9 @@ try {
     $event = booking_verify_stripe_event((string)$raw, (string)($_SERVER['HTTP_STRIPE_SIGNATURE'] ?? ''));
     $db = booking_db();
     if (!booking_job_event($db,$event) && !portal_balance_event($db, $event)) booking_process_stripe_event($db, $event);
+    $object=$event['data']['object']??[];
+    $financeReference=$object['metadata']['booking_reference']??$object['client_reference_id']??'';
+    if(is_string($financeReference)&&preg_match('/^[A-F0-9]{10,32}$/D',$financeReference))booking_finance_process($db,$financeReference);
     echo 'ok';
 } catch (InvalidArgumentException | JsonException $error) {
     http_response_code(400);

@@ -23,7 +23,7 @@ function portal_appointment_page(PDO $db,array $account,string $reference,array 
     $focusAction = is_string($_POST['action'] ?? null) ? $_POST['action'] : '';
     if ($windows && $focusAction === 'appointment_windows') $focusAction = 'appointment_reschedule';
     if ($state['state'] !== 'cancelled') $body .= site_workflow_progress(['Deposit', 'SiteSee review', 'Appointment', 'Delivery'], 3);
-    $body.='<section class="panel"><div data-focus-actions data-focus-kind="customer" data-current-action="'.$e($focusAction).'"><h2>Your Arrival Window</h2><p>'.$e($a['date'].' '.$a['time'].'–'.$a['windowEnd']).' Central Time</p><p>Cancellation does not automatically issue a refund or determine a fee.</p>';
+    $body.='<section class="panel"><div data-focus-actions data-focus-kind="customer" data-current-action="'.$e($focusAction).'"><h2>Your Arrival Window</h2><p>'.$e($a['date'].' '.$a['time'].'–'.$a['windowEnd']).' Central Time</p><p>Customer cancellation at least 24 hours before the confirmed appointment refunds the paid deposit. Later cancellation creates deposit credit. Extra prepaid payments require staff review.</p>';
     $request=booking_change_request_pending($db,$reference);$lastRequest=booking_change_request_latest($db,$reference);
     if($request){$body.='<p class="notice">Requested window: '.$e($request['date'].' '.$request['time'].'–'.$request['window_end']).' Central Time. '
         .($request['state']==='pending'?'Awaiting SiteSee manager approval. Your confirmed appointment remains unchanged.':'Manager approved this request; the calendar result is awaiting verification.').'</p>';
@@ -56,10 +56,13 @@ function portal_billing_page(PDO $db,array $account,string $reference): never
     $order=portal_owned_order($db,$account['id'],$reference);$job=booking_job_get($db,$reference);
     $total=$job?json_decode($job['bill_json'],true,32,JSON_THROW_ON_ERROR)['total_cents']:($order['approved_cents']===null?null:$order['approved_cents']+$order['rush_fee_cents']);
     $body.='<section class="panel"><p class="eyebrow">Order '.$e($order['order_number']).'</p><h2>'.$e($order['property']).'</h2><p>Job Total: '.($total===null?'Awaiting Staff Review':$money($total)).'</p></section>';
+    $body.=booking_finance_status_html($db,$reference);
     try{$payments=portal_billing_records($db,$account['id'],$reference);}catch(Throwable){portal_page('Billing & Receipts',$body.'<p class="notice">Billing records could not be verified right now. Please try again or contact SiteSee.</p>',$account,503);}
     if(!$payments)$body.='<section class="panel"><p>No verified payment has been recorded for this order yet.</p></section>';
     foreach($payments as $p){
         $body.='<section class="panel"><h2>'.($p['kind']==='deposit'?'Test Deposit':'Test Balance').'</h2><dl><dt>Paid</dt><dd>'.$money($p['amount']).'</dd><dt>Refunded</dt><dd>'.$money($p['refunded']).'</dd><dt>Net Paid</dt><dd>'.$money($p['amount']-$p['refunded']).'</dd></dl>';
+        if(!empty($p['credit']))$body.='<p>Credit applied: '.$money($p['credit']).'</p>';
+        if(!empty($p['credit_restored']))$body.='<p>Credit returned to account: '.$money($p['credit_restored']).'</p>';
         if($p['disputed'])$body.='<p class="notice">This payment has a dispute. Contact SiteSee for assistance.</p>';
         foreach(['receipt'=>'View Receipt','invoice'=>'View Invoice','pdf'=>'Download Invoice PDF'] as $key=>$label)if($p[$key])$body.='<p><a href="'.$e($p[$key]).'" rel="noreferrer" target="_blank">'.$label.'</a></p>';
         if(!$p['invoice'])$body.='<p class="help">No invoice is available for this payment.</p>';

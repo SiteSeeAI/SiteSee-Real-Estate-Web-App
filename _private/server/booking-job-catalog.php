@@ -159,7 +159,7 @@ function booking_job_onsite_preview(PDO $db,string $reference,array $items,strin
         $draft['revision']=(int)$draft['revision']+1;$draft['lines_json']=$json;
         $draft['scope']=hash('sha256',$reference.':'.$draft['revision'].':'.$json);$draft['approved_by']=null;$draft['approved_at']=null;
     }
-    $bill=booking_job_bill_from($row,$draft,portal_balance_paid($db,$reference));
+    $bill=booking_job_bill_from($row,$draft,booking_finance_bill_paid($db,$row,$draft));
     return ['draft'=>$draft,'bill'=>$bill];
 }
 

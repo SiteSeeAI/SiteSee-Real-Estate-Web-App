@@ -34,5 +34,6 @@ function portal_appointment_change(PDO $db,string $account,string $reference,str
     if($action!=='reschedule'&&(int)$after['revision']>(int)$before['revision']){
         try{booking_lifecycle_notice($db,$reference,true,$deps);}catch(Throwable){/* Saved change remains authoritative; staff can recover notice delivery. */}
     }
+    if($action==='cancel')booking_finance_process($db,$reference,$deps['finance_api']??null,$deps['now']??null);
     return $after;
 }

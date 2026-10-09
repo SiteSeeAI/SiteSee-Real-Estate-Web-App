@@ -6,9 +6,10 @@ require_once dirname(__DIR__) . '/real-estate-form-config.php';
 require_once dirname(__DIR__) . '/real-estate-pricing.php';
 require_once __DIR__ . '/booking-schedule.php';
 require_once __DIR__.'/booking-identifiers.php';
+require_once __DIR__.'/booking-finance.php';
 
-const BOOKING_CONSENT_VERSION = 'test-card-reuse-v1';
-const BOOKING_CONSENT_TEXT = 'I authorize SiteSee to save the card used for this test deposit for the remaining approved job balance and any on-site services I separately approve. If I selected the residential platform, I authorize its separate monthly billing only after publication until I notify SiteSee the property is sold. I understand later charges require their own approved scope and that a saved card may require further authentication.';
+const BOOKING_CONSENT_VERSION = 'test-card-reuse-v2';
+const BOOKING_CONSENT_TEXT = 'I authorize SiteSee to use the card saved for this test deposit or, when credit covers it, the verified card previously saved on my account for the remaining approved job balance and any on-site services I separately approve. If I selected the residential platform, I authorize its separate monthly billing only after publication until I notify SiteSee the property is sold. I understand later charges require their own approved scope and that a saved card may require further authentication.';
 
 function booking_test_enabled(): bool
 {
@@ -69,6 +70,7 @@ function booking_db(): PDO
     $db->exec('CREATE INDEX IF NOT EXISTS staff_login_ip_time ON staff_login_attempts(ip_hash, at)');
     booking_schedule_schema($db);
     booking_identifier_schema($db);
+    booking_finance_schema($db);
     @chmod($path, 0600);
     return $db;
 }
@@ -125,7 +127,8 @@ function booking_get(PDO $db, string $reference): array|false
         s.appointment_json AS schedule_appointment_json, s.decision_reason AS rush_decision_reason
         FROM bookings b LEFT JOIN booking_scheduling s ON b.reference=s.reference WHERE b.reference=?");
     $stmt->execute([$reference]);
-    return $stmt->fetch();
+    $row=$stmt->fetch();
+    return $row ? booking_finance_enrich($db,$row) : false;
 }
 
 function booking_recent(PDO $db): array
@@ -221,6 +224,7 @@ function booking_start_checkout(PDO $db, string $reference, string $token, strin
     $db->exec('BEGIN IMMEDIATE');
     try {
         $row = booking_agent_record($db, $reference, $token);
+        if($row && booking_finance_cash($row)===0 && !$row['deposit_paid_at'])throw new InvalidArgumentException('Open your account to approve this credit payment.');
         if (!$row || !in_array($row['status'], ['awaiting_deposit_test', 'approved_test'], true)) {
             throw new InvalidArgumentException('This test payment link is invalid or has already been used.');
         }
@@ -248,7 +252,7 @@ function booking_start_checkout(PDO $db, string $reference, string $token, strin
         'customer_email' => $row['email'],
         'client_reference_id' => $reference,
         'line_items[0][price_data][currency]' => 'usd',
-        'line_items[0][price_data][unit_amount]' => (string)$row['deposit_cents'],
+        'line_items[0][price_data][unit_amount]' => (string)booking_finance_cash($row),
         'line_items[0][price_data][product_data][name]' => 'SiteSee ' . ucfirst($row['market']) . ' test shoot deposit',
         'line_items[0][quantity]' => '1',
         'payment_intent_data[setup_future_usage]' => 'off_session',
@@ -381,11 +385,12 @@ function booking_process_stripe_event(PDO $db, array $event): string
         }
         if ($type === 'checkout.session.completed') {
             if (($object['payment_status'] ?? '') !== 'paid' || ($object['currency'] ?? '') !== 'usd'
-                || (int)($object['amount_total'] ?? -1) !== (int)$row['deposit_cents']
+                || (int)($object['amount_total'] ?? -1) !== booking_finance_cash($row)
                 || !preg_match('/^pi_[A-Za-z0-9_]+$/D', (string)($object['payment_intent'] ?? ''))
                 || !preg_match('/^cus_[A-Za-z0-9_]+$/D', (string)($object['customer'] ?? ''))) {
                 throw new InvalidArgumentException('Stripe paid amount or payment identifiers do not match.');
             }
+            if(!$row['deposit_paid_at'])booking_finance_settle_deposit($db,$row);
             if (in_array($row['status'], ['awaiting_deposit_test', 'approved_test'], true)) {
                 $stmt = $db->prepare('UPDATE bookings SET status=\'deposit_paid_test\', checkout_state=\'paid\',
                     stripe_customer_id=?, stripe_payment_intent_id=?, deposit_paid_at=? WHERE reference=? AND status IN (\'awaiting_deposit_test\', \'approved_test\')');
@@ -396,6 +401,7 @@ function booking_process_stripe_event(PDO $db, array $event): string
         } elseif (in_array($row['status'], ['awaiting_deposit_test', 'approved_test'], true)) {
             $db->prepare('UPDATE bookings SET checkout_state=\'expired\', stripe_checkout_url=NULL
                 WHERE reference=? AND checkout_state=\'open\'')->execute([$reference]);
+            booking_finance_expire($db,booking_get($db,$reference),true);
         }
         $db->prepare('INSERT INTO stripe_events (event_id,event_type,reference,processed_at) VALUES (?,?,?,?)')
             ->execute([$event['id'], $type, $reference, gmdate('c')]);

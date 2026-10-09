@@ -123,6 +123,7 @@ if ($method === 'POST') {
             }
             elseif ($choice==='resolve_unchanged') { if(($_POST['agreed']??'')!=='yes')throw new InvalidArgumentException('Review the unresolved attempt first.');booking_lifecycle_resolve_unchanged($db,$reference);$notice='Provider version remains unchanged. The unapplied attempt was resolved without another calendar write.'; }
             elseif ($choice==='legacy_deleted') { if(($_POST['agreed']??'')!=='yes')throw new InvalidArgumentException('Verify the original event deletion first.');booking_lifecycle_legacy_deleted($db,$reference,(string)($_POST['fingerprint']??''));$notice='Verified stale reservation released. Confirm cancellation to prepare its customer notice.'; }
+            elseif ($choice==='finance_recover') { if(!booking_finance_plan($db,$reference))throw new InvalidArgumentException('No saved cancellation billing exists.');booking_finance_worker_key(true);booking_finance_process($db,$reference);$notice='Saved cancellation billing checked. Original refund requests preserved.'; }
             elseif ($choice==='close_order') { booking_order_close_cancelled($db,$reference,(string)($_POST['fingerprint']??''),($_POST['agreed']??'')==='yes',(string)($_POST['payment_disposition']??''));$notice='Cancelled order closed. Payment records are preserved; no refund or credit was issued by this action.'; }
             elseif ($choice==='sync') { booking_lifecycle_sync($db,$reference);$notice='Calendar state reconciled. No event or notice was sent.'; }
             elseif ($choice==='windows') {

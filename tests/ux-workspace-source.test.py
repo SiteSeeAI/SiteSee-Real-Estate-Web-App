@@ -21,7 +21,12 @@ class WorkspaceSource(unittest.TestCase):
                 original = subprocess.run(['git', 'show', manifest['baseline_commit'] + ':' + name], cwd=ROOT, capture_output=True)
                 self.assertEqual(change['added'], original.returncode != 0)
                 self.assertEqual(base64.b64decode(change['before'], validate=True), original.stdout if original.returncode == 0 else b'')
-                self.assertEqual(hashlib.sha256((ROOT / name).read_bytes()).hexdigest(), change['after_sha256'])
+                actual=(ROOT / name).read_bytes()
+                finance=json.loads((ROOT / 'documents/unified/finance-source.json').read_text())['files'].get(name)
+                if finance:
+                    self.assertEqual(hashlib.sha256(actual).hexdigest(),finance['after_sha256'])
+                    actual=base64.b64decode(finance['before'],validate=True)
+                self.assertEqual(hashlib.sha256(actual).hexdigest(), change['after_sha256'])
 
     def test_new_asset_reversal_and_unknown_edit_rejection(self):
         name = 'public/portal-assets/application.js'

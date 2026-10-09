@@ -29,7 +29,8 @@ POOL_FILE = pathlib.Path('/opt/cpanel/ea-php82/root/etc/php-fpm.d/re.sitesee.ai.
 FUNCTIONS = ['site_application_bootstrap', 'booking_change_request_create', 'booking_change_request_approve',
              'booking_communication_unsent_draft', 'portal_appointment_change', 'portal_appointment_page', 'booking_lifecycle_html',
              'booking_staff_cancel', 'booking_order_number', 'booking_order_list', 'booking_order_close_cancelled',
-             'booking_window_times', 'booking_arrival_start', 'portal_require_profile', 'vendor_review_paid', 'vendor_review_grant_ready']
+             'booking_window_times', 'booking_arrival_start', 'portal_require_profile', 'vendor_review_paid', 'vendor_review_grant_ready', 'booking_finance_queue', 'booking_finance_process',
+             'booking_finance_reserve', 'booking_finance_credit_checkout', 'booking_finance_deposit_evidence', 'booking_finance_prepare_balance']
 
 
 def need(value, message):

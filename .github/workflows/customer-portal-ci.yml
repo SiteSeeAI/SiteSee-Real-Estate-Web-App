@@ -112,6 +112,7 @@ jobs:
           php tests/booking-change-request.test.php
           php tests/booking-review-ui.test.php
           php tests/portal-job.test.php
+          php tests/booking-finance.test.php
           php tests/portal-onsite-catalog.test.php
           php tests/portal-vendor.test.php
           php -l public/vendor.php
@@ -137,6 +138,7 @@ jobs:
           python3 tests/portal-staff-installer.test.py
           python3 tests/portal-staff-source.test.py
           python3 tests/ux-workspace-source.test.py
+          python3 tests/finance-source.test.py
           python3 tools/build-portal-installer.py
           git diff --exit-code -- tools/install-customer-portal.py
           python3 tools/build-portal-complete.py

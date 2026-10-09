@@ -14,7 +14,7 @@ BASELINE = 'ff5e625a8ff4c51af336e9203fa4be29b3611570'
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 NEW_FILES = {'private/server/application.php', 'private/views/application-shell.php',
              'public/application-entry.php', 'public/portal-assets/application.css', 'public/portal-assets/application.js',
-             'private/server/booking-review-ui.php', 'public/portal-assets/booking-review.js', 'private/server/booking-hours.php', 'private/server/booking-identifiers.php', 'private/server/booking-list-ui.php'}
+             'private/server/booking-review-ui.php', 'public/portal-assets/booking-review.js', 'private/server/booking-hours.php', 'private/server/booking-identifiers.php', 'private/server/booking-list-ui.php', 'private/server/booking-finance.php'}
 CHANGED_PRIVATE = {'private/views/portal.php', 'private/server/vendor-app.php',
                    'private/server/booking-staff.php', 'private/server/booking-lifecycle.php',
                    'private/server/booking-lifecycle-store.php', 'private/server/booking-lifecycle-ui.php',
@@ -25,10 +25,11 @@ CHANGED_PRIVATE |= {'private/server/booking-lifecycle.php', 'private/views/appli
 CHANGED_PUBLIC = {'public/portal-assets/booking-notice.js', 'public/portal-assets/order.js', 'public/portal-assets/application.css'}
 CHANGED_PRIVATE.add('private/pricing-assets/scheduling.js')
 CHANGED_PUBLIC.add('public/portal-assets/portal.js')
-PREDECESSOR = {'commit': '0ddef26c59a1ee10c8d0c8656e9d8e49420ba827',
-               'manifest_sha256': '7901f10c248466ea9d137f7fde54181ec18f136909bfb67a430f365d133c37b0',
+CHANGED_PRIVATE |= {'private/server/portal-billing.php', 'private/server/booking-checkout.php', 'private/server/booking-job.php', 'private/server/booking-job-catalog.php', 'private/server/booking-webhook.php', 'private/views/portal-purchase.php'}
+PREDECESSOR = {'commit': 'c40236e0937546e14ebb50d835e3b911f700d616',
+               'manifest_sha256': '31d25002c7ec2bc1a5ddf488f58bed50b0135e653cae1f17692423976053378d',
                'runtime_schema': 'Additive booking_order_numbers, booking_order_closures and vendor_review_grants tables plus existing booking_change_requests schema on first normal application use; original references, tables and payment rows unchanged.'}
-RUNTIME_SCHEMA = 'Additive booking_order_numbers, booking_order_closures and vendor_review_grants tables plus existing booking_change_requests schema on first normal application use; original references, tables and payment rows unchanged.'
+RUNTIME_SCHEMA = 'Additive booking_finance_cancellations, booking_finance_refunds, booking_finance_credits, booking_finance_allocations and booking_finance_funding tables plus existing account/workflow schema on first normal application use; original prices, references and payment rows retained. Financial activity requires repair forward; no operational database rollback.'
 ALIASES = {'account.php', 'vendor.php', 'staff-bookings.php', 'staff-production.php',
            'staff-vendors.php', 'manage-appointment.php', 'booking-pay.php',
            'booking-webhook.php', 'booking-availability.php', 'pricing.php',
@@ -112,7 +113,7 @@ def build(commit, output):
     members['source-test-manifest.json'] = encode(source)
     manifest = {'format': 1, 'release': 'unified-test-' + commit[:12], 'commit': commit,
                 'baseline': BASELINE, 'stage': 'TEST', 'migration': 'none',
-                'compatibility': 'reviewed bootstrap, approval/notice recovery, account and management workflow, Vendor review, public order aliases and new availability; original financial/provider identities retained',
+                'compatibility': 'reviewed TEST refund outbox, owned cash/credit funding, card consent and immutable financial recovery plus existing unified workflows; original gross prices and provider identities retained',
                 'runtime_schema': RUNTIME_SCHEMA,
                 'predecessor': PREDECESSOR | {'files': {n: sha(b) for n, b in sorted(previous_deploy.items())}},
                 'installer_sha256': sha(runner), 'source_manifest_sha256': sha(members['source-test-manifest.json']),

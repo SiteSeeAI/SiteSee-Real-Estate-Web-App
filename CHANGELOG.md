@@ -36,11 +36,19 @@ Backup: `/home/sitesee/.sitesee-real-estate/unified-deployments/unified-test-c40
 
 ## Unreleased
 
-### Future feature — Refund and credit automation
+### FIN-001 — Refund and credit automation
 
-Status: feasible, not implemented or enabled. The earlier yes/no answer confirmed feasibility.
+Status: implemented and locally validated; awaiting exact-source CI, package publication, host installation and connected acceptance. Stripe remains TEST.
 
-Current cancellation processing does not automatically refund a payment or apply a credit. Automation needs a defined policy for customer versus manager cancellations, eligibility, amounts, credit use, duplicate protection, failed/uncertain responses and financial records. Record a separate implementation and TEST acceptance iteration if this work is requested.
+Confirmed policy: management cancellation refunds all collected cash payments, regardless of notice. Customer cancellation at least 24 hours before the confirmed appointment refunds the paid deposit; later cancellation creates deposit credit. Extra customer prepaid payments go to staff review. Credits automatically fund the replacement deposit first, then its balance; unused credit is retained. Cancelling a credit-funded replacement restores its existing credit rather than issuing that value again.
+
+Added an account-owned credit ledger, immutable cancellation/refund outbox, automatic replacement deposit/balance allocation and local Billing status. Gross prices and original payment records remain intact; cash and credit are verified separately. Full-credit deposits use verified payment lineage with fresh card consent, without fictitious Stripe deposit IDs. Unused credit survives cheaper replacements; cancelling a replacement returns its existing allocations.
+
+Refunds use the original saved cancellation time, stable Stripe idempotency keys and exact charge/intent/refund readback. Lost replies, pending refunds, disputes, manual adjustments and aged unknown requests remain pending or require review. Signed late payments wake the original cancellation policy, including payments arriving during refund readback. Fresh account, purchase capability and Vendor authorization are checked again under the credit transaction lock.
+
+The existing account-owned reconciliation worker gains a bounded financial outbox pass; no schedule is added. It can submit TEST refunds for saved, applied cancellations, while retaining its existing no-calendar/no-mail-write behavior. The first authorized cancellation saves the configured TEST key privately for that worker; credentials are excluded from releases, logs and command arguments. Existing cancelled orders are not automatically backfilled. Any financial ledger activity requires repair forward rather than an old-code rollback.
+
+Validation: all 42 PHP suites pass on PHP 8.2 and 8.3, including 87 financial assertions and a real concurrent credit-reservation check. Node unit checks, source-preservation tests, synthetic HTTPS journeys, 27 host-protocol checks and eight actual isolated FPM checks pass. Exact-source privileged installer CI and publication remain pending. Four review passes and an independent audit are recorded in [the financial review](documents/unified/FINANCE_AUTOMATION_REVIEW.md). Publication, installation and connected Stripe TEST acceptance will be recorded separately.
 
 ### Future release — Production/LIVE
 

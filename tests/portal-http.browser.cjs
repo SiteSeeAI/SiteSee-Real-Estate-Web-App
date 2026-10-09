@@ -15,7 +15,7 @@ fs.writeFileSync(accountEntry,fs.readFileSync(path.join(repo,'public/account.php
 const releaseFlag=path.join(privateRoot,'portal-test.json');
 fs.writeFileSync(releaseFlag,JSON.stringify({release:'portal-20260929-r2',stage:'TEST',enabled:true}),{mode:0o600});
 // Replace provider boundaries only in the throwaway copy; production has no test override.
-for(const [file,name] of [['portal-billing.php','portal_stripe'],['booking-lifecycle.php','booking_lifecycle_connection'],['portal-sms.php','portal_sms_send'],['portal-sms.php','portal_sms_check']]){
+for(const [file,name] of [['booking-finance.php','booking_finance_stripe'],['portal-billing.php','portal_stripe'],['booking-lifecycle.php','booking_lifecycle_connection'],['portal-sms.php','portal_sms_send'],['portal-sms.php','portal_sms_check']]){
  const target=path.join(privateRoot,'server',file);fs.writeFileSync(target,fs.readFileSync(target,'utf8').replace('function '+name+'(', 'function '+name+'_unused_fixture('));
 }
 const mail=path.join(temp,'mail.txt');
@@ -155,6 +155,8 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   if(shots)console.log('PORTAL_VISUAL_service-appointment:'+(await service.screenshot({type:'jpeg',quality:45,fullPage:true})).toString('base64'));
   assert(await service.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Service mobile overflow');
   setup('service-approve-request');setup('service-notice-observed');await goto(service,'/account.php?view=appointment&reference=DDDD000001');await service.getByRole('link',{name:'Cancel appointment →',exact:true}).click();await service.getByLabel('I want to cancel this appointment.',{exact:true}).check();await service.getByRole('button',{name:'Confirm Cancellation'}).click();await service.getByText('Cancelled',{exact:true}).waitFor();
+  await goto(service,'/account.php?view=billing&reference=DDDD000001');await service.getByRole('heading',{name:'Cancellation Billing',exact:true}).waitFor();assert.match(await service.locator('main').innerText(),/Refund confirmed|Financial evidence requires staff review/);
+  await goto(service,'/account.php?view=billing');await service.getByRole('heading',{name:'Available Credit',exact:true}).waitFor();
   await goto(service,'/account.php?view=order&reference=DDDD000001&step=payment');assert.equal(await service.locator('.payment-action').count(),0,'Cancelled order does not offer payment');
   await serviceContext.close();
   await goto(page,'/account.php?view=profile');await goto(two,'/account.php?view=profile');

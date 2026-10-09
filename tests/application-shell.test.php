@@ -48,6 +48,8 @@ $manifest = json_decode(file_get_contents($root.'/documents/unified/shell-source
 foreach ($manifest['files'] as $path=>$item) {
     $before = base64_decode($item['before'], true);
     $after = file_get_contents($root.'/'.$path);
+    $finance=json_decode(file_get_contents($root.'/documents/unified/finance-source.json'),true)['files'][$path]??null;
+    if($finance){shell_check(hash('sha256',$after)===$finance['after_sha256'],'FIN-001 source integrity: '.$path);$after=base64_decode($finance['before'],true);}
     $workspace=json_decode(file_get_contents($root.'/documents/unified/ux-workspace-source.json'),true,512,JSON_THROW_ON_ERROR)['files'][$path]??null;
     if($workspace){
         shell_check(hash('sha256',$after)===$workspace['after_sha256']&&$after===base64_decode($workspace['after'],true),'UX-001 source integrity: '.$path);
