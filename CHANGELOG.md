@@ -34,11 +34,11 @@ Installation: the operator supplied complete PREFLIGHT PASS, HOST PREFLIGHT PASS
 
 Backup: `/home/sitesee/.sitesee-real-estate/unified-deployments/unified-test-c40236e09375-7wgcojxh`. Anonymous HTTPS checks confirm both account and staff sign-in pages respond with TEST/no-store, and the deployed shared CSS/JavaScript match the release exactly. This establishes serving assets, not authenticated UX acceptance. The next review is the redesigned agent and management screens on desktop/mobile; do not repeat previously accepted cancellation/payment tests solely for additional evidence.
 
-## Unreleased
+## FIN-001 — unified-test-8c3ae16c726d — 2026-10-09
 
-### FIN-001 — Refund and credit automation
+Status: implemented, tested and published as a TEST candidate. Host installation and connected financial acceptance remain pending. Stripe remains TEST.
 
-Status: implemented and locally validated; awaiting exact-source CI, package publication, host installation and connected acceptance. Stripe remains TEST.
+Source: `8c3ae16c726d0a308b4595e827d6ba3ea80ddd0b`. [Published GitHub release](https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/releases/tag/unified-test-8c3ae16c726d); package SHA256 `b79effc1e203bbc8d8d8d7c953edf45eb6bc101cafccd0798fbc9ef17429ce7e`. The package contains 274 deployment files, including the new financial module, and 678 exact source entries. Documentation-only updates do not alter this frozen source or imply host installation.
 
 Confirmed policy: management cancellation refunds all collected cash payments, regardless of notice. Customer cancellation at least 24 hours before the confirmed appointment refunds the paid deposit; later cancellation creates deposit credit. Extra customer prepaid payments go to staff review. Credits automatically fund the replacement deposit first, then its balance; unused credit is retained. Cancelling a credit-funded replacement restores its existing credit rather than issuing that value again.
 
@@ -48,7 +48,11 @@ Refunds use the original saved cancellation time, stable Stripe idempotency keys
 
 The existing account-owned reconciliation worker gains a bounded financial outbox pass; no schedule is added. It can submit TEST refunds for saved, applied cancellations, while retaining its existing no-calendar/no-mail-write behavior. The first authorized cancellation saves the configured TEST key privately for that worker; credentials are excluded from releases, logs and command arguments. Existing cancelled orders are not automatically backfilled. Any financial ledger activity requires repair forward rather than an old-code rollback.
 
-Validation: all 42 PHP suites pass on PHP 8.2 and 8.3, including 87 financial assertions and a real concurrent credit-reservation check. Node unit checks, source-preservation tests, synthetic HTTPS journeys, 27 host-protocol checks and eight actual isolated FPM checks pass. Exact-source privileged installer CI and publication remain pending. Four review passes and an independent audit are recorded in [the financial review](documents/unified/FINANCE_AUTOMATION_REVIEW.md). Publication, installation and connected Stripe TEST acceptance will be recorded separately.
+Validation: all 42 PHP suites pass on PHP 8.2 and 8.3, including 87 financial assertions and a real concurrent credit-reservation check. Exact-source publication run `37999782655` passed all five jobs: 65 directly privileged installer/recovery cases per PHP version with zero skips, all seven HTTPS browser journeys, 27 host-protocol checks and eight actual isolated FPM tests. Source Server Form CI, including historical installer ownership, and Customer Portal Checks pass. Node and historical source checks pass. Local Python discovery records 153 cases with 22 unavailable-privilege skips, and local unified release checks record 65 cases with one privilege skip; the corresponding privileged checks passed in CI. The five GitHub assets were independently downloaded and verified by full bytes, SHA256, GitHub digest, size and attachment headers. Four review passes and independent exact-source/package audit are recorded in [the financial review](documents/unified/FINANCE_AUTOMATION_REVIEW.md).
+
+Installation uses the existing approved WHM-root verified-download, backup, pause/drain, shared Apache/PHP 8.2 graceful reload, install/FPM verify and reopen process. No new cron is added. Existing installed authority and backup remain `unified-test-c40236e09375` until the operator reports the new HOST UPDATE PASS. Connected financial acceptance must then confirm refunds in Stripe TEST and credit use in Billing; prior accepted calendar/cancellation notices are retained.
+
+## Unreleased
 
 ### Future release — Production/LIVE
 

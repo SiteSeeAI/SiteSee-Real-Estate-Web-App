@@ -1,6 +1,8 @@
 # FIN-001: automatic cancellation refunds and replacement credits
 
-Status: implementation reviewed and locally tested, not installed on the host. The installed predecessor remains `unified-test-c40236e09375`. Stripe stays TEST. Exact source is identified by the release manifest; publication, operator installation and connected TEST acceptance are separate evidence.
+Status: exact source `8c3ae16c726d0a308b4595e827d6ba3ea80ddd0b` reviewed, tested and published as `unified-test-8c3ae16c726d`, not installed on the host. The installed predecessor remains `unified-test-c40236e09375`. Stripe stays TEST. Operator installation and connected TEST acceptance remain separate evidence.
+
+The package's review file is an immutable preparation snapshot. This updated document and CHANGELOG record the final publication evidence without changing the frozen application payloads.
 
 ## Confirmed policy
 
@@ -52,6 +54,14 @@ Deployment retains the existing backup, preflight, maintenance/drain, PHP-FPM re
 Any rows in any of the five financial tables block restoration of older application code. Preserve the operational database, WAL, provider operations, private key and deployment journal, then repair forward. An isolated backup restore rehearsal is permitted; reverting the operational ledger after money or credit activity is not. Existing deployments, backups and host-specific preserved files stay intact.
 
 Independent findings, reproductions and corrections are recorded in [the independent finance review](INDEPENDENT_FINANCE_AUTOMATION_REVIEW.md).
+
+## Frozen release evidence
+
+Publication run [37999782655](https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/actions/runs/37999782655) completed successfully with all five jobs and every step passing. Each job checks out exact source `8c3ae16c726d0a308b4595e827d6ba3ea80ddd0b`. Directly privileged installer matrices completed 65 cases on each PHP version with zero skips; all seven browser completion markers, 87 finance assertions, 27 host protocol cases and eight actual FPM cases were checked in the authentic CI archive. Exact-source Server Form CI, historical privileged installer ownership and Customer Portal Checks also passed.
+
+The independent reviewer compared all 274 deployment payloads and 678 source entries with Git, validated the loader/predecessor, reran 87 finance assertions on PHP 8.2/8.3, checked actual declarations, and exercised all five financial repair-forward guards with unchanged database bytes. No remaining source, build or compatibility blocker was reported.
+
+All five GitHub assets were independently downloaded and verified against local bytes, SHA256, GitHub digest, size and attachment headers. [Package download](https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/releases/download/unified-test-8c3ae16c726d/unified-test-8c3ae16c726d.tar.gz), SHA256 `b79effc1e203bbc8d8d8d7c953edf45eb6bc101cafccd0798fbc9ef17429ce7e`. Installer SHA256 `5ed5bdf8a50d2f970044a892207d9c964132c34b77891bfa0e61db0aed5a2218`; root wrapper SHA256 `c6da86e9ecff3b57e126813a47f5ef1f698840e243022a5065a8f587eeb21d35`.
 
 ## Connected TEST acceptance after installation
 
