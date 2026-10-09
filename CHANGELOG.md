@@ -8,7 +8,7 @@ Each iteration records its ID, purpose, status, source/release, changes, validat
 
 ### UX-001 — Application workspace
 
-Status: implemented locally; targeted automated checks passed; visual acceptance and installation pending. Stripe remains TEST.
+Status: implemented and published as a verified TEST package; automated checks and independent audit passed; visual acceptance and operator installation pending. Stripe remains TEST.
 
 Purpose: replace the long form-and-card layouts with a coherent software interface, starting with management Bookings/Booking Review and the Agent Account/Orders pages. The user rejected the current presentation; functional success does not establish UX acceptance.
 
@@ -29,6 +29,8 @@ Validation: customer/staff/vendor/onsite-payment HTTPS journeys passed with synt
 Deployment preparation pins the exact installed `0ddef26c59a1` predecessor, including its original manifest/schema and independently reproduced package; the new shared script is the sole added deployment file. Exact fixed-commit installation/recovery CI passes 64 cases on each PHP version with zero privileged skips. Full Server Form and Customer Portal CI pass, including all seven browser journeys. Independent audit closed without a blocker. Evidence: [UX-001 review](documents/ux/UX-001_REVIEW.md). No provider/domain/financial transition was changed. CTC’s authenticated workspace could not be inspected; this implements the user’s requirements using the Corporate site’s effective palette.
 
 The user subsequently requested an installable GitHub package and a single download/extract/install command. Package source `c40236e0937546e14ebb50d835e3b911f700d616` includes the test-history corrections with identical application payloads to implementation `40566ba`. Publication requires fresh source-pinned privileged PHP 8.2/8.3, all seven browser journeys and actual FPM checks. Installation remains an operator action; record its result and subsequent UX acceptance separately. Stripe remains TEST.
+
+Published release: [unified-test-c40236e09375](https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/releases/tag/unified-test-c40236e09375). Its exact-source publication run `37987873795` passes all five jobs, including 64 privileged cases per PHP version with zero skips, all seven browser journeys, 27 host-protocol tests and eight actual FPM tests. The five assets were independently downloaded and verified by full bytes, SHA256, GitHub digest, size and attachment headers. Package SHA256: `e97785fb54e95b9862a865bdabd0ebb57eec84b60f494b30e15735a2e5bbb2aa`. Installation uses the existing approved WHM-root backup/pause/drain/reload/verify/reopen process; no financial automation or LIVE enablement.
 
 ### Future feature — Refund and credit automation
 
