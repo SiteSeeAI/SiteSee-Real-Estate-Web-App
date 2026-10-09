@@ -27,6 +27,7 @@ try {
  $payload=['market'=>'residential','details'=>['first'=>'Fixture','last'=>'Agent','company'=>'Synthetic','phone'=>'3125550100','street'=>'101 Example','city'=>'Chicago','state'=>'IL','zip'=>'60601'],
   'state'=>['category'=>'small','package'=>'gold','sqft'=>1500,'selected'=>['photo','mp'],'matterportSqft'=>1500],
   'appointment'=>['date'=>(new DateTimeImmutable('+8 days'))->format('Y-m-d'),'time'=>'09:00','rushRequested'=>false,'meetPhotographer'=>'No','accessType'=>'Lockbox','lockboxCode'=>'1234567890','cancellationAccepted'=>true]];
+portal_profile_schema($db);foreach($db->query('SELECT id FROM portal_accounts')->fetchAll(PDO::FETCH_COLUMN) as $profileId)portal_save_profile($db,$profileId,['first_name'=>'Fixture','last_name'=>'Agent','company'=>'Synthetic','phone'=>'3125550100']);
  $review=portal_purchase_review($db,$one,$payload);$ref=portal_purchase_submit($db,$one,$review['review']);
  $payload['details']['street']='An unsubmitted order';$stale=portal_purchase_review($db,$one,$payload);
  $payload['details']['street']='Interrupted capture';$gap=portal_purchase_review($db,$one,$payload);

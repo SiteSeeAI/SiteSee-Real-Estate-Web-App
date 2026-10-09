@@ -1,6 +1,9 @@
 import base64, importlib.util, json, os, pathlib, tempfile, unittest
 from unittest.mock import patch
 ROOT=pathlib.Path(__file__).resolve().parents[1]
+import sys
+sys.path.insert(0,str(ROOT/'tools'))
+from unified_source import before_unified_update
 spec=importlib.util.spec_from_file_location('notice',ROOT/'tools/install-re-calendar-notice-20261002-r1.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 class InstallerTests(unittest.TestCase):
  def setUp(self):
@@ -12,7 +15,7 @@ class InstallerTests(unittest.TestCase):
    if item['before'] is not None:p.write_bytes(base64.b64decode(item['before']));p.chmod(0o644 if n.startswith('public/') else 0o600)
   for n in self.obj['dependencies']:
    source=n.replace('private/','_private/',1) if n.startswith('private/') else n
-   p=self.path(n);p.parent.mkdir(exist_ok=True,parents=True);p.write_bytes((ROOT/source).read_bytes());p.chmod(0o600)
+   p=self.path(n);p.parent.mkdir(exist_ok=True,parents=True);p.write_bytes(before_unified_update(ROOT,source));p.chmod(0o600)
   for name in self.obj['manifests']:
    self.put('private/'+name,{'revision':'preserve','files':{n.removeprefix('private/'):m.sha(self.path(n).read_bytes()) for n,v in self.obj['files'].items() if v['before'] is not None},'retain':['unknown historical metadata']})
   self.put('private/booking-checkout.json',{'stage':'TEST','enabled':True,'private':'unchanged'})

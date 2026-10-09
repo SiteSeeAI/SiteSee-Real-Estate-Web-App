@@ -6,12 +6,12 @@ for (const c of cases) test(`notice boundary ${c.now} rush=${c.rush}`, () => {
   const limit = notice.cutoff(Date.parse(c.now)/1000, c.rush);
   assert.deepEqual(limit, {date:c.date,time:c.time});
   assert.equal(notice.firstDate(limit), c.first);
-  const date={value:c.date}, time={options:['','07:00','09:00','11:00','13:00','15:00','17:00'].map(value=>({value,dataset:{}}))};
+  const date={value:c.date}, time={options:['','07:00','09:00','11:00','13:00','15:00','17:00','13:30','15:30','17:30'].map(value=>({value,dataset:{}}))};
   notice.apply(date,time,limit);
   assert.equal(date.min,c.first);
-  assert.deepEqual(time.options.filter(o=>o.value&&!o.disabled).map(o=>Number(o.value.slice(0,2))),c.hours);
+  assert.deepEqual(time.options.filter(o=>o.value&&!o.disabled).map(o=>o.value).sort(),[...c.times].sort());
   assert.equal(notice.allowed('2020-01-01','17:00',limit),false);
-  assert.equal(notice.allowed('2030-01-01','07:00',limit),true);
+  assert.equal(notice.allowed('2030-01-02','07:00',limit),true);
 });
 test('notice update retains provider-busy windows and does not replace chosen values', () => {
   const date={value:'2026-10-05'}, time={value:'09:00',options:[{value:'09:00',dataset:{calendarBusy:'true'}},{value:'11:00',dataset:{}}]};
@@ -60,4 +60,11 @@ test('same focused tab waking from sleep refreshes on picker interaction', async
   f.visibility.focusin({target:{matches:()=>true}});
   assert.equal(f.requests.length,2,'Concurrent interaction requests are deduplicated');
   await f.respond(1,1200000);assert.equal(f.clock.now(),1200000);
+});
+
+test('selected holidays and Sunday windows match the server business policy',()=>{
+ for(const date of ['2026-01-01','2026-04-03','2026-04-05','2026-05-25','2026-07-04','2026-09-07','2026-11-26','2026-12-25','2027-03-26','2027-03-28'])assert.deepEqual(notice.windowTimes(date),[],date);
+ assert.deepEqual(notice.windowTimes('2026-10-11'),['13:30','15:30','17:30']);
+ for(const date of ['2027-01-18','2027-06-19','2026-07-03'])assert(notice.windowTimes(date).length>0,'Other/observed holidays remain available');
+ assert.equal(notice.firstDate({date:'2026-11-26',time:'07:00:00'}),'2026-11-27');
 });

@@ -86,14 +86,19 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   const denied=await goto(two,'/account.php?view=order&reference=AAAAAAAAAA');assert.equal(denied.status(),404);assert(!(await two.content()).includes('1234567890'));const deniedBody=await denied.text();
   const absent=await goto(two,'/account.php?view=order&reference=DDDDDDDDDD');assert.equal(await absent.text(),deniedBody,'Other and nonexistent order use identical response');
   await goto(two);await claim(two,'AAAAAAAAAA.'+'1'.repeat(64));assert.match(await two.getByRole('status').textContent(),/could not be added/);
-  await goto(page,'/account.php?view=order&reference=AAAAAAAAAA');assert((await page.content()).includes('1234567890'));
+  await goto(page,'/account.php?view=order&reference=AAAAAAAAAA');await page.getByRole('link',{name:'Services & Access',exact:true}).click();assert((await page.content()).includes('1234567890'));
   for(const secret of ['9876543210','cus_private_','pi_private_', 'agent_token_hash', 'request_json'])assert(!(await page.content()).includes(secret),secret);
   await goto(page);await claim(page,origin+'/manage-appointment.php#CCCCCCCCCC.'+'4'.repeat(64));assert((await page.content()).includes('303 Unclaimed Road'));
   fs.unlinkSync(releaseFlag);assert.equal((await page.request.get(origin+'/account.php')).status(),503,'Private disable overrides inherited TEST flag');
   fs.writeFileSync(releaseFlag,JSON.stringify({release:'portal-20260929-r2',stage:'TEST',enabled:true}),{mode:0o600});
+  await goto(page,'/account.php?view=new');assert.equal(await page.locator('#portal-wizard').count(),0,'Incomplete Account cannot open booking wizard');
+  assert.equal(await page.locator('header a[href="/account.php?view=new"]').count(),0,'New Order waits for Account completion');
+  assert.equal(await page.locator('input[name=first_name][required],input[name=last_name][required],input[name=company][required],input[name=phone][required]').count(),4);
+  assert.equal((await post(page,{action:'review_order',payload:'{}'})).status(),422,'Forged review cannot bypass required Account');
+  assert.equal((await post(page,{action:'save_profile',first_name:'Test',company:'Synthetic',phone:'3125550199'})).status(),400,'Server requires missing last name');
   await goto(page,'/account.php?view=profile');await page.getByLabel('First Name',{exact:true}).fill('<script>alert(1)</script>');await page.getByLabel('Company',{exact:true}).fill('Saved Company');
   // Untrusted identity and role fields are ignored; only allowlisted contact fields can change.
-  const profile=await post(page,{action:'save_profile',first_name:'<script>alert(1)</script>',company:'Saved Company',phone:'3125550199',account_id:'f'.repeat(32),email:'two@example.com',approved:'1'});assert.equal(profile.status(),303);
+  const profile=await post(page,{action:'save_profile',first_name:'<script>alert(1)</script>',last_name:'Example',company:'Saved Company',phone:'3125550199',account_id:'f'.repeat(32),email:'two@example.com',approved:'1'});assert.equal(profile.status(),303);
   await goto(page,'/account.php?view=profile');assert.equal(await page.getByLabel('Company',{exact:true}).inputValue(),'Saved Company');assert.equal(await page.getByLabel('Contact Phone',{exact:true}).inputValue(),'3125550199');assert((await page.content()).includes('&lt;script&gt;'));assert((await page.content()).includes('one@example.com'));
   await goto(two,'/account.php?view=profile');assert.equal(await two.getByLabel('Company',{exact:true}).inputValue(),'');
   const shots=process.env.PORTAL_SCREENSHOTS;
@@ -112,14 +117,14 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   await serviceContext.route('**/*',r=>r.request().url().startsWith(origin)?r.continue():r.abort());
   const service=await serviceContext.newPage();await login(service,'sales@re.sitesee.ai');
   for(const view of ['appointment','billing','balance'])assert.equal((await goto(two,'/account.php?view='+view+'&reference=DDDD000001')).status(),404);
-  await goto(service,'/account.php?view=order&reference=DDDD000001');
+  await goto(service,'/account.php?view=order&reference=DDDD000001&step=payment');
   const paymentPanel=service.locator('section.panel').filter({has:service.getByRole('heading',{name:'Payment',exact:true})});
   assert.match(await paymentPanel.innerText(),/Approved Rush Fee\s+\$59\.00/);
-  assert.equal(await paymentPanel.getByRole('link',{name:'Job Status & Final Payment',exact:true}).count(),1);
-  assert.equal(await service.locator('.payment-action').count(),1,'One payment action, beside the amount due');
+  assert.equal(await service.getByRole('link',{name:'Job & Deliverables',exact:true}).count(),1);
+  assert.equal(await service.locator('.payment-action').count(),0,'No final payment control before onsite completion');
   for(const width of [320,390,736,1200]){await service.setViewportSize({width,height:950});assert(await service.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Unpaid order overflow '+width);}
   if(shots)console.log('PORTAL_VISUAL_polish-unpaid:'+(await service.screenshot({type:'jpeg',quality:65,fullPage:true})).toString('base64'));
-  await paymentPanel.getByRole('link',{name:'Job Status & Final Payment',exact:true}).press('Enter');
+  await service.getByRole('link',{name:'Job & Deliverables',exact:true}).press('Enter');
   assert.match(await service.locator('h1').innerText(),/Job Status/);
   await goto(service,'/account.php?view=balance&reference=DDDD000001');
   await service.getByRole('heading',{name:'Your Test Balance',exact:true}).waitFor();
@@ -131,10 +136,10 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   assert.equal((await post(service,{action:'balance_checkout',reference:'DDDD000001',scope:balanceScope})).status(),422);
   const checkout=await post(service,{action:'balance_checkout',reference:'DDDD000001',scope:balanceScope,card_consent:'yes'});assert.equal(checkout.status(),200,await checkout.text());assert.equal((await checkout.json()).mode,'hosted');
   if(shots)console.log('PORTAL_VISUAL_service-balance:'+(await service.screenshot({type:'jpeg',quality:45,fullPage:true})).toString('base64'));
-  await goto(service,'/account.php?view=order&reference=DDDD000001');
+  await goto(service,'/account.php?view=order&reference=DDDD000001&step=payment');
   assert.match(await paymentPanel.innerText(),/Test Deposit Recorded/);
-  assert.equal(await service.getByRole('link',{name:'Job Status & Final Payment',exact:true}).count(),1,'Open checkout does not imply paid');
-  setup('service-balance-paid');await goto(service,'/account.php?view=order&reference=DDDD000001');
+  assert.equal(await service.getByRole('link',{name:'Job & Deliverables',exact:true}).count(),1,'Open checkout does not imply paid');
+  setup('service-balance-paid');await goto(service,'/account.php?view=order&reference=DDDD000001&step=payment');
   assert.equal(await paymentPanel.locator('.status').innerText(),'Test Balance Recorded');
   assert.match(await paymentPanel.innerText(),/Remaining Job Balance\s+\$0\.00/);
   assert.equal(await service.locator('.payment-action').count(),0,'Paid order cannot offer another payment');
@@ -150,7 +155,7 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   if(shots)console.log('PORTAL_VISUAL_service-appointment:'+(await service.screenshot({type:'jpeg',quality:45,fullPage:true})).toString('base64'));
   assert(await service.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Service mobile overflow');
   setup('service-approve-request');setup('service-notice-observed');await goto(service,'/account.php?view=appointment&reference=DDDD000001');await service.getByText('Cancel Appointment',{exact:true}).click();await service.getByLabel('I want to cancel this appointment.',{exact:true}).check();await service.getByRole('button',{name:'Confirm Cancellation'}).click();await service.getByText('Cancelled',{exact:true}).waitFor();
-  await goto(service,'/account.php?view=order&reference=DDDD000001');assert.equal(await service.locator('.payment-action').count(),0,'Cancelled order does not offer payment');
+  await goto(service,'/account.php?view=order&reference=DDDD000001&step=payment');assert.equal(await service.locator('.payment-action').count(),0,'Cancelled order does not offer payment');
   await serviceContext.close();
   await goto(page,'/account.php?view=profile');await goto(two,'/account.php?view=profile');
   await post(page,{action:'save_profile',first_name:'Jordan',last_name:'Example',company:'Example Realty',phone:'3125550100'});
@@ -170,7 +175,7 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
     const estimated=await page.locator('.sp-total strong').textContent();
     if(shots&&market==='commercial'){await page.setViewportSize({width:1200,height:950});await page.screenshot({path:path.join(shots,'purchase-services.png'),fullPage:true});console.log('PORTAL_VISUAL_purchase-services:'+(await page.screenshot({type:'jpeg',quality:45,fullPage:true})).toString('base64'));}
     await page.getByRole('button',{name:'Next →',exact:true}).click();
-    const date=new Date(Date.now()+10*86400000).toISOString().slice(0,10);await page.getByLabel('Preferred date',{exact:true}).fill(date);
+    const date=new Date(Date.now()+10*86400000).toISOString().slice(0,10);await page.getByLabel('Preferred date',{exact:true}).fill(date);await page.locator('[data-key=time]').selectOption('09:00');
     await page.locator('[data-key=meetPhotographer][value=No]').check();await page.getByLabel('Lockbox code · 10 digits',{exact:true}).fill('1112223334');
     await page.getByLabel('I agree to the cancellation policy.',{exact:true}).check();
     if(market==='residential')setup('rotate-one-csrf'); // Simulate the token rotation after reauthentication while draft stays open.
@@ -197,9 +202,8 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
     assert.equal(await page.locator('.payment-action').count(),1,'One deposit action for '+market);
     await page.getByRole('link',{name:'Pay Test Deposit',exact:true}).press('Enter');await page.getByRole('heading',{name:'Your Test Deposit',exact:true}).waitFor();
   }
-  await goto(page,'/account.php?view=new&again='+residentialReference);await page.getByLabel('Street address',{exact:true}).waitFor();assert.equal(await page.getByLabel('Street address',{exact:true}).inputValue(),'415 New Example Lane');
-  await page.getByRole('button',{name:'Next →',exact:true}).click();assert(await page.locator('[data-key=package][value=gold]').isChecked());
-  await page.getByRole('button',{name:'Next →',exact:true}).click();assert.equal(await page.getByLabel('Preferred date',{exact:true}).inputValue(),'');assert(!(await page.getByLabel('I agree to the cancellation policy.',{exact:true}).isChecked()));assert(!(await page.content()).includes('1112223334'));
+  assert.equal((await goto(page,'/account.php?view=new&again='+residentialReference)).status(),400,'Retired Order Again route cannot seed another order');
+  await goto(page);assert.equal(await page.getByRole('link',{name:'Order Again',exact:true}).count(),0);
   if(shots){await page.setViewportSize({width:390,height:844});await page.screenshot({path:path.join(shots,'purchase-mobile.png'),fullPage:true});console.log('PORTAL_VISUAL_purchase-mobile:'+(await page.screenshot({type:'jpeg',quality:45,fullPage:true})).toString('base64'));}
   await goto(page,'/account.php?view=profile');const retired=(await context.cookies())[0];await page.getByRole('button',{name:'Sign Out',exact:true}).click();await page.getByRole('heading',{name:'Sign In',exact:true}).waitFor();
   await context.addCookies([retired]);await goto(page,'/account.php?view=order&reference=AAAAAAAAAA');assert(!(await page.content()).includes('1234567890'));

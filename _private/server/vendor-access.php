@@ -9,6 +9,7 @@ function vendor_schema(PDO $db): void
     $db->exec('CREATE TABLE IF NOT EXISTS vendor_accounts (id TEXT PRIMARY KEY, name TEXT NOT NULL, phone TEXT NOT NULL UNIQUE, revision TEXT NOT NULL, enabled INTEGER NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)');
     $db->exec('CREATE TABLE IF NOT EXISTS vendor_assignments (reference TEXT PRIMARY KEY, vendor_id TEXT NOT NULL, revision TEXT NOT NULL, photographer TEXT NOT NULL, assigned_at INTEGER NOT NULL)');
     $db->exec('CREATE INDEX IF NOT EXISTS vendor_jobs ON vendor_assignments(vendor_id)');
+    $db->exec('CREATE TABLE IF NOT EXISTS vendor_review_grants (reference TEXT PRIMARY KEY, assignment_revision TEXT NOT NULL)');
     $db->exec('CREATE TABLE IF NOT EXISTS vendor_audit (id INTEGER PRIMARY KEY AUTOINCREMENT, action TEXT NOT NULL, vendor_id TEXT NOT NULL, reference TEXT NOT NULL, recorded_at INTEGER NOT NULL)');
     $db->exec('CREATE TABLE IF NOT EXISTS vendor_challenges (id TEXT PRIMARY KEY, vendor_id TEXT NOT NULL, phone TEXT NOT NULL, revision TEXT NOT NULL, provider_sid TEXT, state TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL)');
     $db->exec('CREATE TABLE IF NOT EXISTS vendor_phone_attempts (ip_hash TEXT NOT NULL, phone_hash TEXT NOT NULL, created_at INTEGER NOT NULL)');
@@ -54,6 +55,28 @@ function vendor_assignment(PDO $db,string $ref): array|false
 {
     $q=$db->prepare('SELECT * FROM vendor_assignments WHERE reference=?');$q->execute([$ref]);return $q->fetch(PDO::FETCH_ASSOC);
 }
+/** A review grants access only when the separate calendar confirmation succeeds. */
+function vendor_review_paid(PDO $db,string $ref,string $id,string $vendorRevision,int $duration,bool $available,string $rushDecision=''): void
+{
+    vendor_schema($db);$vendor=vendor_get($db,$id);
+    if(!$vendor||(int)$vendor['enabled']!==1||!hash_equals($vendor['revision'],$vendorRevision))throw new InvalidArgumentException('Choose an active vendor and refresh if the account changed.');
+    booking_review_paid($db,$ref,$duration,$vendor['name'],$available,$rushDecision,
+        static function(PDO $db,string $ref,string $name)use($id,$vendorRevision): void {
+            $current=vendor_get($db,$id);
+            if(!$current||(int)$current['enabled']!==1||!hash_equals($current['revision'],$vendorRevision)||$current['name']!==$name||vendor_assignment($db,$ref))throw new InvalidArgumentException('The vendor or assignment changed. Refresh before review.');
+            $revision=bin2hex(random_bytes(16));
+            $db->prepare('INSERT INTO vendor_assignments VALUES(?,?,?,?,?)')->execute([$ref,$id,$revision,$name,time()]);
+            $db->prepare('INSERT INTO vendor_review_grants VALUES(?,?)')->execute([$ref,$revision]);
+            vendor_audit($db,'review_assigned',$id,$ref);
+        });
+}
+function vendor_review_grant_ready(PDO $db,array $grant): bool
+{
+    $q=$db->prepare('SELECT assignment_revision FROM vendor_review_grants WHERE reference=?');$q->execute([$grant['reference']]);$pending=$q->fetchColumn();
+    if(!$pending||!hash_equals($pending,$grant['revision']))return true;
+    $claim=booking_confirmation_get($db,$grant['reference']);
+    return $claim&&$claim['state']==='confirmed';
+}
 function vendor_assign(PDO $db,string $ref,string $id,string $revision): void
 {
     $db->exec('BEGIN IMMEDIATE');
@@ -70,6 +93,7 @@ function vendor_assign(PDO $db,string $ref,string $id,string $revision): void
             $db->prepare('INSERT INTO vendor_assignments VALUES (?,?,?,?,?) ON CONFLICT(reference) DO UPDATE SET vendor_id=excluded.vendor_id,revision=excluded.revision,photographer=excluded.photographer,assigned_at=excluded.assigned_at')->execute([$ref,$id,bin2hex(random_bytes(16)),$row['photographer'],time()]);
             vendor_audit($db,'assigned',$id,$ref);
         }
+        $db->prepare('DELETE FROM vendor_review_grants WHERE reference=?')->execute([$ref]);
         $db->exec('COMMIT');
     }catch(Throwable $e){$db->exec('ROLLBACK');throw $e;}
 }
@@ -80,6 +104,7 @@ function vendor_require_job(PDO $db,array $identity,string $ref,?string $revisio
     $row=$grant?booking_get($db,$ref):false;
     if(!$account||(int)$account['enabled']!==1||!hash_equals($account['revision'],$identity['revision'])
         ||!$grant||$grant['vendor_id']!==$account['id']||!$row||$row['photographer']!==$grant['photographer']
+        ||!vendor_review_grant_ready($db,$grant)
         ||($revision!==null&&!hash_equals($grant['revision'],$revision)))throw new InvalidArgumentException('This job is not available in your vendor account.');
     return ['account'=>$account,'assignment'=>$grant,'row'=>$row];
 }

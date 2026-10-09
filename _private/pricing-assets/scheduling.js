@@ -96,6 +96,8 @@
         if (!currentCutoff()) { time.setCustomValidity('Calendar timing is refreshing. Please try again in a moment.'); window.SiteSeeValidation.show(time); return false; }
         if (!date.checkValidity()) { window.SiteSeeValidation.show(date); return false; }
         const limit = currentCutoff();
+        if (notice && !notice.allowed(date.value,time.value,limit))
+          time.setCustomValidity('Choose an available arrival window. Sundays start at 1:30 PM; holidays are closed.');
         if (date.value < limit.date || (date.value === limit.date && time.value + ':00' < limit.time))
           time.setCustomValidity('Choose a window at least ' + (rush.checked ? '12' : '72') + ' hours after the current server time.');
         if ([...time.options].some(option => option.value === time.value && option.dataset?.calendarBusy === 'true'))

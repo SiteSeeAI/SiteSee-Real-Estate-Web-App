@@ -106,6 +106,7 @@ jobs:
           php tests/portal-session.test.php
           php tests/portal-purchase.test.php
           php tests/portal-service.test.php
+          php tests/account-workflow.test.php
           php tests/booking-change-request.test.php
           php tests/booking-review-ui.test.php
           php tests/portal-job.test.php

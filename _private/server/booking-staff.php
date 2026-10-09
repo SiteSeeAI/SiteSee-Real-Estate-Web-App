@@ -5,6 +5,7 @@ require_once __DIR__ . '/booking-lifecycle-ui.php';
 require_once __DIR__ . '/booking-job-ui.php';
 require_once __DIR__ . '/booking-review-ui.php';
 require_once __DIR__ . '/vendor-admin.php';
+require_once __DIR__ . '/booking-list-ui.php';
 require_once dirname(__DIR__).'/views/application-shell.php';
 header('Cache-Control: no-store, private, max-age=0');
 header('X-Robots-Tag: noindex, nofollow, noarchive');
@@ -122,16 +123,25 @@ if ($method === 'POST') {
             }
             elseif ($choice==='resolve_unchanged') { if(($_POST['agreed']??'')!=='yes')throw new InvalidArgumentException('Review the unresolved attempt first.');booking_lifecycle_resolve_unchanged($db,$reference);$notice='Provider version remains unchanged. The unapplied attempt was resolved without another calendar write.'; }
             elseif ($choice==='legacy_deleted') { if(($_POST['agreed']??'')!=='yes')throw new InvalidArgumentException('Verify the original event deletion first.');booking_lifecycle_legacy_deleted($db,$reference,(string)($_POST['fingerprint']??''));$notice='Verified stale reservation released. Confirm cancellation to prepare its customer notice.'; }
+            elseif ($choice==='close_order') { booking_order_close_cancelled($db,$reference,(string)($_POST['fingerprint']??''),($_POST['agreed']??'')==='yes',(string)($_POST['payment_disposition']??''));$notice='Cancelled order closed. Payment records are preserved; no refund or credit was issued by this action.'; }
             elseif ($choice==='sync') { booking_lifecycle_sync($db,$reference);$notice='Calendar state reconciled. No event or notice was sent.'; }
             elseif ($choice==='windows') {
                 $lifecycleWindows=booking_lifecycle_windows($db,$reference,(string)($_POST['date']??''));
                 $notice=$lifecycleWindows?'Available alternatives are shown in Manage Appointment.':'No fitting windows found in the next 14 days. Choose a later starting date.';
             } elseif (in_array($choice,['cancel','reschedule','adopt'],true)) {
                 if (($_POST['agreed']??'')!=='yes') throw new InvalidArgumentException('Record the customer’s agreement first.');
-                booking_lifecycle_change($db,$reference,$choice,(string)($_POST['fingerprint']??''),'staff',(string)($_POST['date']??''),(string)($_POST['time']??''));
-                $notice='Appointment change saved. Send the saved change notice below.';
+                if($choice==='cancel'){
+                    $result=booking_staff_cancel($db,$reference,(string)($_POST['fingerprint']??''));
+                    $notice='Appointment cancellation saved. '.implode(' ',array_filter($result['notice'],'is_string'));
+                }else{
+                    booking_lifecycle_change($db,$reference,$choice,(string)($_POST['fingerprint']??''),'staff',(string)($_POST['date']??''),(string)($_POST['time']??''));
+                    $notice='Appointment change saved. Send the saved change notice below.';
+                }
             } elseif (in_array($choice,['notice','recover_notice'],true)) {
-                $report=booking_lifecycle_notice($db,$reference,$choice==='notice');$notice=implode(' ',array_filter($report,'is_string'));
+                $revision=(string)($_POST['notice_revision']??'');
+                if(!ctype_digit($revision))throw new InvalidArgumentException('Refresh and review the saved notice.');
+                if($choice==='notice'&&($_POST['agreed']??'')!=='yes')throw new InvalidArgumentException('Confirm sending the saved customer notice.');
+                $report=booking_lifecycle_notice($db,$reference,$choice==='notice',['notice_revision'=>(int)$revision]);$notice=implode(' ',array_filter($report,'is_string'));
                 $lifecycleHistory=$report['history']??[];$_SESSION['lifecycle_history_selection']=['reference'=>$reference,'expires'=>time()+900,'ids'=>array_column($lifecycleHistory,'id'),'key'=>'lifecycle-'.booking_lifecycle_state($db,$reference)['revision'].':'.$reference];
             } else throw new InvalidArgumentException('Unknown appointment action.');
         } catch (Throwable $exception) {
@@ -247,8 +257,9 @@ if ($method === 'POST') {
         }
     } elseif ($action === 'review_paid') {
         try {
-            booking_review_paid($db, (string)($_POST['reference'] ?? ''), (int)($_POST['duration'] ?? 0),
-                (string)($_POST['photographer'] ?? ''), ($_POST['available'] ?? '') === 'yes', (string)($_POST['rush_decision'] ?? ''));
+            $selection=(string)($_POST['vendor_selection']??'');
+            if(!preg_match('/^([a-f0-9]{32})\.([a-f0-9]{32})$/D',$selection,$vendorChoice))throw new InvalidArgumentException('Choose an active vendor.');
+            vendor_review_paid($db,(string)($_POST['reference']??''),$vendorChoice[1],$vendorChoice[2],(int)($_POST['duration']??0),($_POST['available']??'')==='yes',(string)($_POST['rush_decision']??''));
             $notice = 'Staff review saved. Readiness results are shown together below; no appointment or invitation was created.';
             try {
                 $reference = (string)($_POST['reference'] ?? '');
@@ -319,7 +330,7 @@ if ($row) {
     $staffMail = booking_communication_get($db, 'invitation:' . $reference);
     $calendarLabel = $staffPending ? 'Change needs verification' : ($staffLife['state'] !== 'active' ? ucfirst(str_replace('_', ' ', $staffLife['state'])) : ($staffClaim ? ($staffClaim['state'] === 'confirmed' ? 'Confirmed' : 'Needs verification') : 'Not confirmed'));
     $invitationLabel = !$staffClaim || $staffClaim['invitation_state'] === 'none' ? 'Not sent' : ($staffClaim['invitation_state'] === 'sent' ? 'Submitted' : 'Needs recovery');
-    $body .= '<p><a href="staff-bookings.php">← All Requests</a></p><section class="card"><p class="eyebrow">Request ' . staff_escape($reference) . ' · ' . staff_escape(ucfirst($row['market'])) . '</p>'
+    $body .= '<p><a href="staff-bookings.php">← All Requests</a></p><section class="card"><p class="eyebrow">Request ' . staff_escape(booking_order_number($db,$reference)) . ' · ' . staff_escape(ucfirst($row['market'])) . '</p>'
         . '<h2>' . staff_escape(trim($details['street'] . ' ' . $details['unit'])) . '</h2><p class="help">' . staff_escape($details['city'] . ', ' . $details['state'] . ' ' . $details['zip']) . '</p><dl class="facts">'
         . '<div><dt>Customer</dt><dd>' . staff_escape($details['first'] . ' ' . $details['last']) . '<br>' . staff_escape($row['email']) . '</dd></div>'
         . '<div><dt>' . ($staffClaim && $staffClaim['state'] === 'confirmed' ? 'Confirmed' : 'Requested') . ' Arrival Window · Central Time</dt><dd>' . staff_escape($request['appointment']['date'] . ' ' . $request['appointment']['time'] . (isset($request['appointment']['windowEnd']) ? '–' . $request['appointment']['windowEnd'] : '')) . '</dd></div>'
@@ -332,8 +343,8 @@ if ($row) {
     $reviewHtml = '';
     $detailsHtml = staff_disclosure('request-details', 'Services & Property Access', $requestHtml);
     $jobHtml = staff_job_panel($db,$reference);
-    $onsiteHtml = $jobHtml !== '' ? staff_disclosure('onsite-closeout', 'Onsite Closeout', $jobHtml, str_starts_with($postedAction, 'job_')) : '';
-    $onsiteHtml .= vendor_admin_assignment($db,$reference);
+    $onsiteHtml = $jobHtml;
+    if($row['approved_at'])$reviewHtml .= vendor_admin_assignment($db,$reference,false);
     $changeMail = booking_communication_get($db, 'lifecycle-' . $staffLife['revision'] . ':' . $reference);
     if ($row['reschedule_required']) {
         $reviewHtml .= '<p class="note">Rush declined. No rush fee is charged. The agent must request another standard window at least 72 hours ahead. Their existing deposit remains credited; do not create a new booking.</p>'
@@ -360,9 +371,9 @@ if ($row) {
     }
     if ($row['status'] === 'deposit_paid_test' && !$row['approved_at'] && !$row['reschedule_required']) {
         $duration = max(15, (int)($quote['knownMinutesMax'] ?? $quote['knownMinutes'] ?? 60));
-        $reviewHtml .= '<section class="card next-step"><p class="eyebrow">NEXT STEP</p><h2>Review Paid Request</h2><p>Assign the photographer and check the requested arrival window. Saving this review does not confirm the calendar or send an invitation.</p>'
+        $reviewHtml .= '<section class="card next-step"><p class="eyebrow">NEXT STEP</p><h2>Review Paid Request</h2><p>Assign the vendor and check the requested arrival window. Saving this review does not confirm the calendar or send an invitation.</p>'
             . '<form method="post"><input type="hidden" name="csrf" value="' . $csrf . '"><input type="hidden" name="action" value="review_paid"><input type="hidden" name="reference" value="' . staff_escape($reference) . '">'
-            . '<label>Photographer <input name="photographer" maxlength="120" value="David J Cro" required></label>'
+            . vendor_review_picker($db)
             . '<label>Planned shoot duration (minutes) <input name="duration" type="number" min="15" max="1440" value="' . $duration . '" required></label>'
             . '<label><input type="checkbox" name="available" value="yes" required> I checked availability for the requested window and reviewed the scope.</label>'
             . ($row['rush_status'] === 'pending' ? '<label><input type="checkbox" name="rush_decision" value="approve" required> I approve rush service and the $59 fee on the remaining balance. No charge is made by this review.</label>' : '')
@@ -377,7 +388,7 @@ if ($row) {
         $confirmation = booking_confirmation_get($db, $reference);
         try { $confirmationConfig = booking_scheduling_config($confirmation); } catch (Throwable) { $confirmationConfig = null; }
         $canConfirm = $confirmationConfig && $confirmationConfig['confirmation_enabled'];
-        $calendarHtml .= '<h2>Calendar Confirmation</h2><p>Calendar: ' . staff_escape($confirmationConfig ? (booking_scheduling_is_microsoft($confirmationConfig) ? 'Microsoft — sales@re.sitesee.ai' : 'Zoho — existing appointment connection') : 'Connection unavailable — confirmation blocked') . '</p><p>Photographer: ' . staff_escape((string)$row['photographer']) . '; reviewed shoot duration: ' . (int)$row['duration_minutes'] . ' minutes.</p>';
+        $calendarHtml .= '<h2>Calendar Confirmation</h2><p>Calendar: ' . staff_escape($confirmationConfig ? (booking_scheduling_is_microsoft($confirmationConfig) ? 'Microsoft — sales@re.sitesee.ai' : 'Zoho — existing appointment connection') : 'Connection unavailable — confirmation blocked') . '</p><p>Vendor: ' . staff_escape((string)$row['photographer']) . '; reviewed shoot duration: ' . (int)$row['duration_minutes'] . ' minutes.</p>';
         if (!$confirmation) {
             $calendarHtml .= '<details' . (in_array($postedAction, ['check_windows', 'select_window', 'confirm_calendar'], true) ? ' open' : '') . '><summary>Choose Another Arrival Window</summary><form method="post"><input type="hidden" name="csrf" value="' . $csrf . '"><input type="hidden" name="action" value="check_windows"><input type="hidden" name="reference" value="' . staff_escape($reference) . '"><button>Check Available Alternatives</button></form>';
             if (isset($alternativesError)) $calendarHtml .= '<p class="note">' . staff_escape($alternativesError) . '</p>';
@@ -400,7 +411,7 @@ if ($row) {
             $calendarHtml .= '</details><p>Final confirmation checks the calendar again and blocks the full shoot duration inside the customer-agreed arrival window. It does not send an invitation.</p>';
             if ($canConfirm) {
                 $calendarHtml .= '<form method="post"><input type="hidden" name="csrf" value="' . $csrf . '"><input type="hidden" name="action" value="confirm_calendar"><input type="hidden" name="reference" value="' . staff_escape($reference) . '">'
-                    . '<label><input type="checkbox" name="confirm_window" value="yes" required> I approve this customer-agreed arrival window, David as photographer and the reviewed shoot duration.</label><button>Confirm Test Appointment</button></form>';
+                    . '<label><input type="checkbox" name="confirm_window" value="yes" required> I approve this customer-agreed arrival window, the selected vendor and the reviewed shoot duration.</label><button>Confirm Test Appointment</button></form>';
             } else $calendarHtml .= '<p class="note">Calendar confirmation is disabled pending connection verification.</p>';
         } elseif ($confirmation['state'] !== 'confirmed') {
             $calendarHtml .= '<p class="note">Calendar creation result is uncertain. Do not create another appointment. Recheck the existing result first; if it cannot be verified, inspect the assigned calendar manually.</p>'
@@ -465,7 +476,7 @@ if ($row) {
     if ($workflowHtml !== '') $screens['readiness'] = ['label'=>'Readiness & Recovery', 'html'=>$workflowHtml, 'available'=>(bool)$row['approved_at']];
     if ($calendarHtml !== '') $screens['calendar'] = ['label'=>'Calendar & Invitation', 'html'=>$calendarHtml];
     if ($lifecycleHtml !== '') $screens['appointment'] = ['label'=>'Manage Appointment', 'html'=>$lifecycleHtml];
-    if ($onsiteHtml !== '') $screens['onsite'] = ['label'=>'Onsite & Vendor', 'html'=>$onsiteHtml];
+    if ($onsiteHtml !== '') $screens['onsite'] = ['label'=>'Onsite Closeout', 'html'=>$onsiteHtml];
     $screens['details'] = ['label'=>'Booking Details', 'html'=>$detailsHtml];
     // Price-link replacement remains reachable even when no review is pending.
     if ($reviewHtml === '' && in_array($row['status'], ['approved_test', 'awaiting_deposit_test'], true)) {
@@ -476,15 +487,14 @@ if ($row) {
     $body .= staff_booking_screens($reference, $screens, $next, $postedAction);
     $body .= '<script src="/portal-assets/booking-review.js?v=booking-steps-r1" defer></script>';
 } else {
-    $body .= '<h2>Recent Requests</h2><div class="request-list">';
-    $recent = booking_recent($db);
-    if (!$recent) $body .= '<p>No booking requests to review yet.</p>';
-    foreach ($recent as $item) {
-        $created = (new DateTimeImmutable($item['created_at']))->setTimezone(new DateTimeZone('America/Chicago'));
-        $changeRequested = booking_change_request_pending($db, $item['reference']);
-        $body .= '<article class="request-item"><div><p class="eyebrow">' . staff_escape(ucfirst($item['market'])) . ' · ' . staff_escape($created->format('Y-m-d g:i A')) . ' Central</p><h3>' . staff_escape($item['reference']) . '</h3><p>' . staff_escape($item['email'])
-            . '</p><p class="help">' . staff_escape(ucfirst(str_replace('_', ' ', $item['status'])) . ($item['calendar_status'] ? ' · Calendar ' . str_replace('_', ' ', $item['calendar_status']) : '') . ($changeRequested ? ' · Appointment change awaiting manager review' : '')) . '</p></div><a class="request-link" href="staff-bookings.php?reference=' . rawurlencode($item['reference']) . '" aria-label="Review request ' . staff_escape($item['reference']) . '">Review Request →</a></article>';
-    }
-    $body .= '</div>';
+    $options=booking_list_options($_GET);$groups=[];
+    foreach(['open','previous'] as $group)$groups[$group]=booking_order_list($db,null,$group,$options[$group.'_page'],$options[$group.'_size']);
+    $body.='<p>Orders remain open until SiteSee completes Production or records their closeout.</p>';
+    $body.=booking_lists_html($groups,$options,'staff-bookings.php',[],static function(array $item)use($db): string {
+        $request=booking_request($item);$details=$request['details'];$change=booking_change_request_pending($db,$item['reference']);
+        $status=$item['closed_at']?'Closed':($item['production_complete_at']?'Completed':($item['completed_at']?'In Production':ucfirst(str_replace('_',' ',$item['lifecycle_state']??$item['status']))));
+        $property=trim(implode(' ',array_filter([$details['street']??'',$details['unit']??'',$details['city']??'',$details['state']??'',$details['zip']??''])));
+        return '<article class="order"><div><p class="eyebrow">Order '.staff_escape($item['order_number']).'</p><h3>'.staff_escape($property).'</h3><p>'.staff_escape($status).'</p>'.($change?'<p class="help">Appointment change awaiting review</p>':'').'</div><a class="view-order" href="staff-bookings.php?reference='.rawurlencode($item['reference']).'" aria-label="Review order '.staff_escape($item['order_number']).'">Review Order →</a></article>';
+    });
 }
 staff_page($body);

@@ -11,22 +11,52 @@
     const p = Object.fromEntries(parts.map(x => [x.type, x.value]));
     return {date:p.year + '-' + p.month + '-' + p.day, time:p.hour + ':' + p.minute + ':' + p.second};
   }
+  function day(date) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+    const d = new Date(date + 'T12:00:00Z');
+    return Number.isFinite(d.getTime()) && d.toISOString().slice(0,10) === date ? d : null;
+  }
+  function easter(year) {
+    const a=year%19,b=Math.floor(year/100),c=year%100,d=Math.floor(b/4),e=b%4,
+      f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,
+      i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),v=h+l-7*m+114;
+    return new Date(Date.UTC(year,Math.floor(v/31)-1,v%31+1,12));
+  }
+  function closedDay(date) {
+    const d=day(date); if (!d) return true;
+    if (['01-01','07-04','12-25'].includes(date.slice(5))) return true;
+    const month=d.getUTCMonth(),n=d.getUTCDate(),w=d.getUTCDay(),e=easter(d.getUTCFullYear());
+    if (date===e.toISOString().slice(0,10)) return true;
+    e.setUTCDate(e.getUTCDate()-2); if (date===e.toISOString().slice(0,10)) return true;
+    return (month===4 && w===1 && n>=25) || (month===8 && w===1 && n<=7) || (month===10 && w===4 && n>=22 && n<=28);
+  }
+  function windowTimes(date) {
+    if (closedDay(date)) return [];
+    return day(date).getUTCDay()===0 ? ['13:30','15:30','17:30'] : ['07:00','09:00','11:00','13:00','15:00','17:00'];
+  }
   function firstDate(limit) {
-    if (limit.time <= '17:00:00') return limit.date;
-    // Advance the date label, after calculating elapsed notice hours in Central Time.
-    const next = new Date(limit.date + 'T12:00:00Z');
-    next.setUTCDate(next.getUTCDate() + 1);
-    return next.toISOString().slice(0, 10);
+    const d=day(limit.date);
+    for (let i=0;i<370;i++) {
+      const date=d.toISOString().slice(0,10), times=windowTimes(date);
+      if (times.some(time=>date>limit.date || time+':00'>=limit.time)) return date;
+      d.setUTCDate(d.getUTCDate()+1);
+    }
+    return limit.date;
   }
   function allowed(date, time, limit) {
-    return Boolean(date && time) && (date > limit.date || (date === limit.date && time + ':00' >= limit.time));
+    return Boolean(limit && date && time) && windowTimes(date).includes(time)
+      && (date > limit.date || (date === limit.date && time + ':00' >= limit.time));
   }
   function apply(date, time, limit) {
     date.disabled = time.disabled = !limit;
     if (!limit) return;
     date.min = firstDate(limit);
-    for (const option of time.options) option.disabled = option.dataset?.calendarBusy === 'true'
-      || (Boolean(option.value && date.value) && !allowed(date.value, option.value, limit));
+    const times=date.value ? windowTimes(date.value) : [];
+    for (const option of time.options) {
+      option.hidden=Boolean(option.value && date.value && !times.includes(option.value));
+      option.disabled=option.hidden || option.dataset?.calendarBusy==='true'
+        || (Boolean(option.value && date.value) && !allowed(date.value,option.value,limit));
+    }
   }
   function createClock(seed, env = globalThis) {
     let epoch = Number(seed), anchor = env.performance.now(), trusted = Number.isFinite(epoch) && epoch > 0;
@@ -87,5 +117,5 @@
     sharedClock.subscribe(listener);
     return sharedClock;
   }
-  return {cutoff, firstDate, allowed, apply, createClock, watch};
+  return {cutoff, firstDate, allowed, apply, closedDay, windowTimes, createClock, watch};
 });

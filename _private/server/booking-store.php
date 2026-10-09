@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/real-estate-form-config.php';
 require_once dirname(__DIR__) . '/real-estate-pricing.php';
 require_once __DIR__ . '/booking-schedule.php';
+require_once __DIR__.'/booking-identifiers.php';
 
 const BOOKING_CONSENT_VERSION = 'test-card-reuse-v1';
 const BOOKING_CONSENT_TEXT = 'I authorize SiteSee to save the card used for this test deposit for the remaining approved job balance and any on-site services I separately approve. If I selected the residential platform, I authorize its separate monthly billing only after publication until I notify SiteSee the property is sold. I understand later charges require their own approved scope and that a saved card may require further authentication.';
@@ -67,6 +68,7 @@ function booking_db(): PDO
     $db->exec('CREATE TABLE IF NOT EXISTS staff_login_attempts (ip_hash TEXT NOT NULL, at INTEGER NOT NULL)');
     $db->exec('CREATE INDEX IF NOT EXISTS staff_login_ip_time ON staff_login_attempts(ip_hash, at)');
     booking_schedule_schema($db);
+    booking_identifier_schema($db);
     @chmod($path, 0600);
     return $db;
 }
@@ -104,6 +106,7 @@ function booking_capture(PDO $db, array $submission, string $reference, bool $de
     ]);
     $db->prepare('INSERT INTO booking_scheduling (reference,rush_status) VALUES (?,?)')
         ->execute([$reference, ($submission['appointment']['rushRequested'] ?? false) ? 'pending' : 'not_requested']);
+    booking_order_number($db,$reference);
     $db->exec('COMMIT');
     return $token;
     } catch (Throwable $error) {

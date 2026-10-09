@@ -7,9 +7,9 @@ from pathlib import Path
 import re
 import zlib
 root=Path(__file__).resolve().parents[1]
-def historical(path):
- frozen=root/'tests/fixtures/lifecycle-before'/path.name
- return frozen if '_private' in path.parts and frozen.is_file() else path
+import sys
+sys.path.insert(0,str(root/'tests'))
+from release_source import historical
 files={name:historical(root/'_private'/name).read_text() for name in ('server/booking-workflow.php','server/booking-staff.php')}
 dependencies=['real-estate-form-config.php','real-estate-pricing.php',
  'server/booking-store.php','server/booking-schedule.php','server/booking-crm.php','server/booking-communication.php',

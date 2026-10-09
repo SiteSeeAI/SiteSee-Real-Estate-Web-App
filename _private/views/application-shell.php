@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /** Presentation only: callers supply escaped, trusted application body markup. */
-function site_application_shell(string $role, string $title, string $body, bool $authenticated = false, string $staffStyle = ''): string
+function site_application_shell(string $role, string $title, string $body, bool $authenticated = false, string $staffStyle = '', array $navigation = []): string
 {
     $roles = [
         'customer' => ['home'=>'/account.php', 'label'=>'Customer Account', 'asset'=>'/portal-assets/portal.css?v=20261002-polish-r1'],
@@ -14,12 +14,12 @@ function site_application_shell(string $role, string $title, string $body, bool 
     $page = $roles[$role];
     $escape = static fn(string $value): string => htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     $head = $page['asset'] ? '<link rel="stylesheet" href="'.$page['asset'].'">' : '<style>'.$staffStyle.'</style>';
-    $head .= '<link rel="stylesheet" href="/portal-assets/application.css?v=unified-shell-r1">';
-    if ($role === 'customer') $head .= '<script src="/portal-assets/portal.js" defer></script>';
+    $head .= '<link rel="stylesheet" href="/portal-assets/application.css?v=account-workflow-r1">';
+    if ($role === 'customer') $head .= '<script src="/portal-assets/portal.js?v=account-workflow-r1" defer></script>';
     $nav = '';
     if ($authenticated) {
         $nav = match ($role) {
-            'customer' => '<nav aria-label="Customer Navigation"><a href="/account.php">My Orders</a><a href="/account.php?view=profile">Account</a><a class="new-order" href="/account.php?view=new">New Order</a></nav>',
+            'customer' => '<nav aria-label="Customer Navigation"><a href="/account.php">My Orders</a><a href="/account.php?view=profile">Account</a><a href="/account.php?view=billing">Billing</a>'.(($navigation['new_order']??true)?'<a class="new-order" href="/account.php?view=new">New Order</a>':'').'</nav>',
             'vendor' => '<nav aria-label="Vendor Navigation"><a href="/vendor.php">My Jobs</a></nav>',
             'staff' => '<nav aria-label="Staff Navigation"><a href="/staff-bookings.php">Bookings</a><a href="/staff-production.php">Production</a><a href="/staff-vendors.php">Vendors</a></nav>',
         };

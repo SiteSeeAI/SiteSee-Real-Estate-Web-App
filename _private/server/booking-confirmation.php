@@ -226,10 +226,10 @@ function booking_confirm_appointment(PDO $db, string $reference, ?array $config 
         }
         $appointment = booking_request($row)['appointment'];
         if (($appointment['windowMinutes'] ?? null) !== 120
-            || !in_array($appointment['time'], ['07:00','09:00','11:00','13:00','15:00','17:00'], true)) {
+            || !in_array($appointment['time'], ['07:00','09:00','11:00','13:00','15:00','17:00','13:30','15:30','17:30'], true)) {
             throw new InvalidArgumentException('A customer-agreed two-hour arrival window is required.');
         }
-        $start = booking_calendar_date($appointment['date'])->setTime((int)substr($appointment['time'], 0, 2), 0);
+        $start = booking_arrival_start($appointment['date'],$appointment['time']);
         if ($start->getTimestamp() <= $now->getTimestamp()) throw new InvalidArgumentException('This arrival window has started. Agree a new window before confirmation.');
         // Notice belongs to the customer request, not to the later staff review time.
         $stmt = $db->prepare("SELECT recorded_at FROM booking_schedule_events WHERE reference=? AND action='replacement_window_requested' ORDER BY id DESC LIMIT 1");

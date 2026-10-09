@@ -2,7 +2,7 @@
 const assert=require('node:assert/strict'), fs=require('node:fs'), path=require('node:path'), http=require('node:http');
 const {chromium}=require('playwright');
 const root=path.resolve(__dirname,'..'), read=p=>fs.readFileSync(path.join(root,p),'utf8');
-let serverNow=Date.parse('2026-10-01T14:30:00Z')/1000;
+let serverNow=Date.parse('2026-10-02T14:30:00Z')/1000;
 function pricing() {
   let html=read('_private/views/pricing.php').split('<!doctype html>')[1];
   html=html.replace(/<\?php \$schedulePrefix = '([^']*)'; require __DIR__ \. '\/scheduling-fields.php'; \?>/g,(_,prefix)=>read('_private/views/scheduling-fields.php').replace(/<\?php[\s\S]*?\?>/,'').replaceAll('<?= $p ?>',prefix));
@@ -36,7 +36,7 @@ const server=http.createServer((req,res)=>{
       await context.addInitScript(()=>{const Original=Date;window.Date=class extends Original {constructor(...args){super(...(args.length?args:['2099-01-01T00:00:00Z']));}static now(){return Original.parse('2099-01-01T00:00:00Z');}};});
       const page=await context.newPage(),errors=[];page.on('pageerror',e=>{errors.push(e.message);console.error('Page error:',e.message);});
       await context.route('**/*',r=>r.request().url().startsWith(origin)?r.continue():r.abort());
-      serverNow=Date.parse('2026-10-01T14:30:00Z')/1000;await page.goto(origin+'/quote');
+      serverNow=Date.parse('2026-10-02T14:30:00Z')/1000;await page.goto(origin+'/quote');
       for(const [market,prefix] of [['residential',''],['commercial','c-']]) {
         await page.locator('[name="property-type"][value="'+market+'"]').check();
         await page.locator('#'+prefix+'listing-street').fill('101 Example Street');
@@ -46,35 +46,41 @@ const server=http.createServer((req,res)=>{
         await page.locator('#'+prefix+'open-estimate').click();
         await page.locator('#'+prefix+'review-estimate').click();
         const date=page.locator('#'+prefix+'shoot-date'),time=page.locator('#'+prefix+'shoot-time');
-        await page.waitForFunction(id=>document.getElementById(id).min==='2026-10-04',prefix+'shoot-date');
-        await date.fill('2026-10-03');assert(await date.evaluate(el=>el.validity.rangeUnderflow));
-        await date.fill('2026-10-04');assert(!(await date.evaluate(el=>el.validity.rangeUnderflow)));
-        assert.deepEqual(await time.locator('option:disabled').evaluateAll(os=>os.map(o=>o.value)),['07:00','09:00']);
+        await page.waitForFunction(id=>document.getElementById(id).min==='2026-10-05',prefix+'shoot-date');
+        await date.fill('2026-10-04');assert(await date.evaluate(el=>el.validity.rangeUnderflow));
+        await date.fill('2026-10-05');assert(!(await date.evaluate(el=>el.validity.rangeUnderflow)));
+        assert.deepEqual(await time.locator('option:disabled').evaluateAll(os=>os.map(o=>o.value)),['07:00','09:00','13:30','15:30','17:30']);
+        await date.fill('2026-10-11');assert.deepEqual(await time.locator('option:not(:disabled)').evaluateAll(os=>os.map(o=>o.value).filter(Boolean)),['13:30','15:30','17:30'],'Sunday first window1:30 Central');
+        await date.fill('2026-11-26');assert.deepEqual(await time.locator('option:not(:disabled)').evaluateAll(os=>os.map(o=>o.value).filter(Boolean)),[],'Thanksgiving unavailable');
+        await date.fill('2026-10-05');
         await time.selectOption('11:00');await page.locator('#'+prefix+'rush-requested').check();
-        assert.equal(await date.getAttribute('min'),'2026-10-02');
-        await date.fill('2026-10-02');await page.locator('#'+prefix+'rush-requested').uncheck();
-        assert.equal(await date.getAttribute('min'),'2026-10-04');assert(await date.evaluate(el=>el.validity.rangeUnderflow));
+        assert.equal(await date.getAttribute('min'),'2026-10-03');
+        await date.fill('2026-10-03');await page.locator('#'+prefix+'rush-requested').uncheck();
+        assert.equal(await date.getAttribute('min'),'2026-10-05');assert(await date.evaluate(el=>el.validity.rangeUnderflow));
       }
       // Server moves ahead while the device wall clock remains wrong. Refocus refreshes both markets.
-      serverNow=Date.parse('2026-10-01T22:00:01Z')/1000;
+      serverNow=Date.parse('2026-10-02T22:00:01Z')/1000;
       await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
-      for(const id of ['shoot-date','c-shoot-date'])await page.waitForFunction(id=>document.getElementById(id).min==='2026-10-05'&&!document.getElementById(id).disabled,id);
+      for(const id of ['shoot-date','c-shoot-date'])await page.waitForFunction(id=>document.getElementById(id).min==='2026-10-06'&&!document.getElementById(id).disabled,id);
       for(const market of ['residential','commercial']) {
-        serverNow=Date.parse('2026-10-01T14:30:00Z')/1000;await page.goto(origin+'/portal');
+        serverNow=Date.parse('2026-10-02T14:30:00Z')/1000;await page.goto(origin+'/portal');
         await page.locator(`[data-key=market][value=${market}]`).check();await page.getByRole('button',{name:'Next →'}).click();
         await page.getByLabel('Street address',{exact:true}).fill('101 Example Street');await page.getByLabel('City',{exact:true}).fill('Chicago');await page.getByLabel('ZIP code',{exact:true}).fill('60601');
         await page.getByRole('button',{name:'Next →'}).click();await page.getByRole('button',{name:'Next →'}).click();
         const date=page.getByLabel('Preferred date',{exact:true}),time=page.locator('[data-key=time]');
-        assert.equal(await date.getAttribute('min'),'2026-10-04');
-        await date.fill('2026-10-04');assert.deepEqual(await time.locator('option:disabled').evaluateAll(os=>os.map(o=>o.value)),['07:00','09:00']);
+        assert.equal(await date.getAttribute('min'),'2026-10-05');
+        await date.fill('2026-10-05');assert.deepEqual(await time.locator('option:disabled').evaluateAll(os=>os.map(o=>o.value)),['07:00','09:00','13:30','15:30','17:30']);
         await page.getByRole('button',{name:'Next →'}).click();assert.match(await page.locator('#sp-error').textContent(),/72.*hours/);
-        await time.selectOption('11:00');await page.locator('[data-key=rushRequested]').check();assert.equal(await date.getAttribute('min'),'2026-10-02');
-        await date.fill('2026-10-02');await page.locator('[data-key=rushRequested]').uncheck();assert(await date.evaluate(el=>el.validity.rangeUnderflow));
+        await date.fill('2026-10-11');assert.deepEqual(await time.locator('option:not(:disabled)').evaluateAll(os=>os.map(o=>o.value).filter(Boolean)),['13:30','15:30','17:30'],'Portal Sunday matches quote');
+        await date.fill('2026-11-26');assert.deepEqual(await time.locator('option:not(:disabled)').evaluateAll(os=>os.map(o=>o.value).filter(Boolean)),[],'Portal Thanksgiving unavailable');
+        await date.fill('2026-10-05');
+        await time.selectOption('11:00');await page.locator('[data-key=rushRequested]').check();assert.equal(await date.getAttribute('min'),'2026-10-03');
+        await date.fill('2026-10-03');await page.locator('[data-key=rushRequested]').uncheck();assert(await date.evaluate(el=>el.validity.rangeUnderflow));
         await page.getByRole('button',{name:'Next →'}).click();assert.match(await page.locator('#sp-error').textContent(),/72.*hours/);
-        serverNow=Date.parse('2026-10-01T22:00:01Z')/1000;await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
-        await page.waitForFunction(()=>document.querySelector('[data-key=date]').min==='2026-10-05'&&!document.querySelector('[data-key=date]').disabled);
+        serverNow=Date.parse('2026-10-02T22:00:01Z')/1000;await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+        await page.waitForFunction(()=>document.querySelector('[data-key=date]').min==='2026-10-06'&&!document.querySelector('[data-key=date]').disabled);
         // No full rerender, pricing change, or lost draft on clock refresh.
-        assert.equal(await date.inputValue(),'2026-10-02');
+        assert.equal(await date.inputValue(),'2026-10-03');
       }
       assert.deepEqual(errors,[]);await context.close();
     }

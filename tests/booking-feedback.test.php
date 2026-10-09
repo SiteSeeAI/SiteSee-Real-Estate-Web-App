@@ -32,12 +32,12 @@ feedback_check($manualResult['state'] === 'manual_review' && !isset($manualResul
 $unknown = $payload;
 $unknown['state']['selected'][] = 'floor';
 feedback_check(booking_feedback($unknown, fn()=>throw new RuntimeException('Must not read'), $now)['state'] === 'manual_review', 'Additional capture time requires review.');
-foreach (['2026-10-02','2026-10-03','2026-10-04'] as $date) {
+foreach (['2026-10-02','2026-10-03','2026-10-05'] as $date) {
     $repeat = $payload;
     $repeat['date'] = $date;
     $read = static fn(array $range): array => booking_calendar_read_busy(fn()=>['status'=>200,'body'=>['events'=>array_map(
         static fn(string $day): array => ['isallday'=>false,'dateandtime'=>['start'=>$day.'T140000+0000','end'=>$day.'T150000+0000','timezone'=>'UTC']],
-        ['20261002','20261003','20261004'])]], 'fixture', $range);
+        ['20261002','20261003','20261005'])]], 'fixture', $range);
     $answer = booking_feedback($repeat, $read, $now);
     feedback_check($answer['selected_available'] === true, 'Each recurring occurrence leaves a later arrival inside 9–11 available for a 70-minute shoot.');
     $snapshot = $read(booking_availability_range($date, 70));

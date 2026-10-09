@@ -51,7 +51,7 @@ function booking_remaining_cents(array $row): int
     return (int)$row['approved_cents'] - (int)$row['deposit_cents'] + (int)($row['rush_fee_cents'] ?? 0);
 }
 
-function booking_review_paid(PDO $db, string $reference, int $duration, string $photographer, bool $available, string $rushDecision = ''): void
+function booking_review_paid(PDO $db, string $reference, int $duration, string $photographer, bool $available, string $rushDecision = '', ?callable $reviewGuard = null): void
 {
     $photographer = trim($photographer);
     if (!booking_test_enabled() || !$available || $photographer === '' || strlen($photographer) > 120 || $duration < 15 || $duration > 1440) {
@@ -74,6 +74,8 @@ function booking_review_paid(PDO $db, string $reference, int $duration, string $
         $db->prepare('UPDATE bookings SET approved_at=?, photographer=?, duration_minutes=?, availability_checked_at=? WHERE reference=?')
             ->execute([gmdate('c'), $photographer, $duration, gmdate('c'), $reference]);
         booking_schedule_event($db, $reference, 'staff_reviewed', ['photographer'=>$photographer, 'duration_minutes'=>$duration]);
+        // The manager's selected vendor and review commit together under the write lock.
+        if ($reviewGuard) $reviewGuard($db, $reference, $photographer);
         $db->exec('COMMIT');
     } catch (Throwable $error) {
         $db->exec('ROLLBACK');

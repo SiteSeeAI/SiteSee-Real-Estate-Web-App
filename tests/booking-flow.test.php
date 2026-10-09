@@ -210,7 +210,7 @@ foreach (['residential', 'commercial'] as $market) {
 $reject(static fn() => real_estate_arrival_window(['date'=>'2027-03-14','time'=>'00:30']), 'Window spanning spring clock change rejected.');
 $reject(static fn() => real_estate_arrival_window(['date'=>'2027-11-07','time'=>'00:30']), 'Window spanning fall clock change rejected.');
 $reject(static fn() => real_estate_arrival_window(['date'=>'2027-03-15','time'=>'23:00']), 'Window crossing midnight rejected.');
-$assert(real_estate_arrival_window(['date'=>'2027-03-14','time'=>'09:00'])['windowEnd'] === '11:00', 'Daytime DST date preserves two-hour local window.');
+$assert(real_estate_arrival_window(['date'=>'2027-03-14','time'=>'13:30'])['windowEnd'] === '15:30', 'Daytime DST date preserves two-hour local window.');
 
 foreach (['07:00'=>'09:00', '09:00'=>'11:00', '11:00'=>'13:00', '13:00'=>'15:00', '15:00'=>'17:00', '17:00'=>'19:00'] as $start => $end) {
     $assert(real_estate_arrival_window(['date'=>'2027-04-01', 'time'=>$start])['windowEnd'] === $end, 'Every approved block derives its correct end.');

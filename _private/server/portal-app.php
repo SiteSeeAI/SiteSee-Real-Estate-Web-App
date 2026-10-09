@@ -41,6 +41,7 @@ try {
     $db=booking_db();portal_access_schema($db);portal_profile_schema($db);portal_purchase_schema($db);portal_billing_schema($db);portal_phone_schema($db);portal_session_start();
     $account=portal_session_account($db);
     if($account&&!portal_phone_session_valid($db,$account)){portal_session_clear();$account=false;}
+    if($account)$account['profile_complete']=portal_profile_complete($db,$account['id']);
     $method=$_SERVER['REQUEST_METHOD']??'GET';
     if(!in_array($method,['GET','POST'],true)){header('Allow: GET, POST');portal_page('Request Not Available','<p>Use the account links to continue.</p>',$account,405);}
     if($method==='POST'){
@@ -171,7 +172,11 @@ try {
         readfile(dirname(__DIR__).'/pricing-assets/'.($market==='residential'?'quote-engine.js':'commercial-quote-engine.js'));exit;
     }
     if($view==='appointment')portal_appointment_page($db,$account,portal_input($_GET,'reference',32),[],isset($_GET['saved'])?'Your saved appointment status is shown below.':'');
-    if($view==='billing')portal_billing_page($db,$account,portal_input($_GET,'reference',32));
+    if($view==='billing'){
+        $reference=portal_input($_GET,'reference',32);
+        if($reference==='')portal_billing_index_page($db,$account);
+        portal_billing_page($db,$account,$reference);
+    }
     if($view==='job')portal_job_page($db,$account,portal_input($_GET,'reference',32),isset($_GET['saved'])?'Your additional-services approval is recorded.':'');
     if($view==='balance')portal_balance_page($db,$account,portal_input($_GET,'reference',32),isset($_GET['result']));
     if($view==='payment')portal_payment_page($db,$account,portal_input($_GET,'reference',32),isset($_GET['result']));
@@ -182,6 +187,13 @@ try {
         $order['balance_paid_cents']=portal_balance_paid($db,$order['reference']);
         if($order['remaining_cents']!==null)$order['remaining_cents']=max(0,$order['remaining_cents']-$order['balance_paid_cents']);
         $job=booking_job_get($db,$order['reference']);$order['job_closed']=(bool)$job;
+        $claim=booking_confirmation_get($db,$order['reference']);
+        $order['can_manage_appointment']=$claim&&$claim['state']==='confirmed'&&!$job;
+        $order['can_view_job']=(bool)$job||($order['appointment_status']==='Confirmed'&&$order['review_status']==='Reviewed');
+        $order['change_request']=booking_change_request_pending($db,$order['reference'])?:null;
+        $order['change_pending']=(bool)booking_lifecycle_pending($db,$order['reference']);
+        $order['extras_need_approval']=false;
+        if(!$job&&$order['can_view_job']){$extras=booking_job_extras($db,$order['reference']);$order['extras_need_approval']=$extras['lines_json']!=='[]'&&!$extras['approved_at'];}
         if($job){
             $order['remaining_cents']=$job['paid_at']?0:(int)$job['amount'];
             $order['payment_review']=(bool)$job['paid_at']&&$job['payment_state']!=='paid';
@@ -193,7 +205,7 @@ try {
     }
     if($view==='email'){portal_email_schema($db);portal_email_page($db,$account);}
     if($view==='profile')portal_profile_page($db,$account,isset($_GET['email_changed'])?'Your contact email is verified and updated.':(isset($_GET['saved'])?'Your profile is saved.':''));
-    if($view==='new')portal_new_order_page($db,$account,portal_input($_GET,'again',32));
+    if($view==='new'){if(portal_input($_GET,'again',32)!=='')portal_page('New Order','<p>Start a new order from My Orders after completing your Account.</p>',$account,400);portal_new_order_page($db,$account);}
     if($view!=='')portal_page('Page Unavailable','<p><a href="/account.php">Return To My Orders</a></p>',$account,404);
     $page=portal_input($_GET,'page',5);portal_orders_page($db,$account,ctype_digit($page)?max(1,min(10000,(int)$page)):1);
 } catch(InvalidArgumentException){

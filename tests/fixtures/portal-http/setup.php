@@ -5,7 +5,7 @@ $root=getenv('PORTAL_TEST_PRIVATE');
 if (!$root || !str_starts_with($root,sys_get_temp_dir().'/sitesee-portal-http-')) throw new RuntimeException('Isolated fixture directory required.');
 require __DIR__.'/service-providers.php';
 require $root.'/server/portal-orders.php';
-require $root.'/server/portal-phone.php';
+require_once $root.'/server/portal-phone.php';
 $db=booking_db();portal_access_schema($db);portal_profile_schema($db);portal_phone_schema($db);
 $command=$argv[1]??'seed';
 if($command==='reset-sms-rate'){$db->exec('DELETE FROM portal_phone_attempts');exit;}

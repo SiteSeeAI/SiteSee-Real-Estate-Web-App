@@ -94,7 +94,7 @@ if ($row['status'] === 'deposit_paid_test') {
             . '<form method="post"><input type="hidden" name="csrf" value="' . pay_escape($_SESSION['booking_csrf']) . '"><input type="hidden" name="action" value="request_new_window"><input type="hidden" name="reference" value="' . pay_escape($reference) . '"><input type="hidden" name="token" value="' . pay_escape($token) . '">'
             . '<label>Preferred date <input type="date" name="date" min="' . $earliest->format('Y-m-d') . '" required></label>'
             . '<label>Arrival window · Central Time <select name="time" required><option value="">Select A Window</option>';
-        foreach (['07:00'=>'7–9 AM', '09:00'=>'9–11 AM', '11:00'=>'11 AM–1 PM', '13:00'=>'1–3 PM', '15:00'=>'3–5 PM', '17:00'=>'5–7 PM'] as $start => $label) {
+        foreach (['07:00'=>'7–9 AM', '09:00'=>'9–11 AM', '11:00'=>'11 AM–1 PM', '13:00'=>'1–3 PM', '15:00'=>'3–5 PM', '17:00'=>'5–7 PM','13:30'=>'1:30–3:30 PM','15:30'=>'3:30–5:30 PM','17:30'=>'5:30–7:30 PM'] as $start => $label) {
             $body .= '<option value="' . $start . '">' . $label . '</option>';
         }
         $body .= '</select></label><button>Request New Window — No Additional Deposit</button></form>';

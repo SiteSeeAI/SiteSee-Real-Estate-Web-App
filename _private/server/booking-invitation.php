@@ -32,7 +32,7 @@ function booking_invitation_message(array $row, array $confirmation, string $man
     }
     $request = booking_request($row);
     $appointment = $request['appointment'];
-    $start = booking_calendar_date($appointment['date'])->setTime((int)substr($appointment['time'], 0, 2), 0);
+    $start = booking_arrival_start($appointment['date'],$appointment['time']);
     $end = $start->modify('+2 hours');
     $property = booking_confirmation_property($request['details']);
     $summary = '[TEST] SiteSee Photography Arrival Window';
@@ -63,7 +63,7 @@ function booking_invitation_message(array $row, array $confirmation, string $man
         $body .= "\r\n" . chunk_split(base64_encode($part), 76, "\r\n");
     }
     $body .= '--' . $boundary . "--\r\n";
-    return ['to'=>$row['email'], 'subject'=>$summary . ' | ' . $row['reference'], 'headers'=>$headers,
+    return ['to'=>$row['email'], 'subject'=>booking_property_subject($summary,$request['details']), 'headers'=>$headers,
         'body'=>$body, 'ical'=>$ical, 'plain'=>$plain, 'html'=>$html, 'from'=>BOOKING_MAIL_SENDER];
 }
 
@@ -110,7 +110,7 @@ function booking_send_invitation_locked(PDO $db, string $reference, ?array $conf
         if (!$resumeDraft && $confirmation['invitation_state'] !== 'none') throw new InvalidArgumentException('Invitation delivery was already attempted. Check the mailbox before any manual resend.');
         if ($resumeDraft && !booking_invitation_draft_resumable($db,$reference)) throw new InvalidArgumentException('The saved draft changed. Nothing was sent.');
         $request = booking_request($row);
-        $start = booking_calendar_date($request['appointment']['date'])->setTime((int)substr($request['appointment']['time'], 0, 2), 0);
+        $start = booking_arrival_start($request['appointment']['date'],$request['appointment']['time']);
         if ($start->getTimestamp() <= time()) throw new InvalidArgumentException('This arrival window has started. Do not send a late confirmation invitation.');
         require_once __DIR__.'/booking-lifecycle.php';
         if ($resumeDraft) {
@@ -173,6 +173,7 @@ function booking_invitation_draft_resumable(PDO $db, string $reference): bool
             || !booking_management_auth($db,$reference,$match[1])) return false;
         $expected = booking_invitation_message($row,$claim,$prefix.$match[1]);
         foreach (['plain','ical','subject','from','to'] as $field) {
+            if ($field==='subject' && ($message[$field]??null)==='[TEST] SiteSee Photography Arrival Window | '.$reference) continue;
             if (($message[$field] ?? null) !== $expected[$field]) return false;
         }
         return true;

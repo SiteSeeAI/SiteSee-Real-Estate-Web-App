@@ -8,13 +8,13 @@ foreach ($cases as $case) {
     $now=new DateTimeImmutable($case['now']);
     $range=booking_availability_range($case['date'],60,1);
     $windows=booking_available_windows($case['date'],$case['rush'],60,$range+['busy'=>[]],$now,1);
-    $hours=array_map(static fn($w)=>(int)substr($w['time'],0,2),$windows);
-    if ($hours!==$case['hours']) throw new RuntimeException('Availability boundary mismatch: '.$case['now']);
-    foreach ([7,9,11,13,15,17] as $hour) {
+    $hours=array_column($windows,'time');
+    if ($hours!==$case['times']) throw new RuntimeException('Availability boundary mismatch: '.$case['now']);
+    foreach (['07:00','09:00','11:00','13:00','15:00','17:00','13:30','15:30','17:30'] as $hour) {
         $accepted=true;
-        try {real_estate_validate_lead_time(['date'=>$case['date'],'time'=>sprintf('%02d:00',$hour)],['rushRequested'=>$case['rush']],$now);}
+        try {real_estate_validate_lead_time(real_estate_arrival_window(['date'=>$case['date'],'time'=>$hour]),['rushRequested'=>$case['rush']],$now);}
         catch (InvalidArgumentException $e) {$accepted=false;}
-        if ($accepted!==in_array($hour,$case['hours'],true)) throw new RuntimeException('Checkout boundary mismatch: '.$case['now']);
+        if ($accepted!==in_array($hour,$case['times'],true)) throw new RuntimeException('Checkout boundary mismatch: '.$case['now']);
         $checks++;
     }
 }

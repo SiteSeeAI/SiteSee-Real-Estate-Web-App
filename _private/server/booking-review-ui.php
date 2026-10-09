@@ -11,7 +11,7 @@ function staff_booking_next(array $row, ?array $claim, array $life, bool $pendin
     if ($life['state'] !== 'active' && $claim) return ['appointment', 'Review the appointment status', 'Check the saved calendar status and any notice that needs attention.'];
     if ($row['reschedule_required']) return ['review', 'Request another arrival window', 'Keep the recorded deposit and provide the customer with a rescheduling link.'];
     if (!$row['deposit_paid_at']) return ['review', 'Review the request and deposit', 'The appointment can be reviewed after the TEST deposit is recorded.'];
-    if (!$row['approved_at']) return ['review', 'Review the paid request', 'Check the scope, photographer and arrival window before saving the review.'];
+    if (!$row['approved_at']) return ['review', 'Review the paid request', 'Check the scope, vendor and arrival window before saving the review.'];
     if ($workflow && !$workflow['link']) return ['readiness', 'Check readiness and the CRM contact', 'Verify the connections and link the customer before calendar confirmation.'];
     if (!$claim) return ['calendar', 'Confirm the appointment', 'Check the agreed window and reserve the appointment. Sending the invitation is a separate step.'];
     if ($claim['state'] !== 'confirmed') return ['calendar', 'Verify the saved calendar result', 'Recover the existing result instead of creating another appointment.'];
@@ -27,10 +27,10 @@ function staff_booking_next(array $row, ?array $claim, array $life, bool $pendin
 function staff_booking_step_for_action(string $action): string
 {
     if (str_starts_with($action, 'lifecycle_')) return 'appointment';
-    if (str_starts_with($action, 'job_') || $action === 'vendor_assign') return 'onsite';
+    if (str_starts_with($action, 'job_')) return 'onsite';
     if (str_starts_with($action, 'workflow_') || in_array($action, ['resume_invitation', 'review_paid'], true)) return 'readiness';
     if (in_array($action, ['confirm_calendar', 'reconcile_calendar', 'check_windows', 'select_window', 'send_invitation'], true)) return 'calendar';
-    if (in_array($action, ['approve', 'rotate', 'decline_rush', 'reschedule_link'], true)) return 'review';
+    if (in_array($action, ['approve', 'rotate', 'decline_rush', 'reschedule_link', 'vendor_assign'], true)) return 'review';
     return 'overview';
 }
 

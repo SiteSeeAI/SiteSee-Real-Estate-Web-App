@@ -15,7 +15,7 @@ function booking_feedback(array $payload, callable $read, ?DateTimeImmutable $no
     $date = booking_calendar_date($payload['date']);
     $today = booking_calendar_date($now->setTimezone(new DateTimeZone('America/Chicago'))->format('Y-m-d'));
     if ($date < $today
-        || !in_array($payload['time'], ['', '07:00', '09:00', '11:00', '13:00', '15:00', '17:00'], true)) {
+        || !in_array($payload['time'], ['', '07:00', '09:00', '11:00', '13:00', '15:00', '17:00', '13:30', '15:30', '17:30'], true)) {
         throw new InvalidArgumentException('Choose a future date and a listed arrival window.');
     }
     $quote = $payload['market'] === 'residential'

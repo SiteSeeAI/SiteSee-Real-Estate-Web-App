@@ -37,17 +37,29 @@ const reserve=()=>new Promise(resolve=>{const s=net.createServer();s.listen(0,'1
   assert.equal((await page.request.post(origin+'/staff-bookings.php',{form:{action:'review_paid',reference:refs.paid}})).status(),403);
   assert.equal((await page.request.post(origin+'/staff-bookings.php',{form:{action:'lifecycle_approve_request',reference:refs.complete,request_id:'a'.repeat(32),agreed:'yes'}})).status(),403,'Anonymous requests cannot approve an appointment change');
   assert.equal((await page.request.post(origin+'/staff-bookings.php',{form:{action:'lifecycle_decline_notice',reference:refs.complete,request_id:'a'.repeat(32),agreed:'yes'}})).status(),403,'Anonymous users cannot send decline notices');
-  await page.getByLabel('Password',{exact:true}).fill('isolated-staff-password');await page.getByRole('button',{name:'Sign In',exact:true}).click();await page.getByRole('heading',{name:'Recent Requests',exact:true}).waitFor({timeout:5000}).catch(async e=>{throw Error(e.message+' Page: '+await page.locator('body').innerText()+' Trace: '+JSON.stringify(requestTrace)+' Server: '+logs);});
+  await page.getByLabel('Password',{exact:true}).fill('isolated-staff-password');await page.getByRole('button',{name:'Sign In',exact:true}).click();await page.getByRole('heading',{name:'Open Orders',exact:true}).waitFor({timeout:5000}).catch(async e=>{throw Error(e.message+' Page: '+await page.locator('body').innerText()+' Trace: '+JSON.stringify(requestTrace)+' Server: '+logs);});
   await assertApplicationShell(page,'staff',true);
   const cookies=await context.cookies();assert(cookies[0].secure&&cookies[0].httpOnly&&cookies[0].sameSite==='Strict');
-  assert.match(await page.locator('.request-list').innerText(),/2026-10-02 9:00 AM Central/);
+  assert.equal(await page.locator('.order-column').count(),2,'Management lists show open and previous columns');assert.equal(await page.locator('select[name=open_size]').inputValue(),'5');assert.equal(await page.locator('select[name=previous_size]').inputValue(),'5');
   const shots=process.env.PORTAL_SCREENSHOTS;
   const screenshot=async name=>{if(shots){fs.mkdirSync(shots,{recursive:true});await page.screenshot({path:path.join(shots,'staff-'+name+'.png'),fullPage:true});console.log('STAFF_SCREENSHOT:'+name);}};
   for(const width of [320,390,736,1200]){await page.setViewportSize({width,height:1000});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Request list overflow '+width);}
   await page.evaluate(()=>document.fonts.ready);assert(await page.evaluate(()=>document.fonts.check('16px Inter')&&document.fonts.check('22px Poppins')));
   await screenshot('list');
   // Keep all 19 original form contracts exact; new job and vendor forms have their own end-to-end suites.
-  const contracts=()=>page.locator('form').evaluateAll(forms=>forms.filter(f=>f.id!=='job-onsite'&&!f.querySelector('input[name=action][value^=job_]')&&!f.querySelector('input[name=action][value^=vendor_]')).map(f=>({method:f.method,fields:[...f.querySelectorAll('input,select,textarea')].map(e=>({tag:e.tagName,type:e.type,name:e.name,value:e.value,required:e.required,min:e.getAttribute('min'),max:e.getAttribute('max'),maxLength:e.getAttribute('maxlength'),step:e.getAttribute('step'),checked:e.checked,options:e.tagName==='SELECT'?[...e.options].map(o=>o.value):null})),buttons:[...f.querySelectorAll('button')].map(e=>e.textContent.trim())})).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b))));
+  const contracts=()=>page.locator('form').evaluateAll(forms=>forms.filter(f=>f.id!=='job-onsite'&&!f.querySelector('input[name=action][value=review_paid]')&&!f.querySelector('input[name=action][value^=job_]')&&!f.querySelector('input[name=action][value^=vendor_]')).map(f=>({method:f.method,fields:[...f.querySelectorAll('input,select,textarea')].filter(e=>e.name!=='notice_revision').map(e=>({tag:e.tagName,type:e.type,name:e.name,value:e.value,required:e.required,min:e.getAttribute('min'),max:e.getAttribute('max'),maxLength:e.getAttribute('maxlength'),step:e.getAttribute('step'),checked:e.checked,options:e.tagName==='SELECT'?[...e.options].map(o=>o.value):null})),buttons:[...f.querySelectorAll('button')].map(e=>e.textContent.trim())})).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b))));
+  const firstRefs=await page.locator('.order-column[aria-labelledby="orders-open"] .view-order').evaluateAll(as=>as.map(a=>a.getAttribute('href')));
+  assert.equal(firstRefs.length,5,'Default management list has five jobs');
+  await page.getByRole('navigation',{name:'Open Orders Pages',exact:true}).getByRole('link',{name:'Next',exact:true}).click();
+  const nextRefs=await page.locator('.order-column[aria-labelledby="orders-open"] .view-order').evaluateAll(as=>as.map(a=>a.getAttribute('href')));
+  assert.equal(nextRefs.length,5);assert(nextRefs.every(ref=>!firstRefs.includes(ref)),'Next page contains different jobs');
+  await page.locator('select[name=open_size]').selectOption('25');await page.getByRole('button',{name:'Update Lists',exact:true}).click();
+  assert.equal(await page.locator('.order-column[aria-labelledby="orders-open"] .view-order').count(),22,'25 selector shows all22 fixture jobs');
+  await page.locator('select[name=show]').selectOption('previous');await page.getByRole('button',{name:'Update Lists',exact:true}).click();
+  assert.equal(await page.locator('.order-column[aria-labelledby=orders-open]').count(),0,'Show previous hides open column');assert.equal(await page.locator('.order-column[aria-labelledby=orders-previous]').count(),1);
+  await page.locator('select[name=show]').selectOption('both');await page.locator('select[name=open_size]').selectOption('all');await page.getByRole('button',{name:'Update Lists',exact:true}).click();
+  assert.equal(await page.locator('.order-column[aria-labelledby="orders-open"] .view-order').count(),22,'All selector renders every open job');
+  await page.locator('select[name=open_size]').selectOption('5');await page.getByRole('button',{name:'Update Lists',exact:true}).click();
   const snapshot=setup('snapshot');
   for(const [name,ref]of Object.entries(refs)){
     const agentCase=name.startsWith('agent-');
@@ -103,9 +115,8 @@ const reserve=()=>new Promise(resolve=>{const s=net.createServer();s.listen(0,'1
     await goto('/staff-bookings.php?reference='+refs.complete+'&step='+step);
     assert.equal(await page.locator('.booking-screen:not([hidden])').count(),1,'One active screen '+step);
     if(step==='onsite'){
-      assert.equal(await page.locator('#onsite-closeout').getAttribute('open'),null,'Onsite form starts collapsed even in its step');
-      assert.equal(await page.locator('#job-onsite').isVisible(),false);
-      await page.locator('#onsite-closeout>summary').click();
+      assert.equal(await page.locator('#onsite-closeout').count(),0,'Selected closeout has no nested accordion');
+      assert.equal(await page.locator('#vendor-assignment').count(),0,'No redundant vendor accordion in closeout');
       assert.equal(await page.locator('#job-onsite').isVisible(),true);
     }
   }
@@ -133,6 +144,7 @@ const reserve=()=>new Promise(resolve=>{const s=net.createServer();s.listen(0,'1
   // A rejected review keeps its correction form visible; successful review advances.
   await goto('/staff-bookings.php?reference='+refs.paid+'&step=review');
   const reviewForm=page.locator('form').filter({has:page.locator('input[name=action][value=review_paid]')});
+  assert.equal(await reviewForm.locator('input[name=photographer]').count(),0,'Free text photographer removed');assert.equal(await reviewForm.locator('select[name=vendor_selection][required]').count(),1,'Vendor picklist required');
   await reviewForm.evaluate(f=>f.submit());await page.getByRole('alert').waitFor();
   assert.equal(await page.locator('[data-booking-screen=review]').isVisible(),true,'Failed review stays on the review step');
   assert.equal(await page.getByRole('button',{name:'Save Test Review — No Invitation',exact:true}).isVisible(),true,'The form needing correction stays visible');
@@ -185,7 +197,13 @@ const reserve=()=>new Promise(resolve=>{const s=net.createServer();s.listen(0,'1
   await page.locator('[data-booking-screen=overview] .step-primary').click();
   assert(await page.getByRole('button',{name:'Check Decline Notice & Zoho History',exact:true}).isVisible(),'Saved notice offers explicit result recovery');
   assert(!fs.existsSync(path.join(current,'provider-blocked.txt')),'Request review and decline do not contact providers');
+  await goto('/staff-bookings.php?reference='+refs.paid+'&step=review');
+  const paidReview=page.locator('form').filter({has:page.locator('input[name=action][value=review_paid]')});
+  await paidReview.locator('select[name=vendor_selection]').selectOption({label:'Review Vendor'});
+  await paidReview.locator('input[name=available]').check();await paidReview.getByRole('button',{name:'Save Test Review — No Invitation',exact:true}).click();
+  assert(await page.locator('[data-booking-screen=readiness]').isVisible(),'Successful Vendor review advances to readiness');
+  assert.match(await page.locator('main').innerText(),/Staff review saved/);
   assert.deepEqual(errors,[]);assert(!/PHP (?:Fatal error|Warning|Notice)/.test(logs),logs);
-  console.log('portal-staff: PASS (19 baseline form contracts + 3 external-agent cases; unchanged ledgers; no GET/provider calls; real HTTPS login/CSRF/origin/consent; state-selected screens; collapsed closeout; recovery; Central Time; keyboard; 320/390/736/1200 layout)');
+  console.log('portal-staff: PASS (19 baseline states with preserved controls + required Vendor review + 3 external-agent cases; unchanged ledgers; no GET/provider calls; real HTTPS login/CSRF/origin/consent; state-selected screens; collapsed overview shortcut/open closeout step; paginated5/25/All lists; recovery; Central Time; keyboard; 320/390/736/1200 layout)');
  }finally{if(browser)await browser.close();if(proxy)await new Promise(r=>proxy.close(r));if(php){php.kill();await new Promise(r=>php.once('exit',r));}fs.rmSync(temp,{recursive:true,force:true});}
 })().catch(e=>{console.error(e);process.exit(1);});

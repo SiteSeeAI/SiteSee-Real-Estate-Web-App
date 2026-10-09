@@ -178,8 +178,8 @@ function booking_scheduling_confirm_ms(PDO $db,string $reference,array $config,?
             throw new InvalidArgumentException('A calendar creation was already attempted. Use Recheck Calendar Result.');
         }
         $appointment = booking_request($row)['appointment'];
-        if (($appointment['windowMinutes'] ?? 0) !== 120 || !in_array($appointment['time'],['07:00','09:00','11:00','13:00','15:00','17:00'],true)) throw new InvalidArgumentException('An agreed two-hour arrival window is required.');
-        $start = booking_calendar_date($appointment['date'])->setTime((int)substr($appointment['time'],0,2),0);
+        if (($appointment['windowMinutes'] ?? 0) !== 120 || !in_array($appointment['time'],['07:00','09:00','11:00','13:00','15:00','17:00','13:30','15:30','17:30'],true)) throw new InvalidArgumentException('An agreed two-hour arrival window is required.');
+        $start = booking_arrival_start($appointment['date'],$appointment['time']);
         if ($start <= $now) throw new InvalidArgumentException('This arrival window has started. Agree a new window before confirmation.');
         $connection ??= booking_scheduling_ms_connection($config);
         $snapshot = booking_scheduling_snapshot($db,$config,booking_availability_range($appointment['date'],(int)$row['duration_minutes'],1),$connection);
@@ -259,7 +259,7 @@ function booking_scheduling_change_window(PDO $db,string $reference,string $date
         $old = booking_request($row)['appointment'];
         if ($old['date']===$date && $old['time']===$time) return;
         $appointment = array_replace($old,['date'=>$date,'time'=>$time,'windowMinutes'=>120,'windowEnd'=>$matches[0]['end_time']]);
-        $utc = booking_calendar_date($date)->setTime((int)substr($time,0,2),0)->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z');
+        $utc = booking_arrival_start($date,$time)->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z');
         $db->exec('BEGIN IMMEDIATE');
         try {
             if (booking_get($db,$reference)!==$row || booking_confirmation_get($db,$reference)) throw new InvalidArgumentException('Booking changed during the check. Reload it.');

@@ -27,7 +27,9 @@ SERVICE = 'ea-php82-php-fpm'
 PHP = '/opt/cpanel/ea-php82/root/usr/bin/php'
 POOL_FILE = pathlib.Path('/opt/cpanel/ea-php82/root/etc/php-fpm.d/re.sitesee.ai.conf')
 FUNCTIONS = ['site_application_bootstrap', 'booking_change_request_create', 'booking_change_request_approve',
-             'booking_communication_unsent_draft', 'portal_appointment_change', 'portal_appointment_page', 'booking_lifecycle_html']
+             'booking_communication_unsent_draft', 'portal_appointment_change', 'portal_appointment_page', 'booking_lifecycle_html',
+             'booking_staff_cancel', 'booking_order_number', 'booking_order_list', 'booking_order_close_cancelled',
+             'booking_window_times', 'booking_arrival_start', 'portal_require_profile', 'vendor_review_paid', 'vendor_review_grant_ready']
 
 
 def need(value, message):
@@ -59,7 +61,7 @@ def reflection_code(private):
     code = "putenv('SITESEE_REAL_ESTATE_SITE_URL=https://re.sitesee.ai');"
     code += "putenv('SITESEE_REAL_ESTATE_PRICING_GATE_SECRET='.bin2hex(random_bytes(32)));"
     code += ''.join('require_once ' + php_string(str(private / n)) + ';' for n in
-                    ['server/application.php', 'server/portal-service.php', 'server/booking-lifecycle-ui.php', 'views/portal-service.php'])
+                    ['server/application.php', 'server/portal-service.php', 'server/booking-lifecycle-ui.php', 'views/portal-service.php', 'server/portal-purchase.php', 'server/vendor-access.php'])
     code += '$out["functions"]=[];foreach(json_decode(' + php_string(json.dumps(FUNCTIONS)) + ',true) as $n){$out["functions"][$n]=function_exists($n)?(new ReflectionFunction($n))->getEndLine():null;}'
     return code
 

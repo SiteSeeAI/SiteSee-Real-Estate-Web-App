@@ -116,10 +116,10 @@ def load(package, expected):
     need(obj['format'] == 1 and obj['stage'] == 'TEST' and obj['migration'] == 'none', 'Release mode/migration differs.')
     if 'predecessor' in obj:
         previous = obj['predecessor']
-        need(previous.get('commit') == 'd1408d070d5028351e447cca7096b780984ced8e'
-             and previous.get('manifest_sha256') == 'd040068e9783c46792289709d5198ed95263480bb42862df9743bcefd66bd7e4'
-             and set(previous.get('files', {})) == set(obj['files']), 'Reviewed predecessor differs.')
-        need(obj.get('runtime_schema') == 'Additive booking_change_requests table and unique pending-request index on first normal application use; existing tables and rows unchanged.', 'Runtime schema review differs.')
+        need(previous.get('commit') == '631aee7c49924bc123ba335fb24eb918f7e2d314'
+             and previous.get('manifest_sha256') == 'c648d75b352a4fd0d3faffc86b8984bf26e95a3062689f8c8435a982366167bb'
+             and set(previous.get('files', {})) == set(obj['files']) - {'private/server/booking-hours.php','private/server/booking-identifiers.php','private/server/booking-list-ui.php'}, 'Reviewed predecessor differs.')
+        need(obj.get('runtime_schema') == 'Additive booking_order_numbers, booking_order_closures and vendor_review_grants tables plus existing booking_change_requests schema on first normal application use; original references, tables and payment rows unchanged.', 'Runtime schema review differs.')
     need(re.fullmatch('[0-9a-f]{40}', obj['commit']) and obj['release'] == 'unified-test-' + obj['commit'][:12], 'Release identity differs.')
     need(sha(values['install-unified.py']) == obj['installer_sha256'] == sha(pathlib.Path(__file__).read_bytes()),
          'Use the installer belonging to this exact package.')
@@ -519,12 +519,37 @@ def rollback_request_guard(db):
         if exists:
             count = connection.execute("SELECT count(*) FROM booking_change_requests WHERE state IN ('pending','applying')").fetchone()[0]
             need(count == 0, 'Pending manager requests preserved: repair forward; restoring the previous code would bypass their approval flow.')
+        exists = connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='vendor_review_grants'").fetchone()
+        if exists:
+            count = connection.execute("""SELECT count(*) FROM vendor_review_grants r
+                JOIN vendor_assignments v ON v.reference=r.reference AND v.revision=r.assignment_revision
+                LEFT JOIN booking_confirmations c ON c.reference=r.reference
+                WHERE c.state IS NULL OR c.state<>'confirmed'""").fetchone()[0]
+            need(count == 0, 'Pending Vendor review grants preserved: repair forward; previous code cannot withhold access until confirmation.')
+        exists = connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='booking_scheduling'").fetchone()
+        if exists:
+            for (raw,) in connection.execute('SELECT appointment_json FROM booking_scheduling WHERE appointment_json IS NOT NULL'):
+                appointment = json.loads(raw)
+                need(appointment.get('time') not in ('13:30','15:30','17:30'), 'Half-hour appointment preserved: repair forward; previous code cannot preserve Sunday minutes.')
+        exists = connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='bookings'").fetchone()
+        if exists:
+            for (raw,) in connection.execute('SELECT request_json FROM bookings'):
+                request = json.loads(raw)
+                need(request.get('appointment', {}).get('time') not in ('13:30','15:30','17:30'), 'Half-hour appointment preserved: repair forward; previous code cannot preserve Sunday minutes.')
         exists = connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='booking_communications'").fetchone()
         if exists:
             count = connection.execute("""SELECT count(*) FROM booking_communications
                 WHERE kind LIKE 'change-declined-%' AND (submission_state<>'sent_observed'
                 OR crm_state<>'associated' OR (recipient='sales@re.sitesee.ai' AND delivery_state<>'recipient_copy_observed'))""").fetchone()[0]
             need(count == 0, 'Unresolved customer decline notices preserved: repair forward; restoring the previous code would remove their recovery controls.')
+            drafts = connection.execute("""SELECT message_json FROM booking_communications
+                WHERE kind LIKE 'lifecycle-%' AND submission_state IN ('draft','draft_blocked')
+                AND provider_message_id IS NOT NULL AND provider_message_id<>''
+                AND submission_attempted_at IS NULL AND provider_accepted_at IS NULL
+                AND sent_observed_at IS NULL AND sent_at IS NULL""")
+            for (raw,) in drafts:
+                message = json.loads(raw)
+                need('METHOD:CANCEL' not in message.get('ical', ''), 'Unsent cancellation draft preserved: repair forward; previous code cannot resume its exact saved provider draft.')
 
 
 def apply(root, public, uid, before, after, metas, rollback=False, writer=atomic):

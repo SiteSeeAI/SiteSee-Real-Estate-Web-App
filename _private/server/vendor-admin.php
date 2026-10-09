@@ -37,7 +37,7 @@ function vendor_admin_form(?array $row=null): string
     else $html.='<input type="hidden" name="enabled" value="1">';
     return $html.'<button>'.($row?'Save Vendor':'Create Vendor Account').'</button></form>';
 }
-function vendor_admin_assignment(PDO $db,string $ref): string
+function vendor_admin_assignment(PDO $db,string $ref,bool $fold=true): string
 {
     vendor_schema($db);$e='staff_escape';$grant=vendor_assignment($db,$ref);$account=$grant?vendor_get($db,$grant['vendor_id']):false;
     $job=booking_job_get($db,$ref);$ready=true;
@@ -51,5 +51,12 @@ function vendor_admin_assignment(PDO $db,string $ref): string
     if($job||!$ready)$html.='</select></label><button>Remove Vendor Access</button>';
     else $html.='</select></label><button>Assign Vendor</button>';
     $html.='</form><p><a href="staff-vendors.php">Manage Vendor Accounts</a></p>';
-    return staff_disclosure('vendor-assignment','Vendor Access',$html,false);
+    return $fold ? staff_disclosure('vendor-assignment','Vendor Access',$html,false) : '<section class="card"><h2>Assigned Vendor</h2>'.$html.'</section>';
+}
+function vendor_review_picker(PDO $db): string
+{
+    vendor_schema($db);$html='<label>Vendor<select name="vendor_selection" required><option value="">Choose a vendor</option>';
+    foreach($db->query('SELECT id,name,revision FROM vendor_accounts WHERE enabled=1 ORDER BY name,id')->fetchAll(PDO::FETCH_ASSOC) as $v)
+        $html.='<option value="'.staff_escape($v['id'].'.'.$v['revision']).'">'.staff_escape($v['name']).'</option>';
+    return $html.'</select></label><p class="help">The selected vendor gets this job after calendar confirmation. <a href="staff-vendors.php">Manage Vendors</a></p>';
 }

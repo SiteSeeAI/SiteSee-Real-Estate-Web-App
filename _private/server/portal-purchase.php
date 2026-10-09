@@ -34,6 +34,7 @@ function portal_purchase_review(PDO $db, string $accountId, array $payload): arr
 {
     $account=portal_active_account($db,$accountId);
     if(!$account)throw new InvalidArgumentException('Please sign in again.');
+    portal_require_profile($db,$accountId);
     $payload=portal_purchase_input($payload,$account);
     $submission=real_estate_prepare_submission($payload);
     $json=json_encode($submission,JSON_THROW_ON_ERROR|JSON_UNESCAPED_SLASHES);
@@ -42,6 +43,7 @@ function portal_purchase_review(PDO $db, string $accountId, array $payload): arr
     try {
         $current=portal_active_account($db,$accountId);
         if (!$current || !hash_equals($current['email'],$account['email'])) throw new InvalidArgumentException('Your contact email changed. Review this order again.');
+        portal_require_profile($db,$accountId);
         // Repeated Review requests reuse the exact same recent draft.
         $q=$db->prepare('SELECT id FROM portal_submissions WHERE account_id=? AND submission_hash=? AND bound_at IS NULL AND created_at>? ORDER BY created_at DESC LIMIT 1');
         $q->execute([$accountId,$hash,time()-1800]);$id=$q->fetchColumn();
@@ -75,14 +77,21 @@ function portal_purchase_submit(PDO $db,string $accountId,string $id,?callable $
         if(!portal_owns_order($db,$accountId,$intent['reference']))throw new RuntimeException('Ownership needs review.');
         return $intent['reference'];
     }
+    portal_require_profile($db,$accountId);
     $submission=json_decode($intent['submission_json'],true,32,JSON_THROW_ON_ERROR);
     $row=booking_get($db,$intent['reference']);
     if(!$row){
         if((int)$intent['created_at']<time()-1800)throw new InvalidArgumentException('Your review expired. Review the current pricing and arrival window again.');
         // Recheck the server clock and canonical price immediately before capture.
         $fresh=real_estate_prepare_submission(json_decode($intent['payload_json'],true,32,JSON_THROW_ON_ERROR));
+        // A still-valid pre-update review keeps its exact stored/captured identity.
+        // Only the explicitly reviewed subject-format change is compatible.
+        if(($submission['subject']??null)===($submission['quote']['subject']??null)
+            &&($fresh['subject']??null)===booking_property_subject($submission['quote']['subject'],$submission['details']))
+            $fresh['subject']=$submission['subject'];
         if(!hash_equals($intent['submission_hash'],hash('sha256',json_encode($fresh,JSON_THROW_ON_ERROR|JSON_UNESCAPED_SLASHES))))throw new InvalidArgumentException('Pricing changed. Review your services again.');
         $guard=static function()use($db,$accountId,$submission):void{
+            portal_require_profile($db,$accountId);
             $current=portal_active_account($db,$accountId);
             if (!$current || !hash_equals($current['email'],$submission['details']['email']))
                 throw new InvalidArgumentException('Your contact email changed. Review this order again.');

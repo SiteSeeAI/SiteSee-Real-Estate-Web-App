@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/booking-hours.php';
 
 /**
  * Read-only calendar reader and arrival-window planner.
@@ -146,9 +147,9 @@ function booking_available_windows(string $date, bool $rush, int $duration, arra
     $day = booking_calendar_date($date);
     $windows = [];
     for ($n = 0; $n < $days; ++$n, $day = $day->modify('+1 day')) {
-        foreach ([7, 9, 11, 13, 15, 17] as $hour) {
-            $start = $day->setTime($hour, 0)->getTimestamp();
-            $windowEnd = $day->setTime($hour + 2, 0)->getTimestamp();
+        foreach (booking_window_times($day->format('Y-m-d')) as $time) {
+            $start = booking_arrival_start($day->format('Y-m-d'),$time)->getTimestamp();
+            $windowEnd = booking_arrival_start($day->format('Y-m-d'),$time)->modify('+2 hours')->getTimestamp();
             if ($start < $cutoff) continue;
             $candidate = $start;
             foreach ($busy as [$busyStart, $busyEnd]) {
@@ -160,8 +161,8 @@ function booking_available_windows(string $date, bool $rush, int $duration, arra
             if ($candidate < $windowEnd && $candidate + $duration * 60 <= $snapshot['end']) {
                 $windows[] = [
                     'date' => $day->format('Y-m-d'),
-                    'time' => sprintf('%02d:00', $hour),
-                    'end_time' => sprintf('%02d:00', $hour + 2),
+                    'time' => $time,
+                    'end_time' => booking_arrival_start($day->format('Y-m-d'),$time)->modify('+2 hours')->format('H:i'),
                     'timezone' => 'America/Chicago',
                     'planned_start_utc' => gmdate('Y-m-d\TH:i:s\Z', $candidate),
                     'planned_end_utc' => gmdate('Y-m-d\TH:i:s\Z', $candidate + $duration * 60),

@@ -12,12 +12,14 @@ require __DIR__.'/../_private/server/portal-purchase.php';
 function check(bool $ok,string $label):void{if(!$ok)throw new RuntimeException($label);}
 function rejects(callable $fn,string $label):void{try{$fn();}catch(Throwable){return;}throw new RuntimeException('Accepted: '.$label);}
 try{
-    $db=booking_db();portal_access_schema($db);portal_purchase_schema($db);booking_lifecycle_schema($db);
+    $db=booking_db();portal_access_schema($db);portal_profile_schema($db);portal_purchase_schema($db);booking_lifecycle_schema($db);
     $one=str_repeat('a',32);$two=str_repeat('b',32);
     foreach([[$one,'one@example.com'],[$two,'two@example.com']] as [$id,$email])$db->prepare('INSERT INTO portal_accounts VALUES (?,?,?,0)')->execute([$id,$email,time()]);
     $payload=['market'=>'residential','details'=>['first'=>'Test','last'=>'Customer','company'=>'Synthetic','email'=>'two@example.com','phone'=>'3125550100','street'=>'101 Example','city'=>'Chicago','state'=>'IL','zip'=>'60601'],
         'state'=>['category'=>'small','package'=>'gold','sqft'=>1500,'selected'=>['photo','mp'],'matterportSqft'=>1500],
         'appointment'=>['date'=>(new DateTimeImmutable('+8 days'))->format('Y-m-d'),'time'=>'09:00','rushRequested'=>false,'meetPhotographer'=>'No','accessType'=>'Lockbox','lockboxCode'=>'1234567890','cancellationAccepted'=>true]];
+    rejects(fn()=>portal_purchase_review($db,$one,$payload),'Missing required account profile cannot create booking review');
+    foreach([$one,$two] as $id)portal_save_profile($db,$id,['first_name'=>'Test','last_name'=>'Customer','company'=>'Synthetic','phone'=>'3125550100']);
     $review=portal_purchase_review($db,$one,$payload);check($review['details']['email']==='one@example.com','Server identity wins');
     check(portal_purchase_review($db,$one,$payload)['review']===$review['review'],'Review retry reuses draft');
     rejects(fn()=>portal_purchase_submit($db,$two,$review['review']),'Cross-account intent');

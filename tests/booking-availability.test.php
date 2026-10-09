@@ -55,10 +55,10 @@ calendar_check(booking_available_windows('2026-09-28', false, 60, calendar_snaps
 
 $fallNow = new DateTimeImmutable('2026-10-29T08:00:00-05:00');
 $fall = booking_available_windows('2026-11-01', false, 60, calendar_snapshot('2026-11-01'), $fallNow, 2);
-calendar_check($fall[0]['time'] === '07:00' && $fall[0]['planned_start_utc'] === '2026-11-01T13:00:00Z', 'Fall DST uses 72 actual hours.');
+calendar_check($fall[0]['time'] === '13:30' && $fall[0]['planned_start_utc'] === '2026-11-01T19:30:00Z', 'Fall DST uses 72 actual hours.');
 $springNow = new DateTimeImmutable('2026-03-05T07:00:00-06:00');
 $spring = booking_available_windows('2026-03-08', false, 60, calendar_snapshot('2026-03-08'), $springNow, 2);
-calendar_check($spring[0]['time'] === '09:00' && $spring[0]['planned_start_utc'] === '2026-03-08T14:00:00Z', 'Spring DST excludes the window only 71 hours away.');
+calendar_check($spring[0]['time'] === '13:30' && $spring[0]['planned_start_utc'] === '2026-03-08T18:30:00Z', 'Spring DST excludes the window only 71 hours away.');
 calendar_throws(fn() => booking_availability_range('2026-02-30', 60), InvalidArgumentException::class);
 calendar_throws(fn() => booking_availability_range('2026-09-28', 0), InvalidArgumentException::class);
 calendar_throws(fn() => booking_availability_range('2026-09-28', 60, 29), InvalidArgumentException::class);

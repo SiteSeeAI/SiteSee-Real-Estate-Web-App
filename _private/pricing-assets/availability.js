@@ -5,14 +5,14 @@
   else root.SiteSeeAvailability = api;
 })(typeof window !== 'undefined' ? window : globalThis, function () {
   'use strict';
-  const times = ['07:00', '09:00', '11:00', '13:00', '15:00', '17:00'];
-  const labels = ['7–9 AM', '9–11 AM', '11 AM–1 PM', '1–3 PM', '3–5 PM', '5–7 PM'];
+  const times = ['07:00', '09:00', '11:00', '13:00', '15:00', '17:00', '13:30', '15:30', '17:30'];
+  const labels = ['7–9 AM', '9–11 AM', '11 AM–1 PM', '1–3 PM', '3–5 PM', '5–7 PM', '1:30–3:30 PM', '3:30–5:30 PM', '5:30–7:30 PM'];
   const unknown = 'We could not check the calendar. You can still submit your preferred window for SiteSee to review.';
   function validFeedback(data, payload) {
     if (!data || data.ok !== true) return false;
     if (data.state === 'manual_review') return typeof data.message === 'string';
     const validWindow = item => item && /^\d{4}-\d{2}-\d{2}$/.test(item.date) && times.includes(item.time)
-      && item.end_time === String(Number(item.time.slice(0, 2)) + 2).padStart(2, '0') + ':00';
+      && item.end_time === String(Number(item.time.slice(0, 2)) + 2).padStart(2, '0') + ':' + item.time.slice(3,5);
     return data.state === 'checked' && data.date === payload.date && data.timezone === 'America/Chicago'
       && Number.isInteger(data.duration_minutes) && data.duration_minutes >= 15 && data.duration_minutes <= 1440
       && Array.isArray(data.date_windows) && data.date_windows.length <= 6

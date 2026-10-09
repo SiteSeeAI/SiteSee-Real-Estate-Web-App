@@ -14,16 +14,20 @@ BASELINE = 'ff5e625a8ff4c51af336e9203fa4be29b3611570'
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 NEW_FILES = {'private/server/application.php', 'private/views/application-shell.php',
              'public/application-entry.php', 'public/portal-assets/application.css',
-             'private/server/booking-review-ui.php', 'public/portal-assets/booking-review.js'}
+             'private/server/booking-review-ui.php', 'public/portal-assets/booking-review.js', 'private/server/booking-hours.php', 'private/server/booking-identifiers.php', 'private/server/booking-list-ui.php'}
 CHANGED_PRIVATE = {'private/views/portal.php', 'private/server/vendor-app.php',
                    'private/server/booking-staff.php', 'private/server/booking-lifecycle.php',
                    'private/server/booking-lifecycle-store.php', 'private/server/booking-lifecycle-ui.php',
                    'private/server/booking-manage.php', 'private/server/booking-communication.php',
                    'private/server/portal-service.php', 'private/views/portal-service.php',
                    'private/server/booking-lifecycle-reconcile.php'}
-PREDECESSOR = {'commit': 'd1408d070d5028351e447cca7096b780984ced8e',
-               'manifest_sha256': 'd040068e9783c46792289709d5198ed95263480bb42862df9743bcefd66bd7e4'}
-RUNTIME_SCHEMA = 'Additive booking_change_requests table and unique pending-request index on first normal application use; existing tables and rows unchanged.'
+CHANGED_PRIVATE |= {'private/server/booking-lifecycle.php', 'private/views/application-shell.php', 'private/server/booking-schedule.php', 'private/server/portal-app.php', 'private/server/booking-feedback.php', 'private/server/vendor-app.php', 'private/server/booking-availability.php', 'private/server/portal-orders.php', 'private/server/portal-mail.php', 'private/views/portal-service.php', 'private/views/portal-purchase.php', 'private/server/booking-invitation.php', 'private/server/booking-staff.php', 'private/views/pricing.php', 'private/real-estate-pricing.php', 'private/server/booking-store.php', 'private/server/booking-pay.php', 'private/server/booking-review-ui.php', 'private/server/vendor-admin.php', 'private/server/portal-purchase.php', 'private/server/booking-job-ui.php', 'private/pricing-assets/availability.js', 'private/server/vendor-access.php', 'private/server/booking-scheduling-provider.php', 'private/server/booking-confirmation.php', 'private/server/booking-lifecycle-ui.php', 'private/views/portal.php'}
+CHANGED_PUBLIC = {'public/portal-assets/booking-notice.js', 'public/portal-assets/order.js', 'public/portal-assets/application.css'}
+CHANGED_PRIVATE.add('private/pricing-assets/scheduling.js')
+CHANGED_PUBLIC.add('public/portal-assets/portal.js')
+PREDECESSOR = {'commit': '631aee7c49924bc123ba335fb24eb918f7e2d314',
+               'manifest_sha256': 'c648d75b352a4fd0d3faffc86b8984bf26e95a3062689f8c8435a982366167bb'}
+RUNTIME_SCHEMA = 'Additive booking_order_numbers, booking_order_closures and vendor_review_grants tables plus existing booking_change_requests schema on first normal application use; original references, tables and payment rows unchanged.'
 ALIASES = {'account.php', 'vendor.php', 'staff-bookings.php', 'staff-production.php',
            'staff-vendors.php', 'manage-appointment.php', 'booking-pay.php',
            'booking-webhook.php', 'booking-availability.php', 'pricing.php',
@@ -86,7 +90,7 @@ def build(commit, output):
         if before != data:
             changed.add(target)
         # Bootstrap/shell plus the explicitly reviewed manager-approved reschedule correction.
-        allowed = NEW_FILES | CHANGED_PRIVATE | {'public/' + a for a in ALIASES}
+        allowed = NEW_FILES | CHANGED_PRIVATE | CHANGED_PUBLIC | {'public/' + a for a in ALIASES}
         if before != data and target not in allowed:
             raise RuntimeError('A new compatibility/migration review is required: ' + target)
         if before is None and target not in NEW_FILES:
@@ -107,7 +111,7 @@ def build(commit, output):
     members['source-test-manifest.json'] = encode(source)
     manifest = {'format': 1, 'release': 'unified-test-' + commit[:12], 'commit': commit,
                 'baseline': BASELINE, 'stage': 'TEST', 'migration': 'none',
-                'compatibility': 'reviewed bootstrap/shell, manager-approved reschedule requests stepped Booking Review and tracked plain decline notices; original financial/provider identities retained',
+                'compatibility': 'reviewed bootstrap, approval/notice recovery, account and management workflow, Vendor review, public order aliases and new availability; original financial/provider identities retained',
                 'runtime_schema': RUNTIME_SCHEMA,
                 'predecessor': PREDECESSOR | {'files': {n: sha(b) for n, b in sorted(previous_deploy.items())}},
                 'installer_sha256': sha(runner), 'source_manifest_sha256': sha(members['source-test-manifest.json']),

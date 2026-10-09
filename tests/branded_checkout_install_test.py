@@ -1,3 +1,4 @@
+from release_source import historical
 import importlib.util
 import json
 import os
@@ -50,7 +51,7 @@ class InstallTests(unittest.TestCase):
 
     def test_embedded_payload_matches_reviewed_sources(self):
         for name, data in self.files.items():
-            self.assertEqual(data, (PROJECT / '_private' / name).read_bytes())
+            self.assertEqual(data, historical(PROJECT / '_private' / name).read_bytes())
 
     def test_install_repeat_and_live_file_preservation(self):
         protected = {}

@@ -9,6 +9,7 @@ mkdir($temp . '/sessions', 0700);
 copy(__DIR__ . '/../_private/server/quote-submit.php', $temp . '/server/quote-submit.php');
 copy(__DIR__ . '/../_private/server/quote-receipts.php', $temp . '/server/quote-receipts.php');
 copy(__DIR__ . '/../_private/real-estate-pricing.php', $temp . '/real-estate-pricing.php');
+foreach(['booking-hours.php','booking-identifiers.php'] as $helper)copy(__DIR__.'/../_private/server/'.$helper,$temp.'/server/'.$helper);
 file_put_contents($temp . '/real-estate-form-config.php', <<<'PHP'
 <?php
 define('SITESEE_REAL_ESTATE_SALES_EMAIL', 'sales@example.com');

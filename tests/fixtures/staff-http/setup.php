@@ -17,6 +17,7 @@ if (in_array($argv[1]??'',['snapshot','snapshot-data'],true)) {
     $all=[];foreach(['bookings','booking_scheduling','booking_confirmations','booking_lifecycle','booking_lifecycle_operations','booking_communications','booking_contact_links','booking_schedule_events','stripe_events','booking_change_requests'] as $t)$all[$t]=$db->query('SELECT * FROM '.$t.' ORDER BY rowid')->fetchAll();
     echo $argv[1]==='snapshot-data'?json_encode($all):hash('sha256',json_encode($all));exit;
 }
+require_once $root.'/server/vendor-access.php';vendor_schema($db);vendor_save($db,'','','Review Vendor','3125550140',true);
 $save=static function(string $name,array $value)use($root):void{file_put_contents($root.'/'.$name,json_encode($value));chmod($root.'/'.$name,0600);};
 $save('microsoft-scheduling.json',booking_scheduling_ms_config());
 $save('booking-lifecycle.json',['schema'=>1,'stage'=>'test','enabled'=>true,'recipient'=>'sales@re.sitesee.ai']);

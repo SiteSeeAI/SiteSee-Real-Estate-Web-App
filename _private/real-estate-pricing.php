@@ -1,5 +1,7 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/server/booking-hours.php';
+require_once __DIR__.'/server/booking-identifiers.php';
 
 function real_estate_invalid(string $message): never
 {
@@ -204,7 +206,7 @@ function real_estate_validate_appointment(array $appointment, ?DateTimeImmutable
 /** Derive the end on the server; client-supplied window ends are never trusted. */
 function real_estate_arrival_window(array $appointment): array
 {
-    if (!in_array($appointment['time'], ['07:00', '09:00', '11:00', '13:00', '15:00', '17:00'], true)) {
+    if (!in_array($appointment['time'], booking_window_times($appointment['date']), true)) {
         real_estate_invalid('Choose one of the listed two-hour arrival windows. Refresh the pricing page if you still see a time picker.');
     }
     $start = new DateTimeImmutable($appointment['date'] . ' ' . $appointment['time'], new DateTimeZone('America/Chicago'));
@@ -746,6 +748,11 @@ function real_estate_prepare_submission(array $payload, ?DateTimeImmutable $now 
         $appointment = real_estate_arrival_window($appointment);
     }
     if ($action === 'request_appointment') {
+        // Legacy form versions still obey the current closed-day/Sunday policy.
+        if (booking_closed_day($appointment['date']) !== null ||
+            (booking_hours_date($appointment['date'])->format('w') === '0' && $appointment['time'] < '13:30')) {
+            real_estate_invalid('Choose an available date and arrival window. Sundays start at 1:30 PM Central; holidays are unavailable.');
+        }
         $appointment = array_merge($appointment, real_estate_validate_schedule($appointmentSource));
     }
     $quote = $market === 'residential' ? real_estate_residential_quote($state) : real_estate_commercial_quote($state);
@@ -755,7 +762,7 @@ function real_estate_prepare_submission(array $payload, ?DateTimeImmutable $now 
         'details'=>$details,
         'appointment'=>$appointment,
         'quote'=>$quote,
-        'subject'=>$quote['subject'],
+        'subject'=>booking_property_subject($quote['subject'],$details),
         'plain'=>real_estate_quote_body($quote, $details, $appointment),
         'salesPlain'=>$action === 'request_appointment'
             ? real_estate_quote_body($quote, $details, $appointment, true)

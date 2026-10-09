@@ -69,13 +69,13 @@ class UnifiedRelease(unittest.TestCase):
         db = private / 'data/bookings.sqlite'
         with contextlib.closing(sqlite3.connect(db)) as connection:
             connection.executescript('''
-                CREATE TABLE bookings(reference TEXT PRIMARY KEY, status TEXT, deposit_cents INTEGER, provider_id TEXT);
+                CREATE TABLE bookings(reference TEXT PRIMARY KEY, status TEXT, deposit_cents INTEGER, provider_id TEXT, request_json TEXT NOT NULL DEFAULT '{}');
                 CREATE TABLE vendor_grants(vendor TEXT, reference TEXT);
                 CREATE TABLE final_bills(reference TEXT PRIMARY KEY, amount_cents INTEGER, commission_cents INTEGER);
                 CREATE TABLE provider_operations(id TEXT PRIMARY KEY, state TEXT);
-                INSERT INTO bookings VALUES('5D99D336572661A00885','deposit_paid_test',12500,'pi_test_existing_a');
-                INSERT INTO bookings VALUES('8D20B4EBFCD0BADC4DE5','complete',17500,'pi_test_existing_b');
-                INSERT INTO bookings VALUES('D32FFC7458','deposit_paid_test',15000,'legacy_event_existing');
+                INSERT INTO bookings(reference,status,deposit_cents,provider_id) VALUES('5D99D336572661A00885','deposit_paid_test',12500,'pi_test_existing_a');
+                INSERT INTO bookings(reference,status,deposit_cents,provider_id) VALUES('8D20B4EBFCD0BADC4DE5','complete',17500,'pi_test_existing_b');
+                INSERT INTO bookings(reference,status,deposit_cents,provider_id) VALUES('D32FFC7458','deposit_paid_test',15000,'legacy_event_existing');
                 INSERT INTO vendor_grants VALUES('synthetic-vendor','5D99D336572661A00885');
                 INSERT INTO final_bills VALUES('8D20B4EBFCD0BADC4DE5',35000,1800);
                 INSERT INTO provider_operations VALUES('existing-attempt','uncertain');
@@ -522,8 +522,8 @@ class UnifiedRelease(unittest.TestCase):
         self.seed_installed_predecessor()
         self.cli('--install')
         with contextlib.closing(sqlite3.connect(self.db)) as connection:
-            connection.execute('CREATE TABLE booking_communications(kind TEXT,submission_state TEXT,crm_state TEXT,recipient TEXT,delivery_state TEXT)')
-            connection.execute("INSERT INTO booking_communications VALUES(?,?,?,?,?)", ('change-declined-'+'a'*32,'prepared','pending','info@1789media.com','unverified'))
+            connection.execute("CREATE TABLE booking_communications(kind TEXT,submission_state TEXT,crm_state TEXT,recipient TEXT,delivery_state TEXT,message_json TEXT DEFAULT '{}',provider_message_id TEXT,submission_attempted_at TEXT,provider_accepted_at TEXT,sent_observed_at TEXT,sent_at TEXT)")
+            connection.execute("INSERT INTO booking_communications(kind,submission_state,crm_state,recipient,delivery_state) VALUES(?,?,?,?,?)", ('change-declined-'+'a'*32,'prepared','pending','info@1789media.com','unverified'))
             connection.commit()
             for submission, crm, recipient, delivery in [('prepared','pending','info@1789media.com','unverified'),
                     ('uncertain','pending','info@1789media.com','unverified'),
@@ -535,18 +535,66 @@ class UnifiedRelease(unittest.TestCase):
                 self.assertIn('VERIFY PASS', self.cli('--verify'))
                 self.assertEqual(json.loads(self.journal_path.read_bytes())['state'],'installed')
 
+    def test_pending_review_vendor_grant_blocks_code_restore(self):
+        self.seed_installed_predecessor(); self.cli('--install')
+        with contextlib.closing(sqlite3.connect(self.db)) as db:
+            db.executescript("""CREATE TABLE vendor_review_grants(reference TEXT,assignment_revision TEXT);
+              CREATE TABLE vendor_assignments(reference TEXT,revision TEXT);
+              CREATE TABLE booking_confirmations(reference TEXT,state TEXT);
+              INSERT INTO vendor_review_grants VALUES('fixture','revision');
+              INSERT INTO vendor_assignments VALUES('fixture','revision');""")
+            db.commit()
+        self.assertIn('Pending Vendor review grants preserved', self.cli('--rollback-code',success=False))
+        self.assertIn('VERIFY PASS',self.cli('--verify'))
+        with contextlib.closing(sqlite3.connect(self.db)) as db:
+            db.execute("INSERT INTO booking_confirmations VALUES('fixture','confirmed')");db.commit()
+        self.assertIn('CODE RESTORED',self.cli('--rollback-code'))
+
+    def test_unsent_cancellation_draft_blocks_restore_without_mutating_anything(self):
+        self.seed_installed_predecessor();self.cli('--install')
+        with contextlib.closing(sqlite3.connect(self.db)) as db:
+            db.execute("CREATE TABLE booking_communications(kind TEXT,submission_state TEXT,crm_state TEXT,recipient TEXT,delivery_state TEXT,message_json TEXT,provider_message_id TEXT,submission_attempted_at TEXT,provider_accepted_at TEXT,sent_observed_at TEXT,sent_at TEXT)")
+            db.execute("INSERT INTO booking_communications(kind,submission_state,crm_state,recipient,delivery_state,message_json,provider_message_id) VALUES(?,?,?,?,?,?,?)",('lifecycle-1','draft_blocked','pending','info@1789media.com','unverified',json.dumps({'ical':'BEGIN:VCALENDAR\r\nMETHOD:CANCEL\r\nEND:VCALENDAR'}),'saved-exact-draft'))
+            db.commit()
+        original_db=self.db.read_bytes();original_journal=self.journal_path.read_bytes()
+        self.assertIn('Unsent cancellation draft preserved',self.cli('--rollback-code',success=False))
+        self.assertEqual(self.db.read_bytes(),original_db);self.assertEqual(self.journal_path.read_bytes(),original_journal)
+        self.assertFalse((self.private/'.unified-maintenance.json').exists());self.assertIn('VERIFY PASS',self.cli('--verify'))
+        with contextlib.closing(sqlite3.connect(self.db)) as db:
+            db.execute("UPDATE booking_communications SET submission_state='sent_observed',sent_observed_at='verified'");db.commit()
+        self.assertIn('CODE RESTORED',self.cli('--rollback-code'))
+        with contextlib.closing(sqlite3.connect(self.db)) as db:
+            self.assertEqual(db.execute('SELECT provider_message_id FROM booking_communications').fetchone()[0],'saved-exact-draft')
+
+    def test_prepared_cancellation_notice_remains_compatible_with_restore(self):
+        self.seed_installed_predecessor();self.cli('--install')
+        with contextlib.closing(sqlite3.connect(self.db)) as db:
+            db.execute("CREATE TABLE booking_communications(kind TEXT,submission_state TEXT,crm_state TEXT,recipient TEXT,delivery_state TEXT,message_json TEXT,provider_message_id TEXT,submission_attempted_at TEXT,provider_accepted_at TEXT,sent_observed_at TEXT,sent_at TEXT)")
+            db.execute("INSERT INTO booking_communications(kind,submission_state,crm_state,recipient,delivery_state,message_json) VALUES(?,?,?,?,?,?)",('lifecycle-1','prepared','pending','info@1789media.com','unverified',json.dumps({'ical':'METHOD:CANCEL'})))
+            db.commit()
+        original=self.db.read_bytes();self.assertIn('CODE RESTORED',self.cli('--rollback-code'));self.assertEqual(self.db.read_bytes(),original)
+
+    def test_half_hour_booking_blocks_code_restore(self):
+        self.seed_installed_predecessor();self.cli('--install')
+        with contextlib.closing(sqlite3.connect(self.db)) as db:
+            db.execute('UPDATE bookings SET request_json=? WHERE reference=?',(json.dumps({'appointment':{'time':'13:30','date':'2026-10-11'}}),'5D99D336572661A00885'));db.commit()
+        self.assertIn('Half-hour appointment preserved',self.cli('--rollback-code',success=False))
+        self.assertIn('VERIFY PASS',self.cli('--verify'))
+        with contextlib.closing(sqlite3.connect(self.db)) as db:
+            self.assertEqual(json.loads(db.execute('SELECT request_json FROM bookings WHERE reference=?',('5D99D336572661A00885',)).fetchone()[0])['appointment']['time'],'13:30')
+
     def test_completed_external_decline_survives_code_restore(self):
         original = self.seed_installed_predecessor()
         self.cli('--install')
         with contextlib.closing(sqlite3.connect(self.db)) as connection:
-            connection.execute('CREATE TABLE booking_communications(kind TEXT,submission_state TEXT,crm_state TEXT,recipient TEXT,delivery_state TEXT)')
+            connection.execute("CREATE TABLE booking_communications(kind TEXT,submission_state TEXT,crm_state TEXT,recipient TEXT,delivery_state TEXT,message_json TEXT DEFAULT '{}',provider_message_id TEXT,submission_attempted_at TEXT,provider_accepted_at TEXT,sent_observed_at TEXT,sent_at TEXT)")
             saved = ('change-declined-'+'b'*32,'sent_observed','associated','info@1789media.com','unverified')
-            connection.execute('INSERT INTO booking_communications VALUES(?,?,?,?,?)',saved)
+            connection.execute('INSERT INTO booking_communications(kind,submission_state,crm_state,recipient,delivery_state) VALUES(?,?,?,?,?)',saved)
             connection.commit()
         self.assertIn('CODE RESTORED', self.cli('--rollback-code'))
         self.assertEqual((self.private / 'unified-release.json').read_bytes(),original)
         with contextlib.closing(sqlite3.connect(self.db)) as connection:
-            self.assertEqual(connection.execute('SELECT * FROM booking_communications').fetchone(),saved)
+            self.assertEqual(connection.execute('SELECT * FROM booking_communications').fetchone(),saved+('{}',None,None,None,None,None))
 
     def test_first_predecessor_upgrade_requires_explicit_drain_attestation(self):
         original = self.seed_installed_predecessor()

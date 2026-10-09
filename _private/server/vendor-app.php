@@ -98,9 +98,10 @@ try{
     $q=$db->prepare('SELECT b.reference,b.request_json,b.requested_utc,s.appointment_json AS schedule_appointment_json,j.completed_at,j.production_complete_at,j.payment_state FROM vendor_assignments v JOIN vendor_accounts a ON a.id=v.vendor_id AND a.enabled=1 JOIN bookings b ON b.reference=v.reference AND b.photographer=v.photographer LEFT JOIN booking_scheduling s ON s.reference=b.reference LEFT JOIN booking_jobs j ON j.reference=b.reference WHERE v.vendor_id=? ORDER BY (j.completed_at IS NOT NULL),b.requested_utc,b.reference LIMIT 200');$q->execute([$account['id']]);$rows=$q->fetchAll(PDO::FETCH_ASSOC);
     $html.='<p>Your assigned jobs appear here. Open a job for property access, additional services and onsite closeout.</p><div class="request-list">';
     foreach($rows as $row){
+        if(!vendor_review_grant_ready($db,vendor_assignment($db,$row['reference'])))continue;
         $request=booking_request($row);$a=$request['appointment'];$state=$row['completed_at']?($row['production_complete_at']?'Production Complete':'Production'):'Assigned';
         if(!$row['completed_at'])try{booking_job_guard($db,$row['reference']);}catch(InvalidArgumentException){$state='Manager Review Needed';}
-        $html.='<article class="request-item"><div><p class="eyebrow">'.$e($row['reference']).' · '.$state.'</p><h2>'.$e(portal_property($request['details'])).'</h2><p>'.$e(($a['date']??'').' '.($a['time']??'')).' Central Time</p></div><a class="request-link" href="/vendor.php?reference='.$e($row['reference']).'">Open Job →</a></article>';
+        $html.='<article class="request-item"><div><p class="eyebrow">'.$e(booking_order_number($db,$row['reference'])).' · '.$state.'</p><h2>'.$e(portal_property($request['details'])).'</h2><p>'.$e(($a['date']??'').' '.($a['time']??'')).' Central Time</p></div><a class="request-link" href="/vendor.php?reference='.$e($row['reference']).'">Open Job →</a></article>';
     }
     vendor_page('My Jobs',$html.($rows?'':'<p>No jobs are assigned to your account yet.</p>').'</div>',$account);
 }catch(Throwable $e){

@@ -90,7 +90,7 @@ function staff_job_production_page(PDO $db,string $reference): string
     if(!$job){
         $rows=$db->query('SELECT j.*,b.request_json FROM booking_jobs j JOIN bookings b ON b.reference=j.reference ORDER BY (j.production_complete_at IS NOT NULL),j.completed_at DESC LIMIT 200')->fetchAll(PDO::FETCH_ASSOC);
         $html.='<h2>Production Queue</h2><p>Open a job to add its delivery links.</p><div class="request-list">';
-        foreach($rows as $row){$r=json_decode($row['request_json'],true,32,JSON_THROW_ON_ERROR);$html.='<article class="request-item"><div><p class="eyebrow">'.$e($row['reference']).'</p><h3>'.$e(portal_property($r['details']??[])).'</h3><p>'.($row['production_complete_at']?'Production Complete':'Production').' · '.booking_job_payment_label($row['payment_state']).'</p></div><a class="request-link" href="staff-production.php?reference='.$e($row['reference']).'">Open Job →</a></article>';}
+        foreach($rows as $row){$r=json_decode($row['request_json'],true,32,JSON_THROW_ON_ERROR);$html.='<article class="request-item"><div><p class="eyebrow">Order '.$e(booking_order_number($db,$row['reference'])).'</p><h3>'.$e(portal_property($r['details']??[])).'</h3><p>'.($row['production_complete_at']?'Production Complete':'Production').' · '.booking_job_payment_label($row['payment_state']).'</p></div><a class="request-link" href="staff-production.php?reference='.$e($row['reference']).'">Open Job →</a></article>';}
         return $html.($rows?'':'<p>No jobs are awaiting production.</p>').'</div>';
     }
     $row=booking_get($db,$reference);$links=json_decode($job['links_json'],true,16,JSON_THROW_ON_ERROR);

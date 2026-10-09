@@ -227,7 +227,7 @@ function booking_lifecycle_message(array $row,array $claim,int $revision,string 
     $ical=str_replace(['METHOD:REQUEST','SEQUENCE:0','STATUS:CONFIRMED','PARTSTAT=NEEDS-ACTION;RSVP=TRUE'],
         ['METHOD:'.$method,'SEQUENCE:'.$revision,$cancel?'STATUS:CANCELLED':'STATUS:CONFIRMED',$cancel?'PARTSTAT=DECLINED;RSVP=FALSE':'PARTSTAT=NEEDS-ACTION;RSVP=TRUE'],$ical);
     $ical=preg_replace('/DTSTAMP:[^\r\n]+/','DTSTAMP:'.gmdate('Ymd\THis\Z'),$ical);
-    $subject='[TEST] SiteSee Appointment '.($cancel?'Cancellation':'Updated').' | '.$row['reference'].' | '.$revision;
+    $subject=booking_property_subject('[TEST] SiteSee Appointment '.($cancel?'Cancellation':'Updated'),booking_request($row)['details']);
     $html='<p>'.nl2br(htmlspecialchars($plain,ENT_QUOTES,'UTF-8')).'</p>';
     $boundary='sitesee_change_'.bin2hex(random_bytes(16));$body='';
     foreach([['text/plain; charset=UTF-8',$plain],['text/html; charset=UTF-8',$html],['text/calendar; charset=UTF-8; method='.$method.'; name="arrival-window.ics"',$ical]]as[$type,$part]){
@@ -248,7 +248,7 @@ function booking_lifecycle_finish(PDO $db,array $op): void
         if(booking_get($db,$ref)!==$p['row']||booking_confirmation_get($db,$ref)!==$p['claim'])throw new RuntimeException('Booking changed during the operation. Staff recovery required.');
         if(!$cancel){
             $db->prepare('UPDATE booking_scheduling SET appointment_json=? WHERE reference=?')->execute([json_encode($p['appointment'],JSON_THROW_ON_ERROR),$ref]);
-            $utc=booking_calendar_date($p['appointment']['date'])->setTime((int)substr($p['appointment']['time'],0,2),0)->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z');
+            $utc=booking_arrival_start($p['appointment']['date'],$p['appointment']['time'])->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z');
             $db->prepare('UPDATE bookings SET requested_utc=? WHERE reference=?')->execute([$utc,$ref]);
             $db->prepare('UPDATE booking_confirmations SET planned_start=?,planned_end=?,event_json=? WHERE reference=?')
                 ->execute([$p['new_interval'][0],$p['new_interval'][1],json_encode($p['expected'],JSON_THROW_ON_ERROR),$ref]);
@@ -306,7 +306,7 @@ function booking_change_request_create(PDO $db,string $reference,string $fingerp
             booking_lifecycle_assert_active($db,$reference);
             if(!hash_equals(booking_lifecycle_fingerprint($db,$reference),$fingerprint))throw new InvalidArgumentException('Appointment changed. Reload the current details.');
             $now=$deps['now']??time();$a=booking_request($row)['appointment'];
-            if(booking_calendar_date($a['date'])->setTime((int)substr($a['time'],0,2),0)->getTimestamp()<=$now)
+            if(booking_arrival_start($a['date'],$a['time'])->getTimestamp()<=$now)
                 throw new InvalidArgumentException('This arrival window has started. Contact SiteSee for help.');
             if(in_array($claim['invitation_state'],['sending','uncertain'],true))throw new InvalidArgumentException('Staff must verify the original invitation first.');
             $q=$db->prepare("SELECT 1 FROM booking_communications WHERE reference=? AND kind LIKE 'lifecycle-%' AND submission_state<>'sent_observed' LIMIT 1");
@@ -348,7 +348,7 @@ function booking_change_request_message(array $row,array $request): array
         ."\n\nThe calendar, customer RSVP and payment records have not changed. Review the saved request in Staff Bookings:\n"
         .SITESEE_REAL_ESTATE_SITE_URL.'/staff-bookings.php?reference='.rawurlencode($row['reference']);
     return ['from'=>BOOKING_MAIL_SENDER,'to'=>BOOKING_MAIL_SENDER,
-        'subject'=>'[TEST] Appointment Change Requested | '.$row['reference'].' | '.$request['request_id'],
+        'subject'=>booking_property_subject('[TEST] Appointment Change Requested',booking_request($row)['details']),
         'plain'=>$plain,'body'=>$plain,'headers'=>['From: SiteSee Real Estate <'.BOOKING_MAIL_SENDER.'>',
             'Reply-To: '.BOOKING_MAIL_SENDER,'MIME-Version: 1.0','Content-Type: text/plain; charset=UTF-8']];
 }
@@ -415,7 +415,7 @@ function booking_change_request_decline_message(array $row,array $request): arra
         ."\n\nThis decline did not change your confirmed appointment or payment records.\n"
         ."Check your current appointment status or request another available window in Customer Account:\n".SITESEE_REAL_ESTATE_SITE_URL.'/account.php';
     return ['from'=>BOOKING_MAIL_SENDER,'to'=>$row['email'],
-        'subject'=>'[TEST] Appointment Change Declined | '.$row['reference'].' | '.$request['request_id'],
+        'subject'=>booking_property_subject('[TEST] Appointment Change Declined',booking_request($row)['details']),
         'plain'=>$plain,'body'=>$plain,'html'=>nl2br(htmlspecialchars($plain,ENT_QUOTES,'UTF-8')),'headers'=>['From: SiteSee Real Estate <'.BOOKING_MAIL_SENDER.'>',
             'Reply-To: '.BOOKING_MAIL_SENDER,'MIME-Version: 1.0','Content-Type: text/plain; charset=UTF-8']];
 }
@@ -474,7 +474,7 @@ function booking_lifecycle_change(PDO $db,string $reference,string $action,strin
         if(!hash_equals(booking_lifecycle_fingerprint($db,$reference),$fingerprint))throw new InvalidArgumentException('Appointment changed. Reload and review the current details.');
         if($s['state']==='cancelled')throw new InvalidArgumentException('This appointment is cancelled.');
         $now=$deps['now']??time();
-        $a=booking_request($row)['appointment'];$start=booking_calendar_date($a['date'])->setTime((int)substr($a['time'],0,2),0)->getTimestamp();
+        $a=booking_request($row)['appointment'];$start=booking_arrival_start($a['date'],$a['time'])->getTimestamp();
         if($actor==='customer'&&$start<=$now)throw new InvalidArgumentException('This arrival window has started. Please contact SiteSee for help.');
         if(in_array($claim['invitation_state'],['sending','uncertain'],true))throw new InvalidArgumentException('Staff must recover the original invitation status before changing this appointment.');
         $last=$db->prepare("SELECT submission_state FROM booking_communications WHERE reference=? AND kind LIKE 'lifecycle-%' AND submission_state NOT IN ('sent_observed')");$last->execute([$reference]);
@@ -494,8 +494,8 @@ function booking_lifecycle_change(PDO $db,string $reference,string $action,strin
         if($action!=='cancel'){
             if($o['missing'])throw new InvalidArgumentException('The event was deleted. Restore the same event or contact staff; creating a replacement with a new identity is blocked.');
             if($action==='adopt'){
-                if(!in_array($time,['07:00','09:00','11:00','13:00','15:00','17:00'],true))throw new InvalidArgumentException('Choose an agreed two-hour arrival window.');
-                $windowStart=booking_calendar_date($date)->setTime((int)substr($time,0,2),0)->getTimestamp();
+                if(!in_array($time,booking_window_times($date),true))throw new InvalidArgumentException('Choose an agreed two-hour arrival window.');
+                $windowStart=booking_arrival_start($date,$time)->getTimestamp();
                 if($windowStart<=$now||$o['start']<$windowStart||$o['start']>=$windowStart+7200||$o['end']-$o['start']!==(int)$row['duration_minutes']*60)throw new InvalidArgumentException('The moved event must fit the agreed arrival window and reviewed shoot duration.');
                 if($ms)booking_scheduling_ms_clear($api,$o['expected'],$claim['event_uid']);
                 else booking_confirmation_verify_clear($api,$o['expected'],$claim['calendar_uid'],$claim['event_uid']);
@@ -560,11 +560,23 @@ function booking_lifecycle_notice(PDO $db,string $reference,bool $send,array $de
 {
     $lock=booking_confirmation_lock($deps['lock_path']??null);
     try{
-        booking_lifecycle_row($db,$reference);$s=booking_lifecycle_state($db,$reference);$key='lifecycle-'.$s['revision'].':'.$reference;
+        $row=booking_lifecycle_row($db,$reference);$s=booking_lifecycle_state($db,$reference);$key='lifecycle-'.$s['revision'].':'.$reference;
         if(isset($deps['notice_revision'])&&(int)$s['revision']!==$deps['notice_revision'])return ['notice'=>'Appointment revision changed; no earlier invitation was resent.'];
         $m=booking_communication_get($db,$key);if(!$m)return ['notice'=>'No change notice exists.'];
+        if($m['reference']!==$reference||$m['kind']!=='lifecycle-'.$s['revision']||$m['sender']!==BOOKING_MAIL_SENDER||$m['recipient']!==$row['email'])throw new InvalidArgumentException('Saved appointment notice identity differs.');
+        $op=$db->prepare("SELECT action,state FROM booking_lifecycle_operations WHERE reference=? AND revision=?");$op->execute([$reference,$s['revision']]);$saved=$op->fetch(PDO::FETCH_ASSOC);
+        $deps['verified_cancel_notice']=$s['state']==='cancelled'&&($saved['action']??'')==='cancel'&&($saved['state']??'')==='applied';
         return booking_customer_notice_locked($db,$reference,$key,$m,$send,$deps);
     }finally{fclose($lock);}
+}
+/** The authenticated staff cancellation itself authorizes its saved customer notice. */
+function booking_staff_cancel(PDO $db,string $reference,string $fingerprint,array $deps=[]): array
+{
+    $state=booking_lifecycle_change($db,$reference,'cancel',$fingerprint,'staff','','',$deps);
+    $revision=(int)$state['revision'];
+    try{$report=booking_lifecycle_notice($db,$reference,true,['notice_revision'=>$revision]+$deps);}
+    catch(Throwable){$report=['notice'=>'Cancellation is saved; the customer notice needs recovery. Do not repeat the calendar deletion.'];}
+    return ['state'=>$state,'notice'=>$report];
 }
 
 /** Caller holds the booking lock and validates this saved customer communication identity. */
@@ -575,7 +587,7 @@ function booking_customer_notice_locked(PDO $db,string $reference,string $key,ar
         $config=$deps['crm_config']??booking_crm_config();$crm=$deps['crm']??booking_crm_client($config);
         booking_crm_verify_org($config,$crm);$link=booking_crm_linked($db,$reference,$m['recipient'],$config);booking_crm_verify_contact($link['contact_id'],$m['recipient'],$crm);
         booking_communication_submit($db,$key,$graph);
-    }elseif($send&&str_starts_with($m['kind'],'change-declined-')&&booking_communication_unsent_draft($m)){
+    }elseif($send&&(str_starts_with($m['kind'],'change-declined-')||($deps['verified_cancel_notice']??false))&&booking_communication_unsent_draft($m)){
         $config=$deps['crm_config']??booking_crm_config();$crm=$deps['crm']??booking_crm_client($config);
         booking_crm_verify_org($config,$crm);$link=booking_crm_linked($db,$reference,$m['recipient'],$config);booking_crm_verify_contact($link['contact_id'],$m['recipient'],$crm);
         booking_communication_send_saved_draft($db,$key,$graph);

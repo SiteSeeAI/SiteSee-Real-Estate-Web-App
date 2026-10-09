@@ -71,7 +71,7 @@ $residential = real_estate_prepare_submission([
     'state'=>$residentialState,
 ], $now);
 $same($residential['quote']['totalCents'], 25690, 'Average-home interpolation matches the browser engine.');
-$same($residential['subject'], 'Residential SiteSee Real Estate Quote', 'Residential subject is exact.');
+$same($residential['subject'], 'Residential SiteSee Real Estate Quote | 123 Example Street Suite 2 Two Rivers WI 54241', 'Residential subject contains property address.');
 $contains($residential['plain'], 'Estimated one-time job total: $256.90', 'Residential body contains the server total.');
 $contains($residential['plain'], 'Preferred time: 10:00 Central Time', 'Residential body contains the required appointment.');
 $contains($residential['plain'], 'Unit / Suite: Suite 2', 'Optional unit reaches the server quote.');
@@ -116,7 +116,7 @@ $same($commercial['quote']['licenseCents'], 165531, 'Commercial unlimited licens
 $same($commercial['quote']['hostingCents'], 5988, 'Commercial prepaid hosting prices only months after the first six.');
 $same($commercial['quote']['knownMinutes'], 275, 'Commercial time uses the category minimum plus selected capture.');
 $same($commercial['quote']['knownMinutesMax'], 335, 'Commercial time range retains the category maximum.');
-$same($commercial['subject'], 'Commercial SiteSee Real Estate Quote', 'Commercial subject is exact.');
+$same($commercial['subject'], 'Commercial SiteSee Real Estate Quote | 123 Example Street Suite 2 Two Rivers WI 54241', 'Commercial subject contains property address.');
 $contains($commercial['plain'], 'Additional Photography · 1 Photos at $26.70 Each', 'Commercial body includes added photographs.');
 $contains($commercial['plain'], '20,000 sq ft scanned', 'Commercial body includes independent Matterport coverage.');
 $contains($commercial['plain'], 'Exclude from mailing lists: Yes', 'Commercial body preserves the mailing-list choice.');

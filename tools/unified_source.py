@@ -7,7 +7,7 @@ import json
 def before_unified_update(root, source):
     actual = (root / source).read_bytes()
     # Reverse the reviewed acceptance correction before presentation/bootstrap layers.
-    for name in ['decline-notice-source.json', 'booking-review-source.json', 'appointment-approval-source.json', 'shell-source.json', 'bootstrap-source.json']:
+    for name in ['account-workflow-source.json', 'decline-notice-source.json', 'booking-review-source.json', 'appointment-approval-source.json', 'shell-source.json', 'bootstrap-source.json']:
         manifest = root / 'documents/unified' / name
         if not manifest.exists():
             continue

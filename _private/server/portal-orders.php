@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/portal-access.php';
+require_once __DIR__ . '/portal-phone.php';
 require_once __DIR__ . '/booking-lifecycle.php';
 
 /** Stored staff approval, not an expiring pricing browser session or an email match to a booking. */
@@ -55,7 +56,7 @@ function portal_order_summary(array $row): array
         'cancelled'=>'Cancelled', 'calendar_missing','calendar_changed'=>'Staff Review Required',
         default=>($row['calendar_state'] ?? '') === 'confirmed' ? 'Confirmed' : 'Awaiting Confirmation',
     };
-    return ['reference'=>$row['reference'], 'property'=>portal_property($request['details'] ?? []),
+    return ['reference'=>$row['reference'], 'order_number'=>$row['order_number']??$row['reference'], 'property'=>portal_property($request['details'] ?? []),
         'market'=>$row['market'], 'created_at'=>$row['created_at'], 'appointment_status'=>$appointment,
         'payment_status'=>$row['deposit_paid_at'] ? 'Test Deposit Recorded' : 'Deposit Not Recorded',
         'review_status'=>$row['approved_at'] ? 'Reviewed' : 'Awaiting Staff Review'];
@@ -75,6 +76,7 @@ function portal_owned_order(PDO $db, string $accountId, string $reference): arra
     if (!$row) return false;
     $request = booking_request($row);
     $appointment = $request['appointment'] ?? [];
+    $row['order_number']=booking_order_number($db,$reference);
     $summary = portal_order_summary($row);
     $paid = $row['deposit_paid_at'] ? (int)$row['deposit_cents'] : 0;
     // Display only allowlisted fields. Tokens, Stripe IDs, CRM IDs and raw payloads stay private.
@@ -130,9 +132,25 @@ function portal_save_profile(PDO $db, string $id, array $input): void
     if (!portal_active_account($db,$id)) throw new InvalidArgumentException('Sign in again.');
     $values=[];
     foreach (['first_name'=>100,'last_name'=>100,'company'=>140,'phone'=>35] as $key=>$max) {
-        $values[]=real_estate_optional_text($input,$key,$max,'Review your contact details.');
+        $value=real_estate_optional_text($input,$key,$max,'Review your contact details.');
+        if($value==='')throw new InvalidArgumentException('Complete your first name, last name, company and contact phone.');
+        if($key==='phone')portal_normalize_phone($value);
+        $values[]=$value;
     }
     $q=$db->prepare('INSERT INTO portal_profiles VALUES (?,?,?,?,?,?) ON CONFLICT(account_id) DO UPDATE SET
         first_name=excluded.first_name,last_name=excluded.last_name,company=excluded.company,phone=excluded.phone,updated_at=excluded.updated_at');
     $q->execute([$id,...$values,time()]);
+}
+
+function portal_profile_complete(PDO $db,string $id): bool
+{
+    $p=portal_profile($db,$id);
+    foreach(['first_name','last_name','company','phone'] as $key)if(trim($p[$key]??'')==='')return false;
+    try{portal_normalize_phone($p['phone']);}catch(InvalidArgumentException){return false;}
+    return true;
+}
+function portal_require_profile(PDO $db,string $id): array
+{
+    if(!portal_active_account($db,$id)||!portal_profile_complete($db,$id))throw new InvalidArgumentException('Complete all Account fields before booking a new appointment.');
+    return portal_profile($db,$id);
 }

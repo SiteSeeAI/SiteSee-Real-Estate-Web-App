@@ -10,7 +10,7 @@ function booking_lifecycle_html(PDO $db,array $row,string $csrf,bool $staff,arra
     $fingerprint=booking_lifecycle_fingerprint($db,$ref);
     $hidden='<input type="hidden" name="fingerprint" value="'.$fingerprint.'">';
     $a=booking_request($row)['appointment'];
-    $html='<h2>Manage Appointment</h2><p><strong>'.($s['state']==='cancelled'?'Cancelled':$e($a['date'].' '.$a['time'].'–'.$a['windowEnd'].' Central Time')).'</strong><br>Reference: '.$e($ref).'</p>';
+    $html='<h2>Manage Appointment</h2><p><strong>'.($s['state']==='cancelled'?'Cancelled':$e($a['date'].' '.$a['time'].'–'.$a['windowEnd'].' Central Time')).'</strong><br>Order: '.$e(booking_order_number($db,$ref)).'</p>';
     $html.='<p>Appointment status: <strong>'.$e($pending?'change awaiting verification':str_replace('_',' ',$s['state'])).'</strong></p>';
     if($staff && $s['actual_start']!==null) $html.='<p>Observed private shoot: '.$e((new DateTimeImmutable('@'.$s['actual_start']))->setTimezone(new DateTimeZone('America/Chicago'))->format('Y-m-d g:i A')).' Central.</p>';
     if($s['diagnostic'])$html.='<p class="note">'.$e($s['diagnostic']).'</p>';
@@ -70,16 +70,21 @@ function booking_lifecycle_html(PDO $db,array $row,string $csrf,bool $staff,arra
             $html.=$staff?str_replace('<form ', '<form data-window-option="'.$e($w['date'].'|'.$w['time']).'" ', $windowForm):$windowForm;
         }
         if($windows&&$staff)$html.='</div>';
-        if($staff&&$s['state']==='calendar_changed')$html.=$form('adopt','Adopt Calendar Move',$hidden.'<label>Customer-agreed date <input type="date" name="date" required></label><label>Arrival window starts <select name="time"><option>07:00</option><option>09:00</option><option>11:00</option><option>13:00</option><option>15:00</option><option>17:00</option></select></label><label><input type="checkbox" name="agreed" value="yes" required> I verified the calendar move and the customer agreed to this arrival window.</label>');
-        $html.='<details><summary>Cancel Appointment</summary>'.$form('cancel','Confirm Cancellation',$hidden.'<label><input type="checkbox" name="agreed" value="yes" required> '.($staff?'The customer requested cancellation.':'I want to cancel this appointment.').'</label>').'</details>';
+        if($staff&&$s['state']==='calendar_changed')$html.=$form('adopt','Adopt Calendar Move',$hidden.'<label>Customer-agreed date <input type="date" name="date" required></label><label>Arrival window starts <select name="time"><option>07:00</option><option>09:00</option><option>11:00</option><option>13:00</option><option>15:00</option><option>17:00</option><option>13:30</option><option>15:30</option><option>17:30</option></select></label><label><input type="checkbox" name="agreed" value="yes" required> I verified the calendar move and the customer agreed to this arrival window.</label>');
+        $html.='<details><summary>Cancel Appointment</summary>'.$form('cancel','Confirm Cancellation',$hidden.'<label><input type="checkbox" name="agreed" value="yes" required> '.($staff?'I confirm SiteSee is cancelling this appointment and notifying the agent.':'I want to cancel this appointment.').'</label>').'</details>';
     }
     $mail=booking_communication_get($db,'lifecycle-'.$s['revision'].':'.$ref);
     if($mail){
         $html.='<p>Change notice: '.$e($mail['submission_state']).'<br>Receipt evidence: '.$e(booking_communication_receipt_status($mail)).'<br>Zoho history: '.$e($mail['crm_state']).'</p>';
-        if($staff){if($mail['submission_state']==='prepared')$html.=$form('notice','Send Saved Change Notice');
-            $html.=$form('recover_notice','Recover Notice &amp; Zoho History');}
+        if($staff){$revisionField='<input type="hidden" name="notice_revision" value="'.(int)$s['revision'].'">';
+            if($mail['submission_state']==='prepared'||($s['state']==='cancelled'&&booking_communication_unsent_draft($mail)))$html.=$form('notice','Send Saved Change Notice',$revisionField.'<label><input type="checkbox" name="agreed" value="yes" required> I reviewed the saved customer notice and approve sending it.</label>');
+            $html.=$form('recover_notice','Recover Notice &amp; Zoho History',$revisionField);}
     }
     if($staff)foreach($history as $h)$html.=$form('history','Link Verified Existing Zoho Email','<p>'. $e($h['subject'].' · '.$h['time']).'</p><input type="hidden" name="message_id" value="'.$e($h['id']).'"><label><input type="checkbox" name="agreed" value="yes" required> I verified this is the existing change notice in Zoho.</label>');
+    if($staff&&booking_order_can_close($db,$ref)){
+        $closed=$db->prepare('SELECT 1 FROM booking_order_closures WHERE reference=?');$closed->execute([$ref]);
+        if(!$closed->fetchColumn())$html.='<section class="card"><h2>Close Cancelled Order</h2><p>The cancellation and sent customer notice are verified. Complete any manual refund or credit handling before moving this order to Previous Orders.</p>'.$form('close_order','Close Order','<input type="hidden" name="fingerprint" value="'.$e(booking_lifecycle_fingerprint($db,$ref)).'"><label>Payment or credit disposition<input name="payment_disposition" maxlength="500" required></label><label><input type="checkbox" name="agreed" value="yes" required> I reviewed payments and completed this cancellation closeout.</label>').'</section>';
+    }
     if(!$staff)$html.='<p>Need help? <a href="mailto:sales@re.sitesee.ai">sales@re.sitesee.ai</a> · <a href="tel:8002222053">800 222-2053</a></p>';
     return $html;
 }
