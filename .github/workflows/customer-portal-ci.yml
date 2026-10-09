@@ -77,7 +77,7 @@ permissions:
 jobs:
   portal:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -156,6 +156,10 @@ jobs:
           git diff --exit-code -- tools/install-re-email-change-20261002-r1.py
           python3 tools/build-staff-review.py
           git diff --exit-code -- tools/install-re-staff-review-20261002-r1.py
+      - name: Use official HTTPS Ubuntu mirror for browser dependencies
+        run: |
+          # Preserve apt signatures and TLS while avoiding the previously stalled HTTP mirror.
+          printf '%s\n' 'https://archive.ubuntu.com/ubuntu' | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
       - name: Install isolated browser test dependencies
         run: |
           npm install --prefix "$RUNNER_TEMP/portal-browser" --no-save playwright@1.58.2
@@ -172,6 +176,7 @@ jobs:
           node tests/portal-job.browser.cjs
           node tests/portal-vendor.browser.cjs
           node tests/portal-email.browser.cjs
+          node tests/calendar-notice.browser.cjs
       - name: Save example-only preview screenshots
         if: always()
         uses: actions/upload-artifact@v4

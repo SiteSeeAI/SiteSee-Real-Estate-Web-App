@@ -53,12 +53,14 @@ calendar_check($adjacent[0]['time'] === '09:00', 'An event ending at 10 allows a
 $busyToEnd = [[calendar_epoch('2026-09-28T09:00:00-05:00'), calendar_epoch('2026-09-28T11:00:00-05:00')]];
 calendar_check(booking_available_windows('2026-09-28', false, 60, calendar_snapshot('2026-09-28', 60, 2, $busyToEnd), $now, 2)[0]['time'] === '11:00', 'Arrival at the end boundary belongs to the next window.');
 
-$fallNow = new DateTimeImmutable('2026-10-29T08:00:00-05:00');
+$fallNow = new DateTimeImmutable('2026-10-29T14:30:00-05:00');
 $fall = booking_available_windows('2026-11-01', false, 60, calendar_snapshot('2026-11-01'), $fallNow, 2);
 calendar_check($fall[0]['time'] === '13:30' && $fall[0]['planned_start_utc'] === '2026-11-01T19:30:00Z', 'Fall DST uses 72 actual hours.');
-$springNow = new DateTimeImmutable('2026-03-05T07:00:00-06:00');
+$fallLate = booking_available_windows('2026-11-01', false, 60, calendar_snapshot('2026-11-01'), $fallNow->modify('+1 second'), 2);
+calendar_check($fallLate[0]['time'] === '15:30', 'One second short of 72 elapsed hours excludes the Sunday window across fall DST.');
+$springNow = new DateTimeImmutable('2026-03-05T13:30:00-06:00');
 $spring = booking_available_windows('2026-03-08', false, 60, calendar_snapshot('2026-03-08'), $springNow, 2);
-calendar_check($spring[0]['time'] === '13:30' && $spring[0]['planned_start_utc'] === '2026-03-08T18:30:00Z', 'Spring DST excludes the window only 71 hours away.');
+calendar_check($spring[0]['time'] === '15:30' && $spring[0]['planned_start_utc'] === '2026-03-08T20:30:00Z', 'Spring DST excludes the window only 71 hours away.');
 calendar_throws(fn() => booking_availability_range('2026-02-30', 60), InvalidArgumentException::class);
 calendar_throws(fn() => booking_availability_range('2026-09-28', 0), InvalidArgumentException::class);
 calendar_throws(fn() => booking_availability_range('2026-09-28', 60, 29), InvalidArgumentException::class);
