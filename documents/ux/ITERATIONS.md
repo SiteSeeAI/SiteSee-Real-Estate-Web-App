@@ -2,7 +2,7 @@
 
 ## UX-001 — Application workspace
 
-Date: October 9, 2026, America/Chicago. Status: implemented locally and under review; no redesign code installed. Record implementation, validation and acceptance in [CHANGELOG.md](../../CHANGELOG.md).
+Date: October 9, 2026, America/Chicago. Status: installed and verified as `unified-test-c40236e09375`; connected UX acceptance pending. Record implementation, validation and acceptance in [CHANGELOG.md](../../CHANGELOG.md).
 
 The user rejects the current long, stacked layouts. The intended result is a recognizable software interface that guides an agent or manager through the next relevant action while preserving the accepted booking, payment and provider behavior. Start with management Bookings/Booking Review and the Agent Account/Orders pages, then apply the same components to Production and Vendors where appropriate.
 

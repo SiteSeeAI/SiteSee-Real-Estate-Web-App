@@ -4,11 +4,9 @@ This is the iteration record from October 9, 2026 onward. Dates use America/Chic
 
 Each iteration records its ID, purpose, status, source/release, changes, validation and user acceptance. Keep planned work separate from implemented, installed and accepted work. Add an entry for each subsequent implementation/release and update its acceptance after user review. Documentation-only commits do not change the installed application.
 
-## Unreleased
+## UX-001 — unified-test-c40236e09375 — 2026-10-09
 
-### UX-001 — Application workspace
-
-Status: implemented and published as a verified TEST package; automated checks and independent audit passed; visual acceptance and operator installation pending. Stripe remains TEST.
+Status: installed and verified in TEST. Automated checks and independent audit passed; connected UX acceptance remains pending.
 
 Purpose: replace the long form-and-card layouts with a coherent software interface, starting with management Bookings/Booking Review and the Agent Account/Orders pages. The user rejected the current presentation; functional success does not establish UX acceptance.
 
@@ -31,6 +29,12 @@ Deployment preparation pins the exact installed `0ddef26c59a1` predecessor, incl
 The user subsequently requested an installable GitHub package and a single download/extract/install command. Package source `c40236e0937546e14ebb50d835e3b911f700d616` includes the test-history corrections with identical application payloads to implementation `40566ba`. Publication requires fresh source-pinned privileged PHP 8.2/8.3, all seven browser journeys and actual FPM checks. Installation remains an operator action; record its result and subsequent UX acceptance separately. Stripe remains TEST.
 
 Published release: [unified-test-c40236e09375](https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/releases/tag/unified-test-c40236e09375). Its exact-source publication run `37987873795` passes all five jobs, including 64 privileged cases per PHP version with zero skips, all seven browser journeys, 27 host-protocol tests and eight actual FPM tests. The five assets were independently downloaded and verified by full bytes, SHA256, GitHub digest, size and attachment headers. Package SHA256: `e97785fb54e95b9862a865bdabd0ebb57eec84b60f494b30e15735a2e5bbb2aa`. Installation uses the existing approved WHM-root backup/pause/drain/reload/verify/reopen process; no financial automation or LIVE enablement.
+
+Installation: the operator supplied complete PREFLIGHT PASS, HOST PREFLIGHT PASS, INSTALLED AND VERIFIED, VERIFY PASS and HOST UPDATE PASS output. The preflight checked 273 files with 13 changes, read-only database integrity and the three preserved host variants. Actual PHP-FPM 8.2.34, code refresh, file ownership/modes, backup integrity and TEST gates passed. The existing canonical reconciliation schedule remained unchanged. No deployment database migration, provider operation, configuration/gate change, session reset, worker or callback change was reported.
+
+Backup: `/home/sitesee/.sitesee-real-estate/unified-deployments/unified-test-c40236e09375-7wgcojxh`. Anonymous HTTPS checks confirm both account and staff sign-in pages respond with TEST/no-store, and the deployed shared CSS/JavaScript match the release exactly. This establishes serving assets, not authenticated UX acceptance. The next review is the redesigned agent and management screens on desktop/mobile; do not repeat previously accepted cancellation/payment tests solely for additional evidence.
+
+## Unreleased
 
 ### Future feature — Refund and credit automation
 
