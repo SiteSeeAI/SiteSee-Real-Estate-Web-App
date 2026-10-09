@@ -1,0 +1,248 @@
+name: Publish reviewed UX-001 TEST downloads
+on:
+  push:
+    branches: ['feat/unified-test-downloads-c40236e']
+    paths: ['.github/workflows/unified-test-downloads.yml']
+permissions:
+  contents: write
+jobs:
+  portal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: 'c40236e0937546e14ebb50d835e3b911f700d616'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_sqlite, curl, pcntl
+      - name: Validate private account primitives
+        run: |
+          find _private/server -name '*.php' -print0 | xargs -0 -n1 php -l
+          php -l _private/views/portal.php
+          php -l _private/views/application-shell.php
+          php tests/application-bootstrap.test.php
+          php tests/application-shell.test.php
+          php -l _private/views/portal-purchase.php
+          php -l _private/views/portal-service.php
+          php -l _private/views/portal-job.php
+          php -l public/staff-production.php
+          php -l _private/server/booking-webhook.php
+          php -l public/account.php
+          php -d sendmail_path=/bin/false tests/portal-email.test.php
+          php tests/portal-email-concurrency.test.php
+          php tests/portal-access.test.php
+          php tests/portal-session.test.php
+          php tests/portal-purchase.test.php
+          php tests/portal-service.test.php
+          php tests/account-workflow.test.php
+          php tests/booking-change-request.test.php
+          php tests/booking-review-ui.test.php
+          php tests/portal-job.test.php
+          php tests/portal-onsite-catalog.test.php
+          php tests/portal-vendor.test.php
+          php -l public/vendor.php
+          php -l public/staff-vendors.php
+          php tests/portal-draft-recovery.test.php
+          PORTAL_FIXTURE_AGENT_EMAIL=info@1789media.com php tests/portal-draft-recovery.test.php
+          php tests/portal-test-recipient.test.php
+          php tests/portal-release.test.php
+          php tests/portal-phone.test.php
+          php tests/portal-sms.test.php
+          php -l tools/portal-enroll-phone.php
+          python3 tests/portal-installer.test.py
+          python3 tests/portal-complete.test.py
+          python3 tests/portal-re-enrollment.test.py
+          python3 tests/portal-re-workflow.test.py
+          python3 tests/portal-draft-installer.test.py
+          python3 tests/portal-polish-installer.test.py
+          python3 tests/portal-email-installer.test.py
+          python3 tests/portal-test-recipient-installer.test.py
+          python3 tests/portal-job-installer.test.py
+          python3 tests/portal-onsite-installer.test.py
+          python3 tests/portal-vendor-installer.test.py
+          python3 tests/portal-staff-installer.test.py
+          python3 tests/portal-staff-source.test.py
+          python3 tests/ux-workspace-source.test.py
+          python3 tools/build-portal-installer.py
+          git diff --exit-code -- tools/install-customer-portal.py
+          python3 tools/build-portal-complete.py
+          git diff --exit-code -- tools/install-portal-complete.py
+          python3 tools/build-re-draft-recovery.py
+          git diff --exit-code -- tools/install-re-draft-recovery-r1.py
+          python3 tools/build-re-business-workflow.py
+          git diff --exit-code -- tools/install-re-business-workflow.py
+          python3 tools/build-portal-polish.py
+          git diff --exit-code -- tools/install-re-portal-polish-20261002-r1.py
+          python3 tools/build-test-recipient.py
+          git diff --exit-code -- tools/install-re-test-recipient-20261002-r1.py
+          python3 tools/build-vendor-accounts.py
+          git diff --exit-code -- tools/install-re-vendor-accounts-20261005-r1.py
+          python3 tools/build-onsite-services.py
+          git diff --exit-code -- tools/install-re-onsite-services-20261005-r1.py
+          python3 tools/build-job-closeout.py
+          git diff --exit-code -- tools/install-re-job-closeout-20261003-r1_1.py
+          python3 tools/build-portal-email.py
+          git diff --exit-code -- tools/install-re-email-change-20261002-r1.py
+          python3 tools/build-staff-review.py
+          git diff --exit-code -- tools/install-re-staff-review-20261002-r1.py
+      - name: Use official HTTPS Ubuntu mirror for browser dependencies
+        run: |
+          # Preserve apt signatures and TLS while avoiding the previously stalled HTTP mirror.
+          printf '%s\n' 'https://archive.ubuntu.com/ubuntu' | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
+      - name: Install isolated browser test dependencies
+        run: |
+          npm install --prefix "$RUNNER_TEMP/portal-browser" --no-save playwright@1.58.2
+          "$RUNNER_TEMP/portal-browser/node_modules/.bin/playwright" install --with-deps chromium --only-shell
+      - name: Check preview interactions and responsive layout
+        env:
+          NODE_PATH: ${{ runner.temp }}/portal-browser/node_modules
+          PORTAL_SCREENSHOTS: ${{ runner.temp }}/portal-screenshots
+        run: |
+          mkdir -p "$PORTAL_SCREENSHOTS"
+          node tests/portal-preview.browser.cjs
+          node tests/portal-http.browser.cjs
+          node tests/portal-staff.browser.cjs
+          node tests/portal-job.browser.cjs
+          node tests/portal-vendor.browser.cjs
+          node tests/portal-email.browser.cjs
+          node tests/calendar-notice.browser.cjs
+      - name: Save example-only preview screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: customer-portal-preview
+          path: ${{ runner.temp }}/portal-screenshots
+          if-no-files-found: ignore
+          retention-days: 7
+  fpm:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: 'c40236e0937546e14ebb50d835e3b911f700d616'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_sqlite, curl, openssl, opcache
+      - name: Install the matching FPM runtime for isolated tests
+        run: |
+          sudo add-apt-repository -y ppa:ondrej/php
+          sudo apt-get update
+          sudo apt-get install -y php8.2-fpm
+      - name: Test protocol diagnostics and maintenance boundaries
+        run: python3 tests/appointment-approval-host.test.py
+      - name: Prove document-root behavior, token guard and code/cache refresh on actual FPM
+        env:
+          SITESEE_TEST_FPM: /usr/sbin/php-fpm8.2
+          SITESEE_TEST_OPCACHE: /usr/lib/php/20220829/opcache.so
+        run: python3 tests/appointment-approval-fpm.test.py
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        php: ['8.2', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: 'c40236e0937546e14ebb50d835e3b911f700d616'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '${{ matrix.php }}'
+          extensions: pdo_sqlite, curl, openssl
+      - name: Require exact-source privileged release and interrupted replacement checks
+        run: sudo env PATH="$PATH" SITESEE_REQUIRE_PRIVILEGED_TESTS=1 python3 tests/unified-release.test.py
+  downloads:
+    needs: [portal, fpm, release]
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: 'c40236e0937546e14ebb50d835e3b911f700d616'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build exact reviewed source
+        run: python3 tools/build-unified-release.py --commit c40236e0937546e14ebb50d835e3b911f700d616 --output "$RUNNER_TEMP/unified-test-downloads"
+      - name: Verify, wait for exact-source CI and publish TEST downloads
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import os, pathlib, json, hashlib, urllib.request, urllib.parse, urllib.error, base64, time
+          root = pathlib.Path(os.environ['RUNNER_TEMP']) / 'unified-test-downloads'
+          expected = {'unified-test-c40236e09375.tar.gz': 'e97785fb54e95b9862a865bdabd0ebb57eec84b60f494b30e15735a2e5bbb2aa', 'install-unified.py': 'fadebec7747773abe1ec10f25b86b6ecfdd2fe13d8a3dc9b1eaff50e566ba6c0', 'install-appointment-approval-host.py': '51bc4477946881b5529106348dccf1c54d7a02666885a24fd84366a3238a0446', 'HOST_TEST_REVIEW.md': 'c5cea049553af10fa11044077d480f74c39de79ec951fb4f4dbd104ecc1e127d'}
+          commit = 'c40236e0937546e14ebb50d835e3b911f700d616'
+          tag = 'unified-test-c40236e09375'
+          base = 'https://api.github.com/repos/SiteSeeAI/SiteSee-Real-Estate-Web-App'
+          (root / 'HOST_TEST_REVIEW.md').write_bytes(base64.b64decode('IyBVWC0wMDEgYXBwbGljYXRpb24gd29ya3NwYWNlIHJldmlldwoKSW1wbGVtZW50ZWQgT2N0b2JlciA5LCAyMDI2LiBUaGUgcmVkZXNpZ24gaXMgcmVhZHkgZm9yIHZpc3VhbCByZXZpZXc7IHRoZSBzZXJ2ZXIgcmVtYWlucyBvbiBgdW5pZmllZC10ZXN0LTBkZGVmMjZjNTlhMWAsIHdpdGggU3RyaXBlIFRFU1QuIFVzZXIgc2NyZWVuIGFjY2VwdGFuY2UgYW5kIGluc3RhbGxhdGlvbiBhcmUgc2VwYXJhdGUgZnJvbSBhdXRvbWF0ZWQgdmFsaWRhdGlvbi4KCkFwcGxpY2F0aW9uIHNvdXJjZTogYDQwNTY2YmE1NTZmOTJiOTExNGNmZDhiNjk2Y2EzOTg0MmZlZDdmOTdgLiBGb2xsb3ctdXAgYGM0MDIzNmUwOTM3NTQ2ZTE0ZWJiNTBkODM1ZTNiOTExZjcwMGQ2MTZgIGNoYW5nZXMgb25seSB0aGUgaGlzdG9yaWNhbCB0ZXN0IGhlbHBlciBhbmQgQ0kgY2hlY2tvdXQgZGVwdGguIEl0cyBhcHBsaWNhdGlvbiwgYnVpbGRlciwgaW5zdGFsbGVyIGFuZCByZXZpZXdlZCBzb3VyY2UtbWFuaWZlc3QgYnl0ZXMgYXJlIGlkZW50aWNhbCB0byB0aGUgaW1wbGVtZW50YXRpb24gY29tbWl0LgoKRG93bmxvYWQgW3RoZSBzaXgtc2NyZWVuIGRlc2t0b3AvbW9iaWxlIHJldmlld10oaHR0cHM6Ly9naXRodWIuY29tL1NpdGVTZWVBSS9TaXRlU2VlLVJlYWwtRXN0YXRlLVdlYi1BcHAvcmVsZWFzZXMvZG93bmxvYWQvdXgtMDAxLXJldmlldy00MDU2NmJhNTU2ZjkvVVgtMDAxLXJldmlldy5odG1sKSwgdGhlbiBvcGVuIHRoZSBkb3dubG9hZGVkIEhUTUwgaW4gYSBicm93c2VyLiBJdHMgYnV0dG9ucyBzd2l0Y2ggYmV0d2VlbiBhY3R1YWwgc3ludGhldGljIHNjcmVlbnNob3RzOyBpdCBkb2VzIG5vdCBpbnN0YWxsIG9yIGNvbm5lY3QgdG8gdGhlIGFwcC4gU0hBMjU2OiBgYzUwNmQwNzMxZDM0OTEwNGMzMjgwM2IzZjMzY2Y0MGYzNzI5YjBhMzJmYjkyN2E0NzgyMjBhODM5ODU0ZjRjZWAuIEZ1bGwgZG93bmxvYWRlZCBieXRlcywgR2l0SHViIGRpZ2VzdCwgc2l6ZSBhbmQgYXR0YWNobWVudCBoZWFkZXJzIHdlcmUgdmVyaWZpZWQuCgojIyBSZXN1bHRpbmcgYmVoYXZpb3IKCkF1dGhlbnRpY2F0ZWQgZGVza3RvcCBwYWdlcyB1c2UgYSBzdGFibGUgcm9sZS1zcGVjaWZpYyBuYXZpZ2F0aW9uIHJhaWwsIHdpZGVyIHdvcmsgYXJlYSwgQ29ycG9yYXRlIGNvbG9ycyBhbmQgY29uc2lzdGVudCBjb21wb25lbnRzLiBTbWFsbGVyIHNjcmVlbnMgdXNlIGNvbXBhY3QgbmF2aWdhdGlvbiBhbmQgc3RhY2tlZCBwYW5lbHMuIE9wZW4vUHJldmlvdXMgb3JkZXIgY29sdW1ucyBoYXZlIGluZGVwZW5kZW50IHBhZ2luYXRpb247IGNvbXBhY3QgNS8yNS9BbGwgY29udHJvbHMgYXBwZWFyIGJlbG93IGJvdGggbGlzdHMgYW5kIHVwZGF0ZSBhdXRvbWF0aWNhbGx5LiBDaGFuZ2luZyBvbmUgbGlzdCdzIHBhZ2Ugc2l6ZSBwcmVzZXJ2ZXMgdGhlIG90aGVyIGxpc3QncyBwYWdlLgoKRm91ciBudW1iZXJlZCBzdGFnZXMgc2hvdyB0aGUgc2F2ZWQgd29ya2Zsb3cgcG9zaXRpb24uIEEgc3RhdGUtZGVyaXZlZCBwcmltYXJ5IGFjdGlvbiBvcGVucyBhIGZvY3VzZWQgc2NyZWVuLiBXaGVyZSBtb3JlIHRoYW4gb25lIGFjdGlvbiBpcyByZWxldmFudCwgY2hvb3NpbmcgYSB0YXNrIHJldmVhbHMgaXRzIG9yaWdpbmFsIGZvcm0sIGluY2x1ZGluZyBleGlzdGluZyBjb25zZW50LCByZXZpc2lvbiwgQ1NSRiBhbmQgb3JpZ2luIGNvbnRyb2xzLiBSZXF1aXJlZCBzYXZlZC1yZXN1bHQgcmVjb3ZlcnkgYXBwZWFycyBmaXJzdC4gQW4gYXR0ZW1wdGVkIGFjdGlvbiByZW1haW5zIGJvdW5kIHRvIGl0cyBleGFjdCBzYXZlZCByZXF1ZXN0IG9yIG1lc3NhZ2U7IGl0IGNhbm5vdCBzaWxlbnRseSBzd2l0Y2ggdG8gYSBkaWZmZXJlbnQgbm90aWNlIGFmdGVyIHRoZSBvcmlnaW5hbCBmb3JtIGRpc2FwcGVhcnMuCgpEZXNrdG9wIEJvb2tpbmcgUmV2aWV3IHBsYWNlcyB0aGUgcHJvcGVydHkvd2luZG93L3BheW1lbnQgY29udGV4dCBiZXNpZGUgdGhlIGFjdGlvbi4gTW9iaWxlIHN1bW1hcnkgZGV0YWlscyBjb2xsYXBzZSB3aGlsZSBwcm9wZXJ0eSBhbmQgd2luZG93IHJlbWFpbiB2aXNpYmxlLiBQcm9wb3NlZCBjdXN0b21lciB3aW5kb3dzIHJlbWFpbiBzZXBhcmF0ZSBmcm9tIHRoZSBjb25maXJtZWQgYXBwb2ludG1lbnQuIE9uc2l0ZSBDbG9zZW91dCBpcyBvcGVuIG9uIGl0cyBzZWxlY3RlZCBzY3JlZW4gYW5kIGNvbGxhcHNlZCBvbiB0aGUgb3ZlcnZpZXcuIFJldmlld2VkIFZlbmRvciBhc3NpZ25tZW50cyBhbmQgc2F2ZWQgY29tcGxldGVkLWpvYiBkZWxpdmVyYWJsZXMgcmVtYWluIGFjY2Vzc2libGUgd2hlbiB0aGVpciByZWNvcmRlZCBzdGF0ZSBwZXJtaXRzIHRoZW0uCgpDVEMncyBhdXRoZW50aWNhdGVkIHdvcmtzcGFjZSB3YXMgdW5hdmFpbGFibGUuIFRoaXMgdXNlcyB0aGUgdXNlcidzIGV4cGxpY2l0IHJlcXVpcmVtZW50cyBhbmQgdGhlIENvcnBvcmF0ZSBzaXRlJ3MgZWZmZWN0aXZlIHBhbGV0dGU7IGV4YWN0IENUQyBwYXJpdHkgaXMgbm90IGNsYWltZWQuIFRoZSByZXZpZXcgY29udGFpbnMgc3ludGhldGljIHJlY29yZHMgb25seS4KCiMjIEZvdXIgcmV2aWV3IHBhc3NlcwoKMS4gKipEZXBlbmRlbmNpZXMgYW5kIGNhbGwgZ3JhcGg6KiogdGhlIHNoYXJlZCBzaGVsbCBsb2FkcyBwcmVzZW50YXRpb24gQ1NTL0phdmFTY3JpcHQgZm9yIGVhY2ggcm9sZS4gVGhlIGN1c3RvbWVyLXNwZWNpZmljIHNjcmlwdCByZW1haW5zIGNvbmZpbmVkIHRvIGN1c3RvbWVycy4gTGlzdCBwcmVmZXJlbmNlcyB1c2UgR0VUOyBhY3Rpb24gc2VsZWN0aW9uIGRpc3BsYXlzIGV4aXN0aW5nIGZvcm1zLiBUaGUgZG9tYWluIGhhbmRsZXJzIGFyZSB1bmNoYW5nZWQuCjIuICoqU291cmNlIGRpZmZlcmVuY2VzIGFuZCBpbnZhcmlhbnRzOioqIHRoZSByZXZpZXdlZCBsYXllciByZWNvcmRzIGV4YWN0IGluc3RhbGxlZCBiZWZvcmUgYnl0ZXMgYW5kIGltcGxlbWVudGVkIGFmdGVyIGJ5dGVzIGZvciBlaWdodCBwcmVzZW50YXRpb24gZmlsZXMuIFN0YWZmIGF1dGhlbnRpY2F0aW9uIGFuZCBQT1NUIGhhbmRsZXJzIGFyZSBieXRlLXByZXNlcnZlZC4gTm8gZmluYW5jaWFsLCBwcm92aWRlciBvciBhdXRob3JpemF0aW9uIHRyYW5zaXRpb24gY2hhbmdlZC4gT3JpZ2luYWwgcHJpY2luZywgb3duZXJzaGlwLCBmcmVzaCBjb25zZW50LCByZWNvdmVyeSBpZGVudGl0aWVzLCBhbW91bnRzIGFuZCBwYXltZW50IGdhdGVzIHJlbWFpbiBhdXRob3JpdGF0aXZlLgozLiAqKkF1dG9tYXRlZCBhbmQgYnJvd3NlciBwYXJpdHk6KiogYWxsIDQxIFBIUCBzdWl0ZXMgcGFzcyBvbiBQSFAgOC4yIGFuZCA4LjMgbG9jYWxseS4gUHJlc2VudGF0aW9uIGFzc2VydGlvbnMgaW5jbHVkZSA0MCBib29raW5nLXN0ZXAsIDcyIGFjY291bnQtd29ya2Zsb3cgYW5kIDk2IHNoZWxsIGNoZWNrcyBwZXIgdmVyc2lvbi4gRnVsbCBjdXN0b21lciBDSSByZXRhaW5zIGFsbCBzZXZlbiBicm93c2VyIGpvdXJuZXlzIGFuZCBvcmlnaW5hbCBoaXN0b3JpY2FsIGJ1aWxkZXJzL2luc3RhbGxlcnMuIFJlc3BvbnNpdmUgY2hlY2tzIGNvdmVyIDMyMC8zOTAvNzM2LzEyMDAvMTYwMCBwaXhlbHMuIFN0YWZmIGNoZWNrcyBwcmVzZXJ2ZSBuaW5ldGVlbiBiYXNlbGluZSBmb3JtIGNvbnRyYWN0cyBhbmQgdGhyZWUgZXh0ZXJuYWwtYWdlbnQgY2FzZXMsIHBsdXMgYXV0b21hdGljIGluZGVwZW5kZW50IHBhZ2luYXRpb24sIGZ1dHVyZS1zdGVwIGdhdGluZywgZHVwbGljYXRlLXJlcXVlc3QgdGFzayBpZGVudGl0eSBhbmQgcmVxdWlyZWQgcmVjb3ZlcnkuIE5vIGV4dGVybmFsIGJyb3dzZXIgcHJvdmlkZXIgY2FsbHMgYXJlIGFsbG93ZWQuCjQuICoqRGVwbG95bWVudCwgaW50ZXJydXB0aW9uIGFuZCBwcmVzZXJ2YXRpb246KiogZXhhY3Qgc291cmNlIHJlbGVhc2UgcmVoZWFyc2FsIGJ1aWxkcyB0aGUgaW5zdGFsbGVkIHByZWRlY2Vzc29yIHdpdGggaXRzIG9yaWdpbmFsIGJ1aWxkZXIvaW5zdGFsbGVyIGFuZCB2ZXJpZmllcyBpdHMgcHVibGlzaGVkIHBhY2thZ2UgaGFzaC4gVGhlIGNhbmRpZGF0ZSBoYXMgMjczIGRlcGxveW1lbnQgZmlsZXM7IGBhcHBsaWNhdGlvbi5qc2AgaXMgdGhlIHNvbGUgYWRkZWQgZmlsZS4gUnVudGltZSBzY2hlbWEgYW5kIGhvc3QtdmFyaWFudCBwcmVzZXJ2YXRpb24gYXJlIHVuY2hhbmdlZC4gTG9jYWwgUEhQIDguMi84LjMgcmVoZWFyc2FscyBlYWNoIGNvbXBsZXRlIDY0IGNhc2VzIHdpdGggb25lIGhvbmVzdCBmb3JlaWduLW93bmVyc2hpcCBza2lwLiBIb3N0IHByb3RvY29sIHBhc3NlcyAyNyB0ZXN0czsgYWN0dWFsIGlzb2xhdGVkIEZQTSBwYXNzZXMgZWlnaHQgdGVzdHMuIFByaXZpbGVnZWQgQ0kgc3RhdHVzIGlzIHJlY29yZGVkIGJlbG93LgoKIyMgSW5kZXBlbmRlbnQgYXVkaXQgYW5kIENJCgpUaGUgaW5kZXBlbmRlbnQgYXVkaXQgY2xvc2VkIHdpdGhvdXQgYW4gaW1wbGVtZW50YXRpb24gb3IgYWNjZXNzaWJpbGl0eSBibG9ja2VyLiBGaW5kaW5ncyByZXNvbHZlZCBpbmNsdWRlIHNhdmVkIFZlbmRvciBhY2Nlc3MsIHByaW1hcnkgcmVjb3ZlcnkgcHJpb3JpdHksIHNhdmVkIEpvYiBsaW5rcywgZHVwbGljYXRlLXJlcXVlc3QgaWRlbnRpdHksIGF1dG9tYXRpYy1yZWZyZXNoIGluc3RydWN0aW9ucyBhbmQgc3RyaWN0IHNvdXJjZSByZXZlcnNhbC4gVGhlIHRlc3Qtb25seSBmb2xsb3ctdXAgd2FzIGluZGVwZW5kZW50bHkgYXVkaXRlZCB3aXRoIGRpc3Bvc2FibGUgcHJvYmVzIGZvciB1bmtub3duIGFmdGVyIGJ5dGVzLCB3cm9uZyBiZWZvcmUgaGFzaGVzIGFuZCBtYWxmb3JtZWQgYmFzZTY0OyBhbGwgcmVqZWN0LiBDYWxlbmRhciBhdWRpdCByZXRhaW5zIHR3ZW50eSBwYXNzaW5nIGNoZWNrcyBvbiBlYWNoIFBIUCB2ZXJzaW9uLgoKQ0kgaW5pdGlhbGx5IGV4cG9zZWQgc2hhbGxvdyBjaGVja291dCBoaXN0b3J5IGFuZCBhIFBIUCBoaXN0b3JpY2FsIGhlbHBlciB0aGF0IG5lZWRlZCB0byByZXZlcnNlIHRoZSBuZXcgVVggbGF5ZXIgYmVmb3JlIHRoZSBhY2NvdW50IGxheWVyLiBUaGUgZm9sbG93LXVwIGZpeGVzIGJvdGggcHJlcmVxdWlzaXRlcyB3aGlsZSBrZWVwaW5nIGFsbCBpbnRlZ3JpdHkgYXNzZXJ0aW9ucy4gVGhlIHN1Y2Nlc3NmdWwgcmVydW5zIGFyZSBhdXRob3JpdGF0aXZlOyB0aGUgZWFybGllciBmYWlsZWQgcnVucyBhcmUgcmV0YWluZWQuCgp8IENoZWNrIHwgU291cmNlIC8gcnVuIHwgUmVzdWx0IHwKfCAtLS0gfCAtLS0gfCAtLS0gfAp8IEZ1bGwgU2VydmVyIEZvcm0gYW5kIHByaXZpbGVnZWQgaGlzdG9yaWNhbCBvd25lcnNoaXAgfCBgYzQwMjM2ZWAsIFszNzk4Njc3MjI5Ml0oaHR0cHM6Ly9naXRodWIuY29tL1NpdGVTZWVBSS9TaXRlU2VlLVJlYWwtRXN0YXRlLVdlYi1BcHAvYWN0aW9ucy9ydW5zLzM3OTg2NzcyMjkyKSB8IFBBU1MgfAp8IEZ1bGwgQ3VzdG9tZXIgUG9ydGFsIGFuZCBhbGwgc2V2ZW4gYnJvd3NlciBqb3VybmV5cyB8IGBjNDAyMzZlYCwgWzM3OTg2NzcyMjMxXShodHRwczovL2dpdGh1Yi5jb20vU2l0ZVNlZUFJL1NpdGVTZWUtUmVhbC1Fc3RhdGUtV2ViLUFwcC9hY3Rpb25zL3J1bnMvMzc5ODY3NzIyMzEpIHwgUEFTUyB8CnwgRXhhY3Qtc291cmNlIHJlbGVhc2UgYW5kIHByaXZpbGVnZWQgUEhQIDguMi84LjMgbWF0cml4IHwgYDQwNTY2YmFgLCBbMzc5ODY0OTEwMzldKGh0dHBzOi8vZ2l0aHViLmNvbS9TaXRlU2VlQUkvU2l0ZVNlZS1SZWFsLUVzdGF0ZS1XZWItQXBwL2FjdGlvbnMvcnVucy8zNzk4NjQ5MTAzOSkgfCBQRU5ESU5HIHwKfCBWaXN1YWwgZG93bmxvYWQgcHVibGljYXRpb24gfCBgNDA1NjZiYWAsIFszNzk4NjQ5MTAxMV0oaHR0cHM6Ly9naXRodWIuY29tL1NpdGVTZWVBSS9TaXRlU2VlLVJlYWwtRXN0YXRlLVdlYi1BcHAvYWN0aW9ucy9ydW5zLzM3OTg2NDkxMDExKSB8IFBBU1M7IGRvd25sb2FkcyBpbmRlcGVuZGVudGx5IHZlcmlmaWVkIHwKCkV2aWRlbmNlIGlzIHJldGFpbmVkIG91dHNpZGUgdGhlIGNoZWNrb3V0IGluIGAvd29ya3NwYWNlLy5zaXRlc2VlLW9uYm9hcmRpbmcvdXgtMDAxLSpgOiBvcmlnaW5hbCBDSSBhcmNoaXZlcywgbG9jYWwgbG9ncywgc2l4LXNjcmVlbiByZXZpZXcsIGRvd25sb2FkZWQgYXNzZXQgZXZpZGVuY2UgYW5kIGhpc3RvcnkgdmVyaWZpY2F0aW9uLiBUaGUgYWxsLXJlZiBhcHBsaWNhdGlvbiBidW5kbGUgd2FzIHZlcmlmaWVkIHRocm91Z2ggYW4gaXNvbGF0ZWQgYmFyZSBjbG9uZSwgZXhhY3QgcGlubmVkIGNvbW1pdHMsIGFsbCBicmFuY2ggaGVhZHMgYW5kIGZ1bGwgR2l0IGZzY2suIEVhcmxpZXIgYnVuZGxlcyBhbmQgdGhlIG9yaWdpbmFsIG1pcnJvciByZW1haW4gcHJlc2VydmVkLiBGcmVzaC10YXNrIHJlc3RvcmF0aW9uIG9mIHRoZSBvcmlnaW5hbCBtaXJyb3IncyBsb2NhbCBjb21taXRzIGlzIG5vdCBlc3RhYmxpc2hlZCBieSB0aGlzIGNoZWNrLgoKIyMgUmV2aWV3IGFuZCBkZXBsb3ltZW50IGJvdW5kYXJ5CgpSZXZpZXcgdGhlIGRlc2t0b3AgYW5kIG1vYmlsZSBsYXlvdXRzIGFnYWluc3QgW3RoZSBVWCBicmllZl0oSVRFUkFUSU9OUy5tZCkuIFJlY29yZCBhY2NlcHRhbmNlIG9yIHN1YnNlcXVlbnQgY2hhbmdlcyBpbiBbQ0hBTkdFTE9HLm1kXSguLi8uLi9DSEFOR0VMT0cubWQpLiBUaGUgdXNlciBzdWJzZXF1ZW50bHkgcmVxdWVzdGVkIHB1Ymxpc2hpbmcgdGhlIGluc3RhbGxhYmxlIHBhY2thZ2UgYW5kIGlzc3VpbmcgYSBkb3dubG9hZC9leHRyYWN0L2luc3RhbGwgY29tbWFuZC4gUHJlcGFyZSB0aGF0IFRFU1QgdXBkYXRlIHdpdGhpbiB0aGUgZXhpc3Rpbmcgcm9vdC1zZXJ2aWNlIHNjb3BlOyB0aGUgY29tbWFuZCBpcyBmb3IgdGhlIG9wZXJhdG9yIHRvIGV4ZWN1dGUuIFZpc3VhbCByZXZpZXcgcmVtYWlucyBhdmFpbGFibGUgYW5kIFVYIGFjY2VwdGFuY2UgaXMgcmVjb3JkZWQgc2VwYXJhdGVseS4gVGhlIGV4aXN0aW5nIHNlcnZlciwgcHJvdmlkZXIgcmVjb3Jkcywgc2NoZWR1bGVzLCBzZXNzaW9ucyBhbmQgY29uZmlndXJhdGlvbiB3ZXJlIG5vdCBjaGFuZ2VkIGJ5IHRoaXMgaXRlcmF0aW9uLiBBdXRvbWF0aWMgcmVmdW5kcy9jcmVkaXRzIGFuZCBwcm9kdWN0aW9uL0xJVkUgc3VwcG9ydCByZW1haW4gc2VwYXJhdGUgd29yay4KClRoZSB1c2VyIHN1YnNlcXVlbnRseSByZXF1ZXN0ZWQgR2l0SHViIHBhY2thZ2UgcHVibGljYXRpb24gYW5kIGEgc2luZ2xlIGRvd25sb2FkL2V4dHJhY3QvaW5zdGFsbCBjb21tYW5kLiBUaGlzIGF1dGhvcml6ZXMgcHJlcGFyaW5nIHRoZSBURVNUIHVwZGF0ZTsgbm8gaG9zdCBhY3Rpb24gaXMgcGVyZm9ybWVkIGJ5IHB1YmxpY2F0aW9uLgo='))
+          (root / 'install-appointment-approval-host.py').write_bytes(pathlib.Path('tools/install-appointment-approval-host.py').read_bytes())
+          files = [root / name for name in expected]
+          for path in files:
+              assert hashlib.sha256(path.read_bytes()).hexdigest() == expected[path.name], path.name + ' checksum differs'
+          (root / 'DOWNLOADS_SHA256SUMS.txt').write_text(''.join(expected[p.name] + '  ' + p.name + '\n' for p in files))
+          files.append(root / 'DOWNLOADS_SHA256SUMS.txt')
+          def api(url, method='GET', obj=None, data=None, content_type='application/json'):
+              if obj is not None: data = json.dumps(obj).encode()
+              headers = {'Authorization': 'Bearer ' + os.environ['GH_TOKEN'], 'Accept': 'application/vnd.github+json', 'Content-Type': content_type, 'User-Agent': 'SiteSee-reviewed-TEST-downloads', 'X-GitHub-Api-Version': '2022-11-28'}
+              request = urllib.request.Request(url, data=data, method=method, headers=headers)
+              with urllib.request.urlopen(request, timeout=120) as response: return json.load(response)
+          for attempt in range(90):
+              runs = api(base + '/actions/runs?branch=feat/unified-server-app-20261007&per_page=100')['workflow_runs']
+              selected = {r['name']: r for r in runs if r['head_sha'] == commit}
+              required = ['Customer Portal Checks', 'Server Form CI']
+              if all(name in selected and selected[name]['status'] == 'completed' for name in required):
+                  assert all(selected[name]['conclusion'] == 'success' for name in required), 'Exact-source CI did not pass'
+                  break
+              time.sleep(10)
+          else: raise RuntimeError('Exact-source CI not complete; no download publication')
+          try:
+              release = api(base + '/releases/tags/' + tag)
+          except urllib.error.HTTPError as error:
+              if error.code != 404: raise
+              release = api(base + '/releases', 'POST', obj={'tag_name': tag, 'target_commitish': commit, 'name': 'TEST UX-001 responsive workspace ' + commit[:12], 'body': 'Responsive role workspace, automatic bottom list controls and four numbered focused workflow stages. Exact source, ownership and installer recovery CI verified. Stripe TEST; operator installation and connected acceptance remain separate.', 'draft': True, 'prerelease': True, 'make_latest': 'false'})
+          release_url = base + '/releases/' + str(release['id'])
+          assert release['tag_name'] == tag and release['target_commitish'] == commit and release['prerelease'] is True
+          assets = {a['name']: a for a in release['assets']}
+          assert set(assets).issubset(set(p.name for p in files)), 'Unknown assets preserved'
+          for path in files:
+              data = path.read_bytes(); digest = hashlib.sha256(data).hexdigest()
+              asset = assets.get(path.name)
+              if asset is None:
+                  assert release['draft'] is True, 'Do not add files to an already published candidate'
+                  url = release['upload_url'].split('{', 1)[0] + '?' + urllib.parse.urlencode({'name': path.name})
+                  asset = api(url, 'POST', data=data, content_type='application/octet-stream')
+              assert asset['state'] == 'uploaded' and asset['size'] == len(data)
+              assert asset.get('digest') == 'sha256:' + digest
+              print(path.name + ': exact SHA256 verified and uploaded')
+          release = api(release_url)
+          assert set(a['name'] for a in release['assets']) == set(p.name for p in files)
+          if release['draft']:
+              release = api(release_url, 'PATCH', obj={'draft': False, 'prerelease': True, 'make_latest': 'false'})
+          assert release['draft'] is False and release['prerelease'] is True
+          print('Published reviewed TEST downloads: ' + release['html_url'])
+          PY
