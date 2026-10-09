@@ -1,0 +1,250 @@
+name: Publish reviewed FIN-001 TEST downloads
+on:
+  push:
+    branches: ['feat/unified-test-downloads-8c3ae16']
+    paths: ['.github/workflows/unified-test-downloads.yml']
+permissions:
+  contents: write
+jobs:
+  portal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: '8c3ae16c726d0a308b4595e827d6ba3ea80ddd0b'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_sqlite, curl, pcntl
+      - name: Validate private account primitives
+        run: |
+          find _private/server -name '*.php' -print0 | xargs -0 -n1 php -l
+          php -l _private/views/portal.php
+          php -l _private/views/application-shell.php
+          php tests/application-bootstrap.test.php
+          php tests/application-shell.test.php
+          php -l _private/views/portal-purchase.php
+          php -l _private/views/portal-service.php
+          php -l _private/views/portal-job.php
+          php -l public/staff-production.php
+          php -l _private/server/booking-webhook.php
+          php -l public/account.php
+          php -d sendmail_path=/bin/false tests/portal-email.test.php
+          php tests/portal-email-concurrency.test.php
+          php tests/portal-access.test.php
+          php tests/portal-session.test.php
+          php tests/portal-purchase.test.php
+          php tests/portal-service.test.php
+          php tests/account-workflow.test.php
+          php tests/booking-change-request.test.php
+          php tests/booking-review-ui.test.php
+          php tests/portal-job.test.php
+          php tests/booking-finance.test.php
+          php tests/portal-onsite-catalog.test.php
+          php tests/portal-vendor.test.php
+          php -l public/vendor.php
+          php -l public/staff-vendors.php
+          php tests/portal-draft-recovery.test.php
+          PORTAL_FIXTURE_AGENT_EMAIL=info@1789media.com php tests/portal-draft-recovery.test.php
+          php tests/portal-test-recipient.test.php
+          php tests/portal-release.test.php
+          php tests/portal-phone.test.php
+          php tests/portal-sms.test.php
+          php -l tools/portal-enroll-phone.php
+          python3 tests/portal-installer.test.py
+          python3 tests/portal-complete.test.py
+          python3 tests/portal-re-enrollment.test.py
+          python3 tests/portal-re-workflow.test.py
+          python3 tests/portal-draft-installer.test.py
+          python3 tests/portal-polish-installer.test.py
+          python3 tests/portal-email-installer.test.py
+          python3 tests/portal-test-recipient-installer.test.py
+          python3 tests/portal-job-installer.test.py
+          python3 tests/portal-onsite-installer.test.py
+          python3 tests/portal-vendor-installer.test.py
+          python3 tests/portal-staff-installer.test.py
+          python3 tests/portal-staff-source.test.py
+          python3 tests/ux-workspace-source.test.py
+          python3 tests/finance-source.test.py
+          python3 tools/build-portal-installer.py
+          git diff --exit-code -- tools/install-customer-portal.py
+          python3 tools/build-portal-complete.py
+          git diff --exit-code -- tools/install-portal-complete.py
+          python3 tools/build-re-draft-recovery.py
+          git diff --exit-code -- tools/install-re-draft-recovery-r1.py
+          python3 tools/build-re-business-workflow.py
+          git diff --exit-code -- tools/install-re-business-workflow.py
+          python3 tools/build-portal-polish.py
+          git diff --exit-code -- tools/install-re-portal-polish-20261002-r1.py
+          python3 tools/build-test-recipient.py
+          git diff --exit-code -- tools/install-re-test-recipient-20261002-r1.py
+          python3 tools/build-vendor-accounts.py
+          git diff --exit-code -- tools/install-re-vendor-accounts-20261005-r1.py
+          python3 tools/build-onsite-services.py
+          git diff --exit-code -- tools/install-re-onsite-services-20261005-r1.py
+          python3 tools/build-job-closeout.py
+          git diff --exit-code -- tools/install-re-job-closeout-20261003-r1_1.py
+          python3 tools/build-portal-email.py
+          git diff --exit-code -- tools/install-re-email-change-20261002-r1.py
+          python3 tools/build-staff-review.py
+          git diff --exit-code -- tools/install-re-staff-review-20261002-r1.py
+      - name: Use official HTTPS Ubuntu mirror for browser dependencies
+        run: |
+          # Preserve apt signatures and TLS while avoiding the previously stalled HTTP mirror.
+          printf '%s\n' 'https://archive.ubuntu.com/ubuntu' | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
+      - name: Install isolated browser test dependencies
+        run: |
+          npm install --prefix "$RUNNER_TEMP/portal-browser" --no-save playwright@1.58.2
+          "$RUNNER_TEMP/portal-browser/node_modules/.bin/playwright" install --with-deps chromium --only-shell
+      - name: Check preview interactions and responsive layout
+        env:
+          NODE_PATH: ${{ runner.temp }}/portal-browser/node_modules
+          PORTAL_SCREENSHOTS: ${{ runner.temp }}/portal-screenshots
+        run: |
+          mkdir -p "$PORTAL_SCREENSHOTS"
+          node tests/portal-preview.browser.cjs
+          node tests/portal-http.browser.cjs
+          node tests/portal-staff.browser.cjs
+          node tests/portal-job.browser.cjs
+          node tests/portal-vendor.browser.cjs
+          node tests/portal-email.browser.cjs
+          node tests/calendar-notice.browser.cjs
+      - name: Save example-only preview screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: customer-portal-preview
+          path: ${{ runner.temp }}/portal-screenshots
+          if-no-files-found: ignore
+          retention-days: 7
+  fpm:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: '8c3ae16c726d0a308b4595e827d6ba3ea80ddd0b'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_sqlite, curl, openssl, opcache
+      - name: Install the matching FPM runtime for isolated tests
+        run: |
+          sudo add-apt-repository -y ppa:ondrej/php
+          sudo apt-get update
+          sudo apt-get install -y php8.2-fpm
+      - name: Test protocol diagnostics and maintenance boundaries
+        run: python3 tests/appointment-approval-host.test.py
+      - name: Prove document-root behavior, token guard and code/cache refresh on actual FPM
+        env:
+          SITESEE_TEST_FPM: /usr/sbin/php-fpm8.2
+          SITESEE_TEST_OPCACHE: /usr/lib/php/20220829/opcache.so
+        run: python3 tests/appointment-approval-fpm.test.py
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        php: ['8.2', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: '8c3ae16c726d0a308b4595e827d6ba3ea80ddd0b'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '${{ matrix.php }}'
+          extensions: pdo_sqlite, curl, openssl
+      - name: Require exact-source privileged release and interrupted replacement checks
+        run: sudo env PATH="$PATH" SITESEE_REQUIRE_PRIVILEGED_TESTS=1 python3 tests/unified-release.test.py
+  downloads:
+    needs: [portal, fpm, release]
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: '8c3ae16c726d0a308b4595e827d6ba3ea80ddd0b'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build exact reviewed source
+        run: python3 tools/build-unified-release.py --commit 8c3ae16c726d0a308b4595e827d6ba3ea80ddd0b --output "$RUNNER_TEMP/unified-test-downloads"
+      - name: Verify, wait for exact-source CI and publish TEST downloads
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import os, pathlib, json, hashlib, urllib.request, urllib.parse, urllib.error, base64, time
+          root = pathlib.Path(os.environ['RUNNER_TEMP']) / 'unified-test-downloads'
+          expected = {'unified-test-8c3ae16c726d.tar.gz': 'b79effc1e203bbc8d8d8d7c953edf45eb6bc101cafccd0798fbc9ef17429ce7e', 'install-unified.py': '5ed5bdf8a50d2f970044a892207d9c964132c34b77891bfa0e61db0aed5a2218', 'install-appointment-approval-host.py': 'c6da86e9ecff3b57e126813a47f5ef1f698840e243022a5065a8f587eeb21d35', 'HOST_TEST_REVIEW.md': 'dbaa4f3a10603cc87795300c239bdddff4edc59de18581e495f587406de69750'}
+          commit = '8c3ae16c726d0a308b4595e827d6ba3ea80ddd0b'
+          tag = 'unified-test-8c3ae16c726d'
+          base = 'https://api.github.com/repos/SiteSeeAI/SiteSee-Real-Estate-Web-App'
+          (root / 'HOST_TEST_REVIEW.md').write_bytes(base64.b64decode('IyBGSU4tMDAxOiBhdXRvbWF0aWMgY2FuY2VsbGF0aW9uIHJlZnVuZHMgYW5kIHJlcGxhY2VtZW50IGNyZWRpdHMKClN0YXR1czogaW1wbGVtZW50YXRpb24gcmV2aWV3ZWQgYW5kIGxvY2FsbHkgdGVzdGVkLCBub3QgaW5zdGFsbGVkIG9uIHRoZSBob3N0LiBUaGUgaW5zdGFsbGVkIHByZWRlY2Vzc29yIHJlbWFpbnMgYHVuaWZpZWQtdGVzdC1jNDAyMzZlMDkzNzVgLiBTdHJpcGUgc3RheXMgVEVTVC4gRXhhY3Qgc291cmNlIGlzIGlkZW50aWZpZWQgYnkgdGhlIHJlbGVhc2UgbWFuaWZlc3Q7IHB1YmxpY2F0aW9uLCBvcGVyYXRvciBpbnN0YWxsYXRpb24gYW5kIGNvbm5lY3RlZCBURVNUIGFjY2VwdGFuY2UgYXJlIHNlcGFyYXRlIGV2aWRlbmNlLgoKIyMgQ29uZmlybWVkIHBvbGljeQoKfCBDYW5jZWxsYXRpb24gfCBDYXNoIGRpc3Bvc2l0aW9uIHwKfCAtLS0gfCAtLS0gfAp8IFNpdGVTZWUgbWFuYWdlbWVudCB8IFJlZnVuZCBhbGwgY29sbGVjdGVkIGJvb2tpbmcgcGF5bWVudHMsIHJlZ2FyZGxlc3Mgb2Ygbm90aWNlLCBiZWZvcmUgY29tcGxldGVkIG9uc2l0ZSB3b3JrLiB8CnwgQ3VzdG9tZXIsIGF0IGxlYXN0IDI0IGhvdXJzIGJlZm9yZSBjb25maXJtZWQgYXBwb2ludG1lbnQgfCBSZWZ1bmQgdGhlIHBhaWQgY2FzaCBkZXBvc2l0LiB8CnwgQ3VzdG9tZXIsIHVuZGVyIDI0IGhvdXJzIHwgR2l2ZSB0aGUgY2FzaCBkZXBvc2l0IGFzIGFjY291bnQgY3JlZGl0LiB8CnwgQ3VzdG9tZXIgd2l0aCBleHRyYSBwcmVwYWlkIGJhbGFuY2UgfCBSb3V0ZSB0aGF0IGV4dHJhIHBheW1lbnQgdG8gc3RhZmYgcmV2aWV3OyBhcHBseSB0aGUgZGVwb3NpdCBwb2xpY3kgaW5kZXBlbmRlbnRseS4gfAoKQ3JlZGl0IGF1dG9tYXRpY2FsbHkgZnVuZHMgdGhlIG5leHQgYXV0aGVudGljYXRlZCByZXBsYWNlbWVudCBib29raW5nJ3MgZGVwb3NpdCBmaXJzdCwgdGhlbiBpdHMgcmVtYWluaW5nIGFwcHJvdmVkIGJhbGFuY2UuIFVudXNlZCBjcmVkaXQgc3RheXMgb24gdGhlIGFjY291bnQuIENyZWRpdCB1c2VkIGJ5IGEgc3Vic2VxdWVudGx5IGNhbmNlbGxlZCByZXBsYWNlbWVudCBpcyByZXN0b3JlZCwgd2l0aG91dCBtaW50aW5nIG5ldyB2YWx1ZSBvciByZWZ1bmRpbmcgaXRzIG9yaWdpbmFsIHNvdXJjZSBwYXltZW50IGFnYWluLiBUaGUgZWxhcHNlZC10aW1lIHJ1bGUgdXNlcyB0aGUgc2F2ZWQgY2FuY2VsbGF0aW9uIHJlcXVlc3QgdGltZXN0YW1wIGFuZCBjb25maXJtZWQgY2FsZW5kYXIgc3RhcnQsIHNvIHJldHJpZXMgYW5kIGRheWxpZ2h0LXNhdmluZyBjaGFuZ2VzIGRvIG5vdCBhbHRlciB0aGUgZGVjaXNpb24uIFByZXZpb3VzbHkgY2FuY2VsbGVkIG9yZGVycyBhcmUgbm90IGF1dG9tYXRpY2FsbHkgYmFja2ZpbGxlZC4KCiMjIFJldmlldyAxOiBkZXBlbmRlbmNpZXMgYW5kIGNhbGwgcGF0aHMKClRoZSBjYWxlbmRhciBjYW5jZWxsYXRpb24gc3RhdGUgbWFjaGluZSBzdGlsbCB2ZXJpZmllcyB0aGUgb3duZWQgZXZlbnQgYmVmb3JlIGNvbW1pdHRpbmcgYW4gYXBwbGllZCBjYW5jZWxsYXRpb24uIFRoYXQgY29tbWl0IHNhdmVzIHRoZSBmaW5hbmNpYWwgb3V0Ym94IGJlc2lkZSB0aGUgZXhpc3RpbmcgbGlmZWN5Y2xlIG9wZXJhdGlvbi4gU3RhZmYsIGF1dGhlbnRpY2F0ZWQgY3VzdG9tZXIgYW5kIHJldGFpbmVkIHNpZ25lZCBtYW5hZ2VtZW50IGVuZHBvaW50cyBhdHRlbXB0IHRoZWlyIG9yaWdpbmFsIGNhbmNlbGxhdGlvbiBub3RpY2UgYmVmb3JlIHByb2Nlc3NpbmcgZmluYW5jZSwgc28gc2xvdyBTdHJpcGUgY2FsbHMgZG8gbm90IHByZXZlbnQgdGhlIG5vdGljZS4gTm8gY2FsbGJhY2sgVVJMLCBzaWduZWQtbGluayBpZGVudGl0eSwgc2NoZWR1bGluZyBjb21tYW5kIG9yIHJvbGUvc2Vzc2lvbiBmb3JtYXQgY2hhbmdlcy4KClRoZSBleGlzdGluZyByZWNvbmNpbGlhdGlvbiB3b3JrZXIgaW5kZXBlbmRlbnRseSBzZWxlY3RzIHVuZmluaXNoZWQgZmluYW5jaWFsIG91dGJveCByb3dzLCBldmVuIGFmdGVyIHRoZWlyIGNhbGVuZGFyIGRhdGUgaGFzIHBhc3NlZC4gQSBzZXBhcmF0ZSBib3VuZGVkIGZpbmFuY2lhbCBwYXNzIHByZXZlbnRzIGNhbGVuZGFyIHJlY29uY2lsaWF0aW9uIGZyb20gY29uc3VtaW5nIHRoZSBlbnRpcmUgYnVkZ2V0LiBFeGlzdGluZyBjYWxlbmRhciBhbmQgZW1haWwgcHJvdmlkZXIgd3JpdGVzIHJlbWFpbiBleGNsdWRlZCBmcm9tIHRoZSB3b3JrZXIuIFNhdmVkIGNhbmNlbGxhdGlvbiBURVNUIHJlZnVuZCBQT1NUcyBhcmUgdGhlIGV4cGxpY2l0bHkgcmVxdWVzdGVkIG5ldyBjYXBhYmlsaXR5OyBkZXBsb3lpbmcgdGhlIGNvZGUgaXRzZWxmIHBlcmZvcm1zIG5vIHByb3ZpZGVyIG9wZXJhdGlvbi4KClRoZSBmaXJzdCBhdXRob3JpemVkIGNhbmNlbGxhdGlvbiBQT1NUIHdyaXRlcyB0aGUgY29uZmlndXJlZCBURVNUIGtleSB0byB0aGUgYWNjb3VudC1vd25lZCBwcml2YXRlIGBib29raW5nLWZpbmFuY2Uta2V5Lmpzb25gIHVzaW5nIGV4Y2x1c2l2ZSBjcmVhdGlvbiBhbmQgcmVzdHJpY3RpdmUgcGVybWlzc2lvbnMuIENMSSByZWNvdmVyeSBjaGVja3MgcmVndWxhci1maWxlIHR5cGUsIG93bmVyLCBsaW5rIGNvdW50LCBzaXplLCBwcml2YXRlIG1vZGUgYW5kIFRFU1QgcHJlZml4IGJlZm9yZSBsb2FkaW5nIGl0LiBVbmtub3duIGtleSByb3RhdGlvbiBpcyByZWZ1c2VkLiBUaGUgZmlsZSBpcyBleGNsdWRlZCBmcm9tIHBhY2thZ2UgcGF5bG9hZHMsIHB1YmxpYyBwYXRocywgbG9ncyBhbmQgYXJndW1lbnRzLiBObyBzZWNyZXQgaXMgZW1iZWRkZWQgaW4gc291cmNlIG9yIGZpeHR1cmVzLgoKIyMgUmV2aWV3IDI6IHNvdXJjZSwgb3duZXJzaGlwIGFuZCBmaW5hbmNpYWwgaW52YXJpYW50cwoKRml2ZSBhZGRpdGl2ZSBmaW5hbmNlIHRhYmxlcyByZXRhaW4gY2FuY2VsbGF0aW9uIGRlY2lzaW9ucywgaW1tdXRhYmxlIHJlZnVuZCByZXF1ZXN0cywgZ3JhbnRzLCBhbGxvY2F0aW9ucyBhbmQgc2VwYXJhdGUgcmVwbGFjZW1lbnQgZnVuZGluZy4gT3JpZ2luYWwgcHJpY2VzLCBpbnRlcm5hbCByZWZlcmVuY2VzLCBwYXltZW50IHJvd3MgYW5kIHByb3ZpZGVyIElEcyBhcmUgcmV0YWluZWQuIEZ1bGwtY3JlZGl0IGRlcG9zaXRzIGtlZXAgdGhlaXIgU3RyaXBlIGRlcG9zaXQgSURzIG51bGwgYW5kIHVzZSB2ZXJpZmllZCBzb3VyY2UgY3VzdG9tZXIvY2FyZCBsaW5lYWdlIHdpdGggZnJlc2ggY29uc2VudCB3aGVuIGxhdGVyIGNhc2ggY29sbGVjdGlvbiBpcyByZXF1aXJlZC4KCkNhc2ggcHJvb2YgYmluZHMgdGhlIFRFU1QgY2hlY2tvdXQsIGludGVudCBhbmQgY2FwdHVyZWQgdW5kaXNwdXRlZCBjaGFyZ2UgdG8gdGhlIGV4YWN0IHJlZmVyZW5jZSwgYW1vdW50LCBjdXJyZW5jeSBhbmQgY3VzdG9tZXIuIFJlZnVuZCBwcm9vZiBhZGRpdGlvbmFsbHkgYmluZHMgY2hhcmdlLCBpbnRlbnQsIGFtb3VudCBhbmQgaW1tdXRhYmxlIG9wZXJhdGlvbiBtZXRhZGF0YS4gQSByZWZ1bmQgaXMgY29uZmlybWVkIG9ubHkgYWZ0ZXIgc3VjY2VlZGVkIHN0YXR1cyBhbmQgbWF0Y2hpbmcgY2hhcmdlIHJlYWRiYWNrLiBTdHJpcGUgUmVmdW5kIG9iamVjdHMgZG8gbm90IGV4cG9zZSBgbGl2ZW1vZGVgOyBURVNUIHByb3ZlbmFuY2UgaXMgZXN0YWJsaXNoZWQgYnkgdGhlIG9yaWdpbmFsIGludGVudC9jaGFyZ2UgYW5kIFRFU1QgdHJhbnNwb3J0IGNyZWRlbnRpYWxzLgoKUmVmdW5kIGNyZWF0aW9uIHVzZXMgb25lIGR1cmFibGUga2V5IGFuZCBhIHNhdmVkIGZpcnN0LXN1Ym1pc3Npb24gdGltZS4gQSBsb3N0IHJlc3VsdCBpcyByZWNvdmVyZWQgYnkgZXhhY3QgcmVmdW5kLUlEIG9yIGNoYXJnZS1saXN0IHJlYWRiYWNrLiBBbiBhZ2VkIHN1Ym1pdHRlZCByZXF1ZXN0IHdpdGhvdXQgY29uY2x1c2l2ZSBldmlkZW5jZSBuZXZlciBnZXRzIGEgbmV3IGtleSBvciBQT1NULiBFeGlzdGluZyBleHRlcm5hbCByZWZ1bmRzLCBkaXNwdXRlcywgZmFpbGVkIG9yIHVuY2VydGFpbiBwcm92aWRlciBzdGF0ZSByZXF1aXJlIHJldmlldy4gQ3VzdG9tZXIgZXh0cmEgcHJlcGF5bWVudHMgYXJlIGhlbGQgZm9yIHN0YWZmIHdpdGhvdXQgYmxvY2tpbmcgdGhlIHNlcGFyYXRlIGRlcG9zaXQgZGlzcG9zaXRpb24uCgpTdGFibGUgcG9ydGFsIG9yZGVyIG93bmVyc2hpcCBnb3Zlcm5zIGdyYW50cyBhbmQgc3BlbmRpbmcuIFNvdXJjZSBmdW5kcyBhcmUgcmV2ZXJpZmllZCBiZWZvcmUgdXNlLCBhbmQgYWNjb3VudCBzdGF0dXMsIHB1cmNoYXNlIHRva2VuL2NhcGFiaWxpdHkgYW5kIFZlbmRvciBhdXRob3JpemF0aW9uIGFyZSByZWNoZWNrZWQgdW5kZXIgYEJFR0lOIElNTUVESUFURWAuIEF2YWlsYWJsZSBjYXBhY2l0eSBleGNsdWRlcyByZXNlcnZlZC91c2VkIGFsbG9jYXRpb25zLiBDb25jdXJyZW50IHJlc2VydmF0aW9ucyBjYW5ub3Qgb3ZlcnNwZW5kLiBPbmx5IHBvc2l0aXZlLXJlbWFpbmluZyBncmFudHMgYXJlIGNoZWNrZWQgd2hlbiBjcmVhdGluZyBuZXcgZnVuZGluZzsgZXhoYXVzdGVkIGFkanVzdGVkIGNyZWRpdHMgY2Fubm90IGJsb2NrIHVucmVsYXRlZCBjYXNoIHB1cmNoYXNlcy4KClNpZ25lZCBwYWlkIGJhbGFuY2UgZXZlbnRzIGR1cmFibHkgd2FrZSB0aGUgb3JpZ2luYWwgY2FuY2VsbGF0aW9uIGluc2lkZSB0aGUgcGF5bWVudCB0cmFuc2FjdGlvbi4gRmluYW5jaWFsIGNvbXBsZXRpb24gcmVjaGVja3MgdGhlIGN1cnJlbnQgcGFpZCBsZWRnZXIsIHJlZnVuZCBzdGF0ZXMsIHVuYXBwbGllZCBiYWxhbmNlIGF0dGVtcHRzLCBvd25lciwgY29tcGxldGVkLWpvYiBndWFyZCBhbmQgY2FuY2VsbGF0aW9uIGlkZW50aXR5IHVuZGVyIGEgd3JpdGUgbG9jaywgc28gYSBsYXRlIHBheW1lbnQgY2Fubm90IGxvc2UgaXRzIHJlY292ZXJ5IHdha2UtdXAuIFZlcmlmaWVkIHVucGFpZCBjaGVja291dCBleHBpcmF0aW9uIHJlc3RvcmVzIGhlbGQgY3JlZGl0IGFuZCByZXRpcmVzIHRoYXQgcmVkdWNlZC1wcmljZSBwdXJjaGFzZSBjYXBhYmlsaXR5LiBEdXBsaWNhdGUgcGFpZCBldmVudHMgYWZ0ZXIgY2FuY2VsbGF0aW9uIGNhbm5vdCBzcGVuZCByZXN0b3JlZCBjcmVkaXQgYWdhaW4uCgpgZmluYW5jZS1zb3VyY2UuanNvbmAgcHJlc2VydmVzIGV4YWN0IGJlZm9yZSBieXRlcy9oYXNoZXMgZnJvbSB0aGUgaW5zdGFsbGVkIGBjNDAyMzZlMDkzNzU0NmUxNGViYjUwZDgzNWUzYjkxMWY3MDBkNjE2YCBzb3VyY2UgYW5kIHJldmlld2VkIGFmdGVyIGJ5dGVzL2hhc2hlcy4gSGlzdG9yaWNhbCBidWlsZGVycyByZXZlcnNlIHRoaXMgbGF5ZXIgYmVmb3JlIHRoZSBVWCBhbmQgZWFybGllciBsYXllcnMgYW5kIHJlamVjdCB1bmtub3duIGVkaXRzLiBFeGlzdGluZyBoaXN0b3JpY2FsIHNvdXJjZSBhbmQgcmVjZWlwdCBldmlkZW5jZSBpcyByZXRhaW5lZC4KCiMjIFJldmlldyAzOiBhdXRvbWF0ZWQgYW5kIGJyb3dzZXIgcGFyaXR5CgpBbGwgNDIgUEhQIHN1aXRlcyBwYXNzIGxvY2FsbHkgb24gUEhQIDguMiBhbmQgUEhQIDguMy4gVGhlIGZpbmFuY2Ugc3VpdGUgaW5jbHVkZXMgODcgYXNzZXJ0aW9ucyBjb3ZlcmluZyBtYW5hZ2VtZW50L2FsbC1jYXNoIHJlZnVuZHMsIHRoZSAyNC1ob3VyIGJvdW5kYXJ5LCBjcmVkaXQgb3duZXJzaGlwLCBjb25jdXJyZW50IHJlc2VydmF0aW9ucywgcGFydGlhbC9mdWxsIGNyZWRpdCwgdW51c2VkIHZhbHVlLCBpbmNyZWFzZWQgZmluYWwgc2NvcGUsIHZlcmlmaWVkIGNhcmQgbGluZWFnZSwgbG9zdC9hZ2VkIHJlZnVuZCByZXBsaWVzLCBwZW5kaW5nL2ZhaWxlZCBzdGF0dXMsIGRpc3B1dGVzLCBtYW51YWwgYWRqdXN0bWVudHMsIGxhdGUgcGF5bWVudCByYWNlcywgY2hlY2tvdXQgZXhwaXJ5IGFuZCBwcml2YXRlIHdvcmtlciBjcmVkZW50aWFscy4KClRoZSBleGlzdGluZyBzZXZlbiBzeW50aGV0aWMgSFRUUFMgYnJvd3NlciBqb3VybmV5cyBjb3ZlciBjdXN0b21lciwgc3RhZmYsIGpvYiwgVmVuZG9yLCBlbWFpbCwgcHJldmlldyBhbmQgY2FsZW5kYXIgbm90aWNlIGJlaGF2aW9yIHdpdGggZXh0ZXJuYWwgYnJvd3NlciBlZ3Jlc3MgYmxvY2tlZC4gQmlsbGluZyBpcyBjaGVja2VkIGFmdGVyIGNhbmNlbGxhdGlvbiBhbmQgcGFpZCBiYWxhbmNlLiBVbml0IGZpbmFuY2UgZGVwZW5kZW5jaWVzIGFuZCBkaXNwb3NhYmxlIGJyb3dzZXIgcmVmdW5kIGJvdW5kYXJpZXMgZmFpbCBjbG9zZWQ7IHRlc3QgY3JlZGVudGlhbHMgbmV2ZXIgc2VsZWN0IHJlYWwgcHJvdmlkZXIgb3BlcmF0aW9ucy4gRXhpc3RpbmcgYXV0aG9yaXphdGlvbiBhbmQgVEVTVCBnYXRlcyByZW1haW4gaW50YWN0LgoKTm9kZSB1bml0IGNoZWNrcyBwYXNzLiBIaXN0b3JpY2FsIHNvdXJjZS1sYXllciBjaGVja3MgYW5kIGxvY2FsIFB5dGhvbiBpbnN0YWxsZXIvcmVjb3ZlcnkgY2hlY2tzIHBhc3Mgd2l0aGluIGF2YWlsYWJsZSBwcml2aWxlZ2VzLiBMb2NhbCBwcml2aWxlZ2VkIG93bmVyc2hpcCBjYXNlcyBhcmUgc2tpcHBlZCBhbmQgbXVzdCBwYXNzIHdpdGggemVybyBza2lwcyBvbiB0aGUgc291cmNlLXBpbm5lZCBHaXRIdWIgcnVubmVyIGJlZm9yZSBwdWJsaWNhdGlvbi4gVHdlbnR5LXNldmVuIGhvc3QgcHJvdG9jb2wgY2hlY2tzIGFuZCBlaWdodCB0ZXN0cyB1c2luZyBhY3R1YWwgaXNvbGF0ZWQgUEhQLUZQTSBwYXNzIGxvY2FsbHkuCgojIyBSZXZpZXcgNDogaW5zdGFsbGF0aW9uLCBpbnRlcnJ1cHRpb24gYW5kIHByZXNlcnZhdGlvbgoKVGhlIGNhbmRpZGF0ZSBpbnN0YWxsZXIgYWNjZXB0cyB0aGUgZXhhY3QgcHVibGlzaGVkIHByZWRlY2Vzc29yIGFyY2hpdmUsIG1hbmlmZXN0IGFuZCBpdHMgaGlzdG9yaWNhbCBzY2hlbWEgZGVzY3JpcHRpb24sIHJhdGhlciB0aGFuIGNhbmRpZGF0ZS1kZXJpdmVkIG1ldGFkYXRhLiBUaGUgcHJlZGVjZXNzb3IgcGFja2FnZSBTSEEyNTYgaXMgYGU5Nzc4NWZiNTRlOTViOTg2MmE4NjViZGFiZDBlYmI1N2VlYzg0YjYwZjQ5NGIzMGUxNTczNWEyZTViYmIyYWFgOyBpdHMgbWFuaWZlc3QgU0hBMjU2IGlzIGAzMWQyNTAwMmM3ZWMyYmMxYTVkZGY0ODhmNThiZWQ1MGIwMTM1ZTY1M2NhZTFmMTc2OTI0MjM5NzYwNTMzNzhkYC4KCkRlcGxveW1lbnQgcmV0YWlucyB0aGUgZXhpc3RpbmcgYmFja3VwLCBwcmVmbGlnaHQsIG1haW50ZW5hbmNlL2RyYWluLCBQSFAtRlBNIHJlZnJlc2gsIGluc3RhbGwsIGV4YWN0IHZlcmlmeSBhbmQgcmVvcGVuIHByb2Nlc3MuIFJlZmxlY3Rpb24gdmVyaWZpZXMgdGhlIG5ldyBmaW5hbmNlIGZ1bmN0aW9ucyBpbiBhY3R1YWwgRlBNLiBObyBvcGVyYXRpb25hbCBkYXRhYmFzZSBtaWdyYXRpb24sIHJlZnVuZCwgY3JlZGl0IGdyYW50LCBjb25maWd1cmF0aW9uL2dhdGUgY2hhbmdlIG9yIG5ldyBzY2hlZHVsZSBpcyBwZXJmb3JtZWQgYnkgZGVwbG95bWVudC4gVGFibGVzIGFyZSBhZGRlZCBkdXJpbmcgbm9ybWFsIGFwcGxpY2F0aW9uIHVzZS4KCkFueSByb3dzIGluIGFueSBvZiB0aGUgZml2ZSBmaW5hbmNpYWwgdGFibGVzIGJsb2NrIHJlc3RvcmF0aW9uIG9mIG9sZGVyIGFwcGxpY2F0aW9uIGNvZGUuIFByZXNlcnZlIHRoZSBvcGVyYXRpb25hbCBkYXRhYmFzZSwgV0FMLCBwcm92aWRlciBvcGVyYXRpb25zLCBwcml2YXRlIGtleSBhbmQgZGVwbG95bWVudCBqb3VybmFsLCB0aGVuIHJlcGFpciBmb3J3YXJkLiBBbiBpc29sYXRlZCBiYWNrdXAgcmVzdG9yZSByZWhlYXJzYWwgaXMgcGVybWl0dGVkOyByZXZlcnRpbmcgdGhlIG9wZXJhdGlvbmFsIGxlZGdlciBhZnRlciBtb25leSBvciBjcmVkaXQgYWN0aXZpdHkgaXMgbm90LiBFeGlzdGluZyBkZXBsb3ltZW50cywgYmFja3VwcyBhbmQgaG9zdC1zcGVjaWZpYyBwcmVzZXJ2ZWQgZmlsZXMgc3RheSBpbnRhY3QuCgpJbmRlcGVuZGVudCBmaW5kaW5ncywgcmVwcm9kdWN0aW9ucyBhbmQgY29ycmVjdGlvbnMgYXJlIHJlY29yZGVkIGluIFt0aGUgaW5kZXBlbmRlbnQgZmluYW5jZSByZXZpZXddKElOREVQRU5ERU5UX0ZJTkFOQ0VfQVVUT01BVElPTl9SRVZJRVcubWQpLgoKIyMgQ29ubmVjdGVkIFRFU1QgYWNjZXB0YW5jZSBhZnRlciBpbnN0YWxsYXRpb24KClVzZSBhcHByb3ZlZCBURVNUIGJvb2tpbmdzIG9ubHkuIFZlcmlmeSBtYW5hZ2VtZW50IGNhc2ggcmVmdW5kLCBjdXN0b21lciBkZXBvc2l0IHJlZnVuZCBhdCBsZWFzdCAyNCBob3VycyBvdXQsIGxhdGUgY3VzdG9tZXIgZGVwb3NpdCBjcmVkaXQsIGF1dG9tYXRpYyByZXBsYWNlbWVudCBkZXBvc2l0L2JhbGFuY2UgdXNlIHdpdGggdW51c2VkIHZhbHVlIHJldGFpbmVkLCBhbmQgY3VzdG9tZXIgZXh0cmEtcHJlcGF5bWVudCBzdGFmZiByZXZpZXcuIENoZWNrIEJpbGxpbmcgYWdhaW5zdCBTdHJpcGUncyBURVNUIHJlZnVuZCByZWNvcmRzLiBFeGlzdGluZyBhY2NlcHRlZCBjYWxlbmRhciBjYW5jZWxsYXRpb24gYW5kIG5vdGljZSBjaGVja3MgbmVlZCByZXBldGl0aW9uIG9ubHkgaWYgdGhlc2UgbmV3IHNjZW5hcmlvcyByZXZlYWwgYSByZWdyZXNzaW9uLiBUaGUgZXhpc3Rpbmcgd29ya2VyIGxvZyBzaG91bGQgcmVwb3J0IGZpbmFuY2lhbCBvdXRib3ggcHJvY2Vzc2luZyB3aXRob3V0IGNhbGVuZGFyL21haWwgd3JpdGVzLiBUaGUgdXNlciBoYXMgbm90IHlldCBhY2NlcHRlZCB0aGVzZSBjb25uZWN0ZWQgZmluYW5jZSBzY2VuYXJpb3MuCgojIEluZGVwZW5kZW50IHJldmlldyDigJQgRklOLTAwMQoKUmV2aWV3ZWQgaW5kZXBlbmRlbnRseSBvbiAyMDI2LTEwLTA5IHVuZGVyIGBDT0RFWF9IQU5ET0ZGLm1kOjk3YC4gVGhpcyByZXZpZXcgY292ZXJzIHRoZSBjdXJyZW50IGltcGxlbWVudGF0aW9uIGRyYWZ0IGFnYWluc3QgdGhlIGluc3RhbGxlZCBhcHBsaWNhdGlvbiBwcmVkZWNlc3NvciBgYzQwMjM2ZTA5Mzc1NDZlMTRlYmI1MGQ4MzVlM2I5MTFmNzAwZDYxNmAuIFRoZSBjaGVja291dCBIRUFEIGJlZm9yZSB0aGUgZmluYW5jZSBzb3VyY2UgZnJlZXplIHdhcyBgOTkzYTBmYmM0YjUyNTFiZWY5NTcxZjI5MjU2MTRlYzcxNGYxODhjM2A7IHRoZSByZXZpZXdlZCBpbXBsZW1lbnRhdGlvbiB3YXMgc3RpbGwgaW4gdGhlIHdvcmtpbmcgdHJlZS4gQW4gZXhhY3QgZmluYWwgc291cmNlIGNvbW1pdCwgcGFja2FnZSBhbmQgY29ycmVzcG9uZGluZyByZWxlYXNlIGV2aWRlbmNlIHJlcXVpcmUgYSBzdWJzZXF1ZW50IHZlcmlmaWNhdGlvbi4KCioqQ29uY2x1c2lvbjoqKiBObyByZW1haW5pbmcgaW1wbGVtZW50YXRpb24gYmxvY2tlciB3YXMgZm91bmQgaW4gdGhlIGNvcnJlY3RlZCBkcmFmdC4gVGhlIGZpbmFuY2lhbCBjb21wbGV0aW9uIHJhY2UgYW5kIHRlc3QgdHJhbnNwb3J0IGlzb2xhdGlvbiBmaW5kaW5ncyBmcm9tIHRoZSBmaW5hbCBwYXNzIHdlcmUgY29ycmVjdGVkIGFuZCBpbmRlcGVuZGVudGx5IHJlY2hlY2tlZC4gVGhpcyBjb25jbHVzaW9uIGRvZXMgbm90IGVzdGFibGlzaCBpbnN0YWxsZWQgb3IgY29ubmVjdGVkIFRFU1QgYWNjZXB0YW5jZSwgYW5kIGRvZXMgbm90IGF1dGhvcml6ZSBvciBlc3RhYmxpc2ggTElWRSBvcGVyYXRpb24uCgojIyBTY29wZSBhbmQgZmluYW5jaWFsIGNvbnRyYWN0cwoKVGhlIHJldmlldyBmb2xsb3dlZCBjYW5jZWxsYXRpb24gdGhyb3VnaCBjYWxlbmRhciByZWFkYmFjaywgaXRzIGR1cmFibGUgZmluYW5jaWFsIHBsYW4sIHJlZnVuZCBzdWJtaXNzaW9uL3JlY292ZXJ5LCBhY2NvdW50LW93bmVkIGNyZWRpdCBncmFudHMsIHJlcGxhY2VtZW50IGRlcG9zaXQgYW5kIGJhbGFuY2UgYWxsb2NhdGlvbiwgc2lnbmVkIHBheW1lbnQgZXZlbnRzLCBvbnNpdGUgY29sbGVjdGlvbiwgQmlsbGluZyB2aWV3cywgYW5kIHRoZSBleGlzdGluZyByZWNvbmNpbGlhdGlvbiB3b3JrZXIuIEl0IGFsc28gcmV2aWV3ZWQgdGhlIGNyZWRlbnRpYWwgYnJpZGdlLCBzb3VyY2UgcmV2ZXJzYWwsIGV4YWN0IHByZWRlY2Vzc29yIGNvbXBhdGliaWxpdHkgYW5kIGNvZGUtcm9sbGJhY2sgZ3VhcmQuCgpUaGUgaW1wbGVtZW50ZWQgcG9saWN5IG1hdGNoZXMgdGhlIGNvbmZpcm1lZCBzY29wZTogbWFuYWdlbWVudCBjYW5jZWxsYXRpb24gcmVmdW5kcyBjb2xsZWN0ZWQgY2FzaCBwYXltZW50cyByZWdhcmRsZXNzIG9mIG5vdGljZTsgY3VzdG9tZXIgY2FuY2VsbGF0aW9uIGF0IGxlYXN0IDI0IGhvdXJzIGJlZm9yZSB0aGUgY29uZmlybWVkIGFwcG9pbnRtZW50IHJlZnVuZHMgdGhlIHBhaWQgZGVwb3NpdDsgbGF0ZXIgY3VzdG9tZXIgY2FuY2VsbGF0aW9uIGdyYW50cyBkZXBvc2l0IGNyZWRpdDsgYWRkaXRpb25hbCBjdXN0b21lciBwcmVwYWlkIGNhc2ggZ29lcyB0byBzdGFmZiByZXZpZXcuIFJlcGxhY2VtZW50IGNyZWRpdCBmdW5kcyB0aGUgZGVwb3NpdCBmaXJzdCBhbmQgdGhlbiB0aGUgYmFsYW5jZSwgcmV0YWlucyB1bnVzZWQgdmFsdWUsIGFuZCBpcyByZXN0b3JlZCByYXRoZXIgdGhhbiBpc3N1ZWQgYWdhaW4gd2hlbiB0aGF0IHJlcGxhY2VtZW50IGlzIGNhbmNlbGxlZC4gRXhpc3RpbmcgY2FuY2VsbGVkIG9yZGVycyBhcmUgbm90IGF1dG9tYXRpY2FsbHkgYmFja2ZpbGxlZC4KCkdyb3NzIHByaWNlcyBhbmQgZXhpc3RpbmcgcGF5bWVudCBpZGVudGl0aWVzIHJlbWFpbiBzZXBhcmF0ZSBmcm9tIHRoZSBuZXcgY2FzaC9jcmVkaXQgbGVkZ2VyLiBGdWxseSBjcmVkaXRlZCBkZXBvc2l0cyBkbyBub3QgaW52ZW50IFN0cmlwZSBzZXNzaW9ucyBvciBwYXltZW50IGludGVudHMuIExhdGVyIGNhcmQgY29sbGVjdGlvbiB1c2VzIHZlcmlmaWVkIHNvdXJjZS1jYXJkIGxpbmVhZ2UgYW5kIGZyZXNoIGNvbnNlbnQ7IHRoZSBvcmlnaW5hbCBjYXNoLWRlcG9zaXQgY29uc2VudCByZW1haW5zIGNvbXBhdGlibGUuIENyZWRpdCBhdXRob3JpemF0aW9uIGlzIGJhc2VkIG9uIGR1cmFibGUgYWNjb3VudCBvd25lcnNoaXAgYW5kIHRoZSBjdXJyZW50IHBheW1lbnQgY2FwYWJpbGl0eSwgd2l0aCBsb2NrLXRpbWUgY2hlY2tzIGZvbGxvd2luZyBwcm92aWRlciByZWFkcy4gVmVuZG9yIGF1dGhvcml6YXRpb24gYW5kIHRoZSBkaXNwbGF5ZWQgZmluYWwgc2NvcGUgYXJlIHJlY2hlY2tlZCBiZWZvcmUgYWRkaXRpb25hbCBiYWxhbmNlIGNyZWRpdCBpcyByZXNlcnZlZC4KClJlZnVuZCByZXF1ZXN0cyByZXRhaW4gb25lIGV4YWN0IGJvZHkgYW5kIGlkZW1wb3RlbmN5IGtleS4gVW5rbm93biByZXNwb25zZXMgYXJlIHJlY292ZXJlZCBieSBleGFjdCByZWZ1bmQgbWV0YWRhdGEgb3Igc2F2ZWQgcmVmdW5kIGlkZW50aXR5OyBhZ2VkIHVua25vd24gc3VibWlzc2lvbnMgZG8gbm90IHJlY2VpdmUgYSBmcmVzaCBQT1NULiBTdWNjZWVkZWQgcmVmdW5kcyByZXF1aXJlIG1hdGNoaW5nIFRFU1QgY2hhcmdlIHJlYWRiYWNrLiBFeGlzdGluZyBhZGp1c3RtZW50cyBhbmQgZGlzcHV0ZXMgcmVxdWlyZSByZXZpZXcuIFRoZSB3b3JrZXIgdXNlcyB0aGUgZXhpc3RpbmcgYWNjb3VudC1vd25lZCBzY2hlZHVsZXIgYW5kIGEgcHJpdmF0ZSBURVNUIGNyZWRlbnRpYWwgYnJpZGdlOyBjcmVkZW50aWFscyBhcmUgbm90IHB1dCBpbiBhcmd1bWVudHMgb3IgbG9ncy4gQ2FsZW5kYXIgYW5kIG5vdGljZSByZWNvdmVyeSByZXRhaW4gdGhlaXIgZXhpc3RpbmcgcHJvdmlkZXIgaWRlbnRpdGllcyBhbmQgZ3VhcmRlZCBvcGVyYXRpb25zLgoKIyMgUmVzb2x2ZWQgZmluZGluZ3MKClRoZSBwYXRocyBiZWxvdyBpZGVudGlmeSB0aGUgY29ycmVjdGVkIGltcGxlbWVudGF0aW9uLCByYXRoZXIgdGhhbiBhbiBvdXRzdGFuZGluZyBkZWZlY3QuCgotICoqSGlnaCDigJQgbGF0ZSBzaWduZWQgcGF5bWVudCBjb3VsZCBiZSBzdHJhbmRlZCBieSBzdGFsZSBjb21wbGV0aW9uLioqIEluIGBfcHJpdmF0ZS9zZXJ2ZXIvYm9va2luZy1maW5hbmNlLnBocGAsIHByb2Nlc3NpbmcgaW5pdGlhbGx5IHJlYWQgcGFpZCBiYWxhbmNlcywgcGVyZm9ybWVkIHJlZnVuZCBwcm92aWRlciBjYWxscywgdGhlbiB1cGRhdGVkIHRoZSBwbGFuIHRvIGNvbXBsZXRlZCB3aXRob3V0IGEgZmluYWwgd3JpdGUgdHJhbnNhY3Rpb24uIEEgc2lnbmVkIGJhbGFuY2UgZXZlbnQgYXJyaXZpbmcgZHVyaW5nIHRob3NlIGNhbGxzIGNvdWxkIHF1ZXVlIHRoZSBwbGFuIGFuZCB0aGVuIGhhdmUgdGhhdCB3YWtlLXVwIG92ZXJ3cml0dGVuLiBBbiBpbmRlcGVuZGVudCBhY3R1YWwtbW9kdWxlIGhhcm5lc3MgaW5qZWN0ZWQgYW4gJDgwIGJhbGFuY2UgZXZlbnQgZHVyaW5nIHJlZnVuZCByZWFkYmFjayBmb3IgYSAkNTAgbWFuYWdlbWVudCBjYW5jZWxsYXRpb246IHRoZSBvbGQgcmVzdWx0IHdhcyBjb21wbGV0ZWQgd2l0aCBvbmx5ICQ1MCByZWZ1bmRlZCBhbmQgemVybyBwbGFucyBlbGlnaWJsZSBmb3IgdGhlIHdvcmtlci4gVGhlIGNvcnJlY3RlZCBmaW5hbCBgQkVHSU4gSU1NRURJQVRFYCByZXNlbGVjdHMgY3VycmVudCBwYWlkIGJhbGFuY2Ugcm93cywgcmVmdW5kIHN0YXRlcywgb3BlbiBhdHRlbXB0cywgb3duZXIvam9iIGlkZW50aXR5IGFuZCBvdGhlciBhcHBsaWVkIGNhbmNlbGxhdGlvbnMgYmVmb3JlIHVwZGF0aW5nIHRoZSBwbGFuLiBUaGUgc2FtZSBpbmRlcGVuZGVudCBoYXJuZXNzIG5vdyBsZWF2ZXMgdGhlIGZpcnN0IHBhc3MgcGVuZGluZyBhbmQgZWxpZ2libGUgZm9yIHRoZSB3b3JrZXI7IHRoZSBuZXh0IHBhc3MgcmVmdW5kcyB0aGUgZnVsbCAkMTMwIGFuZCBjb21wbGV0ZXMuCi0gKipIaWdoIOKAlCBjcmVkaXQgYW5kIGNhc2ggYW1vdW50cyBjb3VsZCBiZSBjb3VudGVkIGluY29uc2lzdGVudGx5IGFjcm9zcyBjb2xsZWN0aW9uIGFuZCByZWNvdmVyeS4qKiBgX3ByaXZhdGUvc2VydmVyL2Jvb2tpbmctam9iLnBocGAsIGBib29raW5nLWpvYi1jYXRhbG9nLnBocGAsIGBwb3J0YWwtYmlsbGluZy5waHBgIGFuZCBgYm9va2luZy1maW5hbmNlLnBocGAgbm93IHVzZSB0aGUgc2VwYXJhdGUgdmVyaWZpZWQgY2FzaCBhbW91bnQgYW5kIGFjdHVhbCB1c2VkL3Jlc2VydmVkIGNyZWRpdCBjb25zaXN0ZW50bHkuIFRoZSBmaW5hbCBzY29wZSBzdXBwb3J0cyBsYXRlciBhcHByb3ZlZCBzZXJ2aWNlcywgcmV0dXJucyB1bnVzZWQgcmVzZXJ2YXRpb25zLCBhbmQgcHJlc2VydmVzIHRoZSBvcmlnaW5hbCBncm9zcyBiaWxsLiBSZXN0b3JlZCBkZXBvc2l0IGNyZWRpdCByZW1haW5zIHZpc2libGUgYXMgaGlzdG9yaWNhbCBjYW5jZWxsYXRpb24gZXZpZGVuY2UuIFBhaWQgd2ViaG9vayByZXBsYXlzIGRvIG5vdCBzcGVuZCByZXN0b3JlZCBjcmVkaXQgYWdhaW4uCi0gKipIaWdoIOKAlCBhdXRob3JpemF0aW9uIGNvdWxkIGNoYW5nZSBkdXJpbmcgcHJvdmlkZXIgcmVhZHMuKiogYGJvb2tpbmdfZmluYW5jZV9yZXNlcnZlYCwgYGJvb2tpbmdfZmluYW5jZV9jcmVkaXRfY2hlY2tvdXRgIGFuZCBgYm9va2luZ19maW5hbmNlX3ByZXBhcmVfYmFsYW5jZWAgbm93IHJlY2hlY2sgYWNjb3VudC9jYXBhYmlsaXR5IG9yIGNhbGxlciBhdXRob3JpemF0aW9uIHVuZGVyIHRoZSB3cml0ZSBsb2NrLiBJbmRlcGVuZGVudCByYWNlIHByb2JlcyBhbmQgcmV0YWluZWQgcmVncmVzc2lvbnMgY292ZXIgZGlzYWJsZWQgYWNjb3VudHMsIHJldm9rZWQgcGF5bWVudCBjYXBhYmlsaXRpZXMgYW5kIHJldm9rZWQgVmVuZG9yIGdyYW50cywgcHJlc2VydmluZyB3YWxsZXQgYW5kIGpvYiBzdGF0ZSBvbiByZWZ1c2FsLgotICoqSGlnaCDigJQgY2FuY2VsbGF0aW9uIG9yIHBheW1lbnQgcmVjb3ZlcnkgY291bGQgcmV1c2UgdGhlIHdyb25nIGZpbmFuY2lhbCBzdGF0ZS4qKiBgYm9va2luZ19maW5hbmNlX3F1ZXVlYCBhbmQgYGJvb2tpbmdfZmluYW5jZV9wcm9jZXNzYCByZXRhaW4gdGhlIG9yaWdpbmFsIGNhbmNlbGxhdGlvbiBvcGVyYXRpb24vcG9saWN5IGFuZCBzdG9wIHJlcGVhdGVkIGFwcGxpZWQgY2FuY2VsbGF0aW9ucyBmb3IgcmV2aWV3LiBTaWduZWQgbGF0ZSBiYWxhbmNlIGV2aWRlbmNlIHF1ZXVlcyB0aGUgb3JpZ2luYWwgZmluYW5jaWFsIHBsYW4gaW5zaWRlIHRoZSBwYXltZW50IHRyYW5zYWN0aW9uLiBFeGFjdCB1bnBhaWQgY3JlZGl0LWNoZWNrb3V0IGV4cGlyeSByZXN0b3JlcyBoZWxkIGNyZWRpdCBhbmQgcmV0aXJlcyB0aGUgb2xkIHJlZHVjZWQtY2FzaCBvcmRlciwgcHJldmVudGluZyBpdHMgcmV1c2UuCi0gKipNZWRpdW0g4oCUIGV4aGF1c3RlZCBjcmVkaXQgc291cmNlcyBjb3VsZCBibG9jayB1bnJlbGF0ZWQgcHVyY2hhc2VzLioqIEFuIGluZGVwZW5kZW50IGhhcm5lc3Mgc2hvd2VkIGEgd2FsbGV0IHdpdGggemVybyBhdmFpbGFibGUgY3JlZGl0IGJsb2NraW5nIGEgbmV3IGNhc2gtb25seSBvcmRlciBhZnRlciBhIGZ1bGx5IHNwZW50IGhpc3RvcmljYWwgc291cmNlIHJlY2VpdmVkIGEgcGF5bWVudCBhZGp1c3RtZW50LiBSZXNlcnZhdGlvbiBub3cgcmV0dXJucyBiZWZvcmUgc291cmNlIHJlYWRzIHdoZW4gYXZhaWxhYmxlIGNyZWRpdCBpcyB6ZXJvOyBuZXcgZGVwb3NpdCBhbmQgYmFsYW5jZSBhbGxvY2F0aW9uIGluc3BlY3Qgb25seSBncmFudHMgd2l0aCBwb3NpdGl2ZSByZW1haW5pbmcgdmFsdWUuIFVzZWQgYWxsb2NhdGlvbnMgc3RpbGwgcmVxdWlyZSB0aGVpciBvd24gc291cmNlIGV2aWRlbmNlIHdoZW4gdGhlIGFmZmVjdGVkIGJvb2tpbmcgaXMgdmVyaWZpZWQuIFJlZ3Jlc3Npb25zIGFsc28gY292ZXIgaGVhbHRoeSBhdmFpbGFibGUgY3JlZGl0IGFsb25nc2lkZSBhbiBleGhhdXN0ZWQgYWRqdXN0ZWQgZ3JhbnQuCi0gKipNZWRpdW0g4oCUIGZpbmFuY2lhbCByZWNvdmVyeSBjb3VsZCBiZSBkZWxheWVkIGJ5IG5vdGljZS9wcm92aWRlciBvcmRlcmluZyBvciB0aGUgd29ya2VyIGJ1ZGdldC4qKiBTdGFmZiwgYWNjb3VudCBhbmQgc2lnbmVkIG1hbmFnZW1lbnQgY2FuY2VsbGF0aW9uIGNhbGxlcnMgbm93IGF0dGVtcHQgdGhlIHNhdmVkIGN1c3RvbWVyIG5vdGljZSBiZWZvcmUgc3luY2hyb25vdXMgZmluYW5jaWFsIHByb2Nlc3NpbmcuIFRoZSBmaW5hbmNpYWwgcGxhbiBpcyBhbHJlYWR5IHF1ZXVlZCBhdG9taWNhbGx5IHdpdGggdGhlIHZlcmlmaWVkIGNhbmNlbGxhdGlvbiwgc28gaW50ZXJydXB0aW9uIHJlbWFpbnMgcmVjb3ZlcmFibGUuIFRoZSBwcml2YXRlIFRFU1Qgd29ya2VyIGNyZWRlbnRpYWwgaXMgcHJvdmlzaW9uZWQgYmVmb3JlIGFuIGF1dGhvcml6ZWQgY2FsZW5kYXIgY2FuY2VsbGF0aW9uIGNhbiBiZWNvbWUgdW5jZXJ0YWluLiBGaW5hbmNpYWwgcHJvY2Vzc2luZyBoYXMgaXRzIG93biB3b3JrZXIgdGltZSBidWRnZXQgcmF0aGVyIHRoYW4gaW5oZXJpdGluZyB0aGUgZWxhcHNlZCBjYWxlbmRhci1yZWNvbmNpbGlhdGlvbiBidWRnZXQuCi0gKipIaWdoIOKAlCBidWlsZGVyIGFuZCBpbnN0YWxsZXIgcHJlZGVjZXNzb3IgcGlucyBpbml0aWFsbHkgZGlmZmVyZWQuKiogYHRvb2xzL2J1aWxkLXVuaWZpZWQtcmVsZWFzZS5weWAgYW5kIGB0b29scy9pbnN0YWxsLXVuaWZpZWQucHlgIG5vdyBhZ3JlZSBvbiB0aGUgaW5zdGFsbGVkIGM0MDIgcHJlZGVjZXNzb3IsIGl0cyBhY3R1YWwgbWFuaWZlc3QgaGFzaCBhbmQgaXRzIG9yaWdpbmFsIHJ1bnRpbWUgc2NoZW1hLiBUaGUgcmVsZWFzZSBmaXh0dXJlIHJlYnVpbGRzIHRoYXQgcHJlZGVjZXNzb3IgdXNpbmcgaXRzIG93biBhcmNoaXZlZCBidWlsZGVyIGFuZCB2YWxpZGF0ZXMgdGhlIHB1Ymxpc2hlZCBwYWNrYWdlIGhhc2ggYmVmb3JlIGltcG9ydGluZyBpdHMgaW5zdGFsbGVyIGFuZCByZWxlYXNlIHJlY29yZC4gVGhlIG5ldyBmaW5hbmNpYWwgdGFibGVzIGhhdmUgYW4gZXhwbGljaXQgYWRkaXRpdmUgcnVudGltZSBkZWNsYXJhdGlvbi4gQW55IHJvdyBpbiBhbnkgb2YgdGhlIGZpdmUgZmluYW5jaWFsIHRhYmxlcyBwcmV2ZW50cyByZXN0b3JhdGlvbiBvZiBvbGQgY29kZTsgb3BlcmF0aW9uYWwgZmluYW5jaWFsIGRhdGEgcmVxdWlyZXMgcmVwYWlyIGZvcndhcmQuCi0gKipNZWRpdW0g4oCUIGhpc3RvcmljYWwgZmluYW5jZSByZXZlcnNhbCBpbml0aWFsbHkgb21pdHRlZCBpdHMgYmVmb3JlLWhhc2ggY2hlY2suKiogYHRlc3RzL2hpc3RvcmljYWwtc291cmNlLnBocGAgbm93IHJlcXVpcmVzIHN0cmljdCBiYXNlNjQgZGVjb2RpbmcgYW5kIHRoZSBleGFjdCBiZWZvcmUgaGFzaCBhZnRlciB2YWxpZGF0aW5nIHRoZSBjdXJyZW50IHJldmlld2VkIGFmdGVyIGhhc2guIFRoZSBQeXRob24gc291cmNlIGNoYWluIHJldGFpbnMgYm90aCBieXRlL2hhc2ggZ3VhcmRzIGFuZCByZWplY3RzIHVua25vd24gZWRpdHMuIEFsbCAxOCBmaW5hbmNpYWwgc291cmNlIGVudHJpZXMgd2VyZSBpbmRlcGVuZGVudGx5IGNvbXBhcmVkIHdpdGggZXhhY3QgYzQwMiBHaXQgb2JqZWN0cyBhbmQgY3VycmVudCBhcHBsaWNhdGlvbiBieXRlcy4KLSAqKk1lZGl1bSDigJQgYSBsZWdhY3kgdW5pdCB0ZXN0IGNvdWxkIGZhbGwgdGhyb3VnaCB0byB0aGUgcmVhbCBiaWxsaW5nIHRyYW5zcG9ydC4qKiBgdGVzdHMvcG9ydGFsLXNlcnZpY2UudGVzdC5waHBgIG5vdyBzdXBwbGllcyBhbiBleHBsaWNpdCBmYWlsLWNsb3NlZCBmaW5hbmNpYWwgdHJhbnNwb3J0LiBGb3VyIGRpc3Bvc2FibGUgYnJvd3NlciBjb3BpZXMgcmVuYW1lIHRoZSByZWZ1bmQgYm91bmRhcnkgYW5kIHVzZSBhIHN5bnRoZXRpYyByZWZ1bmQgc3R1Yi4gVGhlIGJyb3dzZXJzIGFscmVhZHkgZGlzYWJsZWQgb3V0Ym91bmQgUEhQIHRyYW5zcG9ydCBmdW5jdGlvbnM7IHRoZSBuZXcgc3R1YiByZW1vdmVzIGZhbGxiYWNrIGludG8gdGhlIHByb2R1Y3Rpb24gcmVmdW5kIGltcGxlbWVudGF0aW9uLiBQcm9kdWN0aW9uIHRyYW5zcG9ydCBndWFyZHMgd2VyZSB1bmNoYW5nZWQgYW5kIG9yaWdpbmFsIHJvbGUsIGNvbnNlbnQsIHBheW1lbnQsIGNhbGVuZGFyIGFuZCByZWNvdmVyeSBhc3NlcnRpb25zIHdlcmUgcmV0YWluZWQuCgojIyBJbmRlcGVuZGVudCB2YWxpZGF0aW9uCgotIGB0ZXN0cy9ib29raW5nLWZpbmFuY2UudGVzdC5waHBgOiAqKjg3IGFzc2VydGlvbnMgcGFzc2VkIG9uIFBIUCA4LjIgYW5kIFBIUCA4LjMqKiwgaW5jbHVkaW5nIGFjdHVhbCBgcGNudGxgIHJlc2VydmF0aW9uIGNvbXBldGl0aW9uIGFuZCBzeW50aGV0aWMgcHJvdmlkZXIgcmVjb3ZlcnkuCi0gT3JpZ2luYWwgaW5kZXBlbmRlbnQgbGF0ZS1iYWxhbmNlIHJhY2UgaGFybmVzczogKipwYXNzZWQgYWZ0ZXIgY29ycmVjdGlvbioqLCB3aXRoIHBlbmRpbmcvd29ya2VyLWVsaWdpYmxlIHN0YXRlIGZvbGxvd2VkIGJ5IHRoZSBmdWxsICQxMzAgcmVmdW5kIGFuZCBjb21wbGV0ZWQgc3RhdGUuCi0gYHRlc3RzL3BvcnRhbC1zZXJ2aWNlLnRlc3QucGhwYDogKipwYXNzZWQqKiBhZnRlciBleHBsaWNpdCBmaW5hbmNpYWwgdHJhbnNwb3J0IGlzb2xhdGlvbi4KLSBgdGVzdHMvZmluYW5jZS1zb3VyY2UudGVzdC5weWA6ICoqMiBjYXNlcyBwYXNzZWQqKiBhZnRlciB0aGUgZmluYWwgc291cmNlLWxheWVyIHJlZnJlc2guCi0gSW5kZXBlbmRlbnQgUEhQIGhpc3RvcmljYWwtc291cmNlIHByb2JlczogZXhhY3Qgc291cmNlIGFjY2VwdGVkOyB1bmtub3duIGN1cnJlbnQgZWRpdCwgaW5jb3JyZWN0IGJlZm9yZSBoYXNoIGFuZCBpbnZhbGlkIGJlZm9yZSBiYXNlNjQgZWFjaCByZWZ1c2VkLgotIEluZGVwZW5kZW50IHNvdXJjZSBpbnZlbnRvcnk6ICoqMTggZmluYW5jZS1sYXllciBlbnRyaWVzKiogbWF0Y2hlZCBleGFjdCBpbnN0YWxsZWQgYzQwMiBiZWZvcmUgYnl0ZXMsIGN1cnJlbnQgYWZ0ZXIgYnl0ZXMgYW5kIGJvdGggZGVjbGFyZWQgaGFzaGVzLgotIEluZGVwZW5kZW50IHJlYWQgb2YgdGhlIGFyY2hpdmVkIGM0MDIgcGFja2FnZSBjb25maXJtZWQgU0hBLTI1NiBgZTk3Nzg1ZmI1NGU5NWI5ODYyYTg2NWJkYWJkMGViYjU3ZWVjODRiNjBmNDk0YjMwZTE1NzM1YTJlNWJiYjJhYWAsIG1hbmlmZXN0IFNIQS0yNTYgYDMxZDI1MDAyYzdlYzJiYzFhNWRkZjQ4OGY1OGJlZDUwYjAxMzVlNjUzY2FlMWYxNzY5MjQyMzk3NjA1MzM3OGRgLCB0aGUgcGlubmVkIHByZWRlY2Vzc29yIHJ1bnRpbWUgc2NoZW1hIGFuZCAqKjI3MyBwYXlsb2FkcyoqLgoKQXQgdGhpcyBkcmFmdCBjbG9zdXJlLCBgYm9va2luZy1maW5hbmNlLnBocGAgU0hBLTI1NiB3YXMgYDIwYjg1Y2Q2MmIyZmQ3OWQ4OGMzMTY0NTRjYjAyMDViMzUyNDJhY2VhZmY3Y2Y1ZTg5ZDc2YTQ0YWJmNjAxZjlgLCBhbmQgYGZpbmFuY2Utc291cmNlLmpzb25gIFNIQS0yNTYgd2FzIGBkNzhmNTZkODIyYjZhYzkwMjIzNDQ3NTAwZmRlYTRhOTBiMmJkZTI3MWNhMjlkYWE2OTdlODdmNjcxMTFkMWM1YC4gVGhlc2UgaGFzaGVzIGRlc2NyaWJlIHRoZSByZXZpZXdlZCBkcmFmdCwgbm90IGEgc2VwYXJhdGVseSB2ZXJpZmllZCBmaW5hbCByZWxlYXNlIHBhY2thZ2UuCgpObyBob3N0LCBTdHJpcGUsIGNhbGVuZGFyLCBtYWlsIG9yIG90aGVyIGV4dGVybmFsIHByb3ZpZGVyIG9wZXJhdGlvbiB3YXMgcGVyZm9ybWVkIGZvciB0aGlzIGluZGVwZW5kZW50IHJldmlldy4gUmVwcm9kdWN0aW9ucyB1c2VkIGRpc3Bvc2FibGUgbG9jYWwgZGF0YWJhc2VzIGFuZCBzeW50aGV0aWMgcHJvdmlkZXIgYm91bmRhcmllcy4gSW1wbGVtZW50YXRpb24gZmlsZXMgd2VyZSBub3QgbW9kaWZpZWQgYnkgdGhlIHJldmlld2VyLgoKIyMgUmVtYWluaW5nIHJlbGVhc2UgYW5kIGFjY2VwdGFuY2UgZ2F0ZXMKClRoZSBleGFjdCBmcm96ZW4gY29tbWl0L3BhY2thZ2UgYW5kIHNlbGVjdGVkIGZpbmFsIGV2aWRlbmNlIHN0aWxsIHJlcXVpcmUgdmVyaWZpY2F0aW9uIGFmdGVyIHNvdXJjZSBmcmVlemUsIGluY2x1ZGluZyB0aGUgZnVsbCBQSFAvYnJvd3NlciBtYXRyaXgsIHByaXZpbGVnZWQgcmVsZWFzZSByZWhlYXJzYWxzL0NJIGFuZCBpc29sYXRlZCBGUE0vT1BDYWNoZSBjaGVja3MuIFJlc3VsdHMgcHJvZHVjZWQgYnkgdGhlIGltcGxlbWVudGF0aW9uIGFnZW50IG11c3QgYmUgYXR0cmlidXRlZCBhcyBzdWNoIHVudGlsIGluZGVwZW5kZW50bHkgY2hlY2tlZC4KCkluc3RhbGxlZCBjUGFuZWwvRlBNIGJlaGF2aW9yLCB0aGUgYWN0dWFsIHByaXZhdGUgd29ya2VyIGNyZWRlbnRpYWwgYW5kIHNjaGVkdWxlciByZWNvdmVyeSwgVEVTVCByZWZ1bmRzIGFuZCBwZW5kaW5nL3VuY2VydGFpbiByZWFkYmFjaywgY2FzaC9jcmVkaXQgQmlsbGluZyB2aXNpYmlsaXR5LCByZXBsYWNlbWVudCBkZXBvc2l0L2JhbGFuY2UgY29sbGVjdGlvbiwgYW5kIHRoZSBjb25maXJtZWQgY3VzdG9tZXItdmVyc3VzLW1hbmFnZW1lbnQgcG9saWN5IHJlcXVpcmUgY29ubmVjdGVkIFRFU1QgYWNjZXB0YW5jZS4gVGhvc2UgYXJlIHVudmVyaWZpZWQgcmVsZWFzZS9ob3N0IGdhdGVzLCBub3QgaW1wbGVtZW50YXRpb24gZGVmZWN0cyByZXBvcnRlZCBieSB0aGlzIHJldmlldy4gVGhlIGhvc3QgcmVtYWluZWQgb24gYzQwMiBkdXJpbmcgdGhpcyBkcmFmdCByZXZpZXc7IExJVkUvcmVmdW5kIGV4cGFuc2lvbiBiZXlvbmQgdGhlIGNvbmZpcm1lZCBURVNUIHBvbGljeSB3YXMgb3V0c2lkZSBzY29wZS4KClRoZSB1c2VyIHN1YnNlcXVlbnRseSByZXF1ZXN0ZWQgR2l0SHViIHBhY2thZ2UgcHVibGljYXRpb24gYW5kIGEgc2luZ2xlIGRvd25sb2FkL2V4dHJhY3QvaW5zdGFsbCBjb21tYW5kLiBUaGlzIGF1dGhvcml6ZXMgcHJlcGFyaW5nIHRoZSBURVNUIHVwZGF0ZTsgbm8gaG9zdCBhY3Rpb24gaXMgcGVyZm9ybWVkIGJ5IHB1YmxpY2F0aW9uLgo='))
+          (root / 'install-appointment-approval-host.py').write_bytes(pathlib.Path('tools/install-appointment-approval-host.py').read_bytes())
+          files = [root / name for name in expected]
+          for path in files:
+              assert hashlib.sha256(path.read_bytes()).hexdigest() == expected[path.name], path.name + ' checksum differs'
+          (root / 'DOWNLOADS_SHA256SUMS.txt').write_text(''.join(expected[p.name] + '  ' + p.name + '\n' for p in files))
+          files.append(root / 'DOWNLOADS_SHA256SUMS.txt')
+          def api(url, method='GET', obj=None, data=None, content_type='application/json'):
+              if obj is not None: data = json.dumps(obj).encode()
+              headers = {'Authorization': 'Bearer ' + os.environ['GH_TOKEN'], 'Accept': 'application/vnd.github+json', 'Content-Type': content_type, 'User-Agent': 'SiteSee-reviewed-TEST-downloads', 'X-GitHub-Api-Version': '2022-11-28'}
+              request = urllib.request.Request(url, data=data, method=method, headers=headers)
+              with urllib.request.urlopen(request, timeout=120) as response: return json.load(response)
+          for attempt in range(90):
+              runs = api(base + '/actions/runs?branch=feat/unified-server-app-20261007&per_page=100')['workflow_runs']
+              selected = {r['name']: r for r in runs if r['head_sha'] == commit}
+              required = ['Customer Portal Checks', 'Server Form CI']
+              if all(name in selected and selected[name]['status'] == 'completed' for name in required):
+                  assert all(selected[name]['conclusion'] == 'success' for name in required), 'Exact-source CI did not pass'
+                  break
+              time.sleep(10)
+          else: raise RuntimeError('Exact-source CI not complete; no download publication')
+          try:
+              release = api(base + '/releases/tags/' + tag)
+          except urllib.error.HTTPError as error:
+              if error.code != 404: raise
+              release = api(base + '/releases', 'POST', obj={'tag_name': tag, 'target_commitish': commit, 'name': 'TEST FIN-001 automatic refunds and credits ' + commit[:12], 'body': 'Automatic cancellation refunds and account-owned replacement credits under the confirmed policy. Immutable refund recovery, late payment reconciliation, concurrent credit reservations, Billing status and repair-forward safeguards. Exact source, ownership and interrupted installer CI verified. Stripe TEST; operator installation and connected financial acceptance remain separate.', 'draft': True, 'prerelease': True, 'make_latest': 'false'})
+          release_url = base + '/releases/' + str(release['id'])
+          assert release['tag_name'] == tag and release['target_commitish'] == commit and release['prerelease'] is True
+          assets = {a['name']: a for a in release['assets']}
+          assert set(assets).issubset(set(p.name for p in files)), 'Unknown assets preserved'
+          for path in files:
+              data = path.read_bytes(); digest = hashlib.sha256(data).hexdigest()
+              asset = assets.get(path.name)
+              if asset is None:
+                  assert release['draft'] is True, 'Do not add files to an already published candidate'
+                  url = release['upload_url'].split('{', 1)[0] + '?' + urllib.parse.urlencode({'name': path.name})
+                  asset = api(url, 'POST', data=data, content_type='application/octet-stream')
+              assert asset['state'] == 'uploaded' and asset['size'] == len(data)
+              assert asset.get('digest') == 'sha256:' + digest
+              print(path.name + ': exact SHA256 verified and uploaded')
+          release = api(release_url)
+          assert set(a['name'] for a in release['assets']) == set(p.name for p in files)
+          if release['draft']:
+              release = api(release_url, 'PATCH', obj={'draft': False, 'prerelease': True, 'make_latest': 'false'})
+          assert release['draft'] is False and release['prerelease'] is True
+          print('Published reviewed TEST downloads: ' + release['html_url'])
+          PY
