@@ -1,6 +1,6 @@
 # FIN-001: automatic cancellation refunds and replacement credits
 
-Status: exact source `8c3ae16c726d0a308b4595e827d6ba3ea80ddd0b` reviewed, tested and published as `unified-test-8c3ae16c726d`, not installed on the host. The installed predecessor remains `unified-test-c40236e09375`. Stripe stays TEST. Operator installation and connected TEST acceptance remain separate evidence.
+Status: exact source `8c3ae16c726d0a308b4595e827d6ba3ea80ddd0b` reviewed, tested, published, installed and verified as `unified-test-8c3ae16c726d`. Stripe stays TEST. Connected financial TEST acceptance remains pending.
 
 The package's review file is an immutable preparation snapshot. This updated document and CHANGELOG record the final publication evidence without changing the frozen application payloads.
 
@@ -35,7 +35,7 @@ Stable portal order ownership governs grants and spending. Source funds are reve
 
 Signed paid balance events durably wake the original cancellation inside the payment transaction. Financial completion rechecks the current paid ledger, refund states, unapplied balance attempts, owner, completed-job guard and cancellation identity under a write lock, so a late payment cannot lose its recovery wake-up. Verified unpaid checkout expiration restores held credit and retires that reduced-price purchase capability. Duplicate paid events after cancellation cannot spend restored credit again.
 
-`finance-source.json` preserves exact before bytes/hashes from the installed `c40236e0937546e14ebb50d835e3b911f700d616` source and reviewed after bytes/hashes. Historical builders reverse this layer before the UX and earlier layers and reject unknown edits. Existing historical source and receipt evidence is retained.
+`finance-source.json` preserves exact before bytes/hashes from the predecessor `c40236e0937546e14ebb50d835e3b911f700d616` source and reviewed after bytes/hashes. Historical builders reverse this layer before the UX and earlier layers and reject unknown edits. Existing historical source and receipt evidence is retained.
 
 ## Review 3: automated and browser parity
 
@@ -63,6 +63,12 @@ The independent reviewer compared all 274 deployment payloads and 678 source ent
 
 All five GitHub assets were independently downloaded and verified against local bytes, SHA256, GitHub digest, size and attachment headers. [Package download](https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/releases/download/unified-test-8c3ae16c726d/unified-test-8c3ae16c726d.tar.gz), SHA256 `b79effc1e203bbc8d8d8d7c953edf45eb6bc101cafccd0798fbc9ef17429ce7e`. Installer SHA256 `5ed5bdf8a50d2f970044a892207d9c964132c34b77891bfa0e61db0aed5a2218`; root wrapper SHA256 `c6da86e9ecff3b57e126813a47f5ef1f698840e243022a5065a8f587eeb21d35`.
 
-## Connected TEST acceptance after installation
+## Operator installation evidence
+
+The operator supplied the complete successful transcript for this exact release: PREFLIGHT PASS (274 files, 24 changes, read-only SQLite integrity and three exact host variants), HOST PREFLIGHT PASS (actual fpm-fcgi PHP 8.2.34, observable code cache, target pool `re_sitesee_ai`, canonical job found in 27 local schedule sources), INSTALLED AND VERIFIED, VERIFY PASS, actual FPM function/code refresh verification, and HOST UPDATE PASS. Existing schedules were unchanged. No deployment database migration, provider operation, configuration/gate change, session reset, new worker or callback change was reported. This is operator-supplied host evidence, not an assistant root session or proof that a connected financial transaction has completed.
+
+Backup: `/home/sitesee/.sitesee-real-estate/unified-deployments/unified-test-8c3ae16c726d-ln1nwjy0`. Keep the package, installer, backup, private configuration and deployment journal. No repeat installation is required. Five finance tables initialize during normal application use; financial activity requires repair forward.
+
+## Remaining connected TEST acceptance
 
 Use approved TEST bookings only. Verify management cash refund, customer deposit refund at least 24 hours out, late customer deposit credit, automatic replacement deposit/balance use with unused value retained, and customer extra-prepayment staff review. Check Billing against Stripe's TEST refund records. Existing accepted calendar cancellation and notice checks need repetition only if these new scenarios reveal a regression. The existing worker log should report financial outbox processing without calendar/mail writes. The user has not yet accepted these connected finance scenarios.

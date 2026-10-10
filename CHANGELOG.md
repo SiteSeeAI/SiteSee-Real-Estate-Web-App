@@ -36,7 +36,7 @@ Backup: `/home/sitesee/.sitesee-real-estate/unified-deployments/unified-test-c40
 
 ## FIN-001 — unified-test-8c3ae16c726d — 2026-10-09
 
-Status: implemented, tested and published as a TEST candidate. Host installation and connected financial acceptance remain pending. Stripe remains TEST.
+Status: installed and verified in TEST. Connected financial acceptance remains pending. Stripe remains TEST.
 
 Source: `8c3ae16c726d0a308b4595e827d6ba3ea80ddd0b`. [Published GitHub release](https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/releases/tag/unified-test-8c3ae16c726d); package SHA256 `b79effc1e203bbc8d8d8d7c953edf45eb6bc101cafccd0798fbc9ef17429ce7e`. The package contains 274 deployment files, including the new financial module, and 678 exact source entries. Documentation-only updates do not alter this frozen source or imply host installation.
 
@@ -50,7 +50,9 @@ The existing account-owned reconciliation worker gains a bounded financial outbo
 
 Validation: all 42 PHP suites pass on PHP 8.2 and 8.3, including 87 financial assertions and a real concurrent credit-reservation check. Exact-source publication run `37999782655` passed all five jobs: 65 directly privileged installer/recovery cases per PHP version with zero skips, all seven HTTPS browser journeys, 27 host-protocol checks and eight actual isolated FPM tests. Source Server Form CI, including historical installer ownership, and Customer Portal Checks pass. Node and historical source checks pass. Local Python discovery records 153 cases with 22 unavailable-privilege skips, and local unified release checks record 65 cases with one privilege skip; the corresponding privileged checks passed in CI. The five GitHub assets were independently downloaded and verified by full bytes, SHA256, GitHub digest, size and attachment headers. Four review passes and independent exact-source/package audit are recorded in [the financial review](documents/unified/FINANCE_AUTOMATION_REVIEW.md).
 
-Installation uses the existing approved WHM-root verified-download, backup, pause/drain, shared Apache/PHP 8.2 graceful reload, install/FPM verify and reopen process. No new cron is added. Existing installed authority and backup remain `unified-test-c40236e09375` until the operator reports the new HOST UPDATE PASS. Connected financial acceptance must then confirm refunds in Stripe TEST and credit use in Billing; prior accepted calendar/cancellation notices are retained.
+Installation: the operator supplied complete PREFLIGHT PASS, HOST PREFLIGHT PASS, INSTALLED AND VERIFIED, VERIFY PASS and HOST UPDATE PASS output for this exact release. Preflight checked 274 deployment files with 24 changes, read-only database integrity and the three preserved host variants. Actual PHP-FPM 8.2.34, compiled-code refresh, exact files, ownership/modes, backup integrity and TEST gates passed. The canonical reconciliation schedule remained unchanged; no deployment database migration, provider operation, configuration/gate change, session reset, new worker or callback change was reported.
+
+Current installed authority is `unified-test-8c3ae16c726d`. Backup: `/home/sitesee/.sitesee-real-estate/unified-deployments/unified-test-8c3ae16c726d-ln1nwjy0`. The five finance tables initialize on normal application use. Financial ledger activity requires repair forward; do not restore an older operational database. Connected financial acceptance must now confirm new cancellation refunds in Stripe TEST, credit allocation/remaining value in Billing and customer extra-prepayment review. Prior accepted calendar/cancellation notices are retained; no repeat installation is needed.
 
 ## Unreleased
 
