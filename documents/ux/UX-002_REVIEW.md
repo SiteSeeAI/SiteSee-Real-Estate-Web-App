@@ -1,6 +1,6 @@
 # UX-002: CRM readiness handoff
 
-Date: October 13, 2026, America/Chicago. Status: implemented and locally validated; exact-source CI, publication, operator installation and connected acceptance pending. Installed authority remains `unified-test-8c3ae16c726d`. Stripe stays TEST. No financial/provider/schedule behavior is changed.
+Date: October 13, 2026, America/Chicago. Status: reviewed, validated and published as `unified-test-201b1888abad`, exact source `201b1888abad434d37236e3f478b3e0b2068919b`. Operator installation and connected readiness acceptance pending. Installed authority remains `unified-test-8c3ae16c726d`. Stripe stays TEST. No financial/provider/schedule behavior is changed.
 
 ## Problem and corrected behavior
 
@@ -41,3 +41,13 @@ The existing approved WHM-root download/checksum, preflight, backup, pause/drain
 Initial exact-source installer verification found one historical fixture assumption: its mixed-deployment test always chose the staff handler even when that handler was unchanged. The corrected fixture chooses a genuinely changed predecessor payload and still asserts refusal of a corrupted release record and unjournaled mixed files, with exact preserved bytes. No application or installer guard changes were needed. Initial publication was withheld; the final source requires fresh privileged checks before publication.
 
 Independent findings and results: [independent UX-002 review](INDEPENDENT_UX-002_REVIEW.md). Source-pinned publication evidence and operator installation results will be recorded separately.
+
+## Frozen release and publication
+
+Final source adds the fixture correction/CI paths/documentation to implementation `de9bc48`; all 274 deployed files and installer bytes remain identical. The independent agent verified all 683 source entries against exact Git, every predecessor hash and the exact archived 8c schema/manifest, and reran the real corrected tampering regression without weakened assertions.
+
+Publication run [38446873572](https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/actions/runs/38446873572) passed all five jobs and every step. Each job checks out exact source `201b1888abad434d37236e3f478b3e0b2068919b`. PHP 8.2 and PHP 8.3 each completed 65 directly privileged installer/recovery cases with zero skips. All seven browser markers, guarded readiness/contact handoff, consent/cache regression, 27 host protocol cases and eight actual FPM tests were verified in authentic CI logs. Source Server Form CI and Customer Portal Checks passed. The initial uncorrected fixture failure remains preserved as withheld-candidate evidence.
+
+All five GitHub assets were independently downloaded and checked against full local bytes, SHA256, GitHub digest, size and attachment headers. [Package download](https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/releases/download/unified-test-201b1888abad/unified-test-201b1888abad.tar.gz), SHA256 `f7c94d3d65d206d98e08cf545a30996baffd4c27f133ce8e1b119d1a052d6285`. Installer `2df3fd62449d9827b9047cd8102a85e97ae9ac8cd09f45194169946664263657`; unchanged approved root wrapper `c6da86e9ecff3b57e126813a47f5ef1f698840e243022a5065a8f587eeb21d35`; manifest `38ef090abe2c6b24eabb445b85d8e3327a3e1a97f9922ca8ea97ff9c7a1bf19e`.
+
+Operator execution remains pending; no host or provider operation was performed by the assistant. After installation, reload the booking and run readiness for a fresh contact-selection ticket, verify the correct contact explicitly, and continue to the existing confirmation step. Do not replace or recreate the paid booking to bypass the UI issue. Existing refund/credit connected acceptance is retained as pending.

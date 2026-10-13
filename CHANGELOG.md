@@ -6,7 +6,9 @@ Each iteration records its ID, purpose, status, source/release, changes, validat
 
 ## UX-002 — CRM readiness handoff — 2026-10-13
 
-Status: correction implemented and locally validated; exact-source installer CI, package publication, host update and connected acceptance pending. Installed authority remains `unified-test-8c3ae16c726d`; Stripe remains TEST.
+Status: reviewed, tested and published as `unified-test-201b1888abad`. Host update and connected readiness acceptance pending. Installed authority remains `unified-test-8c3ae16c726d`; Stripe remains TEST.
+
+Frozen source: `201b1888abad434d37236e3f478b3e0b2068919b`. [GitHub release](https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/releases/tag/unified-test-201b1888abad). Package SHA256 `f7c94d3d65d206d98e08cf545a30996baffd4c27f133ce8e1b119d1a052d6285`; installer SHA256 `2df3fd62449d9827b9047cd8102a85e97ae9ac8cd09f45194169946664263657`. All 274 runtime payloads are identical to reviewed implementation `de9bc48`; final source includes the test-fixture correction. Documentation-only checkpoints do not alter these frozen payloads.
 
 Reported problem: Check Booking Readiness found existing CRM matches but the focused screen hid their required linking forms. Choosing another action performed a GET that discarded the returned matches, leaving staff stuck at Prepare Booking.
 
@@ -15,6 +17,10 @@ Changed: readiness results now present the CRM choice as the next action; a sing
 Validation: all 42 PHP suites on PHP 8.2/8.3, 110 Node unit checks and all seven HTTPS browser journeys pass locally. The staff browser regression uses the real authenticated readiness/link POST handlers and native forms with synthetic providers: two CRM matches, A/B selection/back navigation without reload, unchecked/fresh consent, explicit verified link, confirmation-screen handoff, single-match verification and alternative-window consent reset. Historical source checks strictly reverse the new two-file layer before financial/UX layers. Exact installed predecessor package/manifest/schema are pinned independently; financial repair-forward protections remain intact. Review: [UX-002](documents/ux/UX-002_REVIEW.md).
 
 Release verification caught an older tampering fixture that assumed the staff handler changed. This presentation correction leaves that handler byte-identical, so the fixture now selects an actual changed predecessor payload and retains the assertions that unknown records/mixed deployments are refused without overwriting files. The initial candidate was withheld from publication. Application and installer bytes are unchanged by this test correction; fresh exact-source publication checks are required.
+
+Final evidence: publication run `38446873572` passed all five jobs and every step. Both PHP 8.2 and PHP 8.3 completed 65 directly privileged installer cases with zero skips; all seven browser completion markers, the actual guarded CRM handoff, fresh consent/cache checks, 27 host-protocol checks and eight actual isolated FPM tests were verified in the authentic CI archive. The independent reviewer verified all 274 payloads and 683 exact source entries, unchanged runtime bytes, exact predecessor compatibility and the corrected real tampering regression. All five published assets were independently downloaded and verified by full bytes, SHA256, GitHub digest, size and attachment headers. Source Server Form CI and Customer Portal Checks pass. No server action has been performed by the assistant.
+
+After the operator reports HOST UPDATE PASS, reload the affected booking and run Check Booking Readiness once for fresh results. Verify and link the correct existing CRM contact, then continue to the separate appointment confirmation. Financial connected acceptance remains pending.
 
 ## UX-001 — unified-test-c40236e09375 — 2026-10-09
 
