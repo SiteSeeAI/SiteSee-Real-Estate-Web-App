@@ -8,9 +8,10 @@ if($path==='/staff-window-fixture.php'){
     require $root.'/server/booking-lifecycle-ui.php';
     $db=booking_db();$row=booking_get($db,'AB0000000A');$date=booking_request($row)['appointment']['date'];
     $windows=[['date'=>$date,'time'=>'07:00','end_time'=>'09:00'],['date'=>$date,'time'=>'09:00','end_time'=>'11:00'],['date'=>$date,'time'=>'13:00','end_time'=>'15:00']];
-    echo '<!doctype html><html><head><title>Isolated window view</title></head><body>'.booking_lifecycle_html($db,$row,'synthetic-csrf',true,$windows).'<script src="/portal-assets/booking-review.js" defer></script></body></html>';return true;
+    echo '<!doctype html><html><head><title>Isolated window view</title></head><body><div data-focus-actions data-focus-kind="appointment" data-current-action="lifecycle_windows">'.booking_lifecycle_html($db,$row,'synthetic-csrf',true,$windows).'</div><script src="/portal-assets/application.js?v=ux-002" defer></script><script src="/portal-assets/booking-review.js" defer></script></body></html>';return true;
 }
 if(in_array($path,['/staff-bookings.php','/staff-before.php'],true)){
+    if($path==='/staff-bookings.php')require __DIR__.'/readiness-providers.php';
     // No real provider connection is possible, including from an accidental action.
     function booking_provider_http(string $method,string $url,array $headers,?string $body=null): array {
         file_put_contents(getenv('STAFF_TEST_PRIVATE').'/provider-blocked.txt',"blocked\n",FILE_APPEND);

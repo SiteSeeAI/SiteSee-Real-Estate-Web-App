@@ -41,7 +41,9 @@ for (const panel of document.querySelectorAll('[data-focus-actions]')) {
   const task = new URL(location.href).searchParams.get('task'), posted = panel.dataset.currentAction;
   const postedIdentity = JSON.parse(panel.dataset.currentIdentity || '{}');
   const matchesPost = entry => entry.action === posted && JSON.stringify(entry.identity) === JSON.stringify(postedIdentity);
-  const selected = entries.find(entry => entry.key === task && (!posted || matchesPost(entry))) || (posted ? entries.find(matchesPost) : (!task && entries.length === 1 ? entries[0] : null));
+  const contacts = entries.filter(entry => entry.action === 'workflow_link');
+  const checkedContacts = panel.dataset.focusKind === 'readiness' && posted === 'workflow_check' && contacts.length > 0;
+  let selected = checkedContacts ? (contacts.length === 1 ? contacts[0] : null) : entries.find(entry => entry.key === task && (!posted || matchesPost(entry))) || (posted ? entries.find(matchesPost) : (!task && entries.length === 1 ? entries[0] : null));
   const menu = document.createElement('nav');
   menu.className = 'action-menu';
   menu.setAttribute('aria-label', 'Choose booking action');
@@ -56,7 +58,7 @@ for (const panel of document.querySelectorAll('[data-focus-actions]')) {
     appointment: entries.some(e => e.action === 'lifecycle_approve_request') ? ['lifecycle_approve_request', 'lifecycle_reject_request'] : entries.some(e => e.action === 'lifecycle_close_order') ? ['lifecycle_close_order'] : ['lifecycle_windows', 'lifecycle_cancel'],
     customer: entries.some(e => e.action === 'appointment_reschedule') ? ['appointment_reschedule'] : ['appointment_windows', 'appointment_cancel']
   };
-  const primary = configured || priorities[panel.dataset.focusKind] || [];
+  const primary = checkedContacts ? ['workflow_link'] : configured || priorities[panel.dataset.focusKind] || [];
   const labels = {lifecycle_windows: 'Choose another arrival window', lifecycle_cancel: 'Cancel appointment', appointment_windows: 'Find available windows', appointment_cancel: 'Cancel appointment', confirm_calendar: 'Confirm appointment', send_invitation: 'Send calendar invitation'};
   for (const entry of entries) {
     const link = document.createElement('a'), url = new URL(location.href);
@@ -65,40 +67,67 @@ for (const panel of document.querySelectorAll('[data-focus-actions]')) {
     link.href = url.pathname + url.search + url.hash;
     const identityLabel = entry.form.querySelector('p')?.textContent.trim() || entry.form.closest('details')?.querySelector('summary')?.textContent.trim() || Object.values(entry.identity).join(' · ');
     link.textContent = (labels[entry.action] || entry.label) + (entry.key !== entry.action ? ' · ' + identityLabel : '') + ' →';
+    link.addEventListener('click', event => selectAction(event, entry, link));
     (primary.includes(entry.action) ? menu : moreMenu).append(link);
-    entry.form.hidden = entry !== selected;
   }
   const choice = document.createElement('section');
   choice.className = 'action-choice';
-  if (selected) {
-    const heading = document.createElement('h3');
-    heading.id = 'current-action';
-    heading.textContent = selected.label;
-    const back = document.createElement('a'), url = new URL(location.href);
-    url.searchParams.delete('task'); url.hash = '';
-    back.href = url.pathname + url.search;
-    back.textContent = '← Choose a different action';
-    if (entries.length > 1) choice.append(back, heading);
-    else choice.hidden = true;
-    for (let ancestor = selected.form.parentElement; ancestor && ancestor !== panel; ancestor = ancestor.parentElement) {
-      if (ancestor.tagName === 'DETAILS') ancestor.open = true;
+  function renderSelection(focus = false) {
+    choice.replaceChildren(); choice.hidden = false;
+    for (const entry of entries) entry.form.hidden = entry !== selected;
+    let heading;
+    if (selected) {
+      heading = document.createElement('h3');
+      heading.id = 'current-action';
+      heading.textContent = selected.label;
+      const back = document.createElement('a'), url = new URL(location.href);
+      url.searchParams.delete('task'); url.hash = '';
+      back.href = url.pathname + url.search;
+      back.textContent = '← Choose a different action';
+      back.addEventListener('click', event => selectAction(event, null, back));
+      if (entries.length > 1) choice.append(back, heading);
+      else choice.hidden = true;
+      for (let ancestor = selected.form.parentElement; ancestor && ancestor !== panel; ancestor = ancestor.parentElement) {
+        if (ancestor.tagName === 'DETAILS') ancestor.open = true;
+      }
+    } else {
+      heading = document.createElement('h3');
+      heading.id = 'current-action';
+      heading.textContent = checkedContacts ? 'Verify the customer’s CRM contact' : 'Choose the next action';
+      choice.append(heading, menu);
+      if (moreMenu.childElementCount) choice.append(more);
     }
-  } else {
-    const heading = document.createElement('h3');
-    heading.textContent = 'Choose the next action';
-    choice.append(heading, menu);
-    if (moreMenu.childElementCount) choice.append(more);
+    // A chooser is revealed only within the explicit alternatives action.
+    for (const group of panel.querySelectorAll('[data-window-choices]')) {
+      group.hidden = !selected || !['lifecycle_windows', 'lifecycle_reschedule', 'check_windows', 'select_window'].includes(selected.action);
+    }
+    // Fold action groups that do not belong to the selected task. Evidence-only
+    // disclosures remain available; choosing or opening them writes no data.
+    for (const detail of panel.querySelectorAll('details')) {
+      const contained = entries.filter(entry => detail.contains(entry.form));
+      if (contained.length) detail.hidden = !selected || !detail.contains(selected.form);
+    }
+    if (focus && !choice.hidden) { heading.tabIndex = -1; heading.focus(); }
   }
-  // A chooser is revealed only within the explicit alternatives action.
-  for (const group of panel.querySelectorAll('[data-window-choices]')) {
-    group.hidden = !selected || !['lifecycle_windows', 'lifecycle_reschedule', 'check_windows', 'select_window'].includes(selected.action);
-  }
-  // Fold action groups that do not belong to the selected task. Evidence-only
-  // disclosures remain available; choosing or opening them writes no data.
-  for (const detail of panel.querySelectorAll('details')) {
-    const contained = entries.filter(entry => detail.contains(entry.form));
-    if (contained.length) detail.hidden = !selected || !detail.contains(selected.form);
+  function selectAction(event, entry, link) {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    if (entry && selected !== entry) for (const checkbox of entry.form.querySelectorAll('input[type=checkbox]')) checkbox.checked = false;
+    if (selected !== entry) for (const group of panel.querySelectorAll('[data-window-choices]')) {
+      const picker = group.querySelector('[data-window-picker]');
+      if (picker) picker.value = '';
+      for (const form of group.querySelectorAll('form[data-window-option]')) {
+        form.hidden = true;
+        for (const checkbox of form.querySelectorAll('input[type=checkbox]')) checkbox.checked = false;
+      }
+    }
+    selected = entry;
+    // Keep the returned report and its native, server-validated forms in this
+    // document. A GET reload would discard ephemeral contact/history choices.
+    history.replaceState(null, '', link.href);
+    renderSelection(true);
   }
   panel.prepend(choice);
+  renderSelection();
   panel.dataset.focusReady = 'true';
 }

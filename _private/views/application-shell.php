@@ -14,7 +14,7 @@ function site_application_shell(string $role, string $title, string $body, bool 
     $page = $roles[$role];
     $escape = static fn(string $value): string => htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     $head = $page['asset'] ? '<link rel="stylesheet" href="'.$page['asset'].'">' : '<style>'.$staffStyle.'</style>';
-    $head .= '<link rel="stylesheet" href="/portal-assets/application.css?v=ux-001"><script src="/portal-assets/application.js?v=ux-001" defer></script>';
+    $head .= '<link rel="stylesheet" href="/portal-assets/application.css?v=ux-001"><script src="/portal-assets/application.js?v=ux-002" defer></script>';
     if ($role === 'customer') $head .= '<script src="/portal-assets/portal.js?v=account-workflow-r1" defer></script>';
     $nav = '';
     if ($authenticated) {

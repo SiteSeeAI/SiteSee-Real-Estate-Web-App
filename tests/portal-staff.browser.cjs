@@ -18,6 +18,8 @@ const reserve=()=>new Promise(resolve=>{const s=net.createServer();s.listen(0,'1
   fs.cpSync(current,before,{recursive:true});
   for(const [n,item]of Object.entries(manifest.files))fs.writeFileSync(path.join(before,n.replace(/^private\//,'')),Buffer.from(item.before,'base64'));
   for(const root of [current,before]){const p=path.join(root,'server/booking-mail-client.php');fs.writeFileSync(p,fs.readFileSync(p,'utf8').replace('function booking_provider_http(', 'function booking_provider_http_fixture_unused('));}
+  const workflow=path.join(current,'server/booking-workflow.php');
+  fs.writeFileSync(workflow,fs.readFileSync(workflow,'utf8').replace('function booking_workflow_check(', 'function booking_workflow_check_fixture_real(').replace('function booking_workflow_link(', 'function booking_workflow_link_fixture_real('));
   execFileSync('openssl',['req','-x509','-newkey','rsa:2048','-nodes','-keyout',path.join(temp,'key.pem'),'-out',path.join(temp,'cert.pem'),'-days','1','-subj','/CN=localhost'],{stdio:'ignore'});
   fs.mkdirSync(path.join(temp,'sessions'),{mode:0o700});
   php=spawn('php',['-d','opcache.enable_cli=0','-d','opcache.jit_buffer_size=0','-d','opcache.jit=0','-d','session.save_path='+path.join(temp,'sessions'),'-d','allow_url_fopen=0','-d','disable_functions=curl_exec,curl_multi_exec,fsockopen,pfsockopen,stream_socket_client,socket_connect,mail','-S','127.0.0.1:'+port,'-t',path.join(repo,'public'),path.join(__dirname,'fixtures/staff-http/router.php')],{env,stdio:['ignore','pipe','pipe']});php.stderr.on('data',b=>logs+=b.toString());
@@ -166,6 +168,13 @@ const reserve=()=>new Promise(resolve=>{const s=net.createServer();s.listen(0,'1
   await page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true})));
   assert.equal(await picker.inputValue(),'','Browser page restoration resets the picker');
   assert.equal(await page.locator('form[data-window-option]:visible').count(),0,'Restoration cannot show a checked unrelated window');
+  await picker.selectOption(choiceValues[1]);await page.locator('form[data-window-option]:visible input[name=agreed]').check();
+  await page.getByRole('link',{name:'← Choose a different action',exact:true}).click();
+  await page.getByRole('link',{name:'Cancel appointment →',exact:true}).click();
+  await page.getByRole('link',{name:'← Choose a different action',exact:true}).click();
+  await page.getByRole('link',{name:'Choose another arrival window →',exact:true}).click();
+  assert.equal(await picker.inputValue(),'','Returning from another action resets the arrival-window selection');
+  assert.equal(await page.locator('form[data-window-option]:visible').count(),0,'A former window/consent cannot survive an action transition');
   assert.equal(setup('snapshot'),snapshot,'Picker/consent changes perform no calendar/mail/database operation');
   await goto('/staff-bookings.php?reference='+refs.paid+'&step=onsite');
   assert(await page.locator('[data-booking-screen=overview]').isVisible(),'Future closeout URL remains unavailable before review');
@@ -254,6 +263,54 @@ const reserve=()=>new Promise(resolve=>{const s=net.createServer();s.listen(0,'1
   assert.equal(await identityPage.locator('form:not([hidden]) [name=request_id]').inputValue(),'saved-B','Reordered remaining notice keeps its own identity');
   assert.equal(await identityPage.locator('form:not([hidden]) [name=agreed]').isChecked(),false,'Selecting another notice retains fresh consent');
   await identityPage.close();
-  console.log('portal-staff: PASS (19 baseline states with preserved controls + required Vendor review + 3 external-agent cases; unchanged ledgers; no GET/provider calls; real HTTPS login/CSRF/origin/consent; state-selected screens; collapsed overview shortcut/open closeout step; paginated5/25/All lists; recovery; Central Time; keyboard; 320/390/736/1200/1600 layout)');
+  // The actual native readiness POST returns two matching CRM records. Its next
+  // choice must retain that response rather than GET-reloading away the report.
+  await page.setViewportSize({width:1200,height:1000});
+  await goto('/staff-bookings.php?reference='+refs['reviewed-unlinked']+'&step=readiness');
+  const readinessBefore=setup('snapshot');
+  await page.getByRole('button',{name:'Check Booking Readiness',exact:true}).click();
+  await page.getByRole('heading',{name:'Verify the customer’s CRM contact',exact:true}).waitFor();
+  assert.equal(await page.locator('[data-focus-actions] form:visible').count(),0,'Multiple matching contacts require an explicit choice');
+  assert.equal(setup('snapshot'),readinessBefore,'Readiness does not link/reserve/send/collect');
+  const chooseContact=async name=>page.locator('.action-menu a').filter({hasText:'Link This CRM Contact · Fixture Contact '+name}).click();
+  const navigationBefore=requestTrace.length;
+  await chooseContact('B');
+  let contactForm=page.locator('.booking-screen:not([hidden]) form:visible');
+  assert.equal(await contactForm.locator('[name=contact_id]').inputValue(),'790');
+  assert.equal(await contactForm.locator('[name=contact_verified]').isChecked(),false,'Candidate B is never preverified');
+  assert.equal(await page.locator(':focus').textContent(),'Link This CRM Contact','Keyboard focus follows the current action');
+  await contactForm.locator('[name=contact_verified]').check();
+  await page.getByRole('link',{name:'← Choose a different action',exact:true}).click();
+  await chooseContact('A');contactForm=page.locator('.booking-screen:not([hidden]) form:visible');
+  assert.equal(await contactForm.locator('[name=contact_id]').inputValue(),'789');
+  assert.equal(await contactForm.locator('[name=contact_verified]').isChecked(),false,'Candidate A needs its own verification');
+  await page.getByRole('link',{name:'← Choose a different action',exact:true}).click();
+  await chooseContact('B');contactForm=page.locator('.booking-screen:not([hidden]) form:visible');
+  assert.equal(await contactForm.locator('[name=contact_verified]').isChecked(),false,'Returning to B clears earlier unsubmitted consent');
+  assert.equal(requestTrace.length,navigationBefore,'Chooser/back keeps the returned document without a GET or POST');
+  assert.match(await page.locator('#readiness').innerText(),/Check Results/,'Returned evidence stays available');
+  for(const width of [320,390,736,1200,1600]){await page.setViewportSize({width,height:1000});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'CRM choice overflow '+width);}
+  await contactForm.getByRole('button',{name:'Link This CRM Contact',exact:true}).click();
+  assert.equal(requestTrace.length,navigationBefore,'Native required verification blocks submission');
+  assert.equal(setup('snapshot'),readinessBefore,'Choosing a contact never changes the ledger');
+  await contactForm.locator('[name=contact_verified]').check();
+  await contactForm.getByRole('button',{name:'Link This CRM Contact',exact:true}).click();
+  await page.getByText('CRM contact verified and linked to this booking. No invitation was sent.',{exact:true}).waitFor();
+  const linkedData=JSON.parse(setup('snapshot-data'));
+  assert.equal(linkedData.booking_contact_links.find(r=>r.reference===refs['reviewed-unlinked']).contact_id,'790','Original server/session/provider guards link only the explicitly verified record');
+  await page.getByRole('link',{name:'Next: Confirm the appointment →',exact:true}).click();
+  assert(await page.locator('[data-booking-screen=calendar]').isVisible(),'Successful linking unlocks the confirmation screen');
+  assert.equal(await page.locator('[data-booking-screen=calendar] input[name=confirm_window]').isChecked(),false,'Calendar confirmation remains a separate explicit action');
+  assert.equal(JSON.parse(setup('snapshot-data')).booking_confirmations.length,linkedData.booking_confirmations.length,'No appointment is automatically reserved');
+  fs.writeFileSync(path.join(current,'readiness-single.json'),'{}');
+  await goto('/staff-bookings.php?reference='+refs.paid+'&step=readiness');
+  await page.getByRole('button',{name:'Check Booking Readiness',exact:true}).click();
+  await page.getByRole('heading',{name:'Link This CRM Contact',exact:true}).waitFor();
+  contactForm=page.locator('.booking-screen:not([hidden]) form:visible');
+  assert.equal(await contactForm.locator('[name=contact_id]').inputValue(),'789','One matching contact is visible as the next form');
+  assert.equal(await contactForm.locator('[name=contact_verified]').isChecked(),false,'Single match still requires explicit verification');
+  assert.equal(await page.locator('script[src="/portal-assets/application.js?v=ux-002"]').count(),1,'Fresh script URL delivers the correction despite a cached UX-001 asset');
+  assert.deepEqual(errors,[]);assert(!/PHP (?:Fatal error|Warning|Notice)/.test(logs),logs);
+  console.log('portal-staff: PASS (19 baseline states with preserved controls + required Vendor review + 3 external-agent cases; real readiness POST/two CRM candidates/explicit verified link/confirmation handoff; same-document choices/fresh consent/cache version; unchanged unrelated ledgers; no GET/provider calls; real HTTPS login/CSRF/origin/consent; state-selected screens; collapsed overview shortcut/open closeout step; paginated5/25/All lists; recovery; Central Time; keyboard; 320/390/736/1200/1600 layout)');
  }finally{if(browser)await browser.close();if(proxy)await new Promise(r=>proxy.close(r));if(php){php.kill();await new Promise(r=>php.once('exit',r));}fs.rmSync(temp,{recursive:true,force:true});}
 })().catch(e=>{console.error(e);process.exit(1);});

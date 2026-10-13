@@ -139,6 +139,7 @@ jobs:
           python3 tests/portal-staff-source.test.py
           python3 tests/ux-workspace-source.test.py
           python3 tests/finance-source.test.py
+          python3 tests/readiness-source.test.py
           python3 tools/build-portal-installer.py
           git diff --exit-code -- tools/install-customer-portal.py
           python3 tools/build-portal-complete.py

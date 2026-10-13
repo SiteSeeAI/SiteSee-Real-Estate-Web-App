@@ -4,6 +4,16 @@ This is the iteration record from October 9, 2026 onward. Dates use America/Chic
 
 Each iteration records its ID, purpose, status, source/release, changes, validation and user acceptance. Keep planned work separate from implemented, installed and accepted work. Add an entry for each subsequent implementation/release and update its acceptance after user review. Documentation-only commits do not change the installed application.
 
+## UX-002 — CRM readiness handoff — 2026-10-13
+
+Status: correction implemented and locally validated; exact-source installer CI, package publication, host update and connected acceptance pending. Installed authority remains `unified-test-8c3ae16c726d`; Stripe remains TEST.
+
+Reported problem: Check Booking Readiness found existing CRM matches but the focused screen hid their required linking forms. Choosing another action performed a GET that discarded the returned matches, leaving staff stuck at Prepare Booking.
+
+Changed: readiness results now present the CRM choice as the next action; a single match shows its unchecked verification form. Action choices and the back link switch existing forms within the same document, retaining the returned results and candidate identities. Linking still requires explicit verification and the original server/session/provider guards. Changing actions clears unsubmitted consent and alternative-window selection. A new `application.js?v=ux-002` URL delivers the correction to browsers with the prior script cached. Only the shared action script and its shell script URL change in the deployed application.
+
+Validation: all 42 PHP suites on PHP 8.2/8.3, 110 Node unit checks and all seven HTTPS browser journeys pass locally. The staff browser regression uses the real authenticated readiness/link POST handlers and native forms with synthetic providers: two CRM matches, A/B selection/back navigation without reload, unchecked/fresh consent, explicit verified link, confirmation-screen handoff, single-match verification and alternative-window consent reset. Historical source checks strictly reverse the new two-file layer before financial/UX layers. Exact installed predecessor package/manifest/schema are pinned independently; financial repair-forward protections remain intact. Review: [UX-002](documents/ux/UX-002_REVIEW.md).
+
 ## UX-001 — unified-test-c40236e09375 — 2026-10-09
 
 Status: installed and verified in TEST. Automated checks and independent audit passed; connected UX acceptance remains pending.

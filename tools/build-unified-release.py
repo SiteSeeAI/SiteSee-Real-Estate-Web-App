@@ -26,9 +26,9 @@ CHANGED_PUBLIC = {'public/portal-assets/booking-notice.js', 'public/portal-asset
 CHANGED_PRIVATE.add('private/pricing-assets/scheduling.js')
 CHANGED_PUBLIC.add('public/portal-assets/portal.js')
 CHANGED_PRIVATE |= {'private/server/portal-billing.php', 'private/server/booking-checkout.php', 'private/server/booking-job.php', 'private/server/booking-job-catalog.php', 'private/server/booking-webhook.php', 'private/views/portal-purchase.php'}
-PREDECESSOR = {'commit': 'c40236e0937546e14ebb50d835e3b911f700d616',
-               'manifest_sha256': '31d25002c7ec2bc1a5ddf488f58bed50b0135e653cae1f17692423976053378d',
-               'runtime_schema': 'Additive booking_order_numbers, booking_order_closures and vendor_review_grants tables plus existing booking_change_requests schema on first normal application use; original references, tables and payment rows unchanged.'}
+PREDECESSOR = {'commit': '8c3ae16c726d0a308b4595e827d6ba3ea80ddd0b',
+               'manifest_sha256': 'dabd82a7d294cabb6994c71ef3fc4a5c96d28391f390379dcef289d4a89e069d',
+               'runtime_schema': 'Additive booking_finance_cancellations, booking_finance_refunds, booking_finance_credits, booking_finance_allocations and booking_finance_funding tables plus existing account/workflow schema on first normal application use; original prices, references and payment rows retained. Financial activity requires repair forward; no operational database rollback.'}
 RUNTIME_SCHEMA = 'Additive booking_finance_cancellations, booking_finance_refunds, booking_finance_credits, booking_finance_allocations and booking_finance_funding tables plus existing account/workflow schema on first normal application use; original prices, references and payment rows retained. Financial activity requires repair forward; no operational database rollback.'
 ALIASES = {'account.php', 'vendor.php', 'staff-bookings.php', 'staff-production.php',
            'staff-vendors.php', 'manage-appointment.php', 'booking-pay.php',
@@ -113,7 +113,7 @@ def build(commit, output):
     members['source-test-manifest.json'] = encode(source)
     manifest = {'format': 1, 'release': 'unified-test-' + commit[:12], 'commit': commit,
                 'baseline': BASELINE, 'stage': 'TEST', 'migration': 'none',
-                'compatibility': 'reviewed TEST refund outbox, owned cash/credit funding, card consent and immutable financial recovery plus existing unified workflows; original gross prices and provider identities retained',
+                'compatibility': 'reviewed CRM readiness handoff and same-document action selection; financial, authorization and provider behavior unchanged from installed TEST predecessor',
                 'runtime_schema': RUNTIME_SCHEMA,
                 'predecessor': PREDECESSOR | {'files': {n: sha(b) for n, b in sorted(previous_deploy.items())}},
                 'installer_sha256': sha(runner), 'source_manifest_sha256': sha(members['source-test-manifest.json']),

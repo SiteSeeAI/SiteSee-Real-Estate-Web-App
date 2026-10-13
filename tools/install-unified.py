@@ -116,10 +116,10 @@ def load(package, expected):
     need(obj['format'] == 1 and obj['stage'] == 'TEST' and obj['migration'] == 'none', 'Release mode/migration differs.')
     if 'predecessor' in obj:
         previous = obj['predecessor']
-        need(previous.get('commit') == 'c40236e0937546e14ebb50d835e3b911f700d616'
-             and previous.get('manifest_sha256') == '31d25002c7ec2bc1a5ddf488f58bed50b0135e653cae1f17692423976053378d'
-             and previous.get('runtime_schema') == 'Additive booking_order_numbers, booking_order_closures and vendor_review_grants tables plus existing booking_change_requests schema on first normal application use; original references, tables and payment rows unchanged.'
-             and set(previous.get('files', {})) == set(obj['files']) - {'private/server/booking-finance.php'}, 'Reviewed predecessor differs.')
+        need(previous.get('commit') == '8c3ae16c726d0a308b4595e827d6ba3ea80ddd0b'
+             and previous.get('manifest_sha256') == 'dabd82a7d294cabb6994c71ef3fc4a5c96d28391f390379dcef289d4a89e069d'
+             and previous.get('runtime_schema') == 'Additive booking_finance_cancellations, booking_finance_refunds, booking_finance_credits, booking_finance_allocations and booking_finance_funding tables plus existing account/workflow schema on first normal application use; original prices, references and payment rows retained. Financial activity requires repair forward; no operational database rollback.'
+             and set(previous.get('files', {})) == set(obj['files']), 'Reviewed predecessor differs.')
         need(obj.get('runtime_schema') == 'Additive booking_finance_cancellations, booking_finance_refunds, booking_finance_credits, booking_finance_allocations and booking_finance_funding tables plus existing account/workflow schema on first normal application use; original prices, references and payment rows retained. Financial activity requires repair forward; no operational database rollback.', 'Runtime schema review differs.')
     need(re.fullmatch('[0-9a-f]{40}', obj['commit']) and obj['release'] == 'unified-test-' + obj['commit'][:12], 'Release identity differs.')
     need(sha(values['install-unified.py']) == obj['installer_sha256'] == sha(pathlib.Path(__file__).read_bytes()),

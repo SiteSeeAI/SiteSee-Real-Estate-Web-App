@@ -22,6 +22,10 @@ class WorkspaceSource(unittest.TestCase):
                 self.assertEqual(change['added'], original.returncode != 0)
                 self.assertEqual(base64.b64decode(change['before'], validate=True), original.stdout if original.returncode == 0 else b'')
                 actual=(ROOT / name).read_bytes()
+                readiness=json.loads((ROOT / 'documents/unified/readiness-source.json').read_text())['files'].get(name)
+                if readiness:
+                    self.assertEqual(hashlib.sha256(actual).hexdigest(),readiness['after_sha256'])
+                    actual=base64.b64decode(readiness['before'],validate=True)
                 finance=json.loads((ROOT / 'documents/unified/finance-source.json').read_text())['files'].get(name)
                 if finance:
                     self.assertEqual(hashlib.sha256(actual).hexdigest(),finance['after_sha256'])
@@ -33,7 +37,7 @@ class WorkspaceSource(unittest.TestCase):
         manifest_path = 'documents/unified/ux-workspace-source.json'
         with tempfile.TemporaryDirectory() as directory:
             root = pathlib.Path(directory)
-            for path in [name, manifest_path]:
+            for path in [name, manifest_path, 'documents/unified/readiness-source.json']:
                 destination = root / path
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 destination.write_bytes((ROOT / path).read_bytes())

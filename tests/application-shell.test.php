@@ -27,6 +27,7 @@ foreach ($links as $role=>$expected) {
         shell_check(str_contains($html, 'noindex,nofollow,noarchive'), $role.' excludes private pages from indexing');
         shell_check(str_contains($html, 'TEST ACCESS') && str_contains($html, 'payments remain in test mode'), $role.' retains TEST label');
         shell_check(str_contains($html, '/portal-assets/application.css?v=ux-001'), $role.' shares shell asset');
+        shell_check(str_contains($html, '/portal-assets/application.js?v=ux-002'), $role.' requests the cache-versioned readiness correction');
         shell_check(str_contains($html, 'portal.js') === ($role === 'customer'), $role.' keeps customer script confined');
         preg_match('~<nav\b[^>]*>(.*?)</nav>~s', $html, $nav);
         shell_check(isset($nav[1]) === $authenticated, $role.' navigation requires caller authentication');
@@ -48,6 +49,8 @@ $manifest = json_decode(file_get_contents($root.'/documents/unified/shell-source
 foreach ($manifest['files'] as $path=>$item) {
     $before = base64_decode($item['before'], true);
     $after = file_get_contents($root.'/'.$path);
+    $readiness=json_decode(file_get_contents($root.'/documents/unified/readiness-source.json'),true)['files'][$path]??null;
+    if($readiness){shell_check(hash('sha256',$after)===$readiness['after_sha256'],'UX-002 source integrity: '.$path);$after=base64_decode($readiness['before'],true);}
     $finance=json_decode(file_get_contents($root.'/documents/unified/finance-source.json'),true)['files'][$path]??null;
     if($finance){shell_check(hash('sha256',$after)===$finance['after_sha256'],'FIN-001 source integrity: '.$path);$after=base64_decode($finance['before'],true);}
     $workspace=json_decode(file_get_contents($root.'/documents/unified/ux-workspace-source.json'),true,512,JSON_THROW_ON_ERROR)['files'][$path]??null;

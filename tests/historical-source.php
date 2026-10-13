@@ -2,6 +2,8 @@
 /** Build a disposable copy of the actual pre-lifecycle release for historical diagnostics. */
 function historical_before_workspace(string $base, string $key): string {
     $bytes=file_get_contents($base.'/'.$key);
+    $readiness=json_decode(file_get_contents($base.'/documents/unified/readiness-source.json'),true)['files'][$key]??null;
+    if($readiness){if(hash('sha256',$bytes)!==$readiness['after_sha256'])throw new RuntimeException('Unknown historical readiness edit');$bytes=base64_decode($readiness['before'],true);if($bytes===false||hash('sha256',$bytes)!==$readiness['before_sha256'])throw new RuntimeException('Invalid historical readiness source');}
     $finance=json_decode(file_get_contents($base.'/documents/unified/finance-source.json'),true)['files'][$key]??null;
     if($finance){if(hash('sha256',$bytes)!==$finance['after_sha256'])throw new RuntimeException('Unknown historical financial edit');$bytes=base64_decode($finance['before'],true);if($bytes===false||hash('sha256',$bytes)!==$finance['before_sha256'])throw new RuntimeException('Invalid historical financial source');}
     $manifest=json_decode(file_get_contents($base.'/documents/unified/ux-workspace-source.json'),true);
