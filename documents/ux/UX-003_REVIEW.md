@@ -49,3 +49,12 @@ Source `e0bed2b3726c05b52c5d2c943ccd887cd3b376b8`, release `unified-test-e0bed2b
 Publication run38470116563 passed allfivejobs/every step. Directly privileged65 installer/recovery cases perPHP8.2/8.3, zero skips; allseven browser markers, actual inline appointment and verified Delivery, finance95 assertions, report/PDF checks, host27 and actualFPM8 were checked in authentic CI logs. Allfive release assets were independently downloaded and verified by bytes, SHA256, GitHubdigest, size and attachment headers. Source Server Form CI and Customer Portal Checks passed before publication. Local65 installer cases also passed with one unavailable-privilege skip; CI supplied its real privileged evidence.
 
 The operator command uses the unchanged verified WHM helper and exact package/installer pins. Package publication and local synthetic proof do not install the hosting update. This iteration's connected UI acceptance remains pending. Earlier accepted connected financial/cancellation/readiness tests are retained. Stripe remains TEST.
+
+
+## Frozen release evidence
+
+Source `e0bed2b3726c05b52c5d2c943ccd887cd3b376b8`, package SHA256 `82be15dbd74b6f0e22627c2992d0db0fc743adf752a47dfb9799e8a7702ad0b6`, manifest SHA256 `1d9f8f6bc14dccabf3894501c1e9b2792389232a3c6684628851b6f6d2a29fb0`, matching installer SHA256 `068ad6744d61add55c2470f99e1ed7a07d87e4a93f527f108c27c7ec64b6add4`. The independent frozen audit verifies all 276 payloads/689 source entries, exact predecessor and unchanged host helper. [Independent review](INDEPENDENT_UX-003_REVIEW.md).
+
+[GitHub release](https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/releases/tag/unified-test-e0bed2b3726c) is published. Publication run `38470116563` passes all five jobs/every step. Both PHP versions complete 65 directly privileged installer/recovery cases with zero skips; seven browser journeys, financial 95 assertions, client report/archive 28 core checks, host27 and actual FPM8 are verified from authentic logs. The local 29th report check uses `pdftotext`, absent from the CI image. All five assets pass independent full-byte/SHA256/GitHub digest/size/attachment verification. Source CI passes. Local fixed-release rehearsal passes 65 cases with one unavailable ownership-privilege skip; this remains distinct from the zero-skip CI result.
+
+Operator installation and connected UX acceptance remain pending. No assistant host action, provider operation, schedule change or LIVE enablement. Documentation checkpoints do not alter the frozen runtime release.
