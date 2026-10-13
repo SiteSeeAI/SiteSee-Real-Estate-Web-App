@@ -114,7 +114,7 @@ def build(commit, output):
     members['source-test-manifest.json'] = encode(source)
     manifest = {'format': 1, 'release': 'unified-test-' + commit[:12], 'commit': commit,
                 'baseline': BASELINE, 'stage': 'TEST', 'migration': 'none',
-                'compatibility': 'reviewed CRM readiness handoff and same-document action selection; financial, authorization and provider behavior unchanged from installed TEST predecessor',
+                'compatibility': 'reviewed client inline workflow, owned expense reports/PDF and cancellation/archive classification; additive immutable refund-date evidence and monotonic readback; existing cancellation policy, authorization and provider operation identities retained',
                 'runtime_schema': RUNTIME_SCHEMA,
                 'predecessor': PREDECESSOR | {'files': {n: sha(b) for n, b in sorted(previous_deploy.items())}},
                 'installer_sha256': sha(runner), 'source_manifest_sha256': sha(members['source-test-manifest.json']),
