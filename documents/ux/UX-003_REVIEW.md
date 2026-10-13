@@ -40,3 +40,12 @@ Final local checks, exact-source CI, frozen package audit and GitHub asset evide
 ## Local validation
 
 All 43 PHP suites pass on PHP 8.2.34 and PHP 8.3.35. The report/archive suite completes 29 checks; financial automation completes 95 assertions, including immutable/legacy dates, atomic interruption recovery and a stale-pending/concurrent-success interleaving. Independent `pdftotext` extraction verifies supported Unicode; unsupported font coverage is explicitly rejected. The seven HTTPS browser journeys pass, including actual inline appointment and verified Delivery, real PDF attachment download, frozen report dates, account isolation and responsive layouts. 110 Node checks pass; Python discovery completes 153 cases with 22 unavailable local-privilege skips. Historical source-layer checks pass and 27 host-protocol checks pass. Required directly privileged fixed-package PHP 8.2/8.3 installer tests and actual FPM checks remain pending in exact-source publication CI; no local skip is counted as a pass.
+
+
+## Frozen release and publication
+
+Source `e0bed2b3726c05b52c5d2c943ccd887cd3b376b8`, release `unified-test-e0bed2b3726c`, package SHA256 `82be15dbd74b6f0e22627c2992d0db0fc743adf752a47dfb9799e8a7702ad0b6`, installer SHA256 `068ad6744d61add55c2470f99e1ed7a07d87e4a93f527f108c27c7ec64b6add4`. Independent audit verified all276 runtime payloads/all689 source entries and exact201b predecessor/manifest/schema/digests; only two private report modules added. Independent artifact: [INDEPENDENT_UX-003_REVIEW.md](INDEPENDENT_UX-003_REVIEW.md).
+
+Publication run38470116563 passed allfivejobs/every step. Directly privileged65 installer/recovery cases perPHP8.2/8.3, zero skips; allseven browser markers, actual inline appointment and verified Delivery, finance95 assertions, report/PDF checks, host27 and actualFPM8 were checked in authentic CI logs. Allfive release assets were independently downloaded and verified by bytes, SHA256, GitHubdigest, size and attachment headers. Source Server Form CI and Customer Portal Checks passed before publication. Local65 installer cases also passed with one unavailable-privilege skip; CI supplied its real privileged evidence.
+
+The operator command uses the unchanged verified WHM helper and exact package/installer pins. Package publication and local synthetic proof do not install the hosting update. This iteration's connected UI acceptance remains pending. Earlier accepted connected financial/cancellation/readiness tests are retained. Stripe remains TEST.
