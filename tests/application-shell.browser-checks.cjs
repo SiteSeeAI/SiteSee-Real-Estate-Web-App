@@ -6,18 +6,18 @@ const path = require('node:path');
 // Existing HTTPS journeys call this before and after their real sign-in flow.
 async function assertApplicationShell(page, role, authenticated) {
   const navigation = {
-    customer: ['/account.php', '/account.php?view=profile', '/account.php?view=billing'],
+    customer: [],
     vendor: ['/vendor.php'],
     staff: ['/staff-bookings.php', '/staff-production.php', '/staff-vendors.php']
   };
   assert.equal(await page.locator('body.site-shell.role-' + role).count(), 1);
   const nav = page.locator('body.site-shell > header > nav');
   assert.equal(await nav.count(), authenticated ? 1 : 0, role + ' navigation authentication');
-  if (authenticated && role==='customer' && await nav.locator('a[href="/account.php?view=new"]').count()) navigation.customer.push('/account.php?view=new');
+  if(authenticated&&role==='customer')navigation.customer=[await nav.locator('a').first().getAttribute('href'),'/account.php?view=reports','/account.php?view=billing','/account.php?view=archive','/account.php?view=profile','/account.php'];
   if (authenticated) assert.deepEqual(await nav.locator('a').evaluateAll(links => links.map(a => a.getAttribute('href'))), navigation[role]);
   assert.equal(await page.locator('a.skip').getAttribute('href'), '#content');
   assert.equal(await page.locator('#content').count(), 1);
-  const css = '/portal-assets/application.css?v=ux-001';
+  const css = '/portal-assets/application.css?v=ux-003';
   assert.equal(await page.locator('head link[rel=stylesheet][href="' + css + '"]').count(), 1);
   assert.equal((await page.request.get(new URL(css, page.url()).href)).status(), 200, 'shared stylesheet is served');
   await page.waitForFunction(href => [...document.styleSheets].some(sheet => {

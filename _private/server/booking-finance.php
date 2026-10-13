@@ -20,6 +20,7 @@ function booking_finance_schema(PDO $db): void
         id TEXT PRIMARY KEY, credit_id TEXT NOT NULL, reference TEXT NOT NULL, phase TEXT NOT NULL,
         amount INTEGER NOT NULL CHECK(amount>0), state TEXT NOT NULL CHECK(state IN ('reserved','used','restored')),
         created_at INTEGER NOT NULL, restored_at INTEGER)");
+    $db->exec("CREATE TABLE IF NOT EXISTS booking_finance_refund_dates (refund_id TEXT PRIMARY KEY, verified_at INTEGER NOT NULL CHECK(verified_at>0))");
     $db->exec("CREATE TABLE IF NOT EXISTS booking_finance_funding (
         reference TEXT PRIMARY KEY, account_id TEXT NOT NULL, cash_deposit INTEGER NOT NULL CHECK(cash_deposit>=0),
         deposit_credit INTEGER NOT NULL CHECK(deposit_credit>=0), source_reference TEXT NOT NULL,
@@ -274,7 +275,18 @@ function booking_finance_refund_run(PDO $db,array $op,callable $api,int $now): v
     if($r['status']==='succeeded'){
         $charge=$api('GET','/charges/'.$op['charge']);portal_billing_need(($charge['id']??'')===$op['charge']&&($charge['livemode']??null)===false&&($charge['payment_intent']??'')===$op['payment_intent']&&($charge['amount_refunded']??null)===(int)$op['amount']&&($charge['disputed']??null)===false);
     }
-    $db->prepare('UPDATE booking_finance_refunds SET refund_id=?,state=?,checked_at=?,diagnostic=NULL WHERE id=?')->execute([$r['id'],$r['status'],$now,$op['id']]);
+    $ownTransaction=!$db->inTransaction();if($ownTransaction)$db->exec('BEGIN IMMEDIATE');
+    try{
+        $q=$db->prepare('SELECT * FROM booking_finance_refunds WHERE id=?');$q->execute([$op['id']]);$fresh=$q->fetch(PDO::FETCH_ASSOC);
+        portal_billing_need((bool)$fresh&&(!$fresh['refund_id']||$fresh['refund_id']===$r['id']));
+        portal_billing_need($fresh['state']!=='succeeded'||$r['status']==='succeeded');
+        foreach(['operation_id','payment_intent','charge','amount','request_json'] as $field)portal_billing_need($fresh[$field]===$op[$field]);
+        // Legacy succeeded refunds without date evidence stay undated. A later read cannot
+        // manufacture a new accounting date. The first new confirmation and date commit together.
+        if($r['status']==='succeeded'&&$fresh['state']!=='succeeded')$db->prepare('INSERT OR IGNORE INTO booking_finance_refund_dates(refund_id,verified_at) VALUES(?,?)')->execute([$r['id'],$now]);
+        $db->prepare('UPDATE booking_finance_refunds SET refund_id=?,state=?,checked_at=?,diagnostic=NULL WHERE id=?')->execute([$r['id'],$r['status'],$now,$op['id']]);
+        if($ownTransaction)$db->exec('COMMIT');
+    }catch(Throwable $error){if($ownTransaction)$db->exec('ROLLBACK');throw $error;}
 }
 
 /** Process only new applied cancellations. Old/manual cancellations are not backfilled. */

@@ -14,7 +14,7 @@ BASELINE = 'ff5e625a8ff4c51af336e9203fa4be29b3611570'
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 NEW_FILES = {'private/server/application.php', 'private/views/application-shell.php',
              'public/application-entry.php', 'public/portal-assets/application.css', 'public/portal-assets/application.js',
-             'private/server/booking-review-ui.php', 'public/portal-assets/booking-review.js', 'private/server/booking-hours.php', 'private/server/booking-identifiers.php', 'private/server/booking-list-ui.php', 'private/server/booking-finance.php'}
+             'private/server/booking-review-ui.php', 'public/portal-assets/booking-review.js', 'private/server/booking-hours.php', 'private/server/booking-identifiers.php', 'private/server/booking-list-ui.php', 'private/server/booking-finance.php','private/server/portal-reports.php','private/server/portal-report-pdf.php'}
 CHANGED_PRIVATE = {'private/views/portal.php', 'private/server/vendor-app.php',
                    'private/server/booking-staff.php', 'private/server/booking-lifecycle.php',
                    'private/server/booking-lifecycle-store.php', 'private/server/booking-lifecycle-ui.php',
@@ -23,13 +23,14 @@ CHANGED_PRIVATE = {'private/views/portal.php', 'private/server/vendor-app.php',
                    'private/server/booking-lifecycle-reconcile.php'}
 CHANGED_PRIVATE |= {'private/server/booking-lifecycle.php', 'private/views/application-shell.php', 'private/server/booking-schedule.php', 'private/server/portal-app.php', 'private/server/booking-feedback.php', 'private/server/vendor-app.php', 'private/server/booking-availability.php', 'private/server/portal-orders.php', 'private/server/portal-mail.php', 'private/views/portal-service.php', 'private/views/portal-purchase.php', 'private/server/booking-invitation.php', 'private/server/booking-staff.php', 'private/views/pricing.php', 'private/real-estate-pricing.php', 'private/server/booking-store.php', 'private/server/booking-pay.php', 'private/server/booking-review-ui.php', 'private/server/vendor-admin.php', 'private/server/portal-purchase.php', 'private/server/booking-job-ui.php', 'private/pricing-assets/availability.js', 'private/server/vendor-access.php', 'private/server/booking-scheduling-provider.php', 'private/server/booking-confirmation.php', 'private/server/booking-lifecycle-ui.php', 'private/views/portal.php'}
 CHANGED_PUBLIC = {'public/portal-assets/booking-notice.js', 'public/portal-assets/order.js', 'public/portal-assets/application.css'}
+CHANGED_PRIVATE |= {'private/views/portal-job.php','private/server/booking-identifiers.php','private/server/booking-list-ui.php'}
 CHANGED_PRIVATE.add('private/pricing-assets/scheduling.js')
 CHANGED_PUBLIC.add('public/portal-assets/portal.js')
 CHANGED_PRIVATE |= {'private/server/portal-billing.php', 'private/server/booking-checkout.php', 'private/server/booking-job.php', 'private/server/booking-job-catalog.php', 'private/server/booking-webhook.php', 'private/views/portal-purchase.php'}
-PREDECESSOR = {'commit': '8c3ae16c726d0a308b4595e827d6ba3ea80ddd0b',
-               'manifest_sha256': 'dabd82a7d294cabb6994c71ef3fc4a5c96d28391f390379dcef289d4a89e069d',
+PREDECESSOR = {'commit': '201b1888abad434d37236e3f478b3e0b2068919b',
+               'manifest_sha256': '38ef090abe2c6b24eabb445b85d8e3327a3e1a97f9922ca8ea97ff9c7a1bf19e',
                'runtime_schema': 'Additive booking_finance_cancellations, booking_finance_refunds, booking_finance_credits, booking_finance_allocations and booking_finance_funding tables plus existing account/workflow schema on first normal application use; original prices, references and payment rows retained. Financial activity requires repair forward; no operational database rollback.'}
-RUNTIME_SCHEMA = 'Additive booking_finance_cancellations, booking_finance_refunds, booking_finance_credits, booking_finance_allocations and booking_finance_funding tables plus existing account/workflow schema on first normal application use; original prices, references and payment rows retained. Financial activity requires repair forward; no operational database rollback.'
+RUNTIME_SCHEMA = 'Additive booking_finance_refund_dates evidence table plus existing financial/account/workflow schema on first normal application use; first verified refund dates retained immutably, original prices, references and payment rows retained. Financial activity requires repair forward; no operational database rollback.'
 ALIASES = {'account.php', 'vendor.php', 'staff-bookings.php', 'staff-production.php',
            'staff-vendors.php', 'manage-appointment.php', 'booking-pay.php',
            'booking-webhook.php', 'booking-availability.php', 'pricing.php',

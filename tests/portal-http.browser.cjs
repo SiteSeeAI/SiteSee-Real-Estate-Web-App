@@ -10,6 +10,7 @@ const privateRoot=path.join(temp,'private');fs.cpSync(path.join(repo,'_private')
 // Reuse code only; previous unit-test session directories are not fixture state.
 fs.rmSync(path.join(privateRoot,'data'),{recursive:true,force:true});
 fs.writeFileSync(path.join(temp,'application-entry.php'),fs.readFileSync(path.join(repo,'public/application-entry.php'),'utf8').replaceAll('/home/sitesee/.sitesee-real-estate',privateRoot));
+fs.mkdirSync(path.join(temp,'public/assets/fonts'),{recursive:true});fs.copyFileSync(path.join(repo,'public/assets/fonts/Inter-Regular.ttf'),path.join(temp,'public/assets/fonts/Inter-Regular.ttf'));
 const accountEntry=path.join(temp,'account.php');
 fs.writeFileSync(accountEntry,fs.readFileSync(path.join(repo,'public/account.php'),'utf8').replaceAll('/home/sitesee/.sitesee-real-estate',privateRoot));
 const releaseFlag=path.join(privateRoot,'portal-test.json');
@@ -86,7 +87,18 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   const denied=await goto(two,'/account.php?view=order&reference=AAAAAAAAAA');assert.equal(denied.status(),404);assert(!(await two.content()).includes('1234567890'));const deniedBody=await denied.text();
   const absent=await goto(two,'/account.php?view=order&reference=DDDDDDDDDD');assert.equal(await absent.text(),deniedBody,'Other and nonexistent order use identical response');
   await goto(two);await claim(two,'AAAAAAAAAA.'+'1'.repeat(64));assert.match(await two.getByRole('status').textContent(),/could not be added/);
-  await goto(page,'/account.php?view=order&reference=AAAAAAAAAA');await page.getByRole('link',{name:'Services & Access',exact:true}).click();assert((await page.content()).includes('1234567890'));
+  await goto(page,'/account.php?view=order&reference=AAAAAAAAAA');
+  await page.evaluate(()=>window.inlineMarker='same-document');
+  await page.getByRole('link',{name:'Services & Access',exact:true}).click();
+  await page.locator('[data-order-panel]').getByRole('heading',{name:'Services',exact:true}).waitFor();
+  assert.equal(await page.evaluate(()=>window.inlineMarker),'same-document');
+  assert((await page.content()).includes('1234567890'));
+  assert(await page.locator('.order-summary').isVisible());
+  assert(await page.locator('[data-order-panel] strong').count()>0,'Service/package labels bold');
+  await page.getByRole('link',{name:'Payment Summary',exact:true}).click();
+  await page.locator('[data-order-panel]').getByRole('heading',{name:'Payment',exact:true}).waitFor();
+  assert.equal(await page.evaluate(()=>window.inlineMarker),'same-document');
+  assert.equal(await page.locator('input[name=card_consent]').count(),0,'Information tabs authorize no payment');
   for(const secret of ['9876543210','cus_private_','pi_private_', 'agent_token_hash', 'request_json'])assert(!(await page.content()).includes(secret),secret);
   await goto(page);await claim(page,origin+'/manage-appointment.php#CCCCCCCCCC.'+'4'.repeat(64));assert((await page.content()).includes('303 Unclaimed Road'));
   fs.unlinkSync(releaseFlag);assert.equal((await page.request.get(origin+'/account.php')).status(),503,'Private disable overrides inherited TEST flag');
@@ -125,7 +137,7 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   for(const width of [320,390,736,1200,1600]){await service.setViewportSize({width,height:950});assert(await service.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Unpaid order overflow '+width);}
   if(shots)console.log('PORTAL_VISUAL_polish-unpaid:'+(await service.screenshot({type:'jpeg',quality:65,fullPage:true})).toString('base64'));
   await goto(service,'/account.php?view=job&reference=DDDD000001');
-  assert.match(await service.locator('h1').innerText(),/Job Status/);
+  assert.match(await service.locator('h1').innerText(),/Order Details/);
   await goto(service,'/account.php?view=balance&reference=DDDD000001');
   await service.getByRole('heading',{name:'Your Test Balance',exact:true}).waitFor();
   assert.equal(await service.locator('input[name=card_consent]').isChecked(),false,'Payment action retains fresh consent');
@@ -148,16 +160,34 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   if(shots)console.log('PORTAL_VISUAL_polish-paid:'+(await service.screenshot({type:'jpeg',quality:65,fullPage:true})).toString('base64'));
   await goto(service);assert.match(await service.locator('article.order').innerText(),/Test Balance Recorded/);
   await goto(two);assert(!(await two.locator('main').innerText()).includes('DDDD000001'),'Paid status stays with its owner');
-  await goto(service,'/account.php?view=appointment&reference=DDDD000001');
+  await goto(service,'/account.php?view=order&reference=DDDD000001');await service.evaluate(()=>window.appointmentInlineMarker='kept');
+  await service.getByRole('link',{name:'Manage Appointment',exact:true}).click();await service.getByRole('link',{name:'Find available windows →',exact:true}).waitFor();
+  assert.equal(await service.evaluate(()=>window.appointmentInlineMarker),'kept');assert(await service.locator('.order-summary').isVisible());
   await service.getByRole('link',{name:'Find available windows →',exact:true}).click();await service.getByRole('button',{name:'Find Available Windows'}).click();await service.getByRole('heading',{name:'Request A New Window'}).waitFor();
   const options=await service.locator('select[name=window] option').evaluateAll(os=>os.map(o=>o.value));const chosen=options.find(x=>x.endsWith('|13:00'));assert(chosen);await service.getByLabel('Arrival Window',{exact:true}).selectOption(chosen);await service.getByLabel('I want to request this arrival window for manager approval.',{exact:true}).check();
   await service.getByRole('button',{name:'Request New Window'}).click();await service.getByRole('status').waitFor();assert.match(await service.locator('main').textContent(),/Awaiting SiteSee manager approval/);assert.match(await service.locator('main').textContent(),/confirmed appointment remains unchanged/);assert.match(await service.locator('main').textContent(),/Requested window:.*13:00–15:00/);assert.equal(await service.getByRole('button',{name:'Confirm Cancellation'}).count(),0,'Pending request cannot bypass approval');
   if(shots)console.log('PORTAL_VISUAL_service-appointment:'+(await service.screenshot({type:'jpeg',quality:45,fullPage:true})).toString('base64'));
   assert(await service.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Service mobile overflow');
-  setup('service-approve-request');setup('service-notice-observed');await goto(service,'/account.php?view=appointment&reference=DDDD000001');await service.getByRole('link',{name:'Cancel appointment →',exact:true}).click();await service.getByLabel('I want to cancel this appointment.',{exact:true}).check();await service.getByRole('button',{name:'Confirm Cancellation'}).click();await service.getByText('Cancelled',{exact:true}).waitFor();
+  setup('service-approve-request');setup('service-notice-observed');await goto(service,'/account.php?view=appointment&reference=DDDD000001');await service.getByRole('link',{name:'Cancel appointment →',exact:true}).click();await service.getByLabel('I want to cancel this appointment.',{exact:true}).check();await service.getByRole('button',{name:'Confirm Cancellation'}).click();await service.locator('[data-order-panel]').getByText('Cancelled',{exact:true}).waitFor();
   await goto(service,'/account.php?view=billing&reference=DDDD000001');await service.getByRole('heading',{name:'Cancellation Billing',exact:true}).waitFor();assert.match(await service.locator('main').innerText(),/Refund confirmed|Financial evidence requires staff review/);
   await goto(service,'/account.php?view=billing');await service.getByRole('heading',{name:'Available Credit',exact:true}).waitFor();
   await goto(service,'/account.php?view=order&reference=DDDD000001&step=payment');assert.equal(await service.locator('.payment-action').count(),0,'Cancelled order does not offer payment');
+  await goto(service);
+  assert.equal(await service.locator('#orders-open').locator('..').locator('article.order').count(),0,'Cancelled order leaves Open Orders immediately');
+  assert.match(await service.locator('#orders-previous').locator('..').innerText(),/Cancelled/);
+  await goto(service,'/account.php?view=reports&period=year');
+  await service.getByRole('heading',{name:/Expenses/}).waitFor();
+  assert.equal(new URL(await service.getByRole('link',{name:'PDF Download',exact:true}).getAttribute('href'),origin).searchParams.get('period'),'custom','PDF download pins the displayed dates across month/year rollover');
+  const pdf=await service.request.get(new URL(await service.getByRole('link',{name:'PDF Download',exact:true}).getAttribute('href'),origin).href);
+  assert.equal(pdf.status(),200);assert.match(pdf.headers()['content-type'],/application\/pdf/);assert.match(pdf.headers()['content-disposition'],/^attachment;/);assert.match((await pdf.body()).toString('latin1'),/^%PDF-1\.4/);
+  assert(!((await pdf.body()).toString('latin1')).includes('pi_http'),'Provider IDs excluded from PDF');
+  await service.getByLabel('Report Period').selectOption('custom');await service.getByLabel('From',{exact:true}).fill('2026-01-01');await service.getByLabel('Through').fill('2026-12-31');await service.getByRole('button',{name:'Run Report',exact:true}).click();
+  assert.match(await service.locator('main').innerText(),/2026-01-01 – 2026-12-31/);
+  assert.equal((await service.request.get(origin+'/account.php?view=reports&period=custom&from=2026-02-31&to=2026-12-31&download=pdf')).status(),422);
+  for(const width of [320,390,736,1200,1600]){await service.setViewportSize({width,height:950});assert(await service.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Reports responsive '+width);}
+  await goto(two,'/account.php?view=reports&period=year');assert(!(await two.locator('main').innerText()).includes('404 Service Example'),'Expense report isolates account-owned rows');
+  console.log('client-workspace: PASS (inline sections, cancellation lists, owned reports, real PDF download and responsive layout)');
+  await goto(service,'/account.php?view=archive');await service.getByRole('heading',{name:'Archived Orders',exact:true}).first().waitFor();assert.match(await service.locator('main').innerText(),/No archived orders/);
   await serviceContext.close();
   await goto(page,'/account.php?view=profile');await goto(two,'/account.php?view=profile');
   await post(page,{action:'save_profile',first_name:'Jordan',last_name:'Example',company:'Example Realty',phone:'3125550100'});

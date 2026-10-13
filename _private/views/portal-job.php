@@ -13,7 +13,7 @@ function portal_job_page(PDO $db,array $account,string $reference,string $notice
             if($draft['approved_at'])$body.='<p class="status">Your approval is recorded. No additional payment has been collected yet.</p>';
             else $body.=portal_service_form($reference,'job_approve','<input type="hidden" name="scope" value="'.$e($draft['scope']).'"><label class="card-consent"><input type="checkbox" name="agreed" value="yes" required><span>I approve these additional services and authorize their displayed total to be added to my final TEST payment when the onsite work is complete.</span></label>','Approve Additional Services');
         }
-        portal_page('Job Status',$body.'</section>',$account);
+        portal_order_section_page($db,$account,$reference,'job','Job Status',$body.'</section>');
     }
     $bill=json_decode($job['bill_json'],true,16,JSON_THROW_ON_ERROR);$links=[];$verified=false;
     try{$job=booking_job_refresh($db,$reference);$verified=$job['payment_state']==='paid';if($verified&&$job['production_complete_at'])$links=json_decode($job['published_json'],true,16,JSON_THROW_ON_ERROR);}catch(Throwable){$job=booking_job_get($db,$reference);}
@@ -30,5 +30,5 @@ function portal_job_page(PDO $db,array $account,string $reference,string $notice
     $body.='<p><a href="/account.php?view=job&amp;reference='.$e($reference).'">Refresh Job Status</a></p></section><section class="panel"><h2>Your Deliverables</h2>';
     if($links){$body.='<ul>';foreach($links as $link)$body.='<li><a href="'.$e($link['url']).'" target="_blank" rel="noopener noreferrer">'.$e($link['label']).'</a></li>';$body.='</ul>';}
     else $body.='<p>'.($job['production_complete_at']?'Your finished links will appear after payment verification.':'Your finished links will appear here when Production is complete and payment is verified.').'</p>';
-    portal_page('Job Status',$body.'</section>',$account);
+    portal_order_section_page($db,$account,$reference,'job','Job Status',$body.'</section>');
 }

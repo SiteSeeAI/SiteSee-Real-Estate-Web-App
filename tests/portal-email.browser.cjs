@@ -90,7 +90,7 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
   for(const width of [320,390,736,1200]){await page.setViewportSize({width,height:950});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No email overflow '+width);}
   if(shots){await page.screenshot({path:path.join(shots,'email-code-desktop.png'),fullPage:true});console.log('EMAIL_VISUAL_code-desktop:'+(await page.screenshot({type:'jpeg',quality:60,fullPage:true})).toString('base64'));}
   await page.setViewportSize({width:390,height:844});if(shots){await page.screenshot({path:path.join(shots,'email-code-mobile.png'),fullPage:true});console.log('EMAIL_VISUAL_code-mobile:'+(await page.screenshot({type:'jpeg',quality:60,fullPage:true})).toString('base64'));}
-  await page.getByLabel('Verification Code',{exact:true}).fill(sent.code);await page.getByRole('button',{name:'Verify & Change Email'}).press('Enter');await page.getByRole('heading',{name:'Account',exact:true}).waitFor();
+  await page.getByLabel('Verification Code',{exact:true}).fill(sent.code);await page.getByRole('button',{name:'Verify & Change Email'}).press('Enter');await page.getByRole('heading',{name:'Profile',exact:true}).waitFor();
   assert.match(await page.getByRole('status').innerText(),/verified and updated/);assert((await page.locator('main').innerText()).includes(longEmail));
   for(const width of [320,390]){await page.setViewportSize({width,height:950});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Long account email wraps '+width);}
   const replay=await post(page,{action:'email_confirm',code:sent.code});assert.match(await replay.text(),/could not be verified/);

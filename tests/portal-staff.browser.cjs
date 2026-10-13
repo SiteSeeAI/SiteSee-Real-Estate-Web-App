@@ -67,15 +67,15 @@ const reserve=()=>new Promise(resolve=>{const s=net.createServer();s.listen(0,'1
   const nextRefs=await page.locator('.order-column[aria-labelledby="orders-open"] .view-order').evaluateAll(as=>as.map(a=>a.getAttribute('href')));
   assert.equal(nextRefs.length,5);assert(nextRefs.every(ref=>!firstRefs.includes(ref)),'Next page contains different jobs');
   await page.getByRole('navigation',{name:'Previous Orders Pages',exact:true}).getByRole('link',{name:'Next',exact:true}).click();
-  assert.equal(await page.locator('.order-column[aria-labelledby=orders-previous] .view-order').count(),1,'Previous group has independent second page');
+  assert.equal(await page.locator('.order-column[aria-labelledby=orders-previous] .view-order').count(),3,'Previous second page includes two cancelled fixtures automatically');
   await listOption('open_size','25');
   assert.equal(new URL(page.url()).searchParams.get('previous_page'),'2','Automatic open-size change preserves previous-page position');
   assert.equal(new URL(page.url()).searchParams.get('open_page'),'1','Changed group resets its own page');
-  assert.equal(await page.locator('.order-column[aria-labelledby="orders-open"] .view-order').count(),22,'25 selector shows all22 fixture jobs');
+  assert.equal(await page.locator('.order-column[aria-labelledby="orders-open"] .view-order').count(),20,'25 selector shows20 active fixture jobs; both cancellations moved to previous');
   await listOption('show','previous');
   assert.equal(await page.locator('.order-column[aria-labelledby=orders-open]').count(),0,'Show previous hides open column');assert.equal(await page.locator('.order-column[aria-labelledby=orders-previous]').count(),1);
   await listOption('show','both');await listOption('open_size','all');
-  assert.equal(await page.locator('.order-column[aria-labelledby="orders-open"] .view-order').count(),22,'All selector renders every open job');
+  assert.equal(await page.locator('.order-column[aria-labelledby="orders-open"] .view-order').count(),20,'All selector renders every active job; cancellations are previous');
   await listOption('open_size','5');
   const snapshot=setup('snapshot');
   for(const [name,ref]of Object.entries(refs)){
@@ -309,7 +309,7 @@ const reserve=()=>new Promise(resolve=>{const s=net.createServer();s.listen(0,'1
   contactForm=page.locator('.booking-screen:not([hidden]) form:visible');
   assert.equal(await contactForm.locator('[name=contact_id]').inputValue(),'789','One matching contact is visible as the next form');
   assert.equal(await contactForm.locator('[name=contact_verified]').isChecked(),false,'Single match still requires explicit verification');
-  assert.equal(await page.locator('script[src="/portal-assets/application.js?v=ux-002"]').count(),1,'Fresh script URL delivers the correction despite a cached UX-001 asset');
+  assert.equal(await page.locator('script[src="/portal-assets/application.js?v=ux-003"]').count(),1,'Fresh script URL delivers the correction despite a cached UX-001 asset');
   assert.deepEqual(errors,[]);assert(!/PHP (?:Fatal error|Warning|Notice)/.test(logs),logs);
   console.log('portal-staff: PASS (19 baseline states with preserved controls + required Vendor review + 3 external-agent cases; real readiness POST/two CRM candidates/explicit verified link/confirmation handoff; same-document choices/fresh consent/cache version; unchanged unrelated ledgers; no GET/provider calls; real HTTPS login/CSRF/origin/consent; state-selected screens; collapsed overview shortcut/open closeout step; paginated5/25/All lists; recovery; Central Time; keyboard; 320/390/736/1200/1600 layout)');
  }finally{if(browser)await browser.close();if(proxy)await new Promise(r=>proxy.close(r));if(php){php.kill();await new Promise(r=>php.once('exit',r));}fs.rmSync(temp,{recursive:true,force:true});}

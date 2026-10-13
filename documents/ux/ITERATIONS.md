@@ -48,3 +48,12 @@ Do not add new financial automation or production-mode support as an incidental 
 CTC reference supplied by the user: https://citytabernaclechurch.org/publishing. Its workspace is behind sign-in and was not inspected. The existing Codex project was not available as a selected repository. Corporate palette checked from https://sitesee.ai/assets/css/v1-overrides.css: charcoal `#0B0F14`, yellow `#FFC107`, off-white `#F7F7F7`, gray surfaces/lines. No CTC styling or exact visual parity is claimed.
 
 Downloadable review captures the real implemented screens from isolated synthetic HTTPS journeys. It is a visual review artifact, not an installation package. User acceptance and any approved server update are recorded separately; Stripe remains TEST.
+
+
+### UX-003 — accepted workflow refinements
+
+The 2026-10-13 request supersedes the earlier display rule requiring explicit cancellation closeout: an applied cancellation appears in Previous Orders immediately for both roles. Recovery and billing remain reachable. Closed orders with reliable closure evidence older than 14 days appear in Archived Orders; records are retained. Billing history includes the archive.
+
+Client sidebar order is New Order → Reports → Billing → Archived Orders → Profile → My Orders. My Orders remains reachable via the brand and sidebar. If Profile is incomplete, New Order leads to its required fields. The appointment summary stays above inline information, appointment and delivery sections. Script-dependent secure payment screens use normal authenticated navigation to preserve their original CSP and initialization. Native POST consent/CSRF and no-JavaScript routes remain intact.
+
+Reports use Central calendar date ranges and recorded cash activity, not quotes or job estimates. Applied credit is separate. Future successful refunds retain an immutable first verified confirmation timestamp; absent historical dates or undated manual adjustments make Net Cash Expenses unavailable until Billing review. The download is an actual multipage PDF with the licensed embedded Inter font. Text outside that font's coverage is rejected transparently, with the complete on-screen report retained. Stripe remains TEST.

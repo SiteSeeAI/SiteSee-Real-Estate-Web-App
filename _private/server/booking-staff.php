@@ -494,12 +494,13 @@ if ($row) {
 } else {
     $options=booking_list_options($_GET);$groups=[];
     foreach(['open','previous'] as $group)$groups[$group]=booking_order_list($db,null,$group,$options[$group.'_page'],$options[$group.'_size']);
-    $body.='<p>Orders remain open until SiteSee completes Production or records their closeout.</p>';
-    $body.=booking_lists_html($groups,$options,'staff-bookings.php',[],static function(array $item)use($db): string {
+    $body.='<p>Active orders remain open until SiteSee completes Production. Cancelled appointments move to Previous Orders automatically.</p><p><a href="staff-bookings.php?view=archive">Archived Orders →</a></p>';
+    $render=static function(array $item)use($db): string {
         $request=booking_request($item);$details=$request['details'];$change=booking_change_request_pending($db,$item['reference']);
-        $status=$item['closed_at']?'Closed':($item['production_complete_at']?'Completed':($item['completed_at']?'In Production':ucfirst(str_replace('_',' ',$item['lifecycle_state']??$item['status']))));
+        $status=($item['lifecycle_state']??'')==='cancelled'?'Cancelled':($item['closed_at']?'Closed':($item['production_complete_at']?'Completed':($item['completed_at']?'In Production':ucfirst(str_replace('_',' ',$item['lifecycle_state']??$item['status'])))));
         $property=trim(implode(' ',array_filter([$details['street']??'',$details['unit']??'',$details['city']??'',$details['state']??'',$details['zip']??''])));
         return '<article class="order"><div><p class="eyebrow">Order '.staff_escape($item['order_number']).'</p><h3>'.staff_escape($property).'</h3><p>'.staff_escape($status).'</p>'.($change?'<p class="help">Appointment change awaiting review</p>':'').'</div><a class="view-order" href="staff-bookings.php?reference='.rawurlencode($item['reference']).'" aria-label="Review order '.staff_escape($item['order_number']).'">Review Order →</a></article>';
-    });
+    };
+    $body.=($_GET['view']??'')==='archive'?booking_archive_html(booking_order_list($db,null,'archive',$options['previous_page'],$options['previous_size']),'staff-bookings.php',['view'=>'archive'],$render):booking_lists_html($groups,$options,'staff-bookings.php',[],$render);
 }
 staff_page($body);

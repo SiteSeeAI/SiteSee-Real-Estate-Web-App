@@ -10,7 +10,7 @@ import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
-from unified_source import before_unified_update
+from unified_source import before_unified_update, before_client_update
 
 
 class ReadinessSource(unittest.TestCase):
@@ -24,7 +24,7 @@ class ReadinessSource(unittest.TestCase):
                 self.assertFalse(change['added'])
                 self.assertEqual(base64.b64decode(change['before'], validate=True), before)
                 self.assertEqual(hashlib.sha256(before).hexdigest(), change['before_sha256'])
-                after = (ROOT / name).read_bytes()
+                after = before_client_update(ROOT,name)
                 self.assertEqual(base64.b64decode(change['after'], validate=True), after)
                 self.assertEqual(hashlib.sha256(after).hexdigest(), change['after_sha256'])
 

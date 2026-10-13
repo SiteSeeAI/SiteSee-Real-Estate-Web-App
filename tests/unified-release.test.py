@@ -53,7 +53,7 @@ class UnifiedRelease(unittest.TestCase):
         cls.obj, cls.files, cls.manifest_sha = installer.load(cls.package, cls.package_sha)
         # Build the installed release using its own pinned builder and installer.
         # Never derive historical record metadata from the candidate being tested.
-        cls.previous_commit = '8c3ae16c726d0a308b4595e827d6ba3ea80ddd0b'
+        cls.previous_commit = '201b1888abad434d37236e3f478b3e0b2068919b'
         previous_builder = cls.base / 'previous-builder.py'
         previous_builder.write_bytes(subprocess.check_output(
             ['git', 'show', cls.previous_commit + ':tools/build-unified-release.py'], cwd=ROOT))
@@ -63,7 +63,7 @@ class UnifiedRelease(unittest.TestCase):
         historical_builder.ROOT = ROOT
         cls.previous_package = historical_builder.build(cls.previous_commit, cls.base / 'previous-release')
         cls.previous_package_sha = installer.sha(cls.previous_package.read_bytes())
-        if cls.previous_package_sha != 'b79effc1e203bbc8d8d8d7c953edf45eb6bc101cafccd0798fbc9ef17429ce7e':
+        if cls.previous_package_sha != 'f7c94d3d65d206d98e08cf545a30996baffd4c27f133ce8e1b119d1a052d6285':
             raise RuntimeError('Historical installed package differs from the verified operator release.')
         previous_installer = cls.previous_package.parent / 'install-unified.py'
         previous_spec = importlib.util.spec_from_file_location('previous_installer', previous_installer)
@@ -608,7 +608,7 @@ class UnifiedRelease(unittest.TestCase):
 
     def test_financial_activity_refuses_old_code_restore_without_mutation(self):
         self.seed_installed_predecessor();self.cli('--install')
-        for table in ('booking_finance_cancellations','booking_finance_refunds','booking_finance_credits','booking_finance_allocations','booking_finance_funding'):
+        for table in ('booking_finance_cancellations','booking_finance_refunds','booking_finance_credits','booking_finance_allocations','booking_finance_funding','booking_finance_refund_dates'):
             with self.subTest(table=table):
                 with contextlib.closing(sqlite3.connect(self.db)) as db:
                     db.execute('CREATE TABLE '+table+'(identity TEXT)');db.execute('INSERT INTO '+table+' VALUES (?)',('retained',));db.commit()

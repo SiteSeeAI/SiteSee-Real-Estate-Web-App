@@ -14,15 +14,14 @@ function portal_appointment_page(PDO $db,array $account,string $reference,array 
     $owned=booking_get($db,$reference);
     if($owned && $owned['status']==='deposit_paid_test' && $owned['deposit_paid_at']){
         $confirmation=booking_confirmation_get($db,$reference);
-        if(!$owned['approved_at'])portal_page('Manage Appointment',$body.'<p>Your payment is recorded. SiteSee is reviewing your requested appointment. Reschedule and cancellation options will appear after the appointment is confirmed.</p>',$account);
-        if(!$confirmation || $confirmation['state']!=='confirmed' || !$confirmation['event_uid'])portal_page('Manage Appointment',$body.'<p>SiteSee has reviewed your request. Calendar confirmation is pending. Reschedule and cancellation options will appear after the appointment is confirmed.</p>',$account);
+        if(!$owned['approved_at'])portal_order_section_page($db,$account,$reference,'appointment','Manage Appointment',$body.'<p>Your payment is recorded. SiteSee is reviewing your requested appointment. Reschedule and cancellation options will appear after the appointment is confirmed.</p>');
+        if(!$confirmation || $confirmation['state']!=='confirmed' || !$confirmation['event_uid'])portal_order_section_page($db,$account,$reference,'appointment','Manage Appointment',$body.'<p>SiteSee has reviewed your request. Calendar confirmation is pending. Reschedule and cancellation options will appear after the appointment is confirmed.</p>');
     }
-    try{$row=portal_appointment_guard($db,$account['id'],$reference);}catch(InvalidArgumentException){portal_page('Manage Appointment',$body.'<p>Contact SiteSee for help with this appointment.</p>',$account);}
+    try{$row=portal_appointment_guard($db,$account['id'],$reference);}catch(InvalidArgumentException){portal_order_section_page($db,$account,$reference,'appointment','Manage Appointment',$body.'<p>Contact SiteSee for help with this appointment.</p>');}
     $state=booking_lifecycle_state($db,$reference);$pending=booking_lifecycle_pending($db,$reference);$claim=booking_confirmation_get($db,$reference);$a=booking_request($row)['appointment'];
     $unresolved=$db->prepare("SELECT 1 FROM booking_communications WHERE reference=? AND kind LIKE 'lifecycle-%' AND submission_state<>'sent_observed' LIMIT 1");$unresolved->execute([$reference]);$noticePending=(bool)$unresolved->fetchColumn();
     $focusAction = is_string($_POST['action'] ?? null) ? $_POST['action'] : '';
     if ($windows && $focusAction === 'appointment_windows') $focusAction = 'appointment_reschedule';
-    if ($state['state'] !== 'cancelled') $body .= site_workflow_progress(['Deposit', 'SiteSee review', 'Appointment', 'Delivery'], 3);
     $body.='<section class="panel"><div data-focus-actions data-focus-kind="customer" data-current-action="'.$e($focusAction).'"><h2>Your Arrival Window</h2><p>'.$e($a['date'].' '.$a['time'].'–'.$a['windowEnd']).' Central Time</p><p>Customer cancellation at least 24 hours before the confirmed appointment refunds the paid deposit. Later cancellation creates deposit credit. Extra prepaid payments require staff review.</p>';
     $request=booking_change_request_pending($db,$reference);$lastRequest=booking_change_request_latest($db,$reference);
     if($request){$body.='<p class="notice">Requested window: '.$e($request['date'].' '.$request['time'].'–'.$request['window_end']).' Central Time. '
@@ -45,7 +44,7 @@ function portal_appointment_page(PDO $db,array $account,string $reference,array 
     if(!$request&&($lastRequest['state']??'')==='rejected')$body.='<p>Your last requested window was not approved. Your confirmed appointment is unchanged.</p>';
     $mail=booking_communication_get($db,'lifecycle-'.$state['revision'].':'.$reference);
     if($mail&&$mail['submission_state']!=='sent_observed')$body.='<p class="notice">Your saved change notice needs a staff check. Your appointment status above reflects the saved result.</p>';
-    portal_page('Manage Appointment',$body.'</div></section>',$account);
+    portal_order_section_page($db,$account,$reference,'appointment','Manage Appointment',$body.'</div></section>');
 }
 function portal_billing_page(PDO $db,array $account,string $reference): never
 {
@@ -57,7 +56,7 @@ function portal_billing_page(PDO $db,array $account,string $reference): never
     $total=$job?json_decode($job['bill_json'],true,32,JSON_THROW_ON_ERROR)['total_cents']:($order['approved_cents']===null?null:$order['approved_cents']+$order['rush_fee_cents']);
     $body.='<section class="panel"><p class="eyebrow">Order '.$e($order['order_number']).'</p><h2>'.$e($order['property']).'</h2><p>Job Total: '.($total===null?'Awaiting Staff Review':$money($total)).'</p></section>';
     $body.=booking_finance_status_html($db,$reference);
-    try{$payments=portal_billing_records($db,$account['id'],$reference);}catch(Throwable){portal_page('Billing & Receipts',$body.'<p class="notice">Billing records could not be verified right now. Please try again or contact SiteSee.</p>',$account,503);}
+    try{$payments=portal_billing_records($db,$account['id'],$reference);}catch(Throwable){portal_order_section_page($db,$account,$reference,'billing','Billing & Receipts',$body.'<p class="notice">Billing records could not be verified right now. Please try again or contact SiteSee.</p>',503);}
     if(!$payments)$body.='<section class="panel"><p>No verified payment has been recorded for this order yet.</p></section>';
     foreach($payments as $p){
         $body.='<section class="panel"><h2>'.($p['kind']==='deposit'?'Test Deposit':'Test Balance').'</h2><dl><dt>Paid</dt><dd>'.$money($p['amount']).'</dd><dt>Refunded</dt><dd>'.$money($p['refunded']).'</dd><dt>Net Paid</dt><dd>'.$money($p['amount']-$p['refunded']).'</dd></dl>';
@@ -69,7 +68,7 @@ function portal_billing_page(PDO $db,array $account,string $reference): never
         $body.='</section>';
     }
     if($payments)$body.='<section class="panel"><h2>Payment Methods</h2><p>Manage the billing address and test payment methods associated with this order. Changes do not authorize a charge.</p>'.portal_service_form($reference,'billing_manage','','Manage Test Payment Methods').'</section>';
-    portal_page('Billing & Receipts',$body,$account);
+    portal_order_section_page($db,$account,$reference,'billing','Billing & Receipts',$body);
 }
 function portal_balance_page(PDO $db,array $account,string $reference,bool $return): never
 {

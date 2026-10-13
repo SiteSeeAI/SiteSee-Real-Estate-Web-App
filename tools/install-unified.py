@@ -116,11 +116,11 @@ def load(package, expected):
     need(obj['format'] == 1 and obj['stage'] == 'TEST' and obj['migration'] == 'none', 'Release mode/migration differs.')
     if 'predecessor' in obj:
         previous = obj['predecessor']
-        need(previous.get('commit') == '8c3ae16c726d0a308b4595e827d6ba3ea80ddd0b'
-             and previous.get('manifest_sha256') == 'dabd82a7d294cabb6994c71ef3fc4a5c96d28391f390379dcef289d4a89e069d'
+        need(previous.get('commit') == '201b1888abad434d37236e3f478b3e0b2068919b'
+             and previous.get('manifest_sha256') == '38ef090abe2c6b24eabb445b85d8e3327a3e1a97f9922ca8ea97ff9c7a1bf19e'
              and previous.get('runtime_schema') == 'Additive booking_finance_cancellations, booking_finance_refunds, booking_finance_credits, booking_finance_allocations and booking_finance_funding tables plus existing account/workflow schema on first normal application use; original prices, references and payment rows retained. Financial activity requires repair forward; no operational database rollback.'
-             and set(previous.get('files', {})) == set(obj['files']), 'Reviewed predecessor differs.')
-        need(obj.get('runtime_schema') == 'Additive booking_finance_cancellations, booking_finance_refunds, booking_finance_credits, booking_finance_allocations and booking_finance_funding tables plus existing account/workflow schema on first normal application use; original prices, references and payment rows retained. Financial activity requires repair forward; no operational database rollback.', 'Runtime schema review differs.')
+             and set(previous.get('files', {})) == set(obj['files']) - {'private/server/portal-reports.php','private/server/portal-report-pdf.php'}, 'Reviewed predecessor differs.')
+        need(obj.get('runtime_schema') == 'Additive booking_finance_refund_dates evidence table plus existing financial/account/workflow schema on first normal application use; first verified refund dates retained immutably, original prices, references and payment rows retained. Financial activity requires repair forward; no operational database rollback.', 'Runtime schema review differs.')
     need(re.fullmatch('[0-9a-f]{40}', obj['commit']) and obj['release'] == 'unified-test-' + obj['commit'][:12], 'Release identity differs.')
     need(sha(values['install-unified.py']) == obj['installer_sha256'] == sha(pathlib.Path(__file__).read_bytes()),
          'Use the installer belonging to this exact package.')
@@ -516,7 +516,7 @@ def calendar_boundary(root, uid, gid):
 
 def rollback_request_guard(db):
     with contextlib.closing(readonly_db(db)) as connection:
-        for table in ('booking_finance_cancellations', 'booking_finance_refunds', 'booking_finance_credits', 'booking_finance_allocations', 'booking_finance_funding'):
+        for table in ('booking_finance_cancellations', 'booking_finance_refunds', 'booking_finance_credits', 'booking_finance_allocations', 'booking_finance_funding','booking_finance_refund_dates'):
             exists = connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)).fetchone()
             if exists:
                 need(connection.execute('SELECT count(*) FROM ' + table).fetchone()[0] == 0, 'Financial ledger preserved: repair forward; previous code cannot safely account for refunds or credits.')

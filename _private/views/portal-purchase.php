@@ -8,7 +8,7 @@ function portal_new_order_page(PDO $db,array $account,string $again=''): never
     $config=['serverNow'=>time(),'csrf'=>$_SESSION['csrf'],'details'=>['first'=>$p['first_name'],'last'=>$p['last_name'],'company'=>$p['company'],'phone'=>$p['phone'],'email'=>$account['email']],'seed'=>$seed];
     $body=($seed?'<p class="notice">This is a new service order. Review the property, service quantities and current pricing, then choose a new date and provide fresh access instructions.</p>':'')
         .'<div id="portal-wizard" data-config="'.portal_escape(json_encode($config,JSON_THROW_ON_ERROR)).'"><div id="sp-screen"></div><noscript>Enable JavaScript to complete the guided order form.</noscript></div>'
-        .'<link rel="stylesheet" href="/portal-assets/order.css"><script src="/account.php?view=engine&amp;market=residential" defer></script><script src="/account.php?view=engine&amp;market=commercial" defer></script><script src="/portal-assets/booking-notice.js?v=account-workflow-r1" defer></script><script src="/portal-assets/order.js?v=account-workflow-r1" defer></script>';
+        .'<link rel="stylesheet" href="/portal-assets/order.css"><script src="/account.php?view=engine&amp;market=residential" defer></script><script src="/account.php?view=engine&amp;market=commercial" defer></script><script src="/portal-assets/booking-notice.js?v=account-workflow-r1" defer></script><script src="/portal-assets/order.js?v=ux-003" defer></script>';
     portal_page('New Order',$body,$account);
 }
 function portal_payment_page(PDO $db,array $account,string $reference,bool $return): never

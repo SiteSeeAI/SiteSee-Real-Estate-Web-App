@@ -28,7 +28,7 @@ function booking_lists_html(array $groups,array $options,string $path,array $bas
     $html='<div class="order-columns" data-show="'.$options['show'].'">';
     foreach(['open'=>'Open Orders','previous'=>'Previous Orders'] as $group=>$label){
         if($options['show']!=='both'&&$options['show']!==$group)continue;
-        $result=$groups[$group];$html.='<section class="order-column" aria-labelledby="orders-'.$group.'"><h2 id="orders-'.$group.'">'.$label.'</h2><p class="help">'.$result['total'].' '.($group==='open'?'orders awaiting SiteSee closeout':'completed or staff-closed orders').'</p><div class="order-list">';
+        $result=$groups[$group];$html.='<section class="order-column" aria-labelledby="orders-'.$group.'"><h2 id="orders-'.$group.'">'.$label.'</h2><p class="help">'.$result['total'].' '.($group==='open'?'active orders awaiting SiteSee completion':'completed, closed or cancelled within the last 14 days').'</p><div class="order-list">';
         foreach($result['orders'] as $row)$html.=$render($row);
         if(!$result['orders'])$html.='<p>No '.strtolower($label).' to show.</p>';
         $html.='</div><nav class="pagination" aria-label="'.$label.' Pages"><span>Page '.$result['page'].' of '.$result['pages'].'</span>';
@@ -38,4 +38,20 @@ function booking_lists_html(array $groups,array $options,string $path,array $bas
         $html.='</nav></section>';
     }
     return $html.'</div>'.$controls;
+}
+
+function booking_archive_html(array $result,string $path,array $base,callable $render): string
+{
+    $e=static fn($v)=>htmlspecialchars((string)$v,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8');
+    $html='<div class="order-columns" data-show="archive"><section class="order-column"><h2>Archived Orders</h2><p class="help">'.$result['total'].' orders closed or cancelled more than 14 days ago. Records and billing stay available.</p><div class="order-list">';
+    foreach($result['orders'] as $row)$html.=$render($row);
+    if(!$result['orders'])$html.='<p>No archived orders to show.</p>';
+    $html.='</div><nav class="pagination" aria-label="Archived Orders Pages"><span>Page '.$result['page'].' of '.$result['pages'].'</span>';
+    foreach([-1=>'Previous',1=>'Next'] as $direction=>$text){$page=$result['page']+$direction;if($page<1||$page>$result['pages'])continue;
+        $html.='<a href="'.$e($path.'?'.http_build_query($base+['previous_page'=>$page,'previous_size'=>$result['size']])).'">'.$text.'</a>';}
+    $html.='</nav></section></div><form method="get" class="order-list-options" data-auto-list action="'.$e($path).'"><p class="list-options-hint">Choose how many orders to show.</p>';
+    foreach($base as $key=>$value)$html.='<input type="hidden" name="'.$e($key).'" value="'.$e($value).'">';
+    $html.='<label>Archived orders per page<select name="previous_size">';
+    foreach(['5'=>'5','25'=>'25','all'=>'All'] as $value=>$label)$html.='<option value="'.$value.'"'.($result['size']===(string)$value?' selected':'').'>'.$label.'</option>';
+    return $html.'</select></label><noscript><button>Update List</button></noscript><span class="list-feedback" aria-live="polite"></span></form>';
 }

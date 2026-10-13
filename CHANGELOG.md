@@ -4,9 +4,21 @@ This is the iteration record from October 9, 2026 onward. Dates use America/Chic
 
 Each iteration records its ID, purpose, status, source/release, changes, validation and user acceptance. Keep planned work separate from implemented, installed and accepted work. Add an entry for each subsequent implementation/release and update its acceptance after user review. Documentation-only commits do not change the installed application.
 
+## UX-003 — client workspace, reports and archives — 2026-10-13
+
+Status: implemented; local validation and four review passes passed. Exact-source package/CI and GitHub publication in preparation. Stripe remains TEST.
+
+User acceptance recorded: “All tests confirmed and verified. All in working order.” This accepts the prior connected checks, including financial automation and CRM readiness. The prior UX-002 release is the user-confirmed working predecessor; its complete host transcript and new backup path were not supplied. No LIVE cutover was authorized.
+
+Requested: cancellation moves immediately out of Open Orders for customer and management; closed/cancelled orders archive after 14 days; customer sections open below the persistent appointment overview; state-gated appointment/delivery actions use the same workspace. Customer navigation: New Order, Reports, Billing, Archived Orders, Profile, My Orders. Incomplete profiles lead from New Order to the required Profile form. Add month/quarter/year/custom recorded expense reports with on-screen results and a real PDF download, yellow rush scheduling highlight and bold service/package names.
+
+Reports separate recorded cash payments, confirmed cancellation refunds and applied credits. Refunds use an immutable first verified confirmation date; undated legacy refunds or adjustments make the net expense total unavailable pending Billing review; pending refunds and estimates do not enter cash totals. Historical records and financial recovery remain reachable in Billing after archiving. No provider writes, schedule or financial-policy change is part of this iteration.
+
+Local validation: all 43 PHP suites pass on PHP 8.2 and 8.3, including 29 report/archive checks and 95 financial assertions. All seven HTTPS browser journeys pass, including same-document customer sections, inline verified Delivery, account-owned reports/PDF and immediate cancellation classification. 110 Node checks pass. Python discovery passes 153 cases with 22 unavailable-privilege skips; directly privileged release checks remain required in exact-source CI. Historical source layers and host protocol checks pass. Four passes: [UX-003 review](documents/ux/UX-003_REVIEW.md). Frozen GitHub package evidence follows after completion.
+
 ## UX-002 — CRM readiness handoff — 2026-10-13
 
-Status: reviewed, tested and published as `unified-test-201b1888abad`. Host update and connected readiness acceptance pending. Installed authority remains `unified-test-8c3ae16c726d`; Stripe remains TEST.
+Status: reviewed, tested and published as `unified-test-201b1888abad`; working installation and connected readiness accepted by the user on 2026-10-13. Full operator host transcript/new backup path not supplied. Stripe remains TEST.
 
 Frozen source: `201b1888abad434d37236e3f478b3e0b2068919b`. [GitHub release](https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/releases/tag/unified-test-201b1888abad). Package SHA256 `f7c94d3d65d206d98e08cf545a30996baffd4c27f133ce8e1b119d1a052d6285`; installer SHA256 `2df3fd62449d9827b9047cd8102a85e97ae9ac8cd09f45194169946664263657`. All 274 runtime payloads are identical to reviewed implementation `de9bc48`; final source includes the test-fixture correction. Documentation-only checkpoints do not alter these frozen payloads.
 
@@ -20,7 +32,7 @@ Release verification caught an older tampering fixture that assumed the staff ha
 
 Final evidence: publication run `38446873572` passed all five jobs and every step. Both PHP 8.2 and PHP 8.3 completed 65 directly privileged installer cases with zero skips; all seven browser completion markers, the actual guarded CRM handoff, fresh consent/cache checks, 27 host-protocol checks and eight actual isolated FPM tests were verified in the authentic CI archive. The independent reviewer verified all 274 payloads and 683 exact source entries, unchanged runtime bytes, exact predecessor compatibility and the corrected real tampering regression. All five published assets were independently downloaded and verified by full bytes, SHA256, GitHub digest, size and attachment headers. Source Server Form CI and Customer Portal Checks pass. No server action has been performed by the assistant.
 
-After the operator reports HOST UPDATE PASS, reload the affected booking and run Check Booking Readiness once for fresh results. Verify and link the correct existing CRM contact, then continue to the separate appointment confirmation. Financial connected acceptance remains pending.
+The user subsequently confirmed all tests and working behavior on 2026-10-13. Anonymous deployed shared CSS/JavaScript match the frozen `201b1888abad` source; this corroborates served assets without reconstructing the missing host transcript or backup path. Financial and connected readiness acceptance are recorded above.
 
 ## UX-001 — unified-test-c40236e09375 — 2026-10-09
 
@@ -54,7 +66,7 @@ Backup: `/home/sitesee/.sitesee-real-estate/unified-deployments/unified-test-c40
 
 ## FIN-001 — unified-test-8c3ae16c726d — 2026-10-09
 
-Status: installed and verified in TEST. Connected financial acceptance remains pending. Stripe remains TEST.
+Status: installed and verified in TEST. Connected financial acceptance confirmed by the user on 2026-10-13. Stripe remains TEST.
 
 Source: `8c3ae16c726d0a308b4595e827d6ba3ea80ddd0b`. [Published GitHub release](https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/releases/tag/unified-test-8c3ae16c726d); package SHA256 `b79effc1e203bbc8d8d8d7c953edf45eb6bc101cafccd0798fbc9ef17429ce7e`. The package contains 274 deployment files, including the new financial module, and 678 exact source entries. Documentation-only updates do not alter this frozen source or imply host installation.
 
@@ -70,7 +82,7 @@ Validation: all 42 PHP suites pass on PHP 8.2 and 8.3, including 87 financial as
 
 Installation: the operator supplied complete PREFLIGHT PASS, HOST PREFLIGHT PASS, INSTALLED AND VERIFIED, VERIFY PASS and HOST UPDATE PASS output for this exact release. Preflight checked 274 deployment files with 24 changes, read-only database integrity and the three preserved host variants. Actual PHP-FPM 8.2.34, compiled-code refresh, exact files, ownership/modes, backup integrity and TEST gates passed. The canonical reconciliation schedule remained unchanged; no deployment database migration, provider operation, configuration/gate change, session reset, new worker or callback change was reported.
 
-Current installed authority is `unified-test-8c3ae16c726d`. Backup: `/home/sitesee/.sitesee-real-estate/unified-deployments/unified-test-8c3ae16c726d-ln1nwjy0`. The five finance tables initialize on normal application use. Financial ledger activity requires repair forward; do not restore an older operational database. Connected financial acceptance must now confirm new cancellation refunds in Stripe TEST, credit allocation/remaining value in Billing and customer extra-prepayment review. Prior accepted calendar/cancellation notices are retained; no repeat installation is needed.
+Current installed authority is `unified-test-8c3ae16c726d`. Backup: `/home/sitesee/.sitesee-real-estate/unified-deployments/unified-test-8c3ae16c726d-ln1nwjy0`. The five finance tables initialize on normal application use. Financial ledger activity requires repair forward; do not restore an older operational database. The user confirmed the connected tests and working behavior on 2026-10-13; this supersedes the prior pending financial acceptance. Prior accepted calendar/cancellation notices are retained; no repeat installation is needed.
 
 ## Unreleased
 

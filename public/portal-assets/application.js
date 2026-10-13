@@ -21,7 +21,9 @@ for (const form of document.querySelectorAll('form[data-auto-list]')) {
 
 // Presentation only. Navigation selects an existing form; submission still needs
 // its original fields, consent, CSRF token and server-side state validation.
+function initializeFocusedActions() {
 for (const panel of document.querySelectorAll('[data-focus-actions]')) {
+  if (panel.dataset.focusReady) continue;
   if (panel.closest('[hidden]')) continue;
   const configured = panel.hasAttribute('data-focus-primary') ? JSON.parse(panel.dataset.focusPrimary) : null;
   const entries = [...panel.querySelectorAll('form')].filter(form => !form.hasAttribute('data-window-option')).map(form => {
@@ -131,3 +133,7 @@ for (const panel of document.querySelectorAll('[data-focus-actions]')) {
   renderSelection();
   panel.dataset.focusReady = 'true';
 }
+
+}
+initializeFocusedActions();
+document.addEventListener("sitesee:order-panel", initializeFocusedActions);

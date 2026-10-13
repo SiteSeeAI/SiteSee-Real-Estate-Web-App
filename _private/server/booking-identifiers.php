@@ -33,15 +33,21 @@ function booking_property_subject(string $prefix,array $details,string $suffix='
     preg_match('/^.{0,220}/us',$address,$match);
     return $prefix.' | '.($match[0]??'Property appointment').($suffix!==''?' | '.$suffix:'');
 }
-function booking_order_list(PDO $db,?string $account,string $group,int $page=1,string $size='5'): array
+function booking_order_list(PDO $db,?string $account,string $group,int $page=1,string $size='5',?int $now=null): array
 {
-    if(!in_array($group,['open','previous'],true)||!in_array($size,['5','25','all'],true))throw new InvalidArgumentException('Choose a valid order list.');
+    if(!in_array($group,['open','previous','archive','history'],true)||!in_array($size,['5','25','all'],true))throw new InvalidArgumentException('Choose a valid order list.');
     booking_job_schema($db);
-    $completed="(j.production_complete_at IS NOT NULL OR x.closed_at IS NOT NULL)";
+    // Classification only. Pending notices/refunds remain reachable; no financial or closure write.
+    $completed="(j.production_complete_at IS NOT NULL OR x.closed_at IS NOT NULL OR COALESCE(l.state,'active')='cancelled')";
+    $closed="CASE WHEN COALESCE(l.state,'active')='cancelled' THEN COALESCE((SELECT MAX(op.completed_at) FROM booking_lifecycle_operations op WHERE op.reference=b.reference AND op.action='cancel' AND op.state='applied'),x.closed_at,j.production_complete_at) ELSE COALESCE(j.production_complete_at,x.closed_at) END";
+    $archived="($completed AND julianday($closed) < julianday(?))";
+    $cutoff=gmdate('c',($now??time())-14*86400);
     $owned=$account===null?'':" JOIN portal_order_owners o ON o.reference=b.reference JOIN portal_accounts a ON a.id=o.account_id AND a.disabled=0 ";
     $from=' FROM bookings b'.$owned.' LEFT JOIN booking_scheduling s ON s.reference=b.reference LEFT JOIN booking_confirmations c ON c.reference=b.reference LEFT JOIN booking_lifecycle l ON l.reference=b.reference LEFT JOIN booking_jobs j ON j.reference=b.reference LEFT JOIN booking_order_closures x ON x.reference=b.reference';
-    $where=' WHERE '.($group==='previous'?$completed:'NOT '.$completed).($account===null?'':' AND o.account_id=?');
-    $params=$account===null?[]:[$account];$q=$db->prepare('SELECT COUNT(*)'.$from.$where);$q->execute($params);$total=(int)$q->fetchColumn();
+    $predicate=match($group){'open'=>'NOT '.$completed,'archive'=>$archived,'history'=>$completed,default=>"($completed AND NOT COALESCE($archived,0))"};
+    $where=' WHERE '.$predicate.($account===null?'':' AND o.account_id=?');
+    $params=in_array($group,['archive','previous'],true)?[$cutoff]:[];
+    if($account!==null)$params[]=$account;$q=$db->prepare('SELECT COUNT(*)'.$from.$where);$q->execute($params);$total=(int)$q->fetchColumn();
     $limit=$size==='all'?null:(int)$size;$pages=$limit===null?1:max(1,(int)ceil($total/$limit));$page=max(1,min($pages,$page));
     $sql='SELECT b.*,s.rush_status,s.rush_fee_cents,s.reschedule_required,c.state AS calendar_state,l.state AS lifecycle_state,j.production_complete_at,j.completed_at,j.payment_state AS job_payment_state,j.bill_json,x.closed_at'.$from.$where.' ORDER BY b.created_at DESC,b.reference DESC';
     if($limit!==null)$sql.=' LIMIT '.(int)$limit.' OFFSET '.(($page-1)*$limit);

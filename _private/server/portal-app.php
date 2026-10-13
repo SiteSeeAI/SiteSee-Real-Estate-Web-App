@@ -9,7 +9,7 @@ header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
 header('X-Robots-Tag: noindex, nofollow, noarchive');
 header('Content-Type: text/html; charset=utf-8');
-header("Content-Security-Policy: default-src 'none'; style-src 'self'; font-src 'self'; script-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");
+header("Content-Security-Policy: default-src 'none'; style-src 'self'; font-src 'self'; script-src 'self'; connect-src 'self'; form-action 'self' https://billing.stripe.com; base-uri 'none'; frame-ancestors 'none'");
 // Independent, default-off release gate. Never enables another integration or accepts live keys.
 if (getenv('SITESEE_REAL_ESTATE_PORTAL_TEST_ENABLED') !== '1' || getenv('SITESEE_REAL_ESTATE_BOOKING_TEST_ENABLED') !== '1') {
     http_response_code(503);exit('Account access is not available yet.');
@@ -25,6 +25,7 @@ require_once __DIR__.'/portal-email.php';
 require_once __DIR__.'/portal-sms.php';
 require_once __DIR__.'/portal-purchase.php';
 require_once __DIR__.'/portal-billing.php';
+require_once __DIR__.'/portal-reports.php';
 require_once dirname(__DIR__).'/views/portal-service.php';
 require_once dirname(__DIR__).'/views/portal-job.php';
 require_once dirname(__DIR__).'/views/portal-purchase.php';
@@ -171,6 +172,8 @@ try {
         header('Content-Type: application/javascript; charset=utf-8');
         readfile(dirname(__DIR__).'/pricing-assets/'.($market==='residential'?'quote-engine.js':'commercial-quote-engine.js'));exit;
     }
+    if($view==='archive')portal_archive_page($db,$account);
+    if($view==='reports')portal_reports_page($db,$account,$_GET);
     if($view==='appointment')portal_appointment_page($db,$account,portal_input($_GET,'reference',32),[],isset($_GET['saved'])?'Your saved appointment status is shown below.':'');
     if($view==='billing'){
         $reference=portal_input($_GET,'reference',32);
@@ -183,24 +186,7 @@ try {
     if($view==='order'){
         $order=portal_owned_order($db,$account['id'],portal_input($_GET,'reference',32));
         if(!$order)portal_page('Order Unavailable','<p>This order is not available in your account.</p><p><a href="/account.php">Return To My Orders</a></p>',$account,404);
-        $order['portal_payment']=portal_purchase_intent_for_order($db,$account['id'],$order['reference'])!==false;
-        $order['balance_paid_cents']=portal_balance_paid($db,$order['reference']);
-        if($order['remaining_cents']!==null)$order['remaining_cents']=max(0,$order['remaining_cents']-$order['balance_paid_cents']);
-        $job=booking_job_get($db,$order['reference']);$order['job_closed']=(bool)$job;
-        $claim=booking_confirmation_get($db,$order['reference']);
-        $order['can_manage_appointment']=$claim&&$claim['state']==='confirmed'&&!$job;
-        $order['can_view_job']=(bool)$job||($order['appointment_status']==='Confirmed'&&$order['review_status']==='Reviewed');
-        $order['change_request']=booking_change_request_pending($db,$order['reference'])?:null;
-        $order['change_pending']=(bool)booking_lifecycle_pending($db,$order['reference']);
-        $order['extras_need_approval']=false;
-        if(!$job&&$order['can_view_job']){$extras=booking_job_extras($db,$order['reference']);$order['extras_need_approval']=$extras['lines_json']!=='[]'&&!$extras['approved_at'];}
-        if($job){
-            $order['remaining_cents']=$job['paid_at']?0:(int)$job['amount'];
-            $order['payment_review']=(bool)$job['paid_at']&&$job['payment_state']!=='paid';
-            $order['balance_paid_cents']+=$job['paid_at']?(int)$job['amount']:0;
-            $bill=json_decode($job['bill_json'],true,16,JSON_THROW_ON_ERROR);$order['extras_cents']=array_sum(array_column($bill['extras'],'cents'));
-            $order['job_status']=$job['production_complete_at']?'Production Complete':'Production';
-        }
+        $order=portal_order_context($db,$account,$order);
         portal_order_page($order,$account);
     }
     if($view==='email'){portal_email_schema($db);portal_email_page($db,$account);}

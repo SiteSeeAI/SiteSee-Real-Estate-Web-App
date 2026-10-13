@@ -10,7 +10,7 @@ import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
-from unified_source import before_unified_update
+from unified_source import before_unified_update, before_client_update
 
 
 class WorkspaceSource(unittest.TestCase):
@@ -21,7 +21,7 @@ class WorkspaceSource(unittest.TestCase):
                 original = subprocess.run(['git', 'show', manifest['baseline_commit'] + ':' + name], cwd=ROOT, capture_output=True)
                 self.assertEqual(change['added'], original.returncode != 0)
                 self.assertEqual(base64.b64decode(change['before'], validate=True), original.stdout if original.returncode == 0 else b'')
-                actual=(ROOT / name).read_bytes()
+                actual=before_client_update(ROOT,name)
                 readiness=json.loads((ROOT / 'documents/unified/readiness-source.json').read_text())['files'].get(name)
                 if readiness:
                     self.assertEqual(hashlib.sha256(actual).hexdigest(),readiness['after_sha256'])
@@ -37,7 +37,7 @@ class WorkspaceSource(unittest.TestCase):
         manifest_path = 'documents/unified/ux-workspace-source.json'
         with tempfile.TemporaryDirectory() as directory:
             root = pathlib.Path(directory)
-            for path in [name, manifest_path, 'documents/unified/readiness-source.json']:
+            for path in [name, manifest_path, 'documents/unified/readiness-source.json','documents/unified/client-workspace-source.json']:
                 destination = root / path
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 destination.write_bytes((ROOT / path).read_bytes())

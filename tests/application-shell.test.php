@@ -12,7 +12,7 @@ $session = $_SESSION;
 $sessionId = session_id();
 $form = '<form method="post"><input type="hidden" name="csrf" value="retained"><button name="action" value="logout">Sign Out</button></form>';
 $links = [
-    'customer'=>['/account.php', '/account.php?view=profile', '/account.php?view=billing', '/account.php?view=new'],
+    'customer'=>['/account.php?view=new','/account.php?view=reports','/account.php?view=billing','/account.php?view=archive','/account.php?view=profile','/account.php'],
     'vendor'=>['/vendor.php'],
     'staff'=>['/staff-bookings.php', '/staff-production.php', '/staff-vendors.php'],
 ];
@@ -26,8 +26,8 @@ foreach ($links as $role=>$expected) {
         shell_check(str_contains($html, $form) && substr_count($html, 'value="logout"') === 1, $role.' retains body/form bytes once');
         shell_check(str_contains($html, 'noindex,nofollow,noarchive'), $role.' excludes private pages from indexing');
         shell_check(str_contains($html, 'TEST ACCESS') && str_contains($html, 'payments remain in test mode'), $role.' retains TEST label');
-        shell_check(str_contains($html, '/portal-assets/application.css?v=ux-001'), $role.' shares shell asset');
-        shell_check(str_contains($html, '/portal-assets/application.js?v=ux-002'), $role.' requests the cache-versioned readiness correction');
+        shell_check(str_contains($html, '/portal-assets/application.css?v=ux-003'), $role.' shares shell asset');
+        shell_check(str_contains($html, '/portal-assets/application.js?v=ux-003'), $role.' requests the cache-versioned readiness correction');
         shell_check(str_contains($html, 'portal.js') === ($role === 'customer'), $role.' keeps customer script confined');
         preg_match('~<nav\b[^>]*>(.*?)</nav>~s', $html, $nav);
         shell_check(isset($nav[1]) === $authenticated, $role.' navigation requires caller authentication');
@@ -49,6 +49,8 @@ $manifest = json_decode(file_get_contents($root.'/documents/unified/shell-source
 foreach ($manifest['files'] as $path=>$item) {
     $before = base64_decode($item['before'], true);
     $after = file_get_contents($root.'/'.$path);
+    $client=json_decode(file_get_contents($root.'/documents/unified/client-workspace-source.json'),true)['files'][$path]??null;
+    if($client){shell_check(hash('sha256',$after)===$client['after_sha256'],'UX-003 source integrity: '.$path);$after=base64_decode($client['before'],true);}
     $readiness=json_decode(file_get_contents($root.'/documents/unified/readiness-source.json'),true)['files'][$path]??null;
     if($readiness){shell_check(hash('sha256',$after)===$readiness['after_sha256'],'UX-002 source integrity: '.$path);$after=base64_decode($readiness['before'],true);}
     $finance=json_decode(file_get_contents($root.'/documents/unified/finance-source.json'),true)['files'][$path]??null;

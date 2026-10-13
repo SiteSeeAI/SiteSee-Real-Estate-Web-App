@@ -14,18 +14,18 @@ function site_application_shell(string $role, string $title, string $body, bool 
     $page = $roles[$role];
     $escape = static fn(string $value): string => htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     $head = $page['asset'] ? '<link rel="stylesheet" href="'.$page['asset'].'">' : '<style>'.$staffStyle.'</style>';
-    $head .= '<link rel="stylesheet" href="/portal-assets/application.css?v=ux-001"><script src="/portal-assets/application.js?v=ux-002" defer></script>';
-    if ($role === 'customer') $head .= '<script src="/portal-assets/portal.js?v=account-workflow-r1" defer></script>';
+    $head .= '<link rel="stylesheet" href="/portal-assets/application.css?v=ux-003"><script src="/portal-assets/application.js?v=ux-003" defer></script>';
+    if ($role === 'customer') $head .= '<script src="/portal-assets/portal.js?v=ux-003" defer></script>';
     $nav = '';
     if ($authenticated) {
         $nav = match ($role) {
-            'customer' => '<nav aria-label="Customer Navigation"><a href="/account.php">My Orders</a><a href="/account.php?view=profile">Account</a><a href="/account.php?view=billing">Billing</a>'.(($navigation['new_order']??true)?'<a class="new-order" href="/account.php?view=new">New Order</a>':'').'</nav>',
+            'customer' => '<nav aria-label="Customer Navigation">'.(($navigation['new_order']??true)?'<a class="new-order" href="/account.php?view=new">New Order</a>':'<a class="new-order" href="/account.php?view=profile&amp;required=1" title="Complete your Profile before ordering">New Order</a>').'<a href="/account.php?view=reports">Reports</a><a href="/account.php?view=billing">Billing</a><a href="/account.php?view=archive">Archived Orders</a><a href="/account.php?view=profile">Profile</a><a href="/account.php">My Orders</a></nav>',
             'vendor' => '<nav aria-label="Vendor Navigation"><a href="/vendor.php">My Jobs</a></nav>',
             'staff' => '<nav aria-label="Staff Navigation"><a href="/staff-bookings.php">Bookings</a><a href="/staff-production.php">Production</a><a href="/staff-vendors.php">Vendors</a></nav>',
         };
         $view = is_string($_GET['view'] ?? null) ? $_GET['view'] : '';
         $current = match ($role) {
-            'customer' => match ($view) {'profile'=>'/account.php?view=profile', 'billing'=>'/account.php?view=billing', 'new'=>'/account.php?view=new', default=>'/account.php'},
+            'customer' => match ($view) {'reports'=>'/account.php?view=reports', 'archive'=>'/account.php?view=archive', 'profile'=>'/account.php?view=profile', 'billing'=>'/account.php?view=billing', 'new'=>'/account.php?view=new', default=>'/account.php'},
             'vendor' => '/vendor.php',
             'staff' => str_contains($title, 'Production') ? '/staff-production.php' : (str_contains($title, 'Vendor') ? '/staff-vendors.php' : '/staff-bookings.php'),
         };
