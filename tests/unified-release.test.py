@@ -713,12 +713,15 @@ class UnifiedRelease(unittest.TestCase):
         with self.assertRaisesRegex(installer.Stop, 'Different unified release record preserved'):
             self.plan()
         self.assertEqual(path.read_bytes(), corrupted); path.write_bytes(original)
-        name = 'private/server/booking-staff.php'
+        # Exercise a real changed payload for this release, even when the staff
+        # handler is byte-identical (as in a presentation-only correction).
+        name = next(name for name in self.previous_files
+                    if name in self.files and self.previous_files[name] != self.files[name])
         changed = installer.target(name, self.private, self.public)
         self.assertNotEqual(installer.sha(changed.read_bytes()), installer.sha(self.files[name]))
         changed.write_bytes(self.files[name])
-        # Even if active manifests are advanced to an accepted new source, the exact
-        # installed predecessor record must reject a mixed, unjournaled deployment.
+        # Active manifests may accept the new source or remain valid for unrelated
+        # modules. The full predecessor record still rejects a mixed deployment.
         for filename in self.obj['active_manifests']:
             manifest = self.private / filename
             record = json.loads(manifest.read_bytes())

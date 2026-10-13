@@ -14,6 +14,8 @@ Changed: readiness results now present the CRM choice as the next action; a sing
 
 Validation: all 42 PHP suites on PHP 8.2/8.3, 110 Node unit checks and all seven HTTPS browser journeys pass locally. The staff browser regression uses the real authenticated readiness/link POST handlers and native forms with synthetic providers: two CRM matches, A/B selection/back navigation without reload, unchecked/fresh consent, explicit verified link, confirmation-screen handoff, single-match verification and alternative-window consent reset. Historical source checks strictly reverse the new two-file layer before financial/UX layers. Exact installed predecessor package/manifest/schema are pinned independently; financial repair-forward protections remain intact. Review: [UX-002](documents/ux/UX-002_REVIEW.md).
 
+Release verification caught an older tampering fixture that assumed the staff handler changed. This presentation correction leaves that handler byte-identical, so the fixture now selects an actual changed predecessor payload and retains the assertions that unknown records/mixed deployments are refused without overwriting files. The initial candidate was withheld from publication. Application and installer bytes are unchanged by this test correction; fresh exact-source publication checks are required.
+
 ## UX-001 — unified-test-c40236e09375 — 2026-10-09
 
 Status: installed and verified in TEST. Automated checks and independent audit passed; connected UX acceptance remains pending.

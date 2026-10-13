@@ -38,4 +38,6 @@ The installer accepts exact installed predecessor `8c3ae16c726d0a308b4595e827d6b
 
 The existing approved WHM-root download/checksum, preflight, backup, pause/drain, Apache/PHP 8.2 graceful reload, install/verify/FPM refresh and reopen process is retained. No deployment migration, provider operation, finance change, new schedule, session reset or configuration/gate change. Financial activity still blocks old-code/operational database rollback; preserve SQLite/WAL/journals and repair forward.
 
+Initial exact-source installer verification found one historical fixture assumption: its mixed-deployment test always chose the staff handler even when that handler was unchanged. The corrected fixture chooses a genuinely changed predecessor payload and still asserts refusal of a corrupted release record and unjournaled mixed files, with exact preserved bytes. No application or installer guard changes were needed. Initial publication was withheld; the final source requires fresh privileged checks before publication.
+
 Independent findings and results: [independent UX-002 review](INDEPENDENT_UX-002_REVIEW.md). Source-pinned publication evidence and operator installation results will be recorded separately.
