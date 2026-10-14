@@ -182,6 +182,25 @@ class ArchiveSafety(unittest.TestCase):
         caller = self.script('caller.sh', 'python3 home-wrapper')
         self.assertNotIn(tool.NAMES[0], self.report([caller])['eligible'])
 
+    def test_executing_inventory_self_exclusion_keeps_other_process_dependencies(self):
+        runtime, _, home_alias = self.mixed_runtime()
+        harness = self.script('fixture-harness.py', 'alias="' + home_alias.name + '"; name="oversized.py"')
+        live = self.script('observed-live.py', 'python3 ' + str(self.home / tool.NAMES[0]))
+        proc = self.home / 'process-fixture'
+        for number, source in [('101', harness), ('102', live)]:
+            process = proc / number
+            process.mkdir(parents=True)
+            (process / 'cmdline').write_bytes(b'python3\0' + os.fsencode(source) + b'\0')
+            (process / 'cwd').symlink_to(self.home, target_is_directory=True)
+            (process / 'fd').mkdir()
+        with self.assertRaisesRegex(RuntimeError, 'Unreviewed type/size'):
+            tool.scan(self.home, self.uid, [], inspect_processes=True, root_home=self.home, proc_root=proc)
+        with mock.patch.object(tool, '__file__', str(harness)):
+            report = tool.scan(self.home, self.uid, [], inspect_processes=True, root_home=self.home, proc_root=proc)
+        self.assertEqual(len(report['eligible']), 16)
+        self.assertNotIn(tool.NAMES[0], report['eligible'])
+        self.assertIn(tool.NAMES[1], report['eligible'])
+
     def storage_image(self, path=None):
         path = path or self.source / 'mounted-store'
         size = 20 * 1024 * 1024
