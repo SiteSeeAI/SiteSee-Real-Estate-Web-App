@@ -41,6 +41,8 @@ NON_CODE = {'.sqlite', '.sqlite3', '.db', '.log', '.gz', '.zip', '.tar', '.pdf',
             '.jpg', '.jpeg', '.png', '.webp', '.gif', '.woff', '.woff2', '.ttf', '.mp4'}
 META = ('dev', 'ino', 'uid', 'gid', 'mode', 'size', 'mtime_ns')
 COMPILER_ROOTS = (pathlib.Path('/usr/lib/gcc'), pathlib.Path('/usr/lib64/gcc'))
+LIBRARY_ROOTS = (pathlib.Path('/usr/lib'), pathlib.Path('/usr/lib64'),
+                 pathlib.Path('/lib'), pathlib.Path('/lib64'))
 
 
 def need(ok, message):
@@ -63,8 +65,19 @@ def compiler_link(source, target):
     # Canonicalize the parent, not the leaf alias: an app/scheduler alias pointing
     # into GCC is still an unreviewed application/scheduler dependency.
     source = source.parent.resolve(strict=False) / source.name
-    return any(source != root and root in source.parents for root in COMPILER_ROOTS) and \
-        any(target == root or root in target.parents for root in COMPILER_ROOTS)
+    if not any(source != root and root in source.parents for root in COMPILER_ROOTS):
+        return False
+    if any(target == root or root in target.parents for root in COMPILER_ROOTS):
+        return True
+    # Multilib GCC stubs also point to optional 32/64-bit system runtimes.
+    # Accept only the same compiled-library family in an exact system library
+    # directory; never follow this exception for app aliases or arbitrary scripts.
+    if target.parent not in LIBRARY_ROOTS:
+        return False
+    shared = re.fullmatch(r'(lib[A-Za-z0-9_+.-]+\.so)(?:\.[0-9]+)*', source.name)
+    if shared:
+        return re.fullmatch(re.escape(shared.group(1)) + r'(?:\.[0-9]+)*', target.name) is not None
+    return re.fullmatch(r'lib[A-Za-z0-9_+.-]+\.a', source.name) is not None and target.name == source.name
 
 
 def read_regular(path):

@@ -2,6 +2,14 @@
 
 Assessment: 2026-10-13, America/Chicago. The operator supplied a top-level `ls -la /home/sitesee` listing. This is a preparation checkpoint, not evidence of an archive, deletion or migration. Stripe remains TEST.
 
+## Optional compiler runtime correction — 2026-10-14
+
+The next operator attempt passed checksum verification but stopped on the GCC 32-bit stub `/usr/lib/gcc/x86_64-redhat-linux/11/32/libstdc++.so` pointing to the absent `/usr/lib/libstdc++.so.6.0.29`; no files were archived. Optional GCC runtimes can point outside the compiler tree, so the replacement handles their class rather than one library version.
+
+The original source alias must still be inside the canonical-parent GCC namespace. In addition to GCC-tree targets, it may point directly into `/usr/lib`, `/usr/lib64` or their standard `/lib`/`/lib64` aliases only for the same compiled-library family: `lib*.so` with numeric version suffixes, or an identical `lib*.a` basename. Other source roles, unrelated families, scripts, nested/custom directories and path-prefix lookalikes remain blocking. Compiler links are recorded and preserved; no system library or package is repaired, removed or installed.
+
+Local validation and independent review: all 35 checks pass, including twelve optional runtime/static-library links across 32/64-bit fixtures, exact archive/restore of all seventeen candidates and negative source/target role/family/directory tests. Independent default-namespace probes accept the actual reported pair and reject the negative cases; all other helper functions are unchanged. Helper SHA256 `d34a457b48c973a9122f92c68cbec1839391bccb4ece02a0c150341dc91ed7c3`. Publication/download verification and the operator's host archive result are pending. Earlier correction/publication evidence below is historical; it does not establish a completed host cleanup.
+
 ## Compiler-alias correction — 2026-10-14
 
 The verified read-only host scan reports missing target `/usr/lib/gcc/i686-redhat-linux` at the helper's strict source-symlink resolution. The removed CTC ZIP is not that target. The replacement preserves and records a dangling compiler alias only if its source alias (canonical parent with leaf retained) and missing resolved target are both inside `/usr/lib/gcc` or `/usr/lib64/gcc`. It does not repair or remove system compiler links. Application/scheduler aliases pointing to the compiler tree, other missing dependency aliases and unsafe installer candidates remain blocking.

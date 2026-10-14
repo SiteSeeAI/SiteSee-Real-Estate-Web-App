@@ -4,6 +4,14 @@ This is the iteration record from October 9, 2026 onward. Dates use America/Chic
 
 Each iteration records its ID, purpose, status, source/release, changes, validation and user acceptance. Keep planned work separate from implemented, installed and accepted work. Add an entry for each subsequent implementation/release and update its acceptance after user review. Documentation-only commits do not change the installed application.
 
+## DEP-003 — handle optional compiler runtime library links — 2026-10-14
+
+Status: implemented, locally tested and independently reviewed; verified publication and host retry are pending. Stripe remains TEST. Same seventeen installer candidates and unchanged archive/restore safeguards.
+
+The DEP-002 host attempt passed its download checksum and stopped before any archive at `/usr/lib/gcc/x86_64-redhat-linux/11/32/libstdc++.so`, whose target `/usr/lib/libstdc++.so.6.0.29` is absent. The previous correction covered missing targets within GCC, but optional compiler runtime links also leave that tree. The replacement handles this class: a source alias must still be inside the standard GCC namespace; an external missing target must be directly in a standard system library directory and match the source's compiled-library family (`lib*.so` with numeric version suffixes, or an identical `lib*.a` filename). It records and preserves these links without changing system packages or files.
+
+Application/scheduler sources, unrelated library families, script targets, library directory lookalikes, nested/custom directories and unsafe installer candidates remain blocking. Local validation and the independent audit pass all 35 focused cases, including twelve 32/64-bit runtime/archive aliases preserved across an actual archive/restore of all seventeen installers and the new negative boundary cases. Independent default-namespace probes accept the exact reported link and reject the negative role/family/directory cases; AST comparison confirms all other helper functions are unchanged. Current helper SHA256: `d34a457b48c973a9122f92c68cbec1839391bccb4ece02a0c150341dc91ed7c3`. Actual host archive completion remains unverified.
+
 ## DEP-002 — preserve unrelated dangling compiler aliases during cleanup — 2026-10-14
 
 Status: implemented, locally tested, independently reviewed and published with verified downloads; host retry is pending. Stripe remains TEST. No application release payload or archive/restore policy changed.
@@ -13,6 +21,8 @@ The operator's checksum-verified read-only diagnostic identifies the stopped sca
 Validation: all 31 focused checks pass locally and in the independent review. The five added regressions exercise actual archive/restore while preserving the dangling compiler link and retain refusal for missing application aliases, scheduler aliases, compiler aliases to application targets and compiler-prefix lookalikes. Independent default-namespace probes and an AST comparison verify the namespace boundary and unchanged original preservation primitives. All earlier dependency, metadata, interruption and destination-preservation checks remain intact. Candidate list remains the same seventeen historical installers. Current helper SHA256: `68ff0308952d6e12d2746ca783b8b8e30d7939066f06d4711e48510f102174ed`. Host completion remains unverified.
 
 Publication: [home-cleanup-3b790b9ea7a7](https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/releases/tag/home-cleanup-3b790b9ea7a7), source `3b790b9ea7a7d3cb9c4d52c0bd8639e7f09aee63`, run `38626391845`. Both Python 3.9 and 3.12 safety jobs and downloads pass every step: 31 tests each unprivileged and as root, 124 executions with no skipped cases. All three assets were independently checked against exact Git source by full bytes, SHA256, GitHub digest, size and attachment headers. The replacement operator command passes shell syntax checking. Frozen application/public/private and approved application installer payloads remain unchanged. This verifies the correction and downloads, not host archive completion.
+
+Operator retry: `/root/sitesee-home-cleanup.qiWVNR/archive-legacy-home-files.py` checksum passed, then a compiler-to-system-runtime alias stopped the dependency check. Report: `/usr/lib/gcc/x86_64-redhat-linux/11/32/libstdc++.so` → `/usr/lib/libstdc++.so.6.0.29`; no files archived. DEP-003 supersedes this helper for the same authorized cleanup.
 
 ## DEP-001 — home-directory cleanup and versioned deployment preparation — 2026-10-13
 

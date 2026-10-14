@@ -214,6 +214,84 @@ class ArchiveSafety(unittest.TestCase):
             self.report([alias])
         self.assertFalse((self.home / 'private-archives').exists())
 
+    def test_optional_multilib_runtime_aliases_are_preserved_during_archive_restore(self):
+        compiler = self.compiler_namespace()
+        libraries = (compiler.parent, compiler.parent.parent / 'lib64')
+        libraries[1].mkdir()
+        aliases = {}
+        families = [('libstdc++.so', 'libstdc++.so.6.0.29'),
+                    ('libgcc_s.so', 'libgcc_s.so.1'),
+                    ('libasan.so', 'libasan.so.6.0.0'),
+                    ('libgomp.so', 'libgomp.so.1.0.0'),
+                    ('libatomic.so.1', 'libatomic.so.1.2.0'),
+                    ('libstdc++fs.a', 'libstdc++fs.a')]
+        for index, library in enumerate(libraries):
+            directory = compiler / 'x86_64-redhat-linux' / '11' / ('32' if index == 0 else '64')
+            directory.mkdir(parents=True)
+            for name, target_name in families:
+                alias, target = directory / name, library / target_name
+                alias.symlink_to(target)
+                aliases[alias] = target
+        with mock.patch.object(tool, 'COMPILER_ROOTS', (compiler,)), \
+             mock.patch.object(tool, 'LIBRARY_ROOTS', libraries):
+            report = self.report(list(aliases))
+        self.assertEqual(report['preserved_compiler_links'], {str(a): str(t) for a, t in aliases.items()})
+        folder = self.archive(report)
+        self.assertEqual(tool.restore(self.home, self.uid, folder), 17)
+        for name in tool.NAMES:
+            self.assertEqual(tool.candidate(self.home / name, self.uid), report['records'][name])
+        for alias, target in aliases.items():
+            self.assertTrue(alias.is_symlink())
+            self.assertEqual(alias.readlink(), target)
+            self.assertFalse(target.exists())
+
+    def test_app_and_scheduler_library_aliases_still_stop(self):
+        compiler = self.compiler_namespace()
+        library = compiler.parent
+        for directory_name in ['application', 'cron.d']:
+            with self.subTest(directory=directory_name):
+                directory = self.source / directory_name
+                directory.mkdir()
+                alias = directory / 'libstdc++.so'
+                alias.symlink_to(library / 'libstdc++.so.6.0.29')
+                with mock.patch.object(tool, 'COMPILER_ROOTS', (compiler,)), \
+                     mock.patch.object(tool, 'LIBRARY_ROOTS', (library,)), \
+                     self.assertRaisesRegex(RuntimeError, 'Missing dependency alias preserved'):
+                    self.report([alias])
+        self.assertFalse((self.home / 'private-archives').exists())
+        self.assertTrue(all((self.home / name).exists() for name in tool.NAMES))
+
+    def test_compiler_library_exception_rejects_other_families_and_library_dirs(self):
+        compiler = self.compiler_namespace()
+        library = compiler.parent
+        alias = compiler / 'libstdc++.so'
+        targets = [library / 'libdifferent.so.6',
+                   library / 'libstdc++.so.6.php',
+                   library / 'libstdc++.so.development',
+                   library / 'nested' / 'libstdc++.so.6.0.29',
+                   library.parent / 'lib-backup' / 'libstdc++.so.6.0.29',
+                   self.source / 'libstdc++.so.6.0.29']
+        for target in targets:
+            with self.subTest(target=target):
+                alias.symlink_to(target)
+                with mock.patch.object(tool, 'COMPILER_ROOTS', (compiler,)), \
+                     mock.patch.object(tool, 'LIBRARY_ROOTS', (library,)), \
+                     self.assertRaisesRegex(RuntimeError, 'Missing dependency alias preserved'):
+                    self.report([alias])
+                alias.unlink()
+        self.assertFalse((self.home / 'private-archives').exists())
+
+    def test_compiler_script_alias_cannot_use_library_exception(self):
+        compiler = self.compiler_namespace()
+        library = compiler.parent
+        alias = compiler / 'worker.py'
+        alias.symlink_to(library / 'worker.py')
+        with mock.patch.object(tool, 'COMPILER_ROOTS', (compiler,)), \
+             mock.patch.object(tool, 'LIBRARY_ROOTS', (library,)), \
+             self.assertRaisesRegex(RuntimeError, 'Missing dependency alias preserved'):
+            self.report([alias])
+        self.assertFalse((self.home / 'private-archives').exists())
+
     def test_symlink_candidate_is_never_archived(self):
         path = self.home / tool.NAMES[0]
         path.unlink()
