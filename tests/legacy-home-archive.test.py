@@ -224,6 +224,7 @@ class ArchiveSafety(unittest.TestCase):
                     ('libasan.so', 'libasan.so.6.0.0'),
                     ('libgomp.so', 'libgomp.so.1.0.0'),
                     ('libatomic.so.1', 'libatomic.so.1.2.0'),
+                    ('libquadmath.so', 'libquadmath-11-20230605.so.0'),
                     ('libstdc++fs.a', 'libstdc++fs.a')]
         for index, library in enumerate(libraries):
             directory = compiler / 'x86_64-redhat-linux' / '11' / ('32' if index == 0 else '64')
@@ -268,6 +269,8 @@ class ArchiveSafety(unittest.TestCase):
         targets = [library / 'libdifferent.so.6',
                    library / 'libstdc++.so.6.php',
                    library / 'libstdc++.so.development',
+                   library / 'libstdc++-debug.so.6',
+                   library / 'libstdc++-11-evil.so.6',
                    library / 'nested' / 'libstdc++.so.6.0.29',
                    library.parent / 'lib-backup' / 'libstdc++.so.6.0.29',
                    self.source / 'libstdc++.so.6.0.29']

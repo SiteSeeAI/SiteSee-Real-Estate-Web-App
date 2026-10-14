@@ -74,9 +74,11 @@ def compiler_link(source, target):
     # directory; never follow this exception for app aliases or arbitrary scripts.
     if target.parent not in LIBRARY_ROOTS:
         return False
-    shared = re.fullmatch(r'(lib[A-Za-z0-9_+.-]+\.so)(?:\.[0-9]+)*', source.name)
+    shared = re.fullmatch(r'(lib[A-Za-z0-9_+.-]+)\.so(?:\.[0-9]+)*', source.name)
     if shared:
-        return re.fullmatch(re.escape(shared.group(1)) + r'(?:\.[0-9]+)*', target.name) is not None
+        # Red Hat also stamps compiler build versions before the .so suffix.
+        return re.fullmatch(re.escape(shared.group(1)) +
+                            r'(?:-[0-9]+(?:[.-][0-9]+)*)?\.so(?:\.[0-9]+)*', target.name) is not None
     return re.fullmatch(r'lib[A-Za-z0-9_+.-]+\.a', source.name) is not None and target.name == source.name
 
 
