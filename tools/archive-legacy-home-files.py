@@ -470,8 +470,9 @@ def active_swap(path, fd, before):
     header = os.pread(fd, page_size, 0)
     if (len(header) != page_size or any(header[:1024]) or header[-10:] != b'SWAPSPACE2'):
         return None
-    version, last_page = struct.unpack_from('=II', header, 1024)
-    if version != 1 or not 0 < last_page < before.st_size // page_size:
+    order = '<' if struct.unpack_from('<I', header, 1024)[0] == 1 else '>'
+    version, last_page, bad_pages = struct.unpack_from(order + 'III', header, 1024)
+    if version != 1 or bad_pages != 0 or not 0 < last_page < before.st_size // page_size:
         return None
     binding = swap_binding(path, last_page * page_size // 1024)
     if not binding:

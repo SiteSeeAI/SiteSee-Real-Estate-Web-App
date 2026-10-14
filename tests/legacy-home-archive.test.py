@@ -315,7 +315,8 @@ class ArchiveSafety(unittest.TestCase):
                 self.assertIsNone(self.read_swap(image))
             image.chmod(0o600)
             for offset, value in [(1024, struct.pack('=I', 2)),
-                                  (1028, struct.pack('=I', 0xffffffff)), (0, b'#!/bin/sh')]:
+                                  (1028, struct.pack('=I', 0xffffffff)),
+                                  (1032, struct.pack('=I', 1)), (0, b'#!/bin/sh')]:
                 with image.open('r+b') as stream:
                     original = stream.read(os.sysconf('SC_PAGE_SIZE'))
                     stream.seek(offset)
@@ -323,6 +324,12 @@ class ArchiveSafety(unittest.TestCase):
                 self.assertIsNone(self.read_swap(image))
                 with image.open('r+b') as stream:
                     stream.write(original)
+            last = image.stat().st_size // os.sysconf('SC_PAGE_SIZE') - 1
+            for order in ['<', '>']:
+                with image.open('r+b') as stream:
+                    stream.seek(1024)
+                    stream.write(struct.pack(order + 'III', 1, last, 0))
+                self.assertEqual(self.read_swap(image)['type'], 'active-swap-file')
 
     def test_declared_swap_file_and_alias_keep_source_size_guard(self):
         image, inventory, stack = self.swap_image()

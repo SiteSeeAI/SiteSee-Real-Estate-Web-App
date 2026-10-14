@@ -61,7 +61,26 @@ with tempfile.TemporaryDirectory(prefix='sitesee-runtime-ci-', dir='/var/lib') a
         # Real OS sources, all other processes and the live wrapper stay checked.
         with mock.patch.object(tool, 'host_scan', side_effect=inventory), \
              mock.patch.object(tool, '__file__', __file__):
-            report = tool.checked_host_scan(home, 0)
+            try:
+                report = tool.checked_host_scan(home, 0)
+            except Exception as error:
+                # Narrow public-package diagnostics only: no source contents,
+                # process arguments, credentials or arbitrary binary data.
+                frame = error.__traceback__
+                while frame:
+                    state = frame.tb_frame.f_locals
+                    target = state.get('path')
+                    if frame.tb_frame.f_code.co_name == 'scan' and str(target) == '/usr/share/java/selenium-server.jar':
+                        aliases = []
+                        for entry in state.get('seen', ()):
+                            candidate = pathlib.Path(entry[0])
+                            if candidate.is_symlink() and candidate.resolve() == target:
+                                aliases.append(str(candidate))
+                        print('PUBLIC PACKAGE DIAGNOSTIC: required=' + str(target in state.get('required_sources', set())) +
+                              '; all_files=' + str(state.get('all_files')) +
+                              '; magic=' + state.get('head', b'').hex() + '; aliases=' + repr(aliases), flush=True)
+                    frame = frame.tb_next
+                raise
         assert report['sources_checked'] > 20
         assert len(report['eligible']) == 16 and tool.NAMES[0] in report['referenced']
         assert runtime.joinpath('unrelated.py').stat().st_size > tool.MAX_FILE
