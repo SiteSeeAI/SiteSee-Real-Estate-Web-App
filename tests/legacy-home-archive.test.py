@@ -6,6 +6,8 @@ import json
 import os
 import pathlib
 import signal
+import stat
+import struct
 import subprocess
 import sys
 import tempfile
@@ -52,6 +54,248 @@ class ArchiveSafety(unittest.TestCase):
         self.assertEqual(tool.restore(self.home, self.uid, folder), 17)
         for name in tool.NAMES:
             self.assertEqual(tool.candidate(self.home / name, self.uid), before['records'][name])
+
+    def storage_image(self, path=None):
+        path = path or self.source / 'mounted-store'
+        size = 20 * 1024 * 1024
+        header = bytearray(2048)
+        for offset, value in [(0, 1024), (4, size // 1024), (20, 1),
+                              (24, 0), (32, 8192), (40, 1024)]:
+            struct.pack_into('<I', header, 1024 + offset, value)
+        header[1080:1082] = b'\x53\xef'
+        with path.open('wb') as stream:
+            stream.write(header)
+            stream.truncate(size)
+        path.chmod(0o600)
+        return path
+
+    def storage_patches(self, binding=None):
+        stack = contextlib.ExitStack()
+        stack.enter_context(mock.patch.object(tool, 'SYSTEM_UID', self.uid))
+        stack.enter_context(mock.patch.object(tool, 'storage_namespace', return_value=True))
+        stack.enter_context(mock.patch.object(tool, 'mounted_loop_binding',
+                                             return_value=binding or (('11', 0, 'ext4'),)))
+        return stack
+
+    def check_storage(self, path):
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+        try:
+            return tool.mounted_storage(path, fd, os.fstat(fd))
+        finally:
+            os.close(fd)
+
+    def test_mounted_storage_preserved_while_seventeen_real_installer_moves_restore(self):
+        image = self.storage_image()
+        caller = self.script('storage.sh', 'mount ' + str(image))
+        original = tool.fingerprint(image.stat()), image.read_bytes()[:2048]
+        with self.storage_patches():
+            report = self.report([caller])
+        self.assertEqual(report['preserved_storage'][str(image)]['ino'], image.stat().st_ino)
+        folder = self.archive(report)
+        self.assertEqual(len(report['eligible']), 17)
+        self.assertEqual(json.loads((folder / 'manifest.json').read_text())['scan']['preserved_storage'],
+                         json.loads(json.dumps(report['preserved_storage'])))
+        self.assertEqual(tool.restore(self.home, self.uid, folder), 17)
+        self.assertEqual(original, (tool.fingerprint(image.stat()), image.read_bytes()[:2048]))
+
+    def test_unmounted_image_stays_unreviewed_and_all_installers_remain(self):
+        image = self.storage_image()
+        caller = self.script('storage.sh', str(image))
+        with self.storage_patches(), mock.patch.object(tool, 'mounted_loop_binding', return_value=()):
+            with self.assertRaisesRegex(RuntimeError, 'Unreviewed type/size'):
+                self.report([caller])
+        self.assertTrue(all((self.home / name).exists() for name in tool.NAMES))
+
+    def test_oversized_text_and_script_polyglots_do_not_become_storage(self):
+        for prefix in [b'#!/bin/sh\n', b'<?php ', b'\x7fELF', b'python3 ', b'plain text']:
+            image = self.storage_image()
+            with image.open('r+b') as stream:
+                stream.write(prefix)
+            with self.storage_patches(), self.subTest(prefix=prefix):
+                self.assertIsNone(self.check_storage(image))
+
+    def test_storage_image_rejects_unsafe_file_metadata(self):
+        image = self.storage_image()
+        with self.storage_patches():
+            for mode in [0o622, 0o640 | 0o020, 0o700, 0o601]:
+                image.chmod(mode)
+                self.assertIsNone(self.check_storage(image))
+            image.chmod(0o600)
+            os.link(image, self.source / 'second-link')
+            self.assertIsNone(self.check_storage(image))
+        (self.source / 'second-link').unlink()
+        with self.storage_patches(), mock.patch.object(tool, 'SYSTEM_UID', self.uid + 1):
+            self.assertIsNone(self.check_storage(image))
+
+    def test_storage_header_rejects_bad_geometry_and_truncation(self):
+        for offset, value in [(1080, b'xx'), (1048, struct.pack('<I', 7)),
+                              (1028, struct.pack('<I', 0xffffffff)),
+                              (1024, b'\0' * 4), (1056, b'\0' * 4),
+                              (1064, b'\0' * 4), (1044, b'\0' * 4),
+                              (1100, struct.pack('<I', 1))]:
+            image = self.storage_image()
+            with image.open('r+b') as stream:
+                stream.seek(offset)
+                stream.write(value)
+            with self.storage_patches(), self.subTest(offset=offset):
+                self.assertIsNone(self.check_storage(image))
+        with image.open('wb') as stream:
+            stream.truncate(1024)
+        with self.storage_patches():
+            self.assertIsNone(self.check_storage(image))
+
+    def test_storage_binding_detach_or_rebind_stops_before_archive(self):
+        image = self.storage_image()
+        for changed in [(), (('12', 1, 'ext4'),)]:
+            with self.storage_patches(), mock.patch.object(tool, 'mounted_loop_binding',
+                    side_effect=[(('11', 0, 'ext4'),), changed]):
+                with self.assertRaisesRegex(RuntimeError, 'Changing storage'):
+                    self.check_storage(image)
+
+    def test_storage_path_replacement_after_open_cannot_hide_new_source(self):
+        for replace_on in [1, 2]:
+            image = self.storage_image()
+            replacement = self.storage_image(self.source / 'replacement-store')
+            calls = []
+            def replace_path(_):
+                calls.append(1)
+                if len(calls) == replace_on:
+                    os.replace(replacement, image)
+                return (('11', 0, 'ext4'),)
+            with self.storage_patches(), mock.patch.object(tool, 'mounted_loop_binding', side_effect=replace_path):
+                with self.assertRaisesRegex(RuntimeError, 'Changing storage'):
+                    self.check_storage(image)
+
+    def test_mounted_storage_allows_concurrent_data_writes_without_identity_change(self):
+        image = self.storage_image()
+        def filesystem_write(_):
+            with image.open('r+b') as stream:
+                stream.seek(4096)
+                stream.write(b'filesystem data updated')
+            return (('11', 0, 'ext4'),)
+        with self.storage_patches(), mock.patch.object(tool, 'mounted_loop_binding', side_effect=filesystem_write):
+            self.assertEqual(self.check_storage(image)['ino'], image.stat().st_ino)
+
+    def test_declared_source_periodic_source_and_source_alias_cannot_be_storage(self):
+        image = self.storage_image()
+        alias = self.source / 'nightly-job'
+        alias.symlink_to(image)
+        for seeds in [[image], [(image, True)], [alias]]:
+            with self.storage_patches(), self.subTest(seeds=str(seeds)):
+                with self.assertRaisesRegex(RuntimeError, 'Unreviewed type/size'):
+                    self.report(seeds)
+
+    def test_late_source_alias_rechecks_previously_classified_storage(self):
+        image = self.storage_image()
+        alias = self.source / 'nightly-job'
+        alias.symlink_to(image)
+        caller = self.script('storage.sh', str(image))
+        with self.storage_patches():
+            with self.assertRaisesRegex(RuntimeError, 'Unreviewed type/size'):
+                self.report([alias, caller])
+
+    def test_dynamic_run_parts_discovery_keeps_regular_storage_as_declared_source(self):
+        directory = self.source / 'periodic'
+        directory.mkdir()
+        image = self.storage_image(directory / 'mounted-store')
+        caller = self.script('periodic.sh', 'run-parts ' + str(directory))
+        with self.storage_patches():
+            with self.assertRaisesRegex(RuntimeError, 'Unreviewed type/size'):
+                self.report([caller])
+
+    def test_dynamic_source_directory_alias_keeps_regular_storage_as_declared_source(self):
+        directory = self.source / 'periodic'
+        directory.mkdir()
+        self.storage_image(directory / 'mounted-store')
+        alias = self.source / 'directory-alias'
+        alias.symlink_to(directory, target_is_directory=True)
+        with self.storage_patches():
+            with self.assertRaisesRegex(RuntimeError, 'Unreviewed type/size'):
+                self.report([(alias, True)])
+
+    def test_periodic_discovery_retains_existing_recursive_source_scope(self):
+        directory = self.source / 'periodic'
+        nested = directory / 'node_modules'
+        nested.mkdir(parents=True)
+        (nested / 'nightly').write_text('python3 ' + str(self.home / tool.NAMES[0]))
+        caller = self.script('periodic.sh', 'run-parts ' + str(directory))
+        report = self.report([caller])
+        self.assertNotIn(tool.NAMES[0], report['eligible'])
+
+    def test_storage_namespace_is_protected_and_outside_source_roles(self):
+        for name in ['/home/sitesee/store', '/root/store', '/usr/bin/store', '/var/lib/unit.service',
+                     '/usr/local/etc/store', '/var/cron.d/store', '/var/lib/store.py',
+                     '/usr/local/systemd/store', '/usr/share/' + tool.NAMES[0], '/usrish/store']:
+            self.assertFalse(tool.storage_namespace(pathlib.Path(name)), name)
+        path = pathlib.Path('/usr/tmpDSK')
+        with mock.patch.object(tool, 'canonical'), mock.patch.object(pathlib.Path, 'stat',
+                return_value=SimpleNamespace(st_uid=0, st_mode=0o755)):
+            self.assertTrue(tool.storage_namespace(path))
+        for uid, mode in [(1, 0o755), (0, 0o777), (0, 0o775)]:
+            with mock.patch.object(tool, 'canonical'), mock.patch.object(pathlib.Path, 'stat',
+                    return_value=SimpleNamespace(st_uid=uid, st_mode=mode)):
+                self.assertFalse(tool.storage_namespace(path))
+
+    def loop_fixture(self):
+        mountinfo = self.source / 'mountinfo'
+        mountinfo.write_bytes(b'11 1 7:32 / /tmp rw - ext4 /escaped\\040source rw\n')
+        sysfs = self.source / 'sysfs'
+        entry = sysfs / '7:32'
+        entry.mkdir(parents=True)
+        (entry / 'uevent').write_bytes(b'DEVNAME=loop2\nDEVTYPE=disk\n')
+        device_dir = self.source / 'dev'
+        device_dir.mkdir()
+        device = device_dir / 'loop2'
+        device.write_bytes(b'fixture device: block metadata and GET ioctl injected')
+        image = self.storage_image()
+        s = image.stat()
+        status = tool.LOOP_STATUS.pack(s.st_dev, s.st_ino, 0, 0, 0, 2, 0, 0, 0,
+                                      b'', b'', b'', 0, 0)
+        stack = contextlib.ExitStack()
+        for attr, value in [('MOUNTINFO', mountinfo), ('BLOCK_SYSFS', sysfs), ('DEVICE_ROOT', device_dir),
+                            ('SYSTEM_UID', self.uid)]:
+            stack.enter_context(mock.patch.object(tool, attr, value))
+        real_fstat = os.fstat
+        def device_stat(fd):
+            value = real_fstat(fd)
+            if value.st_ino == device.stat().st_ino and value.st_dev == device.stat().st_dev:
+                return SimpleNamespace(st_mode=stat.S_IFBLK | 0o660, st_uid=self.uid,
+                                       st_rdev=os.makedev(7, 32))
+            return value
+        stack.enter_context(mock.patch.object(tool.os, 'fstat', side_effect=device_stat))
+        return stack, s, status
+
+    def test_loop_binding_uses_kernel_inode_and_real_device_minor_not_loop_index(self):
+        stack, s, status = self.loop_fixture()
+        with stack, mock.patch.object(tool.fcntl, 'ioctl', return_value=status) as ioctl:
+            self.assertEqual(tool.mounted_loop_binding(s), (('11', 32, 'ext4'),))
+            self.assertEqual(ioctl.call_args.args[1:], (0x4C05, bytes(232)))
+
+    def test_loop_binding_rejects_wrong_inode_offset_limit_encryption(self):
+        stack, s, status = self.loop_fixture()
+        values = list(tool.LOOP_STATUS.unpack(status))
+        with stack:
+            for index, bad in [(0, s.st_dev + 1), (1, s.st_ino + 1), (3, 4096),
+                               (4, 4096), (5, 32), (6, 1), (7, 1)]:
+                changed = values.copy()
+                changed[index] = bad
+                with mock.patch.object(tool.fcntl, 'ioctl', return_value=tool.LOOP_STATUS.pack(*changed)):
+                    if index in {0, 1}:
+                        self.assertEqual(tool.mounted_loop_binding(s), ())
+                    else:
+                        with self.assertRaisesRegex(RuntimeError, 'Partial or encrypted'):
+                            tool.mounted_loop_binding(s)
+
+    def test_loop_binding_errors_and_invalid_mount_inventory_are_not_ignored(self):
+        stack, s, status = self.loop_fixture()
+        with stack:
+            for error in [PermissionError('device denied'), OSError(errno.EIO, 'ioctl failure')]:
+                with mock.patch.object(tool.fcntl, 'ioctl', side_effect=error):
+                    with self.assertRaises(type(error)):
+                        tool.mounted_loop_binding(s)
+            tool.MOUNTINFO.write_bytes(b'invalid mount record\n')
+            with self.assertRaisesRegex(RuntimeError, 'Invalid mount inventory'):
+                tool.mounted_loop_binding(s)
 
     def test_reported_embedded_png_fragment_allows_exact_archive_and_restore(self):
         source = self.script('image.php', 'image="data:image/png;base64,iVBORw0KGgo' + IMAGE_FRAGMENT + '";')

@@ -4,6 +4,18 @@ This is the iteration record from October 9, 2026 onward. Dates use America/Chic
 
 Each iteration records its ID, purpose, status, source/release, changes, validation and user acceptance. Keep planned work separate from implemented, installed and accepted work. Add an entry for each subsequent implementation/release and update its acceptance after user review. Documentation-only commits do not change the installed application.
 
+## DEP-008 — distinguish mounted filesystem storage from source — 2026-10-14
+
+Status: implemented and locally tested; independent review, real-kernel CI, publication and host archive completion remain pending. Same seventeen installer candidates. Stripe remains TEST; no application, provider, schedule, service or operational database change.
+
+The checksum-verified DEP-007 host helper at `/root/sitesee-home-cleanup.pSzsyA/archive-legacy-home-files.py` reported progress and refused `/usr/tmpDSK` as an oversized source before moving files. Its storage role has not yet been observed on the host; the replacement verifies that role instead of assuming it from the name or increasing the source-size limit.
+
+The scanner recognizes oversized mounted ext2/3/4 backing files only in protected canonical `/usr` or `/var` storage locations. Root ownership, single link, non-executable/non-writable permissions, protected ancestors, bounded filesystem header/geometry, a mounted loop device and the kernel's exact backing inode/device must all agree. A second read-only binding snapshot and final file/path metadata checks detect detach, rebinding or replacement. The Linux 232-byte `LOOP_GET_STATUS64` ABI is used; sysfs maps mount device numbers to loop indices, including partition-shift configurations. Legitimate filesystem data writes need not freeze timestamps. No filesystem is repaired, unmounted, modified or read in full by the helper.
+
+Declared source files, periodic-job sources, source aliases, executable/configuration namespaces, script suffixes, text/polyglot headers, unsafe files and unmounted/unverified images retain the existing refusal. A later source alias rechecks an earlier storage classification. Recognized storage is recorded in the scan, private journal and final result without reading filesystem contents. The original archive/restore, ownership/checksum, atomic move, journal, alias and timeout implementations remain unchanged.
+
+Local validation: 91 tests pass, including seventeen added storage/role/geometry/mutable-data/replacement/binding/error cases and actual seventeen-file archive/restore. Kernel mount/ioctl fixtures in this local suite are simulated; the cloud container has no loop device and does not establish real mounted-image acceptance. A required separate CI integration creates and mounts an isolated ext4 loop image, writes data, runs the scanner, archives/restores all seventeen synthetic installers, refuses a source alias, and refuses the same image after unmounting. Publication requires this real-root integration plus all unit checks unprivileged and as root on Python 3.9 and 3.12. Python 3.9 syntax and unchanged preservation primitives/application payloads are verified locally. Actual hosting completion still requires the operator's archive output.
+
 ## DEP-007 — separate systemd IPC metadata from executable dependencies — 2026-10-14
 
 Status: implemented, locally tested, independently reviewed and published with verified downloads; host retry is pending. Same seventeen installer candidates; Stripe remains TEST. No application, provider, schedule, service, database or archive/restore policy change.

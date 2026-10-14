@@ -14,6 +14,7 @@ import pwd
 import re
 import signal
 import stat
+import struct
 import subprocess
 import tempfile
 import time
@@ -55,6 +56,11 @@ SYSTEM_COMMAND_TARGETS = tuple(map(pathlib.Path, (
     '/etc/alternatives', '/etc/init.d', '/etc/rc.d/init.d')))
 SYSTEMD_UNITS = pathlib.Path('/run/systemd/units')
 SYSTEMD_USER_RUNTIME = pathlib.Path('/run/user')
+STORAGE_ROOTS = (pathlib.Path('/usr'), pathlib.Path('/var'))
+MOUNTINFO = pathlib.Path('/proc/self/mountinfo')
+DEVICE_ROOT = pathlib.Path('/dev')
+BLOCK_SYSFS = pathlib.Path('/sys/dev/block')
+LOOP_STATUS = struct.Struct('=5Q4I64s64s32s2Q')  # Linux loop_info64: 232 bytes.
 UNIT_NAME = r'[A-Za-z0-9_:@.\\-]+\.(?:service|socket|target|device|mount|automount|swap|timer|path|slice|scope)'
 SYSTEMD_IPC_LINKS = {
     'invocation': r'[0-9a-f]{32}',
@@ -306,6 +312,98 @@ def systemd_metadata(path):
     raise RuntimeError('Changing systemd metadata preserved; no files archived: ' + str(path))
 
 
+def mounted_loop_binding(s):
+    # GET_STATUS64 is read-only. Match kernel inode/device identity, never the
+    # truncated filename in loop_info64 or a mount's human-readable source name.
+    data, _ = read_regular(MOUNTINFO)
+    bindings = []
+    for line in data.splitlines():
+        fields = line.split()
+        separator = fields.index(b'-') if b'-' in fields else -1
+        need(separator >= 6 and len(fields) >= separator + 4,
+             'Invalid mount inventory; no files archived.')
+        device = re.fullmatch(rb'7:([0-9]+)', fields[2])
+        if not device or fields[separator + 1] not in {b'ext2', b'ext3', b'ext4'}:
+            continue
+        minor = int(device.group(1))
+        uevent, _ = read_regular(BLOCK_SYSFS / ('7:' + str(minor)) / 'uevent')
+        names = re.findall(rb'^DEVNAME=(loop([0-9]+))$', uevent, re.M)
+        if len(names) != 1 or b'DEVTYPE=disk' not in uevent.splitlines():
+            continue
+        name, index = names[0]
+        path = DEVICE_ROOT / os.fsdecode(name)
+        canonical(path)
+        parent = path.parent.stat()
+        need(parent.st_uid == SYSTEM_UID and not parent.st_mode & 0o022,
+             'Unprotected loop device directory preserved.')
+        fd = os.open(str(path), os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        try:
+            block = os.fstat(fd)
+            need(stat.S_ISBLK(block.st_mode) and block.st_uid == SYSTEM_UID and
+                 block.st_rdev == os.makedev(7, minor), 'Unexpected loop device preserved.')
+            status = fcntl.ioctl(fd, 0x4C05, bytes(LOOP_STATUS.size))
+            dev, ino, _, offset, limit, number, encryption, key_size, *_ = LOOP_STATUS.unpack(status)
+            if (dev, ino) != (s.st_dev, s.st_ino):
+                continue
+            need(offset == 0 and limit in {0, s.st_size} and number == int(index) and
+                 encryption == 0 and key_size == 0,
+                 'Partial or encrypted storage binding preserved; no files archived.')
+            bindings.append((fields[0].decode('ascii'), minor, fields[separator + 1].decode('ascii')))
+        finally:
+            os.close(fd)
+    return tuple(sorted(bindings))
+
+
+def storage_namespace(path):
+    if (not any(root in path.parents for root in STORAGE_ROOTS) or
+            path.suffix.lower() in SUFFIXES or path.name in NAMES or
+            any(p in {'bin', 'sbin', 'etc', 'systemd', 'init.d'} or p.endswith('.d')
+                for p in path.parts)):
+        return False
+    canonical(path)
+    for parent in path.parents:
+        s = parent.stat()
+        if s.st_uid != SYSTEM_UID or s.st_mode & 0o022:
+            return False
+    return True
+
+
+def mounted_storage(path, fd, before):
+    # Filesystems can change while mounted. Verify stable identity/permissions
+    # and live kernel binding, rather than hashing gigabytes of mutable data.
+    if (not stat.S_ISREG(before.st_mode) or before.st_size <= MAX_FILE or
+            not storage_namespace(path) or before.st_uid != SYSTEM_UID or
+            before.st_nlink != 1 or before.st_mode & 0o133):
+        return None
+    header = os.pread(fd, 2048, 0)
+    if len(header) != 2048 or any(header[:1024]) or header[1080:1082] != b'\x53\xef':
+        return None
+    sb = header[1024:]
+    word = lambda offset: struct.unpack_from('<I', sb, offset)[0]
+    blocks = word(4) | ((word(0x150) << 32) if word(96) & 0x80 else 0)
+    log_size = word(24)
+    if log_size > 6:
+        return None
+    block_size = 1024 << log_size
+    inode_size = struct.unpack_from('<H', sb, 88)[0] if word(76) else 128
+    if (not word(0) or blocks < 16 or word(20) != (1 if log_size == 0 else 0) or
+            not 0 < word(32) <= 8 * block_size or not 0 < word(40) <= 8 * block_size or
+            inode_size < 128 or inode_size > block_size or inode_size & (inode_size - 1) or
+            not 0 <= before.st_size - blocks * block_size < block_size):
+        return None
+    binding = mounted_loop_binding(before)
+    if not binding:
+        return None
+    repeated = mounted_loop_binding(before)
+    after = os.fstat(fd)
+    current = path.lstat()
+    stable = lambda s: (s.st_dev, s.st_ino, s.st_mode, s.st_uid, s.st_gid, s.st_nlink, s.st_size)
+    need(stable(before) == stable(after) == stable(current) and binding == repeated,
+         'Changing storage identity or mount binding preserved; no files archived.')
+    return {'type': 'mounted-ext-filesystem', 'dev': before.st_dev, 'ino': before.st_ino,
+            'size': before.st_size, 'bindings': binding}
+
+
 def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
          root_home=pathlib.Path('/root'), proc_root=pathlib.Path('/proc')):
     records, missing, references = {}, [], {name: set() for name in NAMES}
@@ -320,14 +418,22 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
     preserved_compiler_links = {}
     preserved_system_links = {}
     preserved_runtime_metadata = {}
+    preserved_storage = {}
     unresolved_aliases = {}
     queue = list(source_paths)
+    required_sources = {p.parent.resolve(strict=True) / p.name
+                        for item in queue for p in [item[0] if isinstance(item, tuple) else item]}
     helper_path = pathlib.Path(__file__).resolve()
     home_entries = {p.name: p for p in home.iterdir()
                     if p.name not in NAMES and not p.name.startswith('.')
                     and (p.is_file() or p.is_symlink())
                     and (p.suffix in SUFFIXES or not p.suffix)}
     context_entries = {}
+    def enqueue_sources(directory, all_files, skip=()):
+        for item in sources(directory, all_files=all_files, skip=skip):
+            path = item[0] if isinstance(item, tuple) else item
+            required_sources.add(path.parent.resolve(strict=True) / path.name)
+            queue.append(item)
     def mark(name, label):
         if name not in records:
             return
@@ -369,7 +475,7 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
                 for name in records:
                     mark(name, label)
             elif literal_probe(directory, 'is_dir'):
-                queue.extend(sources(directory, all_files=True))
+                enqueue_sources(directory, all_files=True)
         tokens = re.findall(rb'(?<![A-Za-z0-9_./-])([A-Za-z0-9_.+-]+(?:/[A-Za-z0-9_.+-]+)*)(?![A-Za-z0-9_./-])', data)
         for token in tokens:
             if token in {b'.', b'..'}:
@@ -423,7 +529,7 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
         is_candidate = path.parent == home and path.name in NAMES
         if is_candidate and not references[path.name]:
             continue
-        visit = (str(path), all_files)
+        visit = (str(path), all_files, path in required_sources)
         if visit in seen:
             continue
         seen.add(visit)
@@ -455,6 +561,7 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
             elif resolved == pathlib.Path('/dev/null'):
                 pass  # A masked systemd unit cannot execute a historical installer.
             elif resolved.is_file():
+                required_sources.add(resolved)  # A source alias cannot become opaque data.
                 queue.append(resolved)
             elif resolved.is_dir():
                 if resolved == home or resolved in home.parents:
@@ -462,7 +569,7 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
                         mark(name, str(path))
                 elif (str(resolved), all_files) not in seen_directories:
                     seen_directories.add((str(resolved), all_files))
-                    queue.extend(sources(resolved, all_files=all_files, skip=('.git', 'node_modules')))
+                    enqueue_sources(resolved, all_files, skip=('.git', 'node_modules'))
             else:
                 raise RuntimeError('Unreviewed source alias: ' + str(path))
             continue
@@ -473,8 +580,15 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
             s = os.fstat(fd)
             need(stat.S_ISREG(s.st_mode), 'Unreviewed source type: ' + str(path))
             head = os.read(fd, 4)
+            storage = (mounted_storage(path, fd, s)
+                       if s.st_size > MAX_FILE and not all_files and path not in required_sources
+                       else None)
         finally:
             os.close(fd)
+        if storage is not None:
+            preserved_storage[str(path)] = storage
+            checked += 1
+            continue
         if head == b'\x7fELF':
             need(not (path == home or home in path.parents or str(path).startswith('/root/')),
                  'Custom binary wrapper requires review: ' + str(path))
@@ -495,6 +609,7 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
             'preserved_compiler_links': dict(sorted(preserved_compiler_links.items())),
             'preserved_system_links': dict(sorted(preserved_system_links.items())),
             'preserved_runtime_metadata': dict(sorted(preserved_runtime_metadata.items())),
+            'preserved_storage': dict(sorted(preserved_storage.items())),
             'referenced': {n: sorted(v) for n, v in references.items() if v},
             'eligible': sorted(n for n in records if not references[n]),
             'scope': 'Inspected local literal/wildcard dependencies and observed processes; computed launch paths and external automation are not established.'}
@@ -722,6 +837,7 @@ def main():
                           'preserved_compiler_links': report['preserved_compiler_links'],
                           'preserved_system_links': report['preserved_system_links'],
                           'preserved_runtime_metadata': report['preserved_runtime_metadata'],
+                          'preserved_storage': report['preserved_storage'],
                           'sources_checked': report['sources_checked'], 'scope': report['scope']}))
         if folder:
             print('Restore: python3 ' + __file__ + ' --restore ' + str(folder))

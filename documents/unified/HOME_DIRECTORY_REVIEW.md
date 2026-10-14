@@ -2,6 +2,14 @@
 
 Assessment: 2026-10-13, America/Chicago. The operator supplied a top-level `ls -la /home/sitesee` listing. This is a preparation checkpoint, not evidence of an archive, deletion or migration. Stripe remains TEST.
 
+## Mounted storage scan-boundary correction — 2026-10-14
+
+The DEP-007 host retry passed download verification but stopped before any archive at the oversized `/usr/tmpDSK`. The scanner had followed a storage pathname as if it were application source. DEP-008 recognizes mounted filesystem backing data by its actual kernel role, without a filename exception or larger source-size limit.
+
+Only protected root-owned, single-link, non-executable/non-writable storage under canonical `/usr` or `/var` can qualify. Bounded ext2/3/4 geometry and a live mounted loop device must match the opened file's exact device/inode, with offset zero/full-file coverage and no encryption. Read-only kernel status and final file/path identity are checked twice. Mutable filesystem timestamps are permitted. Declared sources, source aliases, periodic jobs, code/configuration paths, unsafe files and unmounted/unverified images remain guarded. The helper records recognized storage without modifying or reading it in full. The same seventeen installers below remain the only move candidates; archive, journal, restore and source-size safeguards are unchanged.
+
+All 91 local tests pass, including real seventeen-file moves/restore; local kernel-status fixtures are simulated. The container has no loop device. Both Python CI versions must additionally pass a required real-root mounted ext4 integration before publication. Independent review/publication and actual cPanel archive completion remain pending; no host success is inferred from local validation. See DEP-008 in the changelog for the completed evidence when available.
+
 ## Systemd metadata scan-boundary correction — 2026-10-14
 
 The latest checksum-verified host attempt emitted 10/20-second progress and stopped before archive at `/run/systemd/units/invocation:sys-kernel-config.mount`, whose bare value is `673deca302fc4236af50a0d82113fad4`. Systemd uses this as an invocation ID, not an executable path. Upstream v239/v252/current writer and reader contracts were reviewed to correct the metadata class rather than one instance.

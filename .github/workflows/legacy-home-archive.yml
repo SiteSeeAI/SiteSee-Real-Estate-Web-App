@@ -5,6 +5,7 @@ on:
     paths:
       - 'tools/archive-legacy-home-files.py'
       - 'tests/legacy-home-archive.test.py'
+      - 'tests/legacy-home-storage.integration.py'
       - '.github/workflows/legacy-home-archive.yml'
 permissions:
   contents: read
@@ -25,6 +26,8 @@ jobs:
         run: python3 tests/legacy-home-archive.test.py
       - name: Repeat preservation and interruption checks with real root ownership
         run: sudo "$(command -v python3)" tests/legacy-home-archive.test.py
+      - name: Verify actual mounted loop storage and installer archive restore
+        run: sudo "$(command -v python3)" tests/legacy-home-storage.integration.py
   downloads:
     needs: safety
     runs-on: ubuntu-latest
