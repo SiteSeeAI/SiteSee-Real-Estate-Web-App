@@ -6,7 +6,7 @@ Each iteration records its ID, purpose, status, source/release, changes, validat
 
 ## DEP-006 — converge dependency cycles and bound the complete scan — 2026-10-14
 
-Status: implemented, locally tested and independently reviewed; verified publication and host retry are pending. Same seventeen installer candidates and preservation policy. Stripe remains TEST; no application, provider, schedule, service or database change.
+Status: implemented, locally tested, independently reviewed and published with verified downloads; host retry is pending. Same seventeen installer candidates and preservation policy. Stripe remains TEST; no application, provider, schedule, service or database change.
 
 The operator reports about eight minutes at checksum `OK` for `/root/sitesee-home-cleanup.efT8U9/archive-legacy-home-files.py`, with no `Prepared archive:` or `ARCHIVE PASS`. Advised one Ctrl+C before retry; interruption completion has not been supplied. No archive is evidenced. A local graph defect is confirmed: the same source referencing `../active/self.py` is reread under ever-growing equivalent path spellings. The prior helper checks one small self-reference 405 times; a 200,028-byte regression exceeds a 12-second local cap. Host stack evidence is unavailable, so this reproduces a scanner defect rather than establishing the exact stalled host frame.
 
@@ -17,6 +17,8 @@ Both CLI check and archive now wrap the complete host inventory and dependency t
 Local validation: all 62 filesystem checks pass. Nine added regressions cover one-read self-cycles with real seventeen-file archive/restore, two-file cycles preserving a live installer with sixteen-file archive/restore, parent aliases, distinct hardlink contexts, timer cancellation before actual moves, error/Ctrl+C cleanup, real subprocess heartbeat/deadline before archive and preservation of an existing alarm. Helper SHA256: `e7c5365f8284331dcac58f94071e1730af702de29e05447353df9254c214638c`. Host completion remains unverified.
 
 Independent review passes all 62 checks and its separate cycle/alarm/archive reproductions. Its old 200KB fixture exceeds a four-second subprocess deadline; corrected code reads once in 0.04264 seconds. The review performs a real two-file-cycle sixteen-file archive/restore and verifies timers inactive during every archive/restore move. AST confirms all old functions except scan/main unchanged; reversing the two main wrapper calls makes main identical to the prior code, preserving the restore branch. No remaining blocker in the declared bounded scope. Publication and actual host outcome remain separate gates; the exact host delay is still unconfirmed.
+
+Publication: [home-cleanup-6dd2a54ef699](https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/releases/tag/home-cleanup-6dd2a54ef699), source `6dd2a54ef699e97f640fe0cb2fb1c68a48da8cce`, maintenance run `38639051054`. All three jobs and every step pass. Python 3.9/3.12 each run 62 tests unprivileged and as root: 248 executions, no skips. All three assets independently match exact Git source by full bytes, SHA256, GitHub digest, size and attachment headers. The replacement root command passes shell syntax checking. The operator must interrupt the previous foreground check and wait for the prompt before retrying; actual interruption/archive completion remains unreported. Frozen application and approved application-installer payloads remain unchanged. The unrelated application date-fixture limitation stays recorded in DEP-003.
 
 ## DEP-005 — ignore unrepresentable heuristic path matches — 2026-10-14
 
