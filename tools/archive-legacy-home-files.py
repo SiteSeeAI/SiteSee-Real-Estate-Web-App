@@ -18,6 +18,7 @@ import struct
 import subprocess
 import tempfile
 import time
+import zipfile
 
 NAMES = tuple('''install-customer-portal-pathfix.py
 install-customer-portal.py
@@ -237,6 +238,37 @@ def packaged_archive(path):
         return any(head.startswith(header) for header in headers)
     finally:
         os.close(fd)
+
+
+def package_launcher(path, fd, before):
+    if path.suffix.lower() not in {'.jar', '.war', '.ear'}:
+        return None
+    prefix = os.pread(fd, 65536, 0)
+    if not prefix.startswith(b'#!'):
+        return None
+    # Bound the central directory before stdlib parsing; never decompress data.
+    # Its actual member offsets distinguish a real ZIP start from magic bytes
+    # merely mentioned in shell comments. Inspect the entire bounded prefix too.
+    with os.fdopen(os.dup(fd), 'rb') as stream:
+        end = zipfile._EndRecData(stream)
+        if not end or not 0 < end[zipfile._ECD_ENTRIES_TOTAL] <= 50000 or not 0 < end[zipfile._ECD_SIZE] <= MAX_FILE:
+            return None
+        try:
+            with zipfile.ZipFile(stream) as package:
+                boundary = min(info.header_offset for info in package.infolist())
+        except zipfile.BadZipFile:
+            return None
+    if not 0 < boundary <= len(prefix) - 4 or prefix[boundary:boundary + 4] != b'PK\x03\x04' or b'\0' in prefix[:boundary]:
+        return None
+    try:
+        prefix[:boundary].decode('utf-8')
+    except UnicodeDecodeError:
+        return None
+    after, current = os.fstat(fd), path.lstat()
+    need(fingerprint(before) == fingerprint(after) == fingerprint(current) and
+         before.st_ctime_ns == after.st_ctime_ns == current.st_ctime_ns,
+         'Changing packaged launcher preserved: ' + str(path))
+    return prefix
 
 
 def systemd_metadata(path):
@@ -501,6 +533,7 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
     preserved_system_links = {}
     preserved_runtime_metadata = {}
     preserved_storage = {}
+    inspected_package_launchers = {}
     unresolved_aliases = {}
     queue = list(source_paths)
     required_sources = {p.parent.resolve(strict=True) / p.name
@@ -680,6 +713,8 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
                        else None)
             if storage is None and s.st_size > MAX_FILE and not all_files and path not in required_sources:
                 storage = active_swap(path, fd, s)
+            launcher = (package_launcher(path, fd, s)
+                        if not all_files and path not in required_sources else None)
         finally:
             os.close(fd)
         if storage is not None:
@@ -690,7 +725,12 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
             need(not (path == home or home in path.parents or str(path).startswith('/root/')),
                  'Custom binary wrapper requires review: ' + str(path))
             continue
-        data, s = read_regular(path)
+        if launcher is not None:
+            data = launcher
+            inspected_package_launchers[str(path)] = {
+                'source_bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest()}
+        else:
+            data, s = read_regular(path)
         if is_candidate:
             record = dict(fingerprint(s), sha256=hashlib.sha256(data).hexdigest())
             need(record == records[path.name], 'Live installer changed during scan; no files archived.')
@@ -707,6 +747,7 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
             'preserved_system_links': dict(sorted(preserved_system_links.items())),
             'preserved_runtime_metadata': dict(sorted(preserved_runtime_metadata.items())),
             'preserved_storage': dict(sorted(preserved_storage.items())),
+            'inspected_package_launchers': dict(sorted(inspected_package_launchers.items())),
             'referenced': {n: sorted(v) for n, v in references.items() if v},
             'eligible': sorted(n for n in records if not references[n]),
             'scope': 'Inspected local literal/wildcard source dependencies and observed processes; compiled programs/archive contents, computed launch paths and external automation are not established.'}
@@ -935,6 +976,7 @@ def main():
                           'preserved_system_links': report['preserved_system_links'],
                           'preserved_runtime_metadata': report['preserved_runtime_metadata'],
                           'preserved_storage': report['preserved_storage'],
+                          'inspected_package_launchers': report['inspected_package_launchers'],
                           'sources_checked': report['sources_checked'], 'scope': report['scope']}))
         if folder:
             print('Restore: python3 ' + __file__ + ' --restore ' + str(folder))

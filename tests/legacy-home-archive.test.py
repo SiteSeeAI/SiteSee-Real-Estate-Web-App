@@ -13,6 +13,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import zipfile
 from types import SimpleNamespace
 from unittest import mock
 
@@ -380,6 +381,65 @@ class ArchiveSafety(unittest.TestCase):
         with mock.patch.object(tool, 'canonical'), mock.patch.object(pathlib.Path, 'stat',
                 return_value=SimpleNamespace(st_uid=0, st_mode=0o755)):
             self.assertTrue(tool.swap_namespace(pathlib.Path('/swapfile')))
+
+    def self_executing_package(self, prefix, name='runtime.jar'):
+        path = self.source / name
+        path.write_bytes(prefix)
+        with zipfile.ZipFile(path, 'a') as package:
+            with package.open('payload.bin', 'w') as payload:
+                for _ in range((tool.MAX_FILE // 65536) + 1):
+                    payload.write(bytes(65536))
+        return path
+
+    def test_packaged_shell_launcher_preserves_transitive_source_and_real_archive_restore(self):
+        live = self.script('real-live.py', 'python3 ' + str(self.home / tool.NAMES[0]))
+        package = self.self_executing_package(b'#!/fixture-shell\npython3 ' + os.fsencode(live) + b'\nexec java -jar "$0" "$@"\n')
+        caller = self.script('java.sh', 'java -jar ' + str(package))
+        with mock.patch.object(tool, 'read_regular', wraps=tool.read_regular) as reads:
+            report = self.report([caller])
+        self.assertNotIn(tool.NAMES[0], report['eligible'])
+        self.assertEqual(report['inspected_package_launchers'][str(package)]['source_bytes'], 65536)
+        self.assertFalse(any(c.args[0] == package for c in reads.call_args_list))
+        folder = self.archive(report)
+        self.assertEqual(tool.restore(self.home, self.uid, folder), 16)
+
+    def test_fake_zip_magic_in_shell_comment_cannot_hide_later_live_call(self):
+        prefix = b'#!/fixture-shell\n# fake PK\x03\x04 marker\npython3 ' + os.fsencode(self.home / tool.NAMES[0]) + b'\nexec java -jar "$0"\n'
+        package = self.self_executing_package(prefix)
+        caller = self.script('java.sh', str(package))
+        self.assertNotIn(tool.NAMES[0], self.report([caller])['eligible'])
+
+    def test_malformed_or_overlong_packaged_launcher_is_not_partially_accepted(self):
+        malformed = self.source / 'bad.jar'
+        with malformed.open('wb') as stream:
+            stream.write(b'#!/bin/sh\nPK\x03\x04')
+            stream.truncate(tool.MAX_FILE + 4096)
+        overlong = self.self_executing_package(b'#!/bin/sh\n#' + b'x' * 70000 + b'\n', 'long.jar')
+        for package in [malformed, overlong]:
+            caller = self.script('java.sh', str(package))
+            with self.subTest(package=package.name), self.assertRaisesRegex(RuntimeError, 'Unreviewed type/size'):
+                self.report([caller])
+
+    def test_declared_packaged_launcher_and_source_alias_remain_strict(self):
+        package = self.self_executing_package(b'#!/bin/sh\nexec java -jar "$0"\n')
+        alias = self.source / 'job.py'
+        alias.symlink_to(package)
+        for seeds in [[package], [alias], [(package, True)]]:
+            with self.subTest(seeds=str(seeds)), self.assertRaisesRegex(RuntimeError, 'Unreviewed type/size'):
+                self.report(seeds)
+
+    def test_packaged_launcher_path_replacement_during_metadata_read_is_refused(self):
+        package = self.self_executing_package(b'#!/bin/sh\nexec java -jar "$0"\n')
+        replacement = self.script('new-live.py', 'python3 ' + str(self.home / tool.NAMES[0]))
+        original = tool.zipfile.ZipFile
+        def replaced(*args, **kwargs):
+            result = original(*args, **kwargs)
+            os.replace(replacement, package)
+            return result
+        caller = self.script('java.sh', str(package))
+        with mock.patch.object(tool.zipfile, 'ZipFile', side_effect=replaced):
+            with self.assertRaisesRegex(RuntimeError, 'Changing packaged launcher'):
+                self.report([caller])
 
     def storage_image(self, path=None):
         path = path or self.source / 'mounted-store'
