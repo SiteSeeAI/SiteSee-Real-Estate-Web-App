@@ -452,23 +452,29 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
             for pattern in re.findall(rb'install-[A-Za-z0-9_.?*+-]+', data):
                 if (b'*' in pattern or b'?' in pattern) and fnmatch.fnmatchcase(name, os.fsdecode(pattern)):
                     mark(name, label)
+        # Follow literal local script/config paths in scheduler and service wrappers.
+        contexts = {p.resolve(strict=True) for p in [home, *extra_contexts]}
+        if label.startswith('/'):
+            contexts.add(pathlib.Path(label).parent.resolve(strict=True))
+        elif label == 'crontab:root':
+            contexts.add(root_home.resolve(strict=True))
+        def reference(path):
+            # A directory is a resolution context, whether spelled directly or
+            # through an alias. Only declared source roots and run-parts calls
+            # authorize recursive source discovery; a pathname mention does not.
+            if literal_probe(path, 'is_dir'):
+                contexts.add(path.resolve(strict=True))
+            elif followable(path) and (literal_probe(path, 'is_file') or literal_probe(path, 'is_symlink')):
+                queue.append(path)
         for name, path in home_entries.items():
             if re.search(rb'(?<![A-Za-z0-9_.-])' + re.escape(os.fsencode(name)) + rb'(?![A-Za-z0-9_.-])', data):
-                queue.append(path)
-        # Follow literal local script/config paths in scheduler and service wrappers.
-        contexts = {home, *extra_contexts}
-        if label.startswith('/'):
-            contexts.add(pathlib.Path(label).parent)
-        elif label == 'crontab:root':
-            contexts.add(root_home)
+                reference(path)
         for raw in re.findall(rb'/[A-Za-z0-9_./+@-]+', data):
             path = pathlib.Path(os.fsdecode(raw))
             if path.name in NAMES and path.parent == home:
                 mark(path.name, label)
-            elif followable(path) and (literal_probe(path, 'is_file') or literal_probe(path, 'is_symlink')):
-                queue.append(path)
-            elif literal_probe(path, 'is_dir'):
-                contexts.add(path)
+            else:
+                reference(path)
         for raw in re.findall(rb'run-parts\s+(?:--[A-Za-z0-9_=+-]+\s+)*[\'"]?(/[A-Za-z0-9_./+-]+)', data):
             directory = pathlib.Path(os.fsdecode(raw))
             if directory == home or directory in home.parents:
@@ -477,10 +483,15 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
             elif literal_probe(directory, 'is_dir'):
                 enqueue_sources(directory, all_files=True)
         tokens = re.findall(rb'(?<![A-Za-z0-9_./-])([A-Za-z0-9_.+-]+(?:/[A-Za-z0-9_.+-]+)*)(?![A-Za-z0-9_./-])', data)
-        for token in tokens:
-            if token in {b'.', b'..'}:
+        pending_contexts, inspected_contexts = list(contexts), set()
+        while pending_contexts:
+            context = pending_contexts.pop()
+            if context in inspected_contexts:
                 continue
-            for context in contexts:
+            inspected_contexts.add(context)
+            for token in tokens:
+                if token in {b'.', b'..'}:
+                    continue
                 key = str(context)
                 if key not in context_entries:
                     context_entries[key] = {p.name for p in context.iterdir()}
@@ -490,8 +501,9 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
                 path = context / os.fsdecode(token)
                 if path.name in NAMES and context == home:
                     mark(path.name, label)
-                elif followable(path) and (literal_probe(path, 'is_file') or literal_probe(path, 'is_symlink')):
-                    queue.append(path)
+                else:
+                    reference(path)
+            pending_contexts.extend(contexts - inspected_contexts)
     for label, data in blobs:
         inspect(label, data)
         checked += 1

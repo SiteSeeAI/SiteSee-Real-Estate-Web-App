@@ -6,6 +6,7 @@ import json
 import os
 import pathlib
 import signal
+import socket
 import stat
 import struct
 import subprocess
@@ -54,6 +55,132 @@ class ArchiveSafety(unittest.TestCase):
         self.assertEqual(tool.restore(self.home, self.uid, folder), 17)
         for name in tool.NAMES:
             self.assertEqual(tool.candidate(self.home / name, self.uid), before['records'][name])
+
+    def mixed_runtime(self):
+        runtime = self.home / 'runtime-data'
+        runtime.mkdir()
+        tags = runtime / 'udev/static_node-tags/uaccess'
+        tags.mkdir(parents=True)
+        (tags / r'snd\x2ftimer').symlink_to('/dev/zero')
+        (runtime / 'device-control').symlink_to('/dev/zero')
+        pipe = runtime / 'control-pipe'
+        os.mkfifo(pipe)
+        (runtime / 'pipe-alias').symlink_to(pipe)
+        listener = socket.socket(socket.AF_UNIX)
+        self.addCleanup(listener.close)
+        listener.bind(str(runtime / 'control-socket'))
+        (runtime / 'socket-alias').symlink_to(runtime / 'control-socket')
+        (runtime / 'stale-control').symlink_to(runtime / 'missing-control')
+        (runtime / 'directory-cycle').symlink_to(runtime, target_is_directory=True)
+        # These are data outside the declared source roots, even if a filename
+        # happens to have a source suffix or contain an installer name.
+        (runtime / 'unrelated.py').write_text('# ' + tool.NAMES[1])
+        with (runtime / 'oversized.py').open('wb') as stream:
+            stream.truncate(tool.MAX_FILE + 4096)
+        alias = self.source / 'runtime-link'
+        alias.symlink_to(runtime, target_is_directory=True)
+        home_alias = self.home / 'home-runtime-link'
+        home_alias.symlink_to(runtime, target_is_directory=True)
+        return runtime, alias, home_alias
+
+    def test_incidental_absolute_real_and_alias_directories_have_equal_nonrecursive_scope(self):
+        runtime, alias, _ = self.mixed_runtime()
+        before = {str(p): p.lstat() for p in runtime.rglob('*')}
+        for directory in [runtime, alias]:
+            caller = self.script('state.conf', 'StateDirectory=' + str(directory))
+            with mock.patch.object(tool, 'read_regular', wraps=tool.read_regular) as reads:
+                report = self.report([caller])
+            self.assertEqual(len(report['eligible']), 17)
+            self.assertFalse(any(runtime in c.args[0].parents for c in reads.call_args_list))
+        folder = self.archive(report)
+        self.assertEqual(tool.restore(self.home, self.uid, folder), 17)
+        for name, original in before.items():
+            current = pathlib.Path(name).lstat()
+            self.assertEqual((original.st_dev, original.st_ino, original.st_mode, original.st_size),
+                             (current.st_dev, current.st_ino, current.st_mode, current.st_size))
+
+    def test_incidental_relative_and_home_basename_aliases_do_not_crawl_runtime(self):
+        _, alias, home_alias = self.mixed_runtime()
+        for body in ['WorkingDirectory=runtime-link', 'StateDirectory=' + home_alias.name]:
+            caller = self.script('context.conf', body)
+            self.assertEqual(len(self.report([caller])['eligible']), 17)
+
+    def test_explicit_child_through_runtime_alias_still_preserves_live_installer(self):
+        runtime, alias, _ = self.mixed_runtime()
+        (runtime / 'refresh.py').write_text('python3 ' + str(self.home / tool.NAMES[0]))
+        caller = self.script('child.sh', 'python3 ' + str(alias / 'refresh.py'))
+        report = self.report([caller])
+        self.assertEqual(len(report['eligible']), 16)
+        self.assertNotIn(tool.NAMES[0], report['eligible'])
+        self.assertIn(tool.NAMES[1], report['eligible'])
+        folder = self.archive(report)
+        self.assertTrue((self.home / tool.NAMES[0]).exists())
+        self.assertEqual(tool.restore(self.home, self.uid, folder), 16)
+
+    def test_cd_runtime_alias_then_relative_wrapper_retains_live_dependency(self):
+        runtime, alias, _ = self.mixed_runtime()
+        (runtime / 'refresh').write_text('python3 ' + str(self.home / tool.NAMES[0]))
+        caller = self.script('child.sh', 'cd ' + str(alias) + '; python3 refresh')
+        self.assertNotIn(tool.NAMES[0], self.report([caller])['eligible'])
+
+    def test_relative_context_discovery_is_order_independent_and_cycle_bounded(self):
+        runtime, _, _ = self.mixed_runtime()
+        (runtime / 'refresh').write_text('python3 ' + str(self.home / tool.NAMES[0]))
+        caller = self.script('reversed.service', 'ExecStart=python3 refresh\nWorkingDirectory=runtime-link\nStateDirectory=runtime-link/directory-cycle')
+        with mock.patch.object(tool, 'read_regular', wraps=tool.read_regular) as reads:
+            report = self.report([caller])
+        self.assertNotIn(tool.NAMES[0], report['eligible'])
+        self.assertLess(report['sources_checked'], 10)
+        self.assertEqual(sum(c.args[0] == runtime / 'refresh' for c in reads.call_args_list), 1)
+
+    def test_incidental_home_directory_alias_does_not_mark_all_installers_live(self):
+        alias = self.source / 'account-dir'
+        alias.symlink_to(self.home, target_is_directory=True)
+        caller = self.script('home-context.conf', 'WorkingDirectory=' + str(alias))
+        self.assertEqual(len(self.report([caller])['eligible']), 17)
+
+    def test_declared_runtime_aliases_and_run_parts_keep_strict_recursive_checks(self):
+        _, alias, _ = self.mixed_runtime()
+        for seeds, blobs in [([(alias, True)], []),
+                             ([], [('unit', ('run-parts ' + str(alias)).encode())])]:
+            with self.subTest(seeds=str(seeds)), self.assertRaises(RuntimeError):
+                self.report(seeds, blobs)
+            self.assertTrue(all((self.home / name).exists() for name in tool.NAMES))
+
+    def test_explicit_runtime_device_pipe_and_socket_aliases_remain_blocking(self):
+        runtime, _, _ = self.mixed_runtime()
+        for name in ['device-control', 'pipe-alias', 'socket-alias']:
+            caller = self.script('explicit.sh', 'python3 ' + str(runtime / name))
+            with self.subTest(name=name), self.assertRaisesRegex(RuntimeError, 'Unreviewed source alias'):
+                self.report([caller])
+
+    def test_heuristic_broken_and_cyclic_file_aliases_still_stop(self):
+        missing = self.source / 'missing-wrapper'
+        missing.symlink_to(self.source / 'absent-wrapper')
+        caller = self.script('missing.sh', 'python3 ' + str(missing))
+        with self.assertRaisesRegex(RuntimeError, 'Missing dependency alias preserved'):
+            self.report([caller])
+        missing.unlink()
+        missing.symlink_to(missing)
+        with self.assertRaises((RuntimeError, OSError)):
+            self.report([caller])
+
+    def test_same_directory_mentioned_as_context_then_declared_retains_stronger_scope(self):
+        root = self.source / 'declared'
+        root.mkdir()
+        (root / 'nightly').write_text('python3 ' + str(self.home / tool.NAMES[0]))
+        alias = self.source / 'declared-link'
+        alias.symlink_to(root, target_is_directory=True)
+        caller = self.script('context.conf', 'WorkingDirectory=' + str(alias))
+        report = self.report([(alias, True), caller])
+        self.assertNotIn(tool.NAMES[0], report['eligible'])
+
+    def test_home_basename_regular_file_alias_still_preserves_live_wrapper(self):
+        wrapper = self.script('live.py', 'python3 ' + str(self.home / tool.NAMES[0]))
+        alias = self.home / 'home-wrapper'
+        alias.symlink_to(wrapper)
+        caller = self.script('caller.sh', 'python3 home-wrapper')
+        self.assertNotIn(tool.NAMES[0], self.report([caller])['eligible'])
 
     def storage_image(self, path=None):
         path = path or self.source / 'mounted-store'

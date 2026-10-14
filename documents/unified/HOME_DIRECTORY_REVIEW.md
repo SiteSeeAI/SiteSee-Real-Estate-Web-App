@@ -2,6 +2,12 @@
 
 Assessment: 2026-10-13, America/Chicago. The operator supplied a top-level `ls -la /home/sitesee` listing. This is a preparation checkpoint, not evidence of an archive, deletion or migration. Stripe remains TEST.
 
+## Directory-reference traversal correction — 2026-10-14
+
+The DEP-008 host retry passed download verification but stopped before moving files at `/run/udev/static_node-tags/uaccess/snd\x2ftimer`. DEP-009 corrects the graph boundary: a reference to a directory or its alias supplies a resolution context; it does not authorize recursive scanning of that directory's contents. This rule now applies consistently to absolute paths, relative tokens and home-file basename matches. Explicit files/wrappers remain checked, including relative wrappers whose working directory is declared later. Canonical context identities converge on cycles. Declared source roots/aliases and explicit `run-parts` keep their recursive source checks. Unknown explicit stream aliases remain blocking; no operating-system path/type exception was added.
+
+All 102 local tests and the independent review pass. Mixed device/socket/FIFO/stale-link/oversized/decoy-source trees remain untouched behind incidental directory references, while explicit live wrappers are preserved and unused installers archive/restore exactly. Existing archive, restore, checksum, ownership, journal, timeout and previous metadata/storage protections remain unchanged. Required CI now also checks real Linux service/scheduler sources and processes before publication, alongside the existing mounted-image integration. Publication and actual cPanel completion remain pending; DEP-009 in the changelog records their separate evidence. The move allowlist remains the same seventeen files below.
+
 ## Mounted storage scan-boundary correction — 2026-10-14
 
 The DEP-007 host retry passed download verification but stopped before any archive at the oversized `/usr/tmpDSK`. The scanner had followed a storage pathname as if it were application source. DEP-008 recognizes mounted filesystem backing data by its actual kernel role, without a filename exception or larger source-size limit.
