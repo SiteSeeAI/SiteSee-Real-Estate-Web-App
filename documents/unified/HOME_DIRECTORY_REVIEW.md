@@ -2,6 +2,14 @@
 
 Assessment: 2026-10-13, America/Chicago. The operator supplied a top-level `ls -la /home/sitesee` listing. This is a preparation checkpoint, not evidence of an archive, deletion or migration. Stripe remains TEST.
 
+## Compiler-alias correction — 2026-10-14
+
+The verified read-only host scan reports missing target `/usr/lib/gcc/i686-redhat-linux` at the helper's strict source-symlink resolution. The removed CTC ZIP is not that target. The replacement preserves and records a dangling compiler alias only if its source alias (canonical parent with leaf retained) and missing resolved target are both inside `/usr/lib/gcc` or `/usr/lib64/gcc`. It does not repair or remove system compiler links. Application/scheduler aliases pointing to the compiler tree, other missing dependency aliases and unsafe installer candidates remain blocking.
+
+The dependency report, private journal and final result include `preserved_compiler_links` as source-to-missing-target metadata. Other OS failures report errno/filename instead of hiding the path. No file content, environment values or provider response is printed. The unchanged archive/restore policy and exact seventeen-file allowlist below still apply.
+
+Current validation: 31 focused checks pass locally and in the independent review, including archive/restore around an unchanged missing compiler alias and four negative cases proving the exception cannot bypass application/scheduler/source-target namespace guards. The independent audit also verifies default compiler namespaces and unchanged original preservation primitives. Current helper SHA256: `68ff0308952d6e12d2746ca783b8b8e30d7939066f06d4711e48510f102174ed`. Final published source/download verification and the operator's successful host archive result remain pending for this correction. The earlier verified DEP-001 publication remains historical evidence below.
+
 ## Authorized archive operation
 
 The user subsequently instructed: “so do that now please.” The standalone `tools/archive-legacy-home-files.py` implements this authorized reversible cleanup. It does not update the application release. Its exact seventeen-name allowlist is below; diagnostics, the unidentified home `pricing.php`, shared credentials, CTC Publishing and existing backups are outside its move scope.

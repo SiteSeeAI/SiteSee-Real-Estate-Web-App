@@ -40,6 +40,7 @@ SUFFIXES = {'.php', '.phtml', '.py', '.js', '.mjs', '.cjs', '.sh', '.conf',
 NON_CODE = {'.sqlite', '.sqlite3', '.db', '.log', '.gz', '.zip', '.tar', '.pdf',
             '.jpg', '.jpeg', '.png', '.webp', '.gif', '.woff', '.woff2', '.ttf', '.mp4'}
 META = ('dev', 'ino', 'uid', 'gid', 'mode', 'size', 'mtime_ns')
+COMPILER_ROOTS = (pathlib.Path('/usr/lib/gcc'), pathlib.Path('/usr/lib64/gcc'))
 
 
 def need(ok, message):
@@ -56,6 +57,14 @@ def canonical(path):
 def fingerprint(s):
     return dict(zip(META, (s.st_dev, s.st_ino, s.st_uid, s.st_gid,
                           stat.S_IMODE(s.st_mode), s.st_size, s.st_mtime_ns)))
+
+
+def compiler_link(source, target):
+    # Canonicalize the parent, not the leaf alias: an app/scheduler alias pointing
+    # into GCC is still an unreviewed application/scheduler dependency.
+    source = source.parent.resolve(strict=False) / source.name
+    return any(source != root and root in source.parents for root in COMPILER_ROOTS) and \
+        any(target == root or root in target.parents for root in COMPILER_ROOTS)
 
 
 def read_regular(path):
@@ -126,6 +135,7 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
             records[name] = candidate(path, uid)
     identities = {(r['dev'], r['ino']): n for n, r in records.items()}
     seen, seen_directories, checked, budget = set(), set(), 0, 0
+    preserved_compiler_links = {}
     queue = list(source_paths)
     home_entries = {p.name: p for p in home.iterdir()
                     if p.name not in NAMES and not p.name.startswith('.')
@@ -230,7 +240,16 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
             continue
         seen.add(visit)
         if path.is_symlink():
-            resolved = path.resolve(strict=True)
+            try:
+                resolved = path.resolve(strict=True)
+            except FileNotFoundError:
+                target = path.resolve(strict=False)
+                if compiler_link(path, target):
+                    preserved_compiler_links[str(path)] = str(target)
+                    checked += 1
+                    continue
+                raise RuntimeError('Missing dependency alias preserved: ' + str(path) +
+                                   '; target: ' + str(target) + '; no files archived.')
             if resolved.parent == home and resolved.name in NAMES:
                 mark(resolved.name, str(path))
             elif resolved == pathlib.Path('/dev/null'):
@@ -267,6 +286,7 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
         inspect(str(path), data)
         checked += 1
     return {'records': records, 'missing': missing, 'sources_checked': checked,
+            'preserved_compiler_links': dict(sorted(preserved_compiler_links.items())),
             'referenced': {n: sorted(v) for n, v in references.items() if v},
             'eligible': sorted(n for n in records if not references[n]),
             'scope': 'Inspected local literal/wildcard dependencies and observed processes; computed launch paths and external automation are not established.'}
@@ -460,6 +480,7 @@ def main():
         print(json.dumps({'result': 'ARCHIVE PASS' if folder else 'NO ELIGIBLE FILES',
                           'archived': len(report['eligible']), 'archive': str(folder) if folder else None,
                           'referenced_preserved': report['referenced'], 'already_absent': report['missing'],
+                          'preserved_compiler_links': report['preserved_compiler_links'],
                           'sources_checked': report['sources_checked'], 'scope': report['scope']}))
         if folder:
             print('Restore: python3 ' + __file__ + ' --restore ' + str(folder))
@@ -472,6 +493,10 @@ if __name__ == '__main__':
         main()
     except Exception as error:
         # Print no configuration contents, environment values, process arguments or provider details.
-        print('STOPPED: ' + (str(error) if isinstance(error, RuntimeError) else type(error).__name__) +
+        detail = str(error) if isinstance(error, RuntimeError) else type(error).__name__
+        if isinstance(error, OSError):
+            detail = json.dumps({'error': type(error).__name__, 'errno': error.errno,
+                                 'path': os.fsdecode(error.filename) if error.filename is not None else None})
+        print('STOPPED: ' + detail +
               '. Preserve originals and any archive journal; no deletion or overwrite is performed.')
         raise SystemExit(1)

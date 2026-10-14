@@ -4,6 +4,14 @@ This is the iteration record from October 9, 2026 onward. Dates use America/Chic
 
 Each iteration records its ID, purpose, status, source/release, changes, validation and user acceptance. Keep planned work separate from implemented, installed and accepted work. Add an entry for each subsequent implementation/release and update its acceptance after user review. Documentation-only commits do not change the installed application.
 
+## DEP-002 — preserve unrelated dangling compiler aliases during cleanup — 2026-10-14
+
+Status: implemented, locally tested and independently reviewed; verified publication and host retry are pending. Stripe remains TEST. No application release payload or archive/restore policy changed.
+
+The operator's checksum-verified read-only diagnostic identifies the stopped scan at strict source-alias resolution, with missing target `/usr/lib/gcc/i686-redhat-linux`. This establishes a compiler alias failure, not a ZIP move failure. The replacement records and leaves a dangling compiler alias alone only when both its source namespace and resolved missing target are within `/usr/lib/gcc` or `/usr/lib64/gcc`. An application or scheduler alias pointing into that namespace still stops, as do other missing dependencies and unsafe candidate paths. Source/target compiler-link metadata is retained in the report and private archive journal. Future filesystem stops include errno and filename without configuration contents.
+
+Validation: all 31 focused checks pass locally and in the independent review. The five added regressions exercise actual archive/restore while preserving the dangling compiler link and retain refusal for missing application aliases, scheduler aliases, compiler aliases to application targets and compiler-prefix lookalikes. Independent default-namespace probes and an AST comparison verify the namespace boundary and unchanged original preservation primitives. All earlier dependency, metadata, interruption and destination-preservation checks remain intact. Candidate list remains the same seventeen historical installers. Current helper SHA256: `68ff0308952d6e12d2746ca783b8b8e30d7939066f06d4711e48510f102174ed`. Host completion remains unverified.
+
 ## DEP-001 — home-directory cleanup and versioned deployment preparation — 2026-10-13
 
 Status: archive helper reviewed, tested and published; operator attempt stopped during checking with `FileNotFoundError`, and successful host archiving remains pending. Version-folder migration has not been performed. Stripe remains TEST. This maintenance iteration does not change any frozen application release payload.
@@ -17,6 +25,8 @@ The user authorized proceeding with cleanup. Added a standalone exact-list depen
 Publication: [home-cleanup-d0b859cac2e4](https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/releases/tag/home-cleanup-d0b859cac2e4), exact source `d0b859cac2e41a8aa32a86d2a795e9133a48c84e`. Run `38490791103` passes both safety matrix jobs and download publication, with every step successful: 26 checks each on Python 3.9 and 3.12, both unprivileged and root (104 executions, no skipped checks). The helper, review and checksum download assets were independently verified by full bytes, SHA256, GitHub digest, size and attachment headers. The initial publisher conditional syntax error was corrected before this verified publication; helper bytes and the independent audit pin are unchanged. This proves the maintenance tool and downloads, not execution on the hosting server.
 
 Operator report: `/root/sitesee-home-cleanup.x8ZW9S/archive-legacy-home-files.py` checksum passed, then the helper stopped with `FileNotFoundError`. The supplied subsequent home listing still contains all seventeen installer candidates; no prepared archive path or successful archive result was reported. The operator separately removed a CTC Publishing ZIP. ZIPs are outside the move allowlist and excluded from followed code paths; that removal is not established as the cause. The CLI concealed the missing filename, so the next step is a checksum-verified read-only dependency scan that reports only the missing path and helper frame locations, without configuration contents or archive operations. A missing source alias can reproduce this error locally; the actual host cause is still unverified.
+
+Subsequent operator diagnostic: `PATH: /usr/lib/gcc/i686-redhat-linux`, `host_scan` line 309 and `scan` line 233. That scan line is strict resolution of a followed source symlink. DEP-002 records the correction; no successful host archive result has yet been reported.
 
 ## UX-003 — client workspace, reports and archives — 2026-10-13
 

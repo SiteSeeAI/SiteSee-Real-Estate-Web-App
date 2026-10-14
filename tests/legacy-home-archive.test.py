@@ -150,6 +150,70 @@ class ArchiveSafety(unittest.TestCase):
         alias.symlink_to('/dev/null')
         self.assertEqual(len(self.report([alias])['eligible']), 17)
 
+    def compiler_namespace(self):
+        compiler = self.home / 'system' / 'usr' / 'lib' / 'gcc'
+        compiler.mkdir(parents=True)
+        return compiler
+
+    def test_missing_system_compiler_alias_is_recorded_preserved_and_does_not_block_archive(self):
+        compiler = self.compiler_namespace()
+        alias, target = compiler / 'i386-redhat-linux', compiler / 'i686-redhat-linux'
+        alias.symlink_to(target, target_is_directory=True)
+        with mock.patch.object(tool, 'COMPILER_ROOTS', (compiler,)):
+            report = self.report([alias])
+        self.assertEqual(report['preserved_compiler_links'], {str(alias): str(target)})
+        folder = self.archive(report)
+        self.assertTrue(alias.is_symlink())
+        self.assertEqual(alias.readlink(), target)
+        self.assertFalse(target.exists())
+        journal = json.loads((folder / 'manifest.json').read_text())
+        self.assertEqual(journal['scan']['preserved_compiler_links'], report['preserved_compiler_links'])
+        self.assertEqual(tool.restore(self.home, self.uid, folder), 17)
+        for name in tool.NAMES:
+            self.assertEqual(tool.candidate(self.home / name, self.uid), report['records'][name])
+
+    def test_missing_app_alias_into_compiler_namespace_still_stops(self):
+        compiler = self.compiler_namespace()
+        alias = self.source / 'application.php'
+        alias.symlink_to(compiler / 'i686-redhat-linux')
+        with mock.patch.object(tool, 'COMPILER_ROOTS', (compiler,)), \
+             self.assertRaisesRegex(RuntimeError, 'Missing dependency alias preserved'):
+            self.report([alias])
+        self.assertFalse((self.home / 'private-archives').exists())
+        self.assertTrue(all((self.home / name).exists() for name in tool.NAMES))
+
+    def test_missing_scheduler_alias_into_compiler_namespace_still_stops(self):
+        compiler = self.compiler_namespace()
+        cron = self.home / 'cron.d'
+        cron.mkdir()
+        alias = cron / 'nightly'
+        alias.symlink_to(compiler / 'i686-redhat-linux')
+        with mock.patch.object(tool, 'COMPILER_ROOTS', (compiler,)), \
+             self.assertRaisesRegex(RuntimeError, 'Missing dependency alias preserved'):
+            self.report(list(tool.sources(cron, all_files=True)))
+        self.assertTrue(alias.is_symlink())
+        self.assertFalse((self.home / 'private-archives').exists())
+
+    def test_compiler_alias_to_missing_app_target_still_stops(self):
+        compiler = self.compiler_namespace()
+        alias = compiler / 'i386-redhat-linux'
+        alias.symlink_to(self.source / 'missing.php')
+        with mock.patch.object(tool, 'COMPILER_ROOTS', (compiler,)), \
+             self.assertRaisesRegex(RuntimeError, 'Missing dependency alias preserved'):
+            self.report([alias])
+        self.assertFalse((self.home / 'private-archives').exists())
+
+    def test_compiler_namespace_lookalike_cannot_bypass_missing_dependency_guard(self):
+        compiler = self.compiler_namespace()
+        lookalike = compiler.parent / 'gcc-backup'
+        lookalike.mkdir()
+        alias = lookalike / 'i386-redhat-linux'
+        alias.symlink_to(compiler / 'i686-redhat-linux')
+        with mock.patch.object(tool, 'COMPILER_ROOTS', (compiler,)), \
+             self.assertRaisesRegex(RuntimeError, 'Missing dependency alias preserved'):
+            self.report([alias])
+        self.assertFalse((self.home / 'private-archives').exists())
+
     def test_symlink_candidate_is_never_archived(self):
         path = self.home / tool.NAMES[0]
         path.unlink()
