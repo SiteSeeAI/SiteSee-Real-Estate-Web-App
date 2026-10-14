@@ -58,3 +58,4 @@ jobs:
               --repo "$repo" --target "$GITHUB_SHA" --prerelease --latest=false \
               --title 'Guarded home-directory installer archive' \
               --notes 'User-authorized reversible cleanup of seventeen explicitly named historical installers. Checks local source, web/server configuration, cron, systemd, queued jobs and processes; preserves referenced files. No active application update, operational data reset, provider operation, schedule/service change or Stripe mode change. Checksums and guarded restore retained. Hosting execution remains an operator action.'
+          fi
