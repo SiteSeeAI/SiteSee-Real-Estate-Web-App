@@ -1,9 +1,11 @@
 """Required disposable-root CI: actual Linux schedules, units and processes."""
 import contextlib
+import hashlib
 import importlib.util
 import io
 import os
 import pathlib
+import shutil
 import socket
 import tempfile
 from unittest import mock
@@ -38,9 +40,21 @@ with tempfile.TemporaryDirectory(prefix='sitesee-runtime-ci-', dir='/var/lib') a
         alias.symlink_to(runtime, target_is_directory=True)
         wrapper = home / 'service.conf'
         wrapper.write_text('StateDirectory=' + str(alias) + '\nExecStart=python3 ' + str(alias / 'refresh.py'))
+        media_dir = home / 'ctc-publishing/server/media-bin'
+        media_dir.mkdir(parents=True)
+        media_before = {}
+        for name in ('ffprobe', 'ffmpeg'):
+            native = shutil.which(name)
+            assert native, 'Required actual FFmpeg tools missing from CI image.'
+            target = media_dir / name
+            shutil.copyfile(native, target)
+            target.chmod(0o755)
+            media_before[str(target)] = (hashlib.sha256(target.read_bytes()).hexdigest(), tool.fingerprint(target.stat()))
+        media_source = home / 'media-launcher.js'
+        media_source.write_text('const tools = ' + repr(list(media_before)))
         roots = []
         def inventory(*_):
-            paths = [wrapper]
+            paths = [wrapper, media_source]
             for name in ['/etc/cron.d', '/etc/cron.hourly', '/etc/cron.daily', '/etc/cron.weekly',
                          '/etc/cron.monthly', *map(str, tool.unit_directories(home, 0))]:
                 directory = pathlib.Path(name)
@@ -76,12 +90,18 @@ with tempfile.TemporaryDirectory(prefix='sitesee-runtime-ci-', dir='/var/lib') a
                 raise
         assert report['sources_checked'] > 20
         assert len(report['eligible']) == 16 and tool.NAMES[0] in report['referenced']
+        assert set(report['preserved_media']) == set(media_before)
         assert runtime.joinpath('unrelated.py').stat().st_size > tool.MAX_FILE
         with contextlib.redirect_stdout(io.StringIO()):
             archive = tool.archive(home, 0, report)
         assert (home / tool.NAMES[0]).exists()
         assert tool.restore(home, 0, archive) == 16
         assert all(tool.candidate(home / name, 0) == report['records'][name] for name in tool.NAMES)
+        for name, (digest, metadata) in media_before.items():
+            target = pathlib.Path(name)
+            assert report['preserved_media'][name]['sha256'] == digest
+            assert hashlib.sha256(target.read_bytes()).hexdigest() == digest and tool.fingerprint(target.stat()) == metadata
+        print('REAL CTC MEDIA PASS: actual ffprobe and ffmpeg unchanged; native tools never executed.')
         print('REAL LINUX RUNTIME PASS: roots=' + str(len(roots)) +
               '; sources=' + str(report['sources_checked']) +
               '; mixed IPC/device tree preserved; live wrapper kept;16 moved/restored.')

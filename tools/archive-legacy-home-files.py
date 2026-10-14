@@ -654,6 +654,72 @@ def socket_reference(path, target):
         os.close(fd)
 
 
+def bundled_media(path, home, uid, fd, before):
+    # CTC bundles these native media tools. This is a compiled-artifact boundary,
+    # not evidence about computed native dependencies or the artifact's author.
+    directory = home / 'ctc-publishing/server/media-bin'
+    if (path.parent != directory or path.name not in {'ffmpeg', 'ffprobe'} or
+            not stat.S_ISREG(before.st_mode) or before.st_uid not in {SYSTEM_UID, uid} or
+            before.st_nlink != 1 or before.st_mode & 0o7022 or not before.st_mode & 0o111 or
+            not 64 <= before.st_size <= 256 * 1024 * 1024):
+        return None
+    canonical(path)
+    for parent in (directory, directory.parent, directory.parent.parent, home):
+        s = parent.stat()
+        if s.st_uid not in {SYSTEM_UID, uid} or s.st_mode & 0o022:
+            return None
+    header = os.pread(fd, 64, 0)
+    if (len(header) != 64 or header[:4] != b'\x7fELF' or header[4] not in {1, 2}
+            or header[5] not in {1, 2} or header[6] != 1 or header[7] not in {0, 3}):
+        return None
+    endian = '<' if header[5] == 1 else '>'
+    layout = struct.Struct(endian + ('16sHHIQQQIHHHHHH' if header[4] == 2 else '16sHHIIIIIHHHHHH'))
+    fields = layout.unpack(header[:layout.size])
+    _, kind, machine, version, entry, phoff, _, _, ehsize, phsize, phcount, *_ = fields
+    expected = 56 if header[4] == 2 else 32
+    if (kind not in {2, 3} or machine == 0 or version != 1 or ehsize != layout.size or
+            phsize != expected or not 0 < phcount <= 512 or phoff < ehsize or
+            phoff + phsize * phcount > before.st_size):
+        return None
+    table = os.pread(fd, phsize * phcount, phoff)
+    if len(table) != phsize * phcount:
+        return None
+    executable_load = False
+    for offset in range(0, len(table), phsize):
+        values = struct.unpack(endian + ('IIQQQQQQ' if header[4] == 2 else 'IIIIIIII'), table[offset:offset + phsize])
+        if header[4] == 2:
+            segment, flags, start, address, _, size, memory, _ = values
+        else:
+            segment, start, address, _, size, memory, flags, _ = values
+        if start + size > before.st_size or (segment == 1 and size > memory):
+            return None
+        if segment == 1 and flags & 1 and address <= entry < address + size:
+            executable_load = True
+    if not executable_load:
+        return None
+    digest, count, tail, names = hashlib.sha256(), 0, b'', set()
+    os.lseek(fd, 0, os.SEEK_SET)
+    while True:
+        data = os.read(fd, 65536)
+        if not data:
+            break
+        count += len(data)
+        need(count <= before.st_size, 'Growing bundled media preserved; no files archived.')
+        digest.update(data)
+        literal = tail + data
+        names.update(name for name in NAMES if name.encode() in literal)
+        for pattern in re.findall(rb'install-[A-Za-z0-9_.?*+-]+', literal):
+            if b'*' in pattern or b'?' in pattern:
+                names.update(name for name in NAMES if fnmatch.fnmatchcase(name, os.fsdecode(pattern)))
+        tail = literal[-4096:]
+    after, current = os.fstat(fd), path.lstat()
+    need(count == before.st_size and fingerprint(before) == fingerprint(after) == fingerprint(current)
+         and before.st_ctime_ns == after.st_ctime_ns == current.st_ctime_ns,
+         'Changing bundled media preserved; no files archived.')
+    return {'type': 'compiled-media', 'size': count, 'sha256': digest.hexdigest(),
+            'literal_installer_names': sorted(names)}
+
+
 def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
          root_home=pathlib.Path('/root'), proc_root=pathlib.Path('/proc')):
     records, missing, references = {}, [], {name: set() for name in NAMES}
@@ -672,6 +738,7 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
     preserved_storage = {}
     inspected_package_launchers = {}
     preserved_ipc_sockets = {}
+    preserved_media = {}
     unresolved_aliases = {}
     unit_roots = unit_directories(home, uid, root_home)
     inventoried_units = set()
@@ -885,6 +952,8 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
             s = os.fstat(fd)
             need(stat.S_ISREG(s.st_mode), 'Unreviewed source type: ' + str(path))
             head = os.read(fd, 4)
+            media = (bundled_media(path, home, uid, fd, s)
+                     if head == b'\x7fELF' and not all_files and path not in required_sources else None)
             storage = (mounted_storage(path, fd, s)
                        if s.st_size > MAX_FILE and not all_files and path not in required_sources
                        else None)
@@ -899,6 +968,12 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
             checked += 1
             continue
         if head == b'\x7fELF':
+            if media is not None:
+                preserved_media[str(path)] = media
+                for name in media['literal_installer_names']:
+                    mark(name, str(path))
+                checked += 1
+                continue
             need(not (path == home or home in path.parents or str(path).startswith('/root/')),
                  'Custom binary wrapper requires review: ' + str(path))
             continue
@@ -927,6 +1002,7 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
             'preserved_storage': dict(sorted(preserved_storage.items())),
             'inspected_package_launchers': dict(sorted(inspected_package_launchers.items())),
             'preserved_ipc_sockets': dict(sorted(preserved_ipc_sockets.items())),
+            'preserved_media': dict(sorted(preserved_media.items())),
             'referenced': {n: sorted(v) for n, v in references.items() if v},
             'eligible': sorted(n for n in records if not references[n]),
             'scope': 'Inspected local literal/wildcard source dependencies and observed processes; compiled programs/archive contents, computed launch paths and external automation are not established.'}
@@ -1151,6 +1227,7 @@ def main():
                           'preserved_storage': report['preserved_storage'],
                           'inspected_package_launchers': report['inspected_package_launchers'],
                           'preserved_ipc_sockets': report['preserved_ipc_sockets'],
+                          'preserved_media': report['preserved_media'],
                           'sources_checked': report['sources_checked'], 'scope': report['scope']}))
         if folder:
             print('Restore: python3 ' + __file__ + ' --restore ' + str(folder))

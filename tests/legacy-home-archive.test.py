@@ -6,6 +6,7 @@ import json
 import os
 import pathlib
 import signal
+import shutil
 import socket
 import stat
 import struct
@@ -56,6 +57,137 @@ class ArchiveSafety(unittest.TestCase):
         self.assertEqual(tool.restore(self.home, self.uid, folder), 17)
         for name in tool.NAMES:
             self.assertEqual(tool.candidate(self.home / name, self.uid), before['records'][name])
+
+    def native_media(self, name='ffprobe'):
+        directory = self.home / 'ctc-publishing/server/media-bin'
+        directory.mkdir(parents=True, exist_ok=True)
+        path = directory / name
+        shutil.copyfile(shutil.which('true'), path)
+        path.chmod(0o755)
+        return path
+
+    def test_ctc_native_media_pair_preserved_during_seventeen_actual_moves_and_restore(self):
+        media = [self.native_media(name) for name in ('ffprobe', 'ffmpeg')]
+        before = {p: (p.read_bytes(), tool.fingerprint(p.stat())) for p in media}
+        caller = self.script('media.js', 'const tools = ' + json.dumps(list(map(str, media))))
+        report = self.report([caller])
+        self.assertEqual(len(report['eligible']), 17)
+        self.assertEqual(set(report['preserved_media']), set(map(str, media)))
+        folder = self.archive(report)
+        self.assertEqual(json.loads((folder / 'manifest.json').read_text())['scan']['preserved_media'], report['preserved_media'])
+        self.assertEqual(tool.restore(self.home, self.uid, folder), 17)
+        self.assertEqual(before, {p: (p.read_bytes(), tool.fingerprint(p.stat())) for p in media})
+
+    def test_native_media_launcher_still_preserves_adjacent_live_script(self):
+        media = self.native_media()
+        live = self.script('post-process', 'python3 ' + str(self.home / tool.NAMES[0]))
+        caller = self.script('media.js', 'const tools = ' + json.dumps([str(media), str(live)]))
+        report = self.report([caller])
+        self.assertEqual(len(report['eligible']), 16)
+        self.assertNotIn(tool.NAMES[0], report['eligible'])
+        folder = self.archive(report)
+        self.assertEqual(tool.restore(self.home, self.uid, folder), 16)
+
+    def test_native_media_raw_names_split_across_hash_chunks_and_globs_preserve_installers(self):
+        media = self.native_media()
+        with media.open('ab') as out:
+            out.write(b'\0' * (65536 - 7 - media.stat().st_size))
+            out.write(tool.NAMES[0].encode() + b'\0install-re-calendar-*.py\0')
+        caller = self.script('media.js', json.dumps(str(media)))
+        report = self.report([caller])
+        expected = {tool.NAMES[0], 'install-re-calendar-notice-20261002-r1.py'}
+        self.assertEqual(set(report['referenced']), expected)
+        self.assertEqual(set(report['preserved_media'][str(media)]['literal_installer_names']), expected)
+
+    def test_media_named_scripts_still_receive_source_checks_and_fake_elf_stops(self):
+        media = self.native_media()
+        media.write_text('python3 ' + str(self.home / tool.NAMES[0]))
+        caller = self.script('media.js', json.dumps(str(media)))
+        report = self.report([caller])
+        self.assertNotIn(tool.NAMES[0], report['eligible'])
+        self.assertEqual(report['preserved_media'], {})
+        media.write_bytes(b'\x7fELF' + b'\0' * 100 + b'python3 ' + str(self.home / tool.NAMES[1]).encode())
+        with self.assertRaisesRegex(RuntimeError, 'Custom binary wrapper requires review'):
+            self.report([caller])
+
+    def test_unknown_and_declared_native_wrappers_and_source_aliases_still_stop(self):
+        media = self.native_media()
+        caller = self.script('media.js', json.dumps(str(media)))
+        with self.assertRaisesRegex(RuntimeError, 'Custom binary wrapper requires review'):
+            self.report([caller, media])
+        with self.assertRaisesRegex(RuntimeError, 'Custom binary wrapper requires review'):
+            self.report([caller, (media, True)])
+        alias = self.source / 'media-alias'
+        alias.symlink_to(media)
+        with self.assertRaisesRegex(RuntimeError, 'Custom binary wrapper requires review'):
+            self.report([caller, alias])
+        for path in [self.source / 'ffprobe', media.parent / 'other-tool',
+                     media.parent.parent / 'ffprobe']:
+            shutil.copyfile(media, path)
+            path.chmod(0o755)
+            caller.write_text(json.dumps(str(path)))
+            with self.subTest(path=path), self.assertRaisesRegex(RuntimeError, 'Custom binary wrapper requires review'):
+                self.report([caller])
+
+    def test_native_media_rejects_unsafe_modes_links_owner_and_parent(self):
+        media = self.native_media()
+        caller = self.script('media.js', json.dumps(str(media)))
+        for mode in (0o644, 0o775, 0o777, 0o4755):
+            media.chmod(mode)
+            with self.subTest(mode=mode), self.assertRaisesRegex(RuntimeError, 'Custom binary wrapper requires review'):
+                self.report([caller])
+        media.chmod(0o755)
+        extra = self.source / 'hardlink'
+        os.link(media, extra)
+        with self.assertRaisesRegex(RuntimeError, 'Custom binary wrapper requires review'):
+            self.report([caller])
+        extra.unlink()
+        media.parent.chmod(0o777)
+        try:
+            with self.assertRaisesRegex(RuntimeError, 'Custom binary wrapper requires review'):
+                self.report([caller])
+        finally:
+            media.parent.chmod(0o755)
+        fd = os.open(media, os.O_RDONLY)
+        try:
+            with mock.patch.object(tool, 'SYSTEM_UID', self.uid + 1):
+                self.assertIsNone(tool.bundled_media(media, self.home, self.uid + 1, fd, os.fstat(fd)))
+        finally:
+            os.close(fd)
+
+    def test_native_media_invalid_program_headers_cannot_bypass_binary_guard(self):
+        media = self.native_media()
+        original = media.read_bytes()
+        caller = self.script('media.js', json.dumps(str(media)))
+        for position, value in [(4, b'\x00'), (5, b'\x00'), (6, b'\x00'), (7, b'\xff'),
+                                (16, b'\x00\x00'), (20, b'\0' * 4), (24, b'\0' * 8),
+                                (32, b'\xff' * 8), (54, b'\0\0'), (56, b'\xff\xff')]:
+            data = bytearray(original)
+            data[position:position + len(value)] = value
+            media.write_bytes(data)
+            with self.subTest(position=position), self.assertRaisesRegex(RuntimeError, 'Custom binary wrapper requires review'):
+                self.report([caller])
+
+    def test_native_media_replacement_during_hash_stops_before_any_move(self):
+        media = self.native_media()
+        replacement = self.source / 'replacement'
+        shutil.copyfile(media, replacement)
+        replacement.chmod(0o755)
+        caller = self.script('media.js', json.dumps(str(media)))
+        original_read = os.read
+        changed = []
+        identity = media.stat().st_ino
+        def replace(fd, size):
+            data = original_read(fd, size)
+            if os.fstat(fd).st_ino == identity and size == 65536 and not changed:
+                changed.append(True)
+                os.replace(replacement, media)
+            return data
+        with mock.patch.object(tool.os, 'read', side_effect=replace), \
+             self.assertRaisesRegex(RuntimeError, 'Changing bundled media preserved'):
+            self.report([caller])
+        self.assertFalse((self.home / 'private-archives').exists())
+        self.assertTrue(all((self.home / name).exists() for name in tool.NAMES))
 
     def mixed_runtime(self):
         runtime = self.home / 'runtime-data'

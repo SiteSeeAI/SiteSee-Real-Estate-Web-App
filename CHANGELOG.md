@@ -4,6 +4,18 @@ This is the iteration record from October 9, 2026 onward. Dates use America/Chic
 
 Each iteration records its ID, purpose, status, source/release, changes, validation and user acceptance. Keep planned work separate from implemented, installed and accepted work. Add an entry for each subsequent implementation/release and update its acceptance after user review. Documentation-only commits do not change the installed application.
 
+## DEP-010 — preserve CTC’s bundled native media tools during cleanup — 2026-10-14
+
+Status: implemented with 150 local checks passing; independent review, exact-source CI/publication and actual host archiving remain pending. Same seventeen historical installer candidates. Application files, CTC files, operational data, services, schedules and Stripe TEST settings remain unchanged.
+
+The operator’s checksum-verified DEP-009 attempt at `/root/sitesee-home-cleanup.ztXkvR/archive-legacy-home-files.py` ran for at least 30 seconds and stopped before moving any file at `/home/sitesee/ctc-publishing/server/media-bin/ffprobe`. Independent reproduction with a real native executable confirms this reaches the custom home-binary guard in a weak literal-reference role. Earlier Linux checks did not include this CTC deployment layout.
+
+The correction classifies only the canonical CTC `server/media-bin/ffprobe` and `ffmpeg` pair as bundled compiled media. Regular executable files must have expected account/root ownership, one link, protected account/root-owned ancestors and no writable or set-ID modes. Bounded ELF32/64 header and program-table checks require an executable image with its entry inside an executable load segment. At most 256MiB per artifact is streamed in bounded chunks for SHA256 and direct installer-name/glob detection; matching installers remain preserved. Descriptor/path identity and ctime are rechecked after hashing. Tools are never executed or modified. Their hash/size descriptors are retained in the scan, private journal and final result.
+
+This is a compiled-artifact boundary, not a provenance claim or proof about computed native dependencies; compiled contents remain outside the existing literal-source scope. JavaScript and shell launchers retain normal source checks. Renamed scripts, forged/truncated ELF headers, unknown home/root native wrappers, strong declared sources and source aliases retain their guards. No global binary exception, larger source-size cap, broader archive list or changed archive/restore primitive is introduced.
+
+Eight new tests exercise the actual seventeen-file archive/restore with both media artifacts unchanged, adjacent live-wrapper preservation and sixteen-file restore, raw names crossing hash boundaries and globs, text/fake ELF, unknown and strong source roles, unsafe owners/modes/links/parents, malformed program tables and actual pathname replacement during hashing. The required real-Linux integration now copies real `ffprobe` and `ffmpeg` into this exact CTC layout, scans them alongside real cron/systemd/process sources, and verifies both artifacts’ hashes and metadata after archive/restore. Publication requires this explicit `REAL CTC MEDIA PASS` marker on both Python versions. Current helper SHA256 `8f2edc2e6634d6e3e72d7241177d7b2c147622726d57057423f9f91bfd008b40`.
+
 ## DEP-009 — stop recursive source discovery from incidental directory aliases — 2026-10-14
 
 Status: implemented, independently audited, verified in real-Linux CI and published with independently verified downloads. The operator's actual archive result remains pending. Same seventeen installer candidates; Stripe remains TEST. No application, provider, schedule, service or operational database change.

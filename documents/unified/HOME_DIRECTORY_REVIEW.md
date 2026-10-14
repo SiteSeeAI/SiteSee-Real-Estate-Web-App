@@ -2,6 +2,12 @@
 
 Assessment: 2026-10-13, America/Chicago. The operator supplied a top-level `ls -la /home/sitesee` listing. This is a preparation checkpoint, not evidence of an archive, deletion or migration. Stripe remains TEST.
 
+## CTC native-media correction — 2026-10-14
+
+The DEP-009 host attempt passed download verification but stopped before archiving at CTC Publishing’s `server/media-bin/ffprobe`. DEP-010 adds a narrow compiled-media class for that exact canonical `ffprobe`/`ffmpeg` pair only: protected regular executable ownership/modes/ancestors, a meaningful bounded ELF header/program-table check, streamed SHA256 and literal installer-name/glob preservation, followed by descriptor/path identity checks. No media tool is executed, changed or moved. Source launchers, renamed scripts, source aliases, declared jobs and unknown native wrappers retain their checks. Compiled program internals and computed native dependencies remain outside this literal-source scan; no artifact provenance is inferred from its name or format.
+
+All 150 local tests pass, including real installer archive/restore and media-preservation/race cases. Independent review and exact-source CI/download verification remain pending. The required Linux integration now includes both real FFmpeg utilities in the reported CTC layout and verifies their unchanged hashes/metadata after archive/restore. The changelog records separate verification and actual operator acceptance; no host archive success is claimed. The original seventeen-name allowlist, journal, atomic moves and guarded restore remain unchanged. Stripe stays TEST.
+
 ## Directory-reference traversal correction — 2026-10-14
 
 The DEP-008 host retry passed download verification but stopped before moving files at `/run/udev/static_node-tags/uaccess/snd\x2ftimer`. DEP-009 corrects the graph boundary: base home/source-parent/observed-CWD and explicit literal cd/WorkingDirectory declarations supply resolution contexts; an incidental directory/path setting does not authorize context expansion or recursive scanning. This rule now applies consistently to absolute paths, relative tokens and home-file basename matches. Explicit files/wrappers remain checked, including relative wrappers whose working directory is declared later. Canonical context identities converge on cycles. Declared source roots/aliases and explicit `run-parts` keep their recursive source checks. Declared source-role socket aliases and device/FIFO/unknown stream aliases remain blocking; no udev-specific exception was added.
