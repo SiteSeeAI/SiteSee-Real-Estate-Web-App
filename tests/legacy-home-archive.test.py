@@ -390,6 +390,241 @@ print("EXISTING ALARM PRESERVED")
         compiler.mkdir(parents=True)
         return compiler
 
+    def runtime_metadata_root(self):
+        directory = self.home / 'runtime/systemd/units'
+        directory.mkdir(parents=True)
+        return directory
+
+    def test_documented_systemd_metadata_classes_preserved_across_real_archive_restore(self):
+        directory = self.runtime_metadata_root()
+        values = {'invocation:sys-kernel-config.mount': '673deca302fc4236af50a0d82113fad4',
+                  'log-level-max:example.service': '7',
+                  'log-rate-limit-interval:example.service': str((1 << 64) - 1),
+                  'log-rate-limit-burst:example.service': str((1 << 32) - 1)}
+        paths = []
+        for name, value in values.items():
+            path = directory / name
+            path.symlink_to(value)
+            paths.append(path)
+        field = ('MESSAGE=' + str(self.home / tool.NAMES[0])).encode()
+        data_path = directory / 'log-extra-fields:example.service'
+        data_path.write_bytes(len(field).to_bytes(8, 'little') + field)
+        paths.append(data_path)
+        before = {str(p): tool.fingerprint(p.lstat()) for p in paths}
+        with mock.patch.object(tool, 'SYSTEMD_UNITS', directory), \
+             mock.patch.object(tool, 'SYSTEM_UID', self.uid):
+            report = self.report(list(tool.sources(directory, all_files=True)))
+        self.assertEqual(len(report['eligible']), 17)
+        self.assertEqual(len(report['preserved_runtime_metadata']), 5)
+        self.assertEqual(report['preserved_runtime_metadata'][str(paths[0])]['value'], values[paths[0].name])
+        self.assertEqual(report['preserved_runtime_metadata'][str(data_path)]['fields'], 1)
+        folder = self.archive(report)
+        journal = json.loads((folder / 'manifest.json').read_text())
+        self.assertEqual(journal['scan']['preserved_runtime_metadata'], report['preserved_runtime_metadata'])
+        self.assertEqual(tool.restore(self.home, self.uid, folder), 17)
+        for path in paths:
+            self.assertEqual(tool.fingerprint(path.lstat()), before[str(path)])
+        for name, value in values.items():
+            self.assertEqual(os.readlink(directory / name), value)
+        for name in tool.NAMES:
+            self.assertEqual(tool.candidate(self.home / name, self.uid), report['records'][name])
+
+    def test_user_systemd_invocation_metadata_uses_numeric_owner_and_only_invocation_kind(self):
+        runtime = self.home / 'user-runtime'
+        directory = runtime / str(self.uid) / 'systemd/units'
+        directory.mkdir(parents=True)
+        invocation = directory / 'invocation:example.service'
+        invocation.symlink_to('673deca302fc4236af50a0d82113fad4')
+        with mock.patch.object(tool, 'SYSTEMD_USER_RUNTIME', runtime):
+            report = self.report([invocation])
+            self.assertEqual(len(report['eligible']), 17)
+            self.assertIn(str(invocation), report['preserved_runtime_metadata'])
+            log_level = directory / 'log-level-max:example.service'
+            log_level.symlink_to('7')
+            self.assertIsNone(tool.systemd_metadata(log_level))
+
+    def test_malformed_systemd_metadata_links_are_not_ignored(self):
+        directory = self.runtime_metadata_root()
+        invalid = [('invocation:example.service', '0' * 32),
+                   ('invocation:example.service', 'F' * 32),
+                   ('invocation:example.service', '673deca302fc4236af50a0d82113fad'),
+                   ('invocation:example.service', str(directory / '673deca302fc4236af50a0d82113fad4')),
+                   ('invocation:example.invalid', '673deca302fc4236af50a0d82113fad4'),
+                   ('unknown:example.service', '673deca302fc4236af50a0d82113fad4'),
+                   ('log-level-max:example.service', '8'),
+                   ('log-level-max:example.service', '07'),
+                   ('log-rate-limit-interval:example.service', '0'),
+                   ('log-rate-limit-interval:example.service', str(1 << 64)),
+                   ('log-rate-limit-burst:example.service', '-1'),
+                   ('log-rate-limit-burst:example.service', '01'),
+                   ('log-rate-limit-burst:example.service', str(1 << 32))]
+        with mock.patch.object(tool, 'SYSTEMD_UNITS', directory), \
+             mock.patch.object(tool, 'SYSTEM_UID', self.uid):
+            for name, value in invalid:
+                with self.subTest(name=name, value=value):
+                    path = directory / name
+                    path.symlink_to(value)
+                    with self.assertRaisesRegex(RuntimeError, 'Missing dependency alias preserved'):
+                        self.report([path])
+                    path.unlink()
+        self.assertFalse((self.home / 'private-archives').exists())
+
+    def test_metadata_lookalikes_application_and_scheduler_sources_still_fail(self):
+        directory = self.runtime_metadata_root()
+        for other in [self.source, directory.parent / 'units-backup', directory.parent / 'system', directory / 'nested']:
+            other.mkdir(parents=True, exist_ok=True)
+            alias = other / 'invocation:example.service'
+            alias.symlink_to('673deca302fc4236af50a0d82113fad4')
+            with self.subTest(source=str(alias)), mock.patch.object(tool, 'SYSTEMD_UNITS', directory), \
+                 mock.patch.object(tool, 'SYSTEM_UID', self.uid), \
+                 self.assertRaisesRegex(RuntimeError, 'Missing dependency alias preserved'):
+                self.report([alias])
+        self.assertFalse((self.home / 'private-archives').exists())
+
+    def test_systemd_metadata_rejects_wrong_owner_or_writable_parent(self):
+        directory = self.runtime_metadata_root()
+        alias = directory / 'invocation:example.service'
+        alias.symlink_to('673deca302fc4236af50a0d82113fad4')
+        with mock.patch.object(tool, 'SYSTEMD_UNITS', directory):
+            with mock.patch.object(tool, 'SYSTEM_UID', self.uid + 1), \
+                 self.assertRaisesRegex(RuntimeError, 'Missing dependency alias preserved'):
+                self.report([alias])
+            directory.chmod(0o777)
+            with mock.patch.object(tool, 'SYSTEM_UID', self.uid), \
+                 self.assertRaisesRegex(RuntimeError, 'Missing dependency alias preserved'):
+                self.report([alias])
+        self.assertFalse((self.home / 'private-archives').exists())
+
+    def test_plain_or_executable_extra_fields_retain_normal_source_checks(self):
+        directory = self.runtime_metadata_root()
+        source = directory / 'log-extra-fields:example.service'
+        body = ('python3 ' + str(self.home / tool.NAMES[0])).encode()
+        with mock.patch.object(tool, 'SYSTEMD_UNITS', directory), \
+             mock.patch.object(tool, 'SYSTEM_UID', self.uid):
+            for data, mode in [(body, 0o644), (len(body).to_bytes(8, 'little') + body, 0o755),
+                               (len(body).to_bytes(8, 'little') + body, 0o644),
+                               (b'\x01' + b'\x00' * 7 + b'x' + body, 0o644)]:
+                source.write_bytes(data)
+                source.chmod(mode)
+                report = self.report([source])
+                self.assertEqual(report['preserved_runtime_metadata'], {})
+                self.assertNotIn(tool.NAMES[0], report['eligible'])
+
+    def test_extra_fields_path_replaced_after_read_is_not_ignored(self):
+        directory = self.runtime_metadata_root()
+        path = directory / 'log-extra-fields:example.service'
+        data = b'MESSAGE=saved'
+        path.write_bytes(len(data).to_bytes(8, 'little') + data)
+        replacement = directory / 'replacement'
+        replacement.write_text('python3 ' + str(self.home / tool.NAMES[0]))
+        original_read = tool.read_regular
+        swapped = []
+        def replaced(source):
+            result = original_read(source)
+            if source == path and not swapped:
+                replacement.replace(path)
+                swapped.append(source)
+            return result
+        with mock.patch.object(tool, 'SYSTEMD_UNITS', directory), \
+             mock.patch.object(tool, 'SYSTEM_UID', self.uid), \
+             mock.patch.object(tool, 'read_regular', side_effect=replaced):
+            report = self.report([path])
+        self.assertEqual(report['preserved_runtime_metadata'], {})
+        self.assertNotIn(tool.NAMES[0], report['eligible'])
+
+    def test_vanished_metadata_recreated_as_live_script_is_not_ignored(self):
+        directory = self.runtime_metadata_root()
+        path = directory / 'invocation:example.service'
+        path.symlink_to('673deca302fc4236af50a0d82113fad4')
+        original_lstat = pathlib.Path.lstat
+        replaced = []
+        def recreated(source):
+            if source == path and not replaced:
+                path.unlink()
+                path.write_text('python3 ' + str(self.home / tool.NAMES[0]))
+                replaced.append(source)
+                raise FileNotFoundError(errno.ENOENT, 'fixture prior metadata absence', str(path))
+            return original_lstat(source)
+        with mock.patch.object(tool, 'SYSTEMD_UNITS', directory), \
+             mock.patch.object(tool, 'SYSTEM_UID', self.uid), \
+             mock.patch.object(pathlib.Path, 'lstat', new=recreated):
+            report = self.report([path])
+        self.assertEqual(report['preserved_runtime_metadata'], {})
+        self.assertNotIn(tool.NAMES[0], report['eligible'])
+
+    def test_vanished_recognized_systemd_metadata_is_recorded_without_hiding_sources(self):
+        directory = self.runtime_metadata_root()
+        alias = directory / 'invocation:example.service'
+        alias.symlink_to('673deca302fc4236af50a0d82113fad4')
+        original_lstat = pathlib.Path.lstat
+        removed = []
+        def vanished(path):
+            if path == alias and not removed:
+                path.unlink()
+                removed.append(path)
+            return original_lstat(path)
+        with mock.patch.object(tool, 'SYSTEMD_UNITS', directory), \
+             mock.patch.object(tool, 'SYSTEM_UID', self.uid), \
+             mock.patch.object(pathlib.Path, 'lstat', new=vanished):
+            report = self.report([alias])
+        self.assertEqual(report['preserved_runtime_metadata'][str(alias)]['state'], 'vanished')
+        self.assertEqual(len(report['eligible']), 17)
+
+    def test_real_target_appearing_during_metadata_check_is_followed_and_preserves_installer(self):
+        directory = self.runtime_metadata_root()
+        value = '673deca302fc4236af50a0d82113fad4'
+        alias, target = directory / 'invocation:example.service', directory / value
+        alias.symlink_to(value)
+        original_lstat = pathlib.Path.lstat
+        created = []
+        def appeared(path):
+            if path == target and not created:
+                target.write_text('python3 ' + str(self.home / tool.NAMES[0]))
+                created.append(path)
+                raise FileNotFoundError(errno.ENOENT, 'fixture earlier target absence', str(target))
+            return original_lstat(path)
+        with mock.patch.object(tool, 'SYSTEMD_UNITS', directory), \
+             mock.patch.object(tool, 'SYSTEM_UID', self.uid), \
+             mock.patch.object(pathlib.Path, 'lstat', new=appeared):
+            report = self.report([alias])
+        self.assertEqual(report['preserved_runtime_metadata'], {})
+        self.assertNotIn(tool.NAMES[0], report['eligible'])
+        folder = self.archive(report)
+        self.assertTrue((self.home / tool.NAMES[0]).exists())
+        self.assertEqual(tool.restore(self.home, self.uid, folder), 16)
+
+    def test_all_unresolved_aliases_collected_before_refusing_archive(self):
+        aliases = []
+        for name in ['one', 'two']:
+            alias = self.source / name
+            alias.symlink_to(self.source / ('missing-' + name))
+            aliases.append(alias)
+        live = self.script('live.py', 'python3 ' + str(self.home / tool.NAMES[0]))
+        with mock.patch.object(tool, 'read_regular', wraps=tool.read_regular) as read, \
+             self.assertRaisesRegex(RuntimeError, 'dependency check incomplete') as caught:
+            self.report([live, *aliases])
+        self.assertIn('"unresolved_count": 2', str(caught.exception))
+        for alias in aliases:
+            self.assertIn(str(alias), str(caught.exception))
+        self.assertTrue(any(call.args[0] == live for call in read.call_args_list))
+        self.assertTrue(all((self.home / name).exists() for name in tool.NAMES))
+        self.assertFalse((self.home / 'private-archives').exists())
+
+    def test_real_unit_and_dropin_sources_are_not_metadata_even_in_same_tree(self):
+        directory = self.runtime_metadata_root()
+        unit = directory / 'example.service'
+        unit.write_text('ExecStart=python3 ' + str(self.home / tool.NAMES[0]))
+        dropin_dir = directory.parent / 'system/example.service.d'
+        dropin_dir.mkdir(parents=True)
+        dropin = dropin_dir / '10-booking.conf'
+        dropin.write_text('ExecStart=python3 ' + str(self.home / tool.NAMES[1]))
+        with mock.patch.object(tool, 'SYSTEMD_UNITS', directory), \
+             mock.patch.object(tool, 'SYSTEM_UID', self.uid):
+            report = self.report([unit, dropin])
+        self.assertEqual(report['preserved_runtime_metadata'], {})
+        for name in tool.NAMES[:2]:
+            self.assertNotIn(name, report['eligible'])
+
     def system_commands(self):
         system = self.home / 'package-system'
         command = system / 'usr' / 'sbin'

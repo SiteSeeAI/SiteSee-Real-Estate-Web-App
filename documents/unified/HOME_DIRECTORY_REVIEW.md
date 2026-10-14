@@ -2,6 +2,16 @@
 
 Assessment: 2026-10-13, America/Chicago. The operator supplied a top-level `ls -la /home/sitesee` listing. This is a preparation checkpoint, not evidence of an archive, deletion or migration. Stripe remains TEST.
 
+## Systemd metadata scan-boundary correction — 2026-10-14
+
+The latest checksum-verified host attempt emitted 10/20-second progress and stopped before archive at `/run/systemd/units/invocation:sys-kernel-config.mount`, whose bare value is `673deca302fc4236af50a0d82113fad4`. Systemd uses this as an invocation ID, not an executable path. Upstream v239/v252/current writer and reader contracts were reviewed to correct the metadata class rather than one instance.
+
+Only protected canonical systemd metadata directories qualify: `/run/systemd/units` with root ownership and `/run/user/<numeric uid>/systemd/units` with matching ownership and invocation metadata only. Root exports cover invocation IDs, log level, log-rate-limit interval/burst and structured regular log-extra-fields. Symlink values must match their exact documented types/ranges, with no absolute targets. A real target is inspected normally. Regular field files must be non-executable, unwritable by group/others and structurally valid, including journal field-name grammar. Path/owner/type/value consistency is checked; disappeared metadata is rechecked and recreated scripts return to normal scanning. Only metadata descriptors/counts/hashes are recorded, without logging field values. Ordinary units/drop-ins and unexpected files/aliases remain inspected.
+
+All unrecognized missing aliases reached in the otherwise completed traversal are collected into one pre-archive failure report (count and at most 50 paths, with truncation flagged). No eligibility/PASS is returned on incomplete checks. Read errors, the 120-second whole-scan deadline and all archive/restore safeguards remain unchanged. The helper does not change or repair systemd files.
+
+All 74 local checks and the independent review pass, including twelve new metadata/schema/role/owner/race/aggregation cases and actual seventeen-file archive/restore. Separate independent default-namespace/schema/path-replacement probes pass, and AST comparison verifies unchanged preservation primitives. Helper SHA256 `0746d82fae1493e0495d0ffa4d2f0ccdef58c799a1d4a9bb1197bbace13fcd4d`. Verified publication and the host archive result remain pending. Evidence/contracts are linked in DEP-007 of the changelog; the exact allowlist below remains seventeen installers.
+
 ## Dependency-cycle and scan-runtime correction — 2026-10-14
 
 The operator reports about eight minutes at checksum `OK` without a prepared archive message. One Ctrl+C was advised; no completed interruption/archive result was supplied. Local profiling confirms repeated source scans through expanding relative spellings: the previous helper reads one self-reference 405 times, and a 200,028-byte self-cycle exceeds a 12-second cap. The exact host stack was not captured, so this establishes a code defect without asserting which host frame was stalled.

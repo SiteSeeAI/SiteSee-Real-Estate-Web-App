@@ -53,6 +53,15 @@ SYSTEM_COMMAND_DIRS = tuple(map(pathlib.Path, ('/usr/bin', '/usr/sbin', '/bin', 
 SYSTEM_COMMAND_TARGETS = tuple(map(pathlib.Path, (
     '/usr', '/lib', '/lib64', '/bin', '/sbin', '/opt/cpanel',
     '/etc/alternatives', '/etc/init.d', '/etc/rc.d/init.d')))
+SYSTEMD_UNITS = pathlib.Path('/run/systemd/units')
+SYSTEMD_USER_RUNTIME = pathlib.Path('/run/user')
+UNIT_NAME = r'[A-Za-z0-9_:@.\\-]+\.(?:service|socket|target|device|mount|automount|swap|timer|path|slice|scope)'
+SYSTEMD_IPC_LINKS = {
+    'invocation': r'[0-9a-f]{32}',
+    'log-level-max': r'[0-7]',
+    'log-rate-limit-interval': r'[1-9][0-9]*',
+    'log-rate-limit-burst': r'[1-9][0-9]*',
+}
 
 
 def need(ok, message):
@@ -196,6 +205,107 @@ def literal_probe(path, kind):
         raise
 
 
+def systemd_metadata(path):
+    # systemd unit.c exports these properties as journald IPC. A bare ID/number
+    # symlink value is data, not a pathname. Real units/drop-ins live elsewhere.
+    kind, separator, unit = path.name.partition(':')
+    if not separator or not re.fullmatch(UNIT_NAME, unit):
+        return None
+    if kind not in {*SYSTEMD_IPC_LINKS, 'log-extra-fields'}:
+        return None
+    if path.parent == SYSTEMD_UNITS:
+        owner = SYSTEM_UID
+    else:
+        if kind != 'invocation':
+            return None
+        try:
+            parts = path.parent.relative_to(SYSTEMD_USER_RUNTIME).parts
+        except ValueError:
+            return None
+        if (len(parts) != 3 or parts[1:] != ('systemd', 'units') or
+                not re.fullmatch(r'0|[1-9][0-9]*', parts[0])):
+            return None
+        owner = int(parts[0])
+    parent = path.parent.stat()
+    if parent.st_uid != owner or parent.st_mode & 0o022:
+        return None
+    for attempt in range(3):
+        try:
+            before = path.lstat()
+            if before.st_uid != owner:
+                return None
+            if kind in SYSTEMD_IPC_LINKS:
+                if not stat.S_ISLNK(before.st_mode):
+                    return None
+                value = os.readlink(path)
+                if not re.fullmatch(SYSTEMD_IPC_LINKS[kind], value):
+                    return None
+                if kind == 'invocation' and value == '0' * 32:
+                    return None
+                if kind.startswith('log-rate-limit-'):
+                    maximum = (1 << (32 if kind.endswith('burst') else 64)) - 1
+                    if len(value) > len(str(maximum)) or int(value) > maximum:
+                        return None
+                target = path.parent / value
+                try:
+                    target.lstat()
+                except FileNotFoundError:
+                    pass
+                else:
+                    return None  # A real target/alias must still be inspected.
+                after = path.lstat()
+                if (fingerprint(before) != fingerprint(after) or
+                        before.st_ctime_ns != after.st_ctime_ns or os.readlink(path) != value):
+                    continue
+                try:
+                    target.lstat()
+                except FileNotFoundError:
+                    return {'kind': kind, 'state': 'ipc-value', 'value': value}
+                return None
+            if (not stat.S_ISREG(before.st_mode) or before.st_mode & 0o133 or
+                    before.st_nlink != 1):
+                return None
+            data, current = read_regular(path)
+            after = path.lstat()
+            if (fingerprint(before) != fingerprint(current) or
+                    before.st_ctime_ns != current.st_ctime_ns or
+                    fingerprint(current) != fingerprint(after) or
+                    current.st_ctime_ns != after.st_ctime_ns):
+                continue
+            # log-extra-fields is a sequence of little-endian uint64 lengths
+            # and field bytes. Plain scripts, executable files and bad records
+            # are not classified as metadata and retain normal source checks.
+            offset, fields = 0, 0
+            while offset < len(data):
+                if len(data) - offset < 8:
+                    return None
+                length = int.from_bytes(data[offset:offset + 8], 'little')
+                offset += 8
+                if length < 2 or length > len(data) - offset:
+                    return None
+                field = data[offset:offset + length]
+                name, separator, value = field.partition(b'=')
+                if not separator or not re.fullmatch(rb'[A-Z][A-Z0-9_]{0,63}', name):
+                    return None
+                offset += length
+                fields += 1
+            if not fields:
+                return None
+            return {'kind': kind, 'state': 'ipc-fields', 'fields': fields,
+                    'size': len(data), 'sha256': hashlib.sha256(data).hexdigest()}
+        except FileNotFoundError:
+            try:
+                path.lstat()
+            except FileNotFoundError:
+                current_parent = path.parent.stat()
+                if current_parent.st_uid == owner and not current_parent.st_mode & 0o022:
+                    return {'kind': kind, 'state': 'vanished'}
+                return None
+            # A replacement might now be executable source rather than metadata.
+            continue
+    raise RuntimeError('Changing systemd metadata preserved; no files archived: ' + str(path))
+
+
 def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
          root_home=pathlib.Path('/root'), proc_root=pathlib.Path('/proc')):
     records, missing, references = {}, [], {name: set() for name in NAMES}
@@ -209,6 +319,8 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
     seen, seen_directories, checked, budget = set(), set(), 0, 0
     preserved_compiler_links = {}
     preserved_system_links = {}
+    preserved_runtime_metadata = {}
+    unresolved_aliases = {}
     queue = list(source_paths)
     helper_path = pathlib.Path(__file__).resolve()
     home_entries = {p.name: p for p in home.iterdir()
@@ -315,6 +427,11 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
         if visit in seen:
             continue
         seen.add(visit)
+        metadata = systemd_metadata(path)
+        if metadata is not None:
+            preserved_runtime_metadata[str(path)] = metadata
+            checked += 1
+            continue
         if path.resolve() == helper_path:
             continue  # The verified cleanup helper's own inventory is not an execution dependency.
         if path.is_symlink():
@@ -330,8 +447,9 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
                     preserved_system_links[str(path)] = str(target)
                     checked += 1
                     continue
-                raise RuntimeError('Missing dependency alias preserved: ' + str(path) +
-                                   '; target: ' + str(target) + '; no files archived.')
+                unresolved_aliases[str(path)] = str(target)
+                checked += 1
+                continue  # Finish checking other reachable sources before refusing.
             if resolved.parent == home and resolved.name in NAMES:
                 mark(resolved.name, str(path))
             elif resolved == pathlib.Path('/dev/null'):
@@ -367,9 +485,16 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
             need(record == records[path.name], 'Live installer changed during scan; no files archived.')
         inspect(str(path), data)
         checked += 1
+    if unresolved_aliases:
+        details = {'unresolved_count': len(unresolved_aliases),
+                   'aliases': dict(sorted(unresolved_aliases.items())[:50]),
+                   'truncated': len(unresolved_aliases) > 50}
+        raise RuntimeError('Missing dependency alias preserved; dependency check incomplete: ' +
+                           json.dumps(details) + '; no files archived.')
     return {'records': records, 'missing': missing, 'sources_checked': checked,
             'preserved_compiler_links': dict(sorted(preserved_compiler_links.items())),
             'preserved_system_links': dict(sorted(preserved_system_links.items())),
+            'preserved_runtime_metadata': dict(sorted(preserved_runtime_metadata.items())),
             'referenced': {n: sorted(v) for n, v in references.items() if v},
             'eligible': sorted(n for n in records if not references[n]),
             'scope': 'Inspected local literal/wildcard dependencies and observed processes; computed launch paths and external automation are not established.'}
@@ -428,7 +553,7 @@ def checked_host_scan(home, uid):
                 break
             frame = frame.f_back
         if elapsed >= SCAN_SECONDS:
-            raise RuntimeError('Dependency check exceeded ' + str(SCAN_SECONDS) +
+            raise RuntimeError('Dependency check incomplete: exceeded ' + str(SCAN_SECONDS) +
                                ' seconds at ' + stage + '; no files archived.')
         os.write(2, ('Dependency check: ' + str(int(elapsed)) +
                      ' seconds; stage ' + stage + '; no files moved.\n').encode())
@@ -596,6 +721,7 @@ def main():
                           'referenced_preserved': report['referenced'], 'already_absent': report['missing'],
                           'preserved_compiler_links': report['preserved_compiler_links'],
                           'preserved_system_links': report['preserved_system_links'],
+                          'preserved_runtime_metadata': report['preserved_runtime_metadata'],
                           'sources_checked': report['sources_checked'], 'scope': report['scope']}))
         if folder:
             print('Restore: python3 ' + __file__ + ' --restore ' + str(folder))
