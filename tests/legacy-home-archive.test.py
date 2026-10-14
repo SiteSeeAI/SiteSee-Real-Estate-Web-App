@@ -185,7 +185,7 @@ class ArchiveSafety(unittest.TestCase):
 
     def test_executing_inventory_self_exclusion_keeps_other_process_dependencies(self):
         runtime, _, home_alias = self.mixed_runtime()
-        harness = self.script('fixture-harness.py', 'alias="' + home_alias.name + '"; name="oversized.py"')
+        harness = self.script('fixture-harness.py', 'cd ' + home_alias.name + '; name="oversized.py"')
         live = self.script('observed-live.py', 'python3 ' + str(self.home / tool.NAMES[0]))
         proc = self.home / 'process-fixture'
         for number, source in [('101', harness), ('102', live)]:
@@ -476,6 +476,31 @@ class ArchiveSafety(unittest.TestCase):
         with mock.patch.object(tool, 'VIRTUAL_ROOTS', (virtual,)):
             for seeds in [[live], [alias]]:
                 self.assertNotIn(tool.NAMES[0], self.report(seeds)['eligible'])
+
+    def test_state_directory_tokens_cannot_chain_into_runtime_watch_aliases(self):
+        runtime, alias, _ = self.mixed_runtime()
+        watch = runtime / 'udev/watch'
+        watch.mkdir()
+        (watch / '1').symlink_to(watch / '1')
+        caller = self.script('state.service', 'StateDirectory=' + str(alias) + '\n# udev watch 1')
+        self.assertEqual(len(self.report([caller])['eligible']), 17)
+
+    def test_deep_state_directory_and_numeric_field_do_not_become_source_context(self):
+        runtime, _, _ = self.mixed_runtime()
+        watch = runtime / 'udev/watch'
+        watch.mkdir()
+        (watch / '1').symlink_to(watch / '1')
+        caller = self.script('state.service', 'StateDirectory=' + str(watch) + '\nversion=1')
+        self.assertEqual(len(self.report([caller])['eligible']), 17)
+
+    def test_quoted_cd_and_unit_working_directory_keep_literal_paths_with_spaces(self):
+        directory = self.home / 'jobs with spaces'
+        directory.mkdir()
+        (directory / 'refresh').write_text('python3 ' + str(self.home / tool.NAMES[0]))
+        for data in ['cd -- "' + str(directory) + '"; python3 refresh',
+                     'ExecStart=python3 refresh\nWorkingDirectory=-"' + str(directory) + '"']:
+            caller = self.script('cwd.service', data)
+            self.assertNotIn(tool.NAMES[0], self.report([caller])['eligible'])
 
     def storage_image(self, path=None):
         path = path or self.source / 'mounted-store'

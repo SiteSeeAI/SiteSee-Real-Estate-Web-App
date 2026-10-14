@@ -597,15 +597,13 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
             contexts.add(root_home.resolve(strict=True))
         contexts = {p for p in contexts if not virtual(p)}
         def reference(path):
-            # A directory is a resolution context, whether spelled directly or
-            # through an alias. Only declared source roots and run-parts calls
-            # authorize recursive source discovery; a pathname mention does not.
+            # A directory mention is neither executable source nor a working
+            # directory declaration. Only explicit cd/WorkingDirectory changes
+            # resolution contexts; declared roots/run-parts retain recursion.
             if virtual(path):
                 return
             if literal_probe(path, 'is_dir'):
-                resolved = path.resolve(strict=True)
-                if not virtual(resolved):
-                    contexts.add(resolved)
+                return
             elif followable(path) and (literal_probe(path, 'is_file') or literal_probe(path, 'is_symlink')):
                 queue.append(path)
         for name, path in home_entries.items():
@@ -625,12 +623,29 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
             elif literal_probe(directory, 'is_dir'):
                 enqueue_sources(directory, all_files=True)
         tokens = re.findall(rb'(?<![A-Za-z0-9_./-])([A-Za-z0-9_.+-]+(?:/[A-Za-z0-9_.+-]+)*)(?![A-Za-z0-9_./-])', data)
+        directory_value = rb'("[^"\r\n]+"|\'[^\'\r\n]+\'|[A-Za-z0-9_./+@-]+)'
+        working = re.findall(rb'\bcd[ \t]+(?:--[ \t]+)?' + directory_value, data)
+        working += re.findall(rb'(?m)^[ \t]*WorkingDirectory[ \t]*=[ \t]*-?' + directory_value, data)
         pending_contexts, inspected_contexts = list(contexts), set()
         while pending_contexts:
             context = pending_contexts.pop()
             if context in inspected_contexts:
                 continue
             inspected_contexts.add(context)
+            for raw in working:
+                if raw[:1] in {b'"', b"'"}:
+                    raw = raw[1:-1]
+                if b'$' in raw or b'`' in raw:
+                    continue  # Computed launch paths are outside literal analysis.
+                path = pathlib.Path(os.fsdecode(raw))
+                if not path.is_absolute():
+                    path = context / path
+                if not virtual(path) and literal_probe(path, 'is_dir'):
+                    resolved = path.resolve(strict=True)
+                    if not virtual(resolved):
+                        contexts.add(resolved)
+            pending_contexts.extend(contexts - inspected_contexts)
+        for context in contexts:
             for token in tokens:
                 if token in {b'.', b'..'}:
                     continue
@@ -645,7 +660,6 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
                     mark(path.name, label)
                 else:
                     reference(path)
-            pending_contexts.extend(contexts - inspected_contexts)
     for label, data in blobs:
         inspect(label, data)
         checked += 1

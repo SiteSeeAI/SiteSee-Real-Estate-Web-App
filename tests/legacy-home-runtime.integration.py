@@ -55,12 +55,7 @@ with tempfile.TemporaryDirectory(prefix='sitesee-runtime-ci-', dir='/var/lib') a
                     paths.append(path)
             assert len(paths) > 20 and len(roots) >= 2, 'Real Linux source inventory unavailable.'
             return tool.scan(home, 0, paths, inspect_processes=True, root_home=pathlib.Path('/root'))
-        # This executable harness constructs every decoy by name. Give its own
-        # source the same self-inventory exclusion used by the standalone CLI;
-        # otherwise its fixture constructors become fictitious dependencies.
-        # Real OS sources, all other processes and the live wrapper stay checked.
-        with mock.patch.object(tool, 'host_scan', side_effect=inventory), \
-             mock.patch.object(tool, '__file__', __file__):
+        with mock.patch.object(tool, 'host_scan', side_effect=inventory):
             try:
                 report = tool.checked_host_scan(home, 0)
             except Exception as error:
