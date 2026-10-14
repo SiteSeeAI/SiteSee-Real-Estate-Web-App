@@ -148,12 +148,43 @@ class ArchiveSafety(unittest.TestCase):
                 self.report(seeds, blobs)
             self.assertTrue(all((self.home / name).exists() for name in tool.NAMES))
 
-    def test_explicit_runtime_device_pipe_and_socket_aliases_remain_blocking(self):
+    def test_heuristic_runtime_device_and_pipe_aliases_remain_blocking(self):
         runtime, _, _ = self.mixed_runtime()
-        for name in ['device-control', 'pipe-alias', 'socket-alias']:
+        for name in ['device-control', 'pipe-alias']:
             caller = self.script('explicit.sh', 'python3 ' + str(runtime / name))
             with self.subTest(name=name), self.assertRaisesRegex(RuntimeError, 'Unreviewed source alias'):
                 self.report([caller])
+
+    def test_heuristic_socket_alias_matches_direct_socket_data_role_without_connection(self):
+        runtime, _, _ = self.mixed_runtime()
+        caller = self.script('ipc.conf', 'socket=' + str(runtime / 'socket-alias'))
+        with mock.patch.object(socket.socket, 'connect', side_effect=AssertionError('Unexpected IPC connection')):
+            report = self.report([caller])
+        self.assertEqual(report['preserved_ipc_sockets'][str(runtime / 'socket-alias')]['type'], 'unix-socket')
+        self.assertEqual(len(report['eligible']), 17)
+        folder = self.archive(report)
+        self.assertEqual(tool.restore(self.home, self.uid, folder), 17)
+
+    def test_declared_socket_source_alias_keeps_existing_guard(self):
+        runtime, _, _ = self.mixed_runtime()
+        for seeds in [[runtime / 'socket-alias'], [(runtime / 'socket-alias', True)]]:
+            with self.subTest(seeds=str(seeds)), self.assertRaisesRegex(RuntimeError, 'Unreviewed source alias'):
+                self.report(seeds)
+
+    def test_socket_alias_replaced_by_live_source_after_metadata_open_is_refused(self):
+        runtime, _, _ = self.mixed_runtime()
+        alias = runtime / 'socket-alias'
+        target = runtime / 'control-socket'
+        replacement = self.script('new-live.py', 'python3 ' + str(self.home / tool.NAMES[0]))
+        original = os.open
+        def replaced(path, *args, **kwargs):
+            fd = original(path, *args, **kwargs)
+            if pathlib.Path(path) == target:
+                os.replace(replacement, target)
+            return fd
+        with mock.patch.object(tool.os, 'open', side_effect=replaced):
+            with self.assertRaisesRegex(RuntimeError, 'Changing IPC reference'):
+                tool.socket_reference(alias, target)
 
     def test_heuristic_broken_and_cyclic_file_aliases_still_stop(self):
         missing = self.source / 'missing-wrapper'

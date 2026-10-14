@@ -537,6 +537,28 @@ def active_swap(path, fd, before):
             'size': before.st_size, 'binding': binding}
 
 
+def socket_reference(path, target):
+    alias_before, target_before = path.lstat(), target.lstat()
+    if not stat.S_ISSOCK(target_before.st_mode):
+        return None
+    need(stat.S_ISLNK(alias_before.st_mode), 'Changing IPC reference preserved: ' + str(path))
+    fd = os.open(str(target), os.O_PATH | os.O_NOFOLLOW)
+    try:
+        observed = os.fstat(fd)
+        resolved_after = path.resolve(strict=True)
+        alias_after, target_after = path.lstat(), target.lstat()
+        need(stat.S_ISSOCK(observed.st_mode) and
+             fingerprint(target_before) == fingerprint(observed) == fingerprint(target_after) and
+             target_before.st_ctime_ns == observed.st_ctime_ns == target_after.st_ctime_ns and
+             fingerprint(alias_before) == fingerprint(alias_after) and
+             alias_before.st_ctime_ns == alias_after.st_ctime_ns and
+             resolved_after == target,
+             'Changing IPC reference preserved: ' + str(path))
+        return {'type': 'unix-socket', 'target': str(target), 'dev': observed.st_dev, 'ino': observed.st_ino}
+    finally:
+        os.close(fd)
+
+
 def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
          root_home=pathlib.Path('/root'), proc_root=pathlib.Path('/proc')):
     records, missing, references = {}, [], {name: set() for name in NAMES}
@@ -553,6 +575,7 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
     preserved_runtime_metadata = {}
     preserved_storage = {}
     inspected_package_launchers = {}
+    preserved_ipc_sockets = {}
     unresolved_aliases = {}
     queue = list(source_paths)
     required_sources = {p.parent.resolve(strict=True) / p.name
@@ -739,7 +762,11 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
                     seen_directories.add((str(resolved), all_files))
                     enqueue_sources(resolved, all_files, skip=('.git', 'node_modules'))
             else:
-                raise RuntimeError('Unreviewed source alias: ' + str(path))
+                ipc = socket_reference(path, resolved) if not all_files and path not in required_sources else None
+                if ipc is None:
+                    raise RuntimeError('Unreviewed source alias: ' + str(path))
+                preserved_ipc_sockets[str(path)] = ipc
+                checked += 1
             continue
         # Do not load system binaries as source. Unknown custom binaries are not proof of non-use.
         fd = os.open(str(path), os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK |
@@ -788,6 +815,7 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
             'preserved_runtime_metadata': dict(sorted(preserved_runtime_metadata.items())),
             'preserved_storage': dict(sorted(preserved_storage.items())),
             'inspected_package_launchers': dict(sorted(inspected_package_launchers.items())),
+            'preserved_ipc_sockets': dict(sorted(preserved_ipc_sockets.items())),
             'referenced': {n: sorted(v) for n, v in references.items() if v},
             'eligible': sorted(n for n in records if not references[n]),
             'scope': 'Inspected local literal/wildcard source dependencies and observed processes; compiled programs/archive contents, computed launch paths and external automation are not established.'}
@@ -1017,6 +1045,7 @@ def main():
                           'preserved_runtime_metadata': report['preserved_runtime_metadata'],
                           'preserved_storage': report['preserved_storage'],
                           'inspected_package_launchers': report['inspected_package_launchers'],
+                          'preserved_ipc_sockets': report['preserved_ipc_sockets'],
                           'sources_checked': report['sources_checked'], 'scope': report['scope']}))
         if folder:
             print('Restore: python3 ' + __file__ + ' --restore ' + str(folder))
