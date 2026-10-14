@@ -1399,6 +1399,8 @@ print("EXISTING ALARM PRESERVED")
         (config, packaged, generated), namespace = self.unit_namespace()
         pairs = [('alias.service', 'real.service'), ('alias@.service', 'real@.service'),
                  ('alias@agent.service', 'real@agent.service'),
+                 ('alias@user@example.service', 'real@user@example.service'),
+                 ('alias@@agent.service', 'real@@agent.service'),
                  ('one.target.wants/shoot@agent.service', 'shoot@.service'),
                  ('one.target.requires/shoot.service', 'shoot.service'),
                  ('one.target.upholds/keep.service', 'keep.service')]
@@ -1432,7 +1434,7 @@ print("EXISTING ALARM PRESERVED")
                  ('one.service', packaged / 'one@.service'),
                  ('one@agent.service', packaged / 'two@other.service'),
                  ('one@agent.service', packaged / 'one@.service'),
-                 ('one@@agent.service', packaged / 'one@@agent.service'),
+                 ('@agent.service', packaged / '@agent.service'),
                  ('multi-user.target.wants/one@agent.service', packaged / 'other@.service'),
                  ('one.service', packaged / (tool.NAMES[0] + '.service'))]
         with namespace:
@@ -1504,6 +1506,56 @@ print("EXISTING ALARM PRESERVED")
         with namespace:
             report = self.report([(alias, True)])
         self.assertNotIn(tool.NAMES[0], report['eligible'])
+
+    def test_unit_alias_cannot_reenter_catalogue_through_private_or_scheduler_bridge(self):
+        (config, packaged, generated), namespace = self.unit_namespace()
+        alias, target = config / 'worker.service', packaged / 'worker.service'
+        with namespace:
+            for directory in [self.source, self.home / 'cron.d', self.home / '.private']:
+                directory.mkdir(exist_ok=True)
+                bridge = directory / 'bridge.service'
+                bridge.symlink_to(target)
+                alias.symlink_to(bridge)
+                with self.subTest(directory=directory), self.assertRaisesRegex(RuntimeError, 'dependency check incomplete'):
+                    self.report([(alias, True)])
+                alias.unlink()
+                bridge.unlink()
+
+    def test_in_catalogue_alias_chain_inventories_both_names_and_relative_first_hop(self):
+        (config, packaged, generated), namespace = self.unit_namespace()
+        alias = config / 'worker.service'
+        alias.symlink_to('bridge.service')
+        bridge = config / 'bridge.service'
+        bridge.symlink_to(generated / 'missing.service')
+        fallback = packaged / 'bridge.service'
+        fallback.write_text('ExecStart=python3 ' + str(self.home / tool.NAMES[0]))
+        with namespace:
+            report = self.report([(alias, True)])
+        self.assertEqual(set(report['preserved_unit_links']), {str(alias), str(bridge)})
+        self.assertNotIn(tool.NAMES[0], report['eligible'])
+        folder = self.archive(report)
+        self.assertEqual(tool.restore(self.home, self.uid, folder), 16)
+
+    def test_unit_link_retargeted_through_bridge_during_first_read_is_refused(self):
+        (config, packaged, generated), namespace = self.unit_namespace()
+        alias, target = config / 'worker.service', packaged / 'worker.service'
+        bridge = self.source / 'bridge.service'
+        bridge.symlink_to(target)
+        alias.symlink_to(target)
+        readlink = os.readlink
+        changed = []
+        def retarget(path, *args, **kwargs):
+            value = readlink(path, *args, **kwargs)
+            if pathlib.Path(path) == alias and not changed:
+                changed.append(True)
+                alias.unlink()
+                alias.symlink_to(bridge)
+            return value
+        roots = {p: (self.uid, 'system') for p in (config, packaged, generated)}
+        with mock.patch.object(tool.os, 'readlink', side_effect=retarget):
+            self.assertIsNone(tool.missing_unit_alias(alias, target, roots))
+        self.assertTrue(alias.is_symlink())
+        self.assertEqual(alias.readlink(), bridge)
 
     def test_system_and_user_unit_link_catalogues_cannot_be_mixed(self):
         (config, packaged, generated), namespace = self.unit_namespace()

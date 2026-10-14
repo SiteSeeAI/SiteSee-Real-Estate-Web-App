@@ -176,8 +176,6 @@ def missing_unit_alias(source, target, roots):
         if not re.fullmatch(UNIT_NAME, name):
             return None
         stem, kind = name.rsplit('.', 1)
-        if stem.count('@') > 1:
-            return None
         prefix, separator, instance = stem.partition('@')
         return (kind, prefix, instance if separator else None) if prefix else None
     if any(name in str(source) or name in str(target) for name in NAMES):
@@ -197,36 +195,53 @@ def missing_unit_alias(source, target, roots):
         return None
     root, owner, manager, dependency = match
     target_owner, target_manager = roots[target.parent]
-    left, right = unit(source.name), unit(target.name)
-    if not left or not right or left[0] != right[0] or manager != target_manager:
+    def compatible(name):
+        left, right = unit(source.name), unit(name)
+        # Plain/template aliases keep their shape; instantiated aliases keep
+        # the same instance. An enablement child may name its matching template.
+        return bool(left and right and left[0] == right[0] and (
+            left[2] == right[2] or
+            (dependency and left[2] and right[2] == '' and left[1] == right[1])))
+    if not compatible(target.name) or manager != target_manager:
         return None
-    # Plain/template aliases keep their shape; instantiated aliases keep the
-    # same instance. An enablement child may point to its matching template.
-    if left[2] != right[2] and not (
-            dependency and left[2] and right[2] == '' and left[1] == right[1]):
+    before = source.lstat()
+    if not stat.S_ISLNK(before.st_mode) or before.st_uid != owner:
         return None
-    for directory, expected in ((root, owner), (source.parent, owner), (target.parent, target_owner)):
+    link_value = os.readlink(source)
+    first_hop = pathlib.Path(link_value)
+    if not first_hop.is_absolute():
+        first_hop = source.parent / first_hop
+    try:
+        first_hop = first_hop.parent.resolve(strict=True) / first_hop.name
+    except FileNotFoundError:
+        return None
+    if first_hop.parent not in roots or not compatible(first_hop.name):
+        return None
+    first_owner, first_manager = roots[first_hop.parent]
+    if first_manager != manager:
+        return None
+    for directory, expected in ((root, owner), (source.parent, owner),
+                                (target.parent, target_owner), (first_hop.parent, first_owner)):
         if not directory.is_dir():
             return None
         canonical(directory)
         metadata = directory.stat()
         if metadata.st_uid != expected or metadata.st_mode & 0o022:
             return None
-    before = source.lstat()
-    if not stat.S_ISLNK(before.st_mode) or before.st_uid != owner:
-        return None
     try:
         source.resolve(strict=True)
     except FileNotFoundError:
         if source.resolve(strict=False) != target:
             return None
         after = source.lstat()
-        if fingerprint(before) != fingerprint(after) or before.st_ctime_ns != after.st_ctime_ns:
+        if (fingerprint(before) != fingerprint(after) or before.st_ctime_ns != after.st_ctime_ns
+                or os.readlink(source) != link_value):
             return None
         try:
             source.resolve(strict=True)
         except FileNotFoundError:
-            return {'type': 'unit-name-alias', 'target': str(target), 'manager': manager}
+            return {'type': 'unit-name-alias', 'target': str(target),
+                    'link_target': str(first_hop), 'manager': manager}
     return None  # A recreated target must receive ordinary strict source checks.
 
 
