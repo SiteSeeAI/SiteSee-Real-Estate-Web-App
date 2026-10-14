@@ -12,9 +12,11 @@ import os
 import pathlib
 import pwd
 import re
+import signal
 import stat
 import subprocess
 import tempfile
+import time
 
 NAMES = tuple('''install-customer-portal-pathfix.py
 install-customer-portal.py
@@ -35,6 +37,8 @@ install-re-test-recipient-20261002-r1.py
 install-re-vendor-accounts-20261005-r1.py'''.splitlines())
 HOME = pathlib.Path('/home/sitesee')
 MAX_FILE = 16 * 1024 * 1024
+SCAN_SECONDS = 120
+SCAN_HEARTBEAT_SECONDS = 10
 SUFFIXES = {'.php', '.phtml', '.py', '.js', '.mjs', '.cjs', '.sh', '.conf',
             '.ini', '.json', '.yaml', '.yml', '.html', '.service', '.timer',
             '.pl', '.rb', '.cgi', '.bash', '.zsh', '.ksh', '.lua', '.tcl', '.awk'}
@@ -206,6 +210,7 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
     preserved_compiler_links = {}
     preserved_system_links = {}
     queue = list(source_paths)
+    helper_path = pathlib.Path(__file__).resolve()
     home_entries = {p.name: p for p in home.iterdir()
                     if p.name not in NAMES and not p.name.startswith('.')
                     and (p.is_file() or p.is_symlink())
@@ -299,8 +304,10 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
     while queue:
         item = queue.pop()
         path, all_files = item if isinstance(item, tuple) else (item, False)
-        if path.resolve() == pathlib.Path(__file__).resolve():
-            continue  # The verified cleanup helper's own inventory is not an execution dependency.
+        # Relative imports can spell the same source as a/../a/../a/file forever.
+        # Normalize its parent, retaining the leaf alias and stronger scan flag:
+        # application aliases must still be checked in their own source role.
+        path = path.parent.resolve(strict=True) / path.name
         is_candidate = path.parent == home and path.name in NAMES
         if is_candidate and not references[path.name]:
             continue
@@ -308,6 +315,8 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
         if visit in seen:
             continue
         seen.add(visit)
+        if path.resolve() == helper_path:
+            continue  # The verified cleanup helper's own inventory is not an execution dependency.
         if path.is_symlink():
             try:
                 resolved = path.resolve(strict=True)
@@ -401,6 +410,37 @@ def host_scan(home, uid):
              'Cannot read crontab for ' + user + '; no files archived.')
         blobs.append(('crontab:' + user, result.stdout if result.returncode == 0 else b''))
     return scan(home, uid, paths, blobs, inspect_processes=True)
+
+
+def checked_host_scan(home, uid):
+    # Arm before eager inventory as well as graph traversal; disarm before any
+    # archive or restore operation. Progress contains no source/argument values.
+    need(signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0),
+         'Existing process timer preserved; no files archived.')
+    need(SCAN_SECONDS > 0 and SCAN_HEARTBEAT_SECONDS > 0, 'Invalid scan time limit.')
+    started = time.monotonic()
+    def progress(signum, frame):
+        elapsed = time.monotonic() - started
+        stage = 'dependency scan'
+        while frame:
+            if frame.f_code.co_filename == __file__:
+                stage = frame.f_code.co_name + ':' + str(frame.f_lineno)
+                break
+            frame = frame.f_back
+        if elapsed >= SCAN_SECONDS:
+            raise RuntimeError('Dependency check exceeded ' + str(SCAN_SECONDS) +
+                               ' seconds at ' + stage + '; no files archived.')
+        os.write(2, ('Dependency check: ' + str(int(elapsed)) +
+                     ' seconds; stage ' + stage + '; no files moved.\n').encode())
+    previous = signal.signal(signal.SIGALRM, progress)
+    try:
+        os.write(2, b'Checking local files and dependencies; no files moved.\n')
+        interval = min(SCAN_SECONDS, SCAN_HEARTBEAT_SECONDS)
+        signal.setitimer(signal.ITIMER_REAL, interval, interval)
+        return host_scan(home, uid)
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous)
 
 
 def sync_directory(path):
@@ -529,7 +569,7 @@ def main():
     account = pwd.getpwnam('sitesee')
     need(HOME.stat().st_uid == account.pw_uid, 'Unexpected home owner; preserved.')
     if args.check:
-        report = host_scan(HOME, account.pw_uid)
+        report = checked_host_scan(HOME, account.pw_uid)
         print(json.dumps({'result': 'DEPENDENCY CHECK PASS', **report}, indent=2))
         return
     base = HOME / 'private-archives'
@@ -549,7 +589,7 @@ def main():
             count = restore(HOME, account.pw_uid, args.restore)
             print(json.dumps({'result': 'RESTORE PASS', 'restored': count, 'archive': str(args.restore)}))
             return
-        report = host_scan(HOME, account.pw_uid)
+        report = checked_host_scan(HOME, account.pw_uid)
         folder = archive(HOME, account.pw_uid, report)
         print(json.dumps({'result': 'ARCHIVE PASS' if folder else 'NO ELIGIBLE FILES',
                           'archived': len(report['eligible']), 'archive': str(folder) if folder else None,

@@ -5,6 +5,9 @@ import io
 import json
 import os
 import pathlib
+import signal
+import subprocess
+import sys
 import tempfile
 import unittest
 from types import SimpleNamespace
@@ -133,6 +136,152 @@ class ArchiveSafety(unittest.TestCase):
                 report = self.report([source])
                 self.assertNotIn(tool.NAMES[0], report['eligible'])
                 self.assertIn(str(wrapper), report['referenced'][tool.NAMES[0]])
+
+    def test_relative_self_cycle_reads_one_source_and_preserves_real_archive_restore(self):
+        source = self.script('self.py', 'python3 ../active/self.py\n' + 'const a="icon";function f(){return a};' * 6000)
+        with mock.patch.object(tool, 'read_regular', wraps=tool.read_regular) as read:
+            report = self.report([source])
+        self.assertEqual(report['sources_checked'], 1)
+        self.assertEqual(sum(call.args[0] == source for call in read.call_args_list), 1)
+        self.assertEqual(len(report['eligible']), 17)
+        folder = self.archive(report)
+        self.assertEqual(tool.restore(self.home, self.uid, folder), 17)
+        for name in tool.NAMES:
+            self.assertEqual(tool.candidate(self.home / name, self.uid), report['records'][name])
+
+    def test_relative_two_file_cycle_retains_live_dependency_and_archives_only_unused(self):
+        a = self.script('a.py', 'python3 ../active/b.py\n')
+        b = self.script('b.py', 'python3 ../active/a.py\npython3 ' + str(self.home / tool.NAMES[0]))
+        with mock.patch.object(tool, 'read_regular', wraps=tool.read_regular) as read:
+            report = self.report([a])
+        self.assertEqual(report['sources_checked'], 3)  # Two wrappers and their live installer.
+        for path in [a, b]:
+            self.assertEqual(sum(call.args[0] == path for call in read.call_args_list), 1)
+        self.assertNotIn(tool.NAMES[0], report['eligible'])
+        folder = self.archive(report)
+        self.assertTrue((self.home / tool.NAMES[0]).exists())
+        self.assertEqual(tool.restore(self.home, self.uid, folder), 16)
+
+    def test_directory_alias_spellings_converge_without_resolving_leaf_aliases(self):
+        source = self.script('wrapper.py', '# no installer reference\n')
+        alias_parent = self.home / 'active-alias'
+        alias_parent.symlink_to(self.source, target_is_directory=True)
+        report = self.report([source, alias_parent / source.name, self.source / '..' / 'active' / source.name])
+        self.assertEqual(report['sources_checked'], 1)
+        leaf_alias = self.source / 'required.php'
+        leaf_alias.symlink_to(self.home / tool.NAMES[0])
+        report = self.report([alias_parent / leaf_alias.name])
+        self.assertNotIn(tool.NAMES[0], report['eligible'])
+
+    def test_hardlinked_wrappers_in_distinct_directories_keep_distinct_relative_contexts(self):
+        first, second = self.source / 'first', self.source / 'second'
+        first.mkdir()
+        second.mkdir()
+        (first / 'caller.py').write_text('python3 helper\n')
+        os.link(first / 'caller.py', second / 'caller.py')
+        for directory, name in zip([first, second], tool.NAMES[:2]):
+            (directory / 'helper').write_text('python3 ' + str(self.home / name))
+        report = self.report([first / 'caller.py', second / 'caller.py'])
+        for name in tool.NAMES[:2]:
+            self.assertNotIn(name, report['eligible'])
+
+    def test_checked_scan_disarms_timer_and_restores_handler_before_real_archive(self):
+        previous = signal.getsignal(signal.SIGALRM)
+        def inventory(home, uid):
+            self.assertGreater(signal.getitimer(signal.ITIMER_REAL)[0], 0)
+            return self.report()
+        with mock.patch.object(tool, 'host_scan', side_effect=inventory):
+            report = tool.checked_host_scan(self.home, self.uid)
+        self.assertEqual(signal.getitimer(signal.ITIMER_REAL), (0.0, 0.0))
+        self.assertEqual(signal.getsignal(signal.SIGALRM), previous)
+        rename = tool.rename_new
+        def no_timer_during_move(a, b):
+            self.assertEqual(signal.getitimer(signal.ITIMER_REAL), (0.0, 0.0))
+            rename(a, b)
+        with mock.patch.object(tool, 'rename_new', side_effect=no_timer_during_move):
+            folder = self.archive(report)
+        self.assertEqual(tool.restore(self.home, self.uid, folder), 17)
+
+    def test_checked_scan_restores_timer_state_after_error(self):
+        previous = signal.getsignal(signal.SIGALRM)
+        with mock.patch.object(tool, 'host_scan', side_effect=RuntimeError('fixture inventory failure')), \
+             self.assertRaisesRegex(RuntimeError, 'fixture inventory failure'):
+            tool.checked_host_scan(self.home, self.uid)
+        self.assertEqual(signal.getitimer(signal.ITIMER_REAL), (0.0, 0.0))
+        self.assertEqual(signal.getsignal(signal.SIGALRM), previous)
+        self.assertFalse((self.home / 'private-archives').exists())
+
+    def test_checked_scan_restores_timer_state_after_keyboard_interrupt(self):
+        previous = signal.getsignal(signal.SIGALRM)
+        with mock.patch.object(tool, 'host_scan', side_effect=KeyboardInterrupt()), \
+             self.assertRaises(KeyboardInterrupt):
+            tool.checked_host_scan(self.home, self.uid)
+        self.assertEqual(signal.getitimer(signal.ITIMER_REAL), (0.0, 0.0))
+        self.assertEqual(signal.getsignal(signal.SIGALRM), previous)
+        self.assertFalse((self.home / 'private-archives').exists())
+
+    def scan_child(self, body):
+        preamble = ('import importlib.util, os, pathlib, signal, sys, time\n'
+                    'spec=importlib.util.spec_from_file_location("isolated_scan", ' + repr(tool.__file__) + ')\n'
+                    'tool=importlib.util.module_from_spec(spec);spec.loader.exec_module(tool)\n'
+                    'home=pathlib.Path(sys.argv[1])\n')
+        return subprocess.run([sys.executable, '-c', preamble + body, str(self.home)],
+                              capture_output=True, text=True, timeout=5)
+
+    def test_real_scan_deadline_and_heartbeat_fail_before_archive(self):
+        result = self.scan_child('''
+tool.SCAN_SECONDS=0.15
+tool.SCAN_HEARTBEAT_SECONDS=0.04
+previous=signal.getsignal(signal.SIGALRM)
+def slow_inventory(home, uid):
+    time.sleep(2)
+    raise AssertionError("Deadline did not interrupt inventory")
+tool.host_scan=slow_inventory
+started=time.monotonic()
+try:
+    report=tool.checked_host_scan(home, os.geteuid())
+    tool.archive(home, os.geteuid(), report)
+except RuntimeError as error:
+    assert "exceeded" in str(error)
+else:
+    raise AssertionError("Deadline did not stop the scan")
+assert time.monotonic()-started < 1.5
+assert signal.getitimer(signal.ITIMER_REAL)==(0.0, 0.0)
+assert signal.getsignal(signal.SIGALRM)==previous
+assert not (home/"private-archives").exists()
+assert all((home/name).exists() for name in tool.NAMES)
+print("REAL DEADLINE AND PRESERVATION PASS")
+''')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('REAL DEADLINE AND PRESERVATION PASS', result.stdout)
+        self.assertIn('Checking local files and dependencies', result.stderr)
+        self.assertIn('Dependency check:', result.stderr)
+        self.assertIn('stage checked_host_scan:', result.stderr)
+        self.assertNotIn(str(self.home), result.stderr)
+
+    def test_preexisting_process_alarm_is_preserved_and_inventory_not_called(self):
+        result = self.scan_child('''
+def existing(signum, frame):
+    raise AssertionError("Existing alarm was changed")
+signal.signal(signal.SIGALRM,existing)
+signal.setitimer(signal.ITIMER_REAL,10)
+def forbidden_inventory(home, uid):
+    raise AssertionError("Inventory must not run with an existing timer")
+tool.host_scan=forbidden_inventory
+try:
+    tool.checked_host_scan(home,os.geteuid())
+except RuntimeError as error:
+    assert "Existing process timer preserved" in str(error)
+else:
+    raise AssertionError("Existing alarm was not guarded")
+assert signal.getsignal(signal.SIGALRM)==existing
+assert 8 < signal.getitimer(signal.ITIMER_REAL)[0] <= 10
+signal.setitimer(signal.ITIMER_REAL,0)
+assert not (home/"private-archives").exists()
+print("EXISTING ALARM PRESERVED")
+''')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('EXISTING ALARM PRESERVED', result.stdout)
 
     def test_explicit_live_reference_is_preserved(self):
         source = self.script('live.php', 'require "' + str(self.home / tool.NAMES[0]) + '";')

@@ -2,6 +2,16 @@
 
 Assessment: 2026-10-13, America/Chicago. The operator supplied a top-level `ls -la /home/sitesee` listing. This is a preparation checkpoint, not evidence of an archive, deletion or migration. Stripe remains TEST.
 
+## Dependency-cycle and scan-runtime correction — 2026-10-14
+
+The operator reports about eight minutes at checksum `OK` without a prepared archive message. One Ctrl+C was advised; no completed interruption/archive result was supplied. Local profiling confirms repeated source scans through expanding relative spellings: the previous helper reads one self-reference 405 times, and a 200,028-byte self-cycle exceeds a 12-second cap. The exact host stack was not captured, so this establishes a code defect without asserting which host frame was stalled.
+
+The new scan uses canonical parent paths for queued source/visited/context identity while retaining each leaf alias and `all_files` flag. The 200,028-byte reproduction now reads once in 0.0478 seconds locally. Application aliases are not collapsed into their targets; distinct hardlink directories retain distinct relative contexts. Existing role/error and archive/restore guards remain intact.
+
+The entire host inventory and graph check now emit immediate status and a 10-second heartbeat to stderr, with a 120-second deadline before any archive. Progress contains only elapsed time and helper function/line, without source contents, paths, arguments or configuration. Timer/handler state is restored after completion, errors or Ctrl+C and before archive moves. An existing armed timer is preserved by refusing to begin. Restore operations remain unchanged. Uninterruptible kernel I/O can delay normal signal handling; the timer never authorizes a partial-check archive.
+
+All 62 local checks and the independent review pass, including nine new graph/context/real-move/alarm/timeout/interruption cases. The independent reviewer reproduces the old cycle, verifies a corrected one-read 200KB scan in 0.04264 seconds, performs real sixteen-file archive/restore with a live dependency preserved, and checks timer cleanup and unchanged original preservation primitives. Helper SHA256 `e7c5365f8284331dcac58f94071e1730af702de29e05447353df9254c214638c`. Verified publication and the operator's archive result remain pending. Keep earlier helpers/journals; the allowlist below remains seventeen files.
+
 ## Unrepresentable path-match correction — 2026-10-14
 
 The checksum-verified DEP-004 host retry stopped during source scanning with `ENAMETOOLONG` (errno 36), after a PNG/base64-like fragment was interpreted as a path. The exact reported fragment reproduces the prior helper's error locally. No host archive completion has been evidenced.
