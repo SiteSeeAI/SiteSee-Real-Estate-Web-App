@@ -3,6 +3,7 @@
 import argparse
 import ctypes
 import datetime
+import errno
 import fcntl
 import fnmatch
 import hashlib
@@ -178,6 +179,19 @@ def sources(directory, all_files=False, skip=()):
                 yield path
 
 
+def literal_probe(path, kind):
+    # Source text can contain base64/URLs that resemble paths but cannot be
+    # represented by the filesystem. Treat only an overlong heuristic match as
+    # absent. Real enumerated sources, candidates and other OS errors retain
+    # their existing failure behavior; candidate-name/glob checks run first.
+    try:
+        return getattr(path, kind)()
+    except OSError as error:
+        if error.errno == errno.ENAMETOOLONG:
+            return False
+        raise
+
+
 def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
          root_home=pathlib.Path('/root'), proc_root=pathlib.Path('/proc')):
     records, missing, references = {}, [], {name: set() for name in NAMES}
@@ -228,16 +242,16 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
             path = pathlib.Path(os.fsdecode(raw))
             if path.name in NAMES and path.parent == home:
                 mark(path.name, label)
-            elif followable(path) and (path.is_file() or path.is_symlink()):
+            elif followable(path) and (literal_probe(path, 'is_file') or literal_probe(path, 'is_symlink')):
                 queue.append(path)
-            elif path.is_dir():
+            elif literal_probe(path, 'is_dir'):
                 contexts.add(path)
         for raw in re.findall(rb'run-parts\s+(?:--[A-Za-z0-9_=+-]+\s+)*[\'"]?(/[A-Za-z0-9_./+-]+)', data):
             directory = pathlib.Path(os.fsdecode(raw))
             if directory == home or directory in home.parents:
                 for name in records:
                     mark(name, label)
-            elif directory.is_dir():
+            elif literal_probe(directory, 'is_dir'):
                 queue.extend(sources(directory, all_files=True))
         tokens = re.findall(rb'(?<![A-Za-z0-9_./-])([A-Za-z0-9_.+-]+(?:/[A-Za-z0-9_.+-]+)*)(?![A-Za-z0-9_./-])', data)
         for token in tokens:
@@ -253,7 +267,7 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
                 path = context / os.fsdecode(token)
                 if path.name in NAMES and context == home:
                     mark(path.name, label)
-                elif followable(path) and (path.is_file() or path.is_symlink()):
+                elif followable(path) and (literal_probe(path, 'is_file') or literal_probe(path, 'is_symlink')):
                     queue.append(path)
     for label, data in blobs:
         inspect(label, data)

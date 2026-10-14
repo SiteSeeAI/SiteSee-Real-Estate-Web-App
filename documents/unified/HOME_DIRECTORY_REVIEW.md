@@ -2,6 +2,14 @@
 
 Assessment: 2026-10-13, America/Chicago. The operator supplied a top-level `ls -la /home/sitesee` listing. This is a preparation checkpoint, not evidence of an archive, deletion or migration. Stripe remains TEST.
 
+## Unrepresentable path-match correction — 2026-10-14
+
+The checksum-verified DEP-004 host retry stopped during source scanning with `ENAMETOOLONG` (errno 36), after a PNG/base64-like fragment was interpreted as a path. The exact reported fragment reproduces the prior helper's error locally. No host archive completion has been evidenced.
+
+The replacement treats only `ENAMETOOLONG` from heuristic absolute, relative or run-parts path predicates as a non-match. Source text is still checked for raw candidate names and installer globs first. Other errors still propagate. Actual enumerated sources, reads, candidates, alias resolution and the existing archive/restore safeguards are unchanged. A representable long path remains eligible for inspection; no arbitrary short length cutoff is introduced.
+
+All 53 local filesystem checks and the independent review pass, including eight new PNG/overlong-path/live-reference/error-boundary/valid-long-path cases and an actual seventeen-file archive/restore around the exact reported image fragment. The independent reviewer also reproduces the old exact-fragment failure and new archive/restore, proves real source-alias errors remain fatal, and verifies by AST that only six heuristic predicates changed within scan and all other old functions are unchanged. Helper SHA256 `39b6d5a6549ec0e3b8d9ef59b7c7ae68ce044c92253defabb97be7f5c7805c8b`. Publication verification and operator host completion are pending. Earlier compiler and optional-command corrections remain in place; the seventeen-file allowlist and restore policy below are unchanged.
+
 ## Optional system-command correction — 2026-10-14
 
 The next checksum-verified host attempt stopped before archiving at `/usr/sbin/rcmysql` → absent `/etc/rc.d/init.d/mysql`. The replacement preserves and records broken optional package commands without repairing or changing system services. The class applies only to root-owned symlinks directly in `/usr/bin`, `/usr/sbin`, `/bin` or `/sbin`, with canonical, root-owned parents that are not writable by group/others. Missing targets must be in standard system/package namespaces (`/usr`, system library/command trees, `/opt/cpanel`, alternatives or legacy init directories); any systemd path component and historical installer names are excluded. Missing application/scheduler source aliases and targets outside those package namespaces still stop. Existing links to present scripts/installers are still followed. Classification rechecks that the target remains absent and the alias metadata is unchanged, including final strict resolution after metadata validation. `preserved_system_links` appears in the read-only report, private journal and final archive result.

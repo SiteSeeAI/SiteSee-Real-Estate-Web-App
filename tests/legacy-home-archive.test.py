@@ -1,4 +1,5 @@
 import contextlib
+import errno
 import importlib.util
 import io
 import json
@@ -12,6 +13,7 @@ from unittest import mock
 spec = importlib.util.spec_from_file_location('home_archive', pathlib.Path(__file__).parents[1] / 'tools/archive-legacy-home-files.py')
 tool = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(tool)
+IMAGE_FRAGMENT = '/eer+NxztxMYuEWQG3ECKwwUF58ycAKixOAGAyAKILAAiCyCyACILgMgCiCyAyAIgsgAiCyCyAIgsgMgCiCwAIgsgsgAiC4DIAogsACIL0CWuZ3UGgLrIhjMA1EV2OAOAJQtgyQLwjOzmDAAiCyCyAIgsQFtkd2cAEFkAkQVAZAHaIns4A4AlC2DJAiCyACILILIAiCzAV5H1dQGAJQsgsgCILIDIAvwisl58AViyAJYsACILILIAIgvAe2T9EhxAZAFEFgCRBeiL7HAGgLrIhjMAWLIAliwAt1OAAQDwygTBulLIlQAAAABJRU5ErkJggg'
 
 
 class ArchiveSafety(unittest.TestCase):
@@ -47,6 +49,90 @@ class ArchiveSafety(unittest.TestCase):
         self.assertEqual(tool.restore(self.home, self.uid, folder), 17)
         for name in tool.NAMES:
             self.assertEqual(tool.candidate(self.home / name, self.uid), before['records'][name])
+
+    def test_reported_embedded_png_fragment_allows_exact_archive_and_restore(self):
+        source = self.script('image.php', 'image="data:image/png;base64,iVBORw0KGgo' + IMAGE_FRAGMENT + '";')
+        original = source.read_bytes()
+        report = self.report([source])
+        self.assertEqual(len(report['eligible']), 17)
+        folder = self.archive(report)
+        self.assertEqual(tool.restore(self.home, self.uid, folder), 17)
+        self.assertEqual(source.read_bytes(), original)
+        for name in tool.NAMES:
+            self.assertEqual(tool.candidate(self.home / name, self.uid), report['records'][name])
+
+    def test_overlong_absolute_heuristic_path_is_not_a_dependency(self):
+        source = self.script('image.php', 'url="/' + 'segment/' * 700 + 'image";')
+        self.assertEqual(len(self.report([source])['eligible']), 17)
+
+    def test_overlong_relative_match_does_not_hide_live_relative_wrapper(self):
+        wrapper = self.script('nightly', 'python3 ' + str(self.home / tool.NAMES[0]))
+        source = self.script('image.php', 'image="active/' + 'A' * 300 + '"; python3 active/nightly')
+        report = self.report([source])
+        self.assertNotIn(tool.NAMES[0], report['eligible'])
+        self.assertIn(str(wrapper), report['referenced'][tool.NAMES[0]])
+
+    def test_overlong_run_parts_match_does_not_hide_live_periodic_job(self):
+        directory = self.source / 'periodic'
+        directory.mkdir()
+        wrapper = directory / 'nightly'
+        wrapper.write_text('python3 ' + str(self.home / tool.NAMES[0]))
+        source = self.script('periodic.sh', 'run-parts /' + 'A' * 300 + '\nrun-parts ' + str(directory))
+        report = self.report([source])
+        self.assertNotIn(tool.NAMES[0], report['eligible'])
+        self.assertIn(str(wrapper), report['referenced'][tool.NAMES[0]])
+
+    def test_overlong_token_still_preserves_raw_candidate_name_and_glob_references(self):
+        source = self.script('image.php', 'image="/' + 'A' * 300 + '/' + tool.NAMES[0] + '"; command="/' + 'B' * 300 + '/install-re-*.py";')
+        report = self.report([source])
+        expected = {tool.NAMES[0], *(name for name in tool.NAMES if name.startswith('install-re-'))}
+        for name in expected:
+            self.assertNotIn(name, report['eligible'])
+        folder = self.archive(report)
+        for name in expected:
+            self.assertTrue((self.home / name).exists())
+        self.assertEqual(tool.restore(self.home, self.uid, folder), len(tool.NAMES) - len(expected))
+
+    def test_heuristic_probe_does_not_hide_permission_io_or_alias_errors(self):
+        path = self.source / 'wrapper'
+        for kind in ['is_file', 'is_symlink', 'is_dir']:
+            for code in [errno.EACCES, errno.EIO, errno.ELOOP]:
+                error = OSError(code, 'fixture probe failure', str(path))
+                with self.subTest(kind=kind, errno=code), \
+                     mock.patch.object(pathlib.Path, kind, side_effect=error), \
+                     self.assertRaises(OSError) as caught:
+                    tool.literal_probe(path, kind)
+                self.assertIs(caught.exception, error)
+
+    def test_enumerated_source_and_source_read_enametoolong_still_stop(self):
+        with self.assertRaises(OSError) as caught:
+            self.report([pathlib.Path('/' + 'A' * 300)])
+        self.assertEqual(caught.exception.errno, errno.ENAMETOOLONG)
+        source = self.script('live.php', 'echo "safe";')
+        original_read = tool.read_regular
+        def failed_read(path):
+            if path == source:
+                raise OSError(errno.ENAMETOOLONG, 'fixture actual-source failure', str(path))
+            return original_read(path)
+        with mock.patch.object(tool, 'read_regular', side_effect=failed_read), \
+             self.assertRaises(OSError) as caught:
+            self.report([source])
+        self.assertEqual(caught.exception.errno, errno.ENAMETOOLONG)
+        self.assertFalse((self.home / 'private-archives').exists())
+        self.assertTrue(all((self.home / name).exists() for name in tool.NAMES))
+
+    def test_long_representable_wrapper_paths_and_maximum_component_still_followed(self):
+        max_name = self.script('w' * 252 + '.py', 'python3 ' + str(self.home / tool.NAMES[0]))
+        nested = self.source.joinpath(*['directory' * 10 for _ in range(5)])
+        nested.mkdir(parents=True)
+        deep_wrapper = nested / 'nightly.py'
+        deep_wrapper.write_text('python3 ' + str(self.home / tool.NAMES[0]))
+        for wrapper in [max_name, deep_wrapper]:
+            with self.subTest(wrapper=str(wrapper)):
+                source = self.script('caller.sh', 'python3 ' + str(wrapper))
+                report = self.report([source])
+                self.assertNotIn(tool.NAMES[0], report['eligible'])
+                self.assertIn(str(wrapper), report['referenced'][tool.NAMES[0]])
 
     def test_explicit_live_reference_is_preserved(self):
         source = self.script('live.php', 'require "' + str(self.home / tool.NAMES[0]) + '";')

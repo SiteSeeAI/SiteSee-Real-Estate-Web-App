@@ -4,6 +4,18 @@ This is the iteration record from October 9, 2026 onward. Dates use America/Chic
 
 Each iteration records its ID, purpose, status, source/release, changes, validation and user acceptance. Keep planned work separate from implemented, installed and accepted work. Add an entry for each subsequent implementation/release and update its acceptance after user review. Documentation-only commits do not change the installed application.
 
+## DEP-005 — ignore unrepresentable heuristic path matches — 2026-10-14
+
+Status: implemented, locally tested and independently reviewed; verified publication and host retry are pending. Same seventeen installer candidates and preservation policy. Stripe remains TEST; no application, provider, schedule, service or database change.
+
+The operator's DEP-004 helper at `/root/sitesee-home-cleanup.tR7WIf/archive-legacy-home-files.py` passed its checksum and stopped during the source scan with `OSError` errno 36 (`ENAMETOOLONG`). The reported filename is a PNG/base64-like fragment mistaken for an absolute filesystem path. The exact reported fragment reproduces the same errno and filename on the unchanged prior helper before any archive. This is a scanner defect, not an upload or installer-file defect.
+
+The replacement handles only `ENAMETOOLONG` from heuristic absolute/relative/run-parts path predicates as a non-match. It does not skip source contents: raw installer-name and wildcard checks still run first. Permission, I/O and alias errors still propagate; enumerated sources, actual source reads, candidates and strict alias resolution retain their existing errors and preservation checks. Long representable wrappers remain followed. All existing move/restore, ownership, metadata, checksum, journal, live dependency and optional-system-link behavior is unchanged.
+
+Local validation: all 53 filesystem checks pass. Eight added cases cover the exact PNG fragment across a real seventeen-file archive/restore; excessive absolute-path length; relative and run-parts false matches alongside real live wrappers; raw candidate/glob preservation within unrepresentable tokens; permission/I/O/alias errors; fatal actual-source errors; and valid 255-byte components/deep paths. Helper SHA256: `39b6d5a6549ec0e3b8d9ef59b7c7ae68ce044c92253defabb97be7f5c7805c8b`. Actual host archive completion remains unverified.
+
+Independent review passes all 53 checks plus a separate old/new exact-fragment reproduction and real archive/restore preserving bytes, inode metadata and source contents. An enumerated real symlink to the overlong target still fails and retains all candidates. AST comparison confirms all old functions except scan are unchanged; reversing exactly six heuristic-probe calls makes scan identical to the prior implementation. Candidate/glob matching, live aliases, original error handling and archive/restore primitives are therefore unchanged. Python 3.9 syntax passes; frozen application and approved application-installer payloads remain byte-identical. No remaining blocker in the declared bounded scope; publication and host execution remain separate gates.
+
 ## DEP-004 — preserve dangling optional system commands during cleanup — 2026-10-14
 
 Status: implemented, locally tested, independently reviewed and published with verified downloads; host retry is pending. Same seventeen installer candidates; Stripe remains TEST. No application payload, provider, schedule, service, database or archive/restore policy change.
@@ -15,6 +27,8 @@ Local validation: all 45 filesystem checks pass. Ten added cases cover five pack
 Independent review passes all 45 checks and separate default-target/race reproductions for the exact helper hash above. The review verifies acceptance of the reported missing MySQL init target, rejection of systemd/private/configuration/custom/candidate-named targets, refusal when a real wrapper reappears during resolution, final report metadata and unchanged preservation primitives. No remaining blocker in the declared bounded scan scope. Publication and actual host outcome require separate evidence.
 
 Publication: [home-cleanup-c5802fdef9c2](https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/releases/tag/home-cleanup-c5802fdef9c2), source `c5802fdef9c24619dccb133f21fd9a1cd1954e82`, maintenance run `38630520817`. Both Python 3.9 and 3.12 jobs and downloads pass every step: 45 tests each unprivileged and as root, 180 executions with no skips. All three release assets independently match exact Git source by full bytes, SHA256, GitHub digest, size and attachment headers. The replacement root command passes shell syntax checking. Frozen application/public/private payloads and approved application installers remain unchanged. This verifies the maintenance tool and downloads; record the actual host result/archive path after the operator runs it. The unrelated application lifecycle date-fixture limitation remains recorded in DEP-003.
+
+Operator retry: checksum verification passed, then the source scan stopped on the unrepresentable image-data path recorded in DEP-005, before any archive. No `ARCHIVE PASS` was reported. DEP-005 supersedes this helper for the same authorized cleanup.
 
 ## DEP-003 — handle optional compiler runtime library links — 2026-10-14
 
