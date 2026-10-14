@@ -6,11 +6,13 @@ Each iteration records its ID, purpose, status, source/release, changes, validat
 
 ## DEP-001 — home-directory cleanup and versioned deployment preparation — 2026-10-13
 
-Status: assessed; host archiving and version-folder migration have not been performed. Stripe remains TEST. This documentation checkpoint does not change any frozen release payload.
+Status: archive helper implemented; publication/host execution are pending. Version-folder migration has not been performed. Stripe remains TEST. This maintenance iteration does not change any frozen application release payload.
 
 The operator supplied the home-directory listing and requested a complete release inside its version folder. Seventeen historical loose installer files are identified as first archive candidates; current public/private source has no references to their home-directory installer paths. Server schedule/service references still need checking before they move. The home `pricing.php`, diagnostic/recovery tools, cleanup reports and prior quarantine evidence need individual identification. Preserve the active public/private roots, the actively used `.sitesee-graph-mail.json`, account/cPanel/mail/SSL state and the separate CTC Publishing application. No blanket deletion is appropriate.
 
 The current installer updates fixed roots; its version-named staging/backup directories are not the live application directory. The planned layout separates versioned code/public assets from shared private state and must preserve existing URLs, provider bindings, worker identity/lock, configuration and financial records. Full assessment and exact installer candidate list: [home-directory review](documents/unified/HOME_DIRECTORY_REVIEW.md).
+
+The user authorized proceeding with cleanup. Added a standalone exact-list dependency check/archive/restore helper and a dedicated GitHub maintenance publication workflow. It follows local live wrappers and installer dependencies, preserves referenced files, verifies original checksums/inode/owner/group/mode/size/mtime, uses atomic moves without replacement, writes a durable private journal and supports guarded interrupted restore. Read-only checks create no files. No application update, service pause/reload, schedule/configuration/provider change, database reset or deletion is part of this cleanup. Local validation: 26 focused filesystem/dependency checks pass. Independent audit also passes all 26 checks and its separate archive/restore/dependency reproductions, with no remaining blocker in the declared scope. Helper SHA256: `2847964b31f2f7da75c866023d5a5d874cf5355116a8b4dda3bd5cb94459e0a2`. Host completion and the final archive path must be recorded from the operator's output.
 
 ## UX-003 — client workspace, reports and archives — 2026-10-13
 

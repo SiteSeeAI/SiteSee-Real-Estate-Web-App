@@ -1,0 +1,60 @@
+name: Verify and publish home installer cleanup
+on:
+  push:
+    branches: ['feat/unified-server-app-20261007']
+    paths:
+      - 'tools/archive-legacy-home-files.py'
+      - 'tests/legacy-home-archive.test.py'
+      - '.github/workflows/legacy-home-archive.yml'
+permissions:
+  contents: read
+jobs:
+  safety:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.9', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '${{ matrix.python }}'
+      - name: Verify real filesystem moves and dependency preservation
+        run: python3 tests/legacy-home-archive.test.py
+      - name: Repeat preservation and interruption checks with real root ownership
+        run: sudo "$(command -v python3)" tests/legacy-home-archive.test.py
+  downloads:
+    needs: safety
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Publish immutable maintenance download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          repo='SiteSeeAI/SiteSee-Real-Estate-Web-App'
+          tag="home-cleanup-${GITHUB_SHA:0:12}"
+          folder="$RUNNER_TEMP/home-cleanup"
+          mkdir "$folder"
+          cp tools/archive-legacy-home-files.py "$folder/archive-legacy-home-files.py"
+          cp documents/unified/HOME_DIRECTORY_REVIEW.md "$folder/HOME_DIRECTORY_REVIEW.md"
+          cd "$folder"
+          sha256sum archive-legacy-home-files.py HOME_DIRECTORY_REVIEW.md > SHA256SUMS.txt
+          if gh release view "$tag" --repo "$repo" >/dev/null 2>&1; then
+            gh release download "$tag" --repo "$repo" --dir existing
+            cmp archive-legacy-home-files.py existing/archive-legacy-home-files.py
+            cmp HOME_DIRECTORY_REVIEW.md existing/HOME_DIRECTORY_REVIEW.md
+            cmp SHA256SUMS.txt existing/SHA256SUMS.txt
+          else
+            gh release create "$tag" archive-legacy-home-files.py HOME_DIRECTORY_REVIEW.md SHA256SUMS.txt \
+              --repo "$repo" --target "$GITHUB_SHA" --prerelease --latest=false \
+              --title 'Guarded home-directory installer archive' \
+              --notes 'User-authorized reversible cleanup of seventeen explicitly named historical installers. Checks local source, web/server configuration, cron, systemd, queued jobs and processes; preserves referenced files. No active application update, operational data reset, provider operation, schedule/service change or Stripe mode change. Checksums and guarded restore retained. Hosting execution remains an operator action.'

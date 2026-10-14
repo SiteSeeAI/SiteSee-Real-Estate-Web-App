@@ -1,0 +1,258 @@
+import contextlib
+import importlib.util
+import io
+import json
+import os
+import pathlib
+import tempfile
+import unittest
+from types import SimpleNamespace
+from unittest import mock
+
+spec = importlib.util.spec_from_file_location('home_archive', pathlib.Path(__file__).parents[1] / 'tools/archive-legacy-home-files.py')
+tool = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(tool)
+
+
+class ArchiveSafety(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix='sitesee-archive-test-')
+        self.addCleanup(self.temp.cleanup)
+        self.home = pathlib.Path(self.temp.name)
+        self.uid = os.geteuid()
+        for name in tool.NAMES:
+            (self.home / name).write_text('# historical installer: ' + name + '\n')
+        self.source = self.home / 'active'
+        self.source.mkdir()
+
+    def report(self, files=(), blobs=()):
+        return tool.scan(self.home, self.uid, files, blobs, root_home=self.home)
+
+    def archive(self, report):
+        with contextlib.redirect_stdout(io.StringIO()):
+            return tool.archive(self.home, self.uid, report)
+
+    def script(self, name, body):
+        path = self.source / name
+        path.write_text(body)
+        return path
+
+    def test_exact_archive_restore_preserves_all_files_and_metadata(self):
+        before = self.report()
+        folder = self.archive(before)
+        self.assertEqual(set(p.name for p in folder.iterdir()), {*tool.NAMES, 'manifest.json'})
+        for name in tool.NAMES:
+            self.assertFalse((self.home / name).exists())
+            self.assertEqual(tool.candidate(folder / name, self.uid), before['records'][name])
+        self.assertEqual(tool.restore(self.home, self.uid, folder), 17)
+        for name in tool.NAMES:
+            self.assertEqual(tool.candidate(self.home / name, self.uid), before['records'][name])
+
+    def test_explicit_live_reference_is_preserved(self):
+        source = self.script('live.php', 'require "' + str(self.home / tool.NAMES[0]) + '";')
+        report = self.report([source])
+        self.assertNotIn(tool.NAMES[0], report['eligible'])
+        self.archive(report)
+        self.assertTrue((self.home / tool.NAMES[0]).exists())
+
+    def test_dormant_installer_chain_can_archive_but_live_chain_is_preserved(self):
+        a, b = tool.NAMES[:2]
+        (self.home / a).write_text('python3 ' + str(self.home / b))
+        dormant = self.report()
+        self.assertIn(b, dormant['eligible'])
+        live = self.report(blobs=[('crontab:root', ('python3 ' + str(self.home / a)).encode())])
+        self.assertNotIn(a, live['eligible'])
+        self.assertNotIn(b, live['eligible'])
+
+    def test_extensionless_absolute_wrapper_is_followed(self):
+        source = self.script('nightly', 'python3 ' + str(self.home / tool.NAMES[0]))
+        report = self.report(blobs=[('crontab:root', str(source).encode())])
+        self.assertNotIn(tool.NAMES[0], report['eligible'])
+
+    def test_relative_extensionless_wrapper_is_followed(self):
+        self.script('nightly', 'python3 ' + str(self.home / tool.NAMES[0]))
+        report = self.report(blobs=[('crontab:root', ('cd ' + str(self.source) + '; ./nightly').encode())])
+        self.assertNotIn(tool.NAMES[0], report['eligible'])
+
+    def test_relative_nested_wrapper_is_followed(self):
+        report = self.report(blobs=[('crontab:root', ('cd ' + str(self.home) + '; python3 active/nested.py').encode())])
+        self.assertIn(tool.NAMES[0], report['eligible'])
+        self.script('nested.py', 'python3 ' + str(self.home / tool.NAMES[0]))
+        report = self.report(blobs=[('crontab:root', ('cd ' + str(self.home) + '; python3 active/nested.py').encode())])
+        self.assertNotIn(tool.NAMES[0], report['eligible'])
+
+    def test_run_parts_extensionless_jobs_are_followed(self):
+        self.script('nightly', 'python3 ' + str(self.home / tool.NAMES[0]))
+        report = self.report(blobs=[('crontab:root', ('run-parts ' + str(self.source)).encode())])
+        self.assertNotIn(tool.NAMES[0], report['eligible'])
+
+    def test_running_relative_wrapper_uses_process_cwd_and_is_followed(self):
+        wrapper = self.script('nightly.py', 'python3 ' + str(self.home / tool.NAMES[0]))
+        proc = self.home / 'fake-proc'
+        process = proc / '123'
+        process.mkdir(parents=True)
+        (process / 'cmdline').write_bytes(b'python3\x00nightly.py\x00')
+        (process / 'cwd').symlink_to(wrapper.parent, target_is_directory=True)
+        (process / 'fd').mkdir()
+        report = tool.scan(self.home, self.uid, [], inspect_processes=True,
+                           root_home=self.home, proc_root=proc)
+        self.assertNotIn(tool.NAMES[0], report['eligible'])
+
+    def test_running_process_with_deleted_cwd_cannot_be_silently_skipped(self):
+        proc = self.home / 'fake-proc'
+        process = proc / '123'
+        process.mkdir(parents=True)
+        (process / 'cmdline').write_bytes(b'python3\x00' + os.fsencode(self.home / tool.NAMES[0]) + b'\x00')
+        (process / 'cwd').symlink_to(self.home / 'missing-dir', target_is_directory=True)
+        (process / 'fd').mkdir()
+        with self.assertRaisesRegex(RuntimeError, 'unavailable working directory'):
+            tool.scan(self.home, self.uid, [], inspect_processes=True,
+                      root_home=self.home, proc_root=proc)
+
+    def test_referenced_perl_wrapper_is_followed(self):
+        self.script('nightly.pl', 'system("python3 ' + str(self.home / tool.NAMES[0]) + '");')
+        report = self.report(blobs=[('crontab:root', ('cd ' + str(self.source) + '; perl nightly.pl').encode())])
+        self.assertNotIn(tool.NAMES[0], report['eligible'])
+
+    def test_installer_glob_is_preserved(self):
+        source = self.script('nightly', 'for f in install-re-*.py; do python3 "$f"; done')
+        report = self.report([source])
+        for name in tool.NAMES:
+            if name.startswith('install-re-'):
+                self.assertNotIn(name, report['eligible'])
+
+    def test_periodic_directory_alias_retains_extensionless_scan(self):
+        self.script('nightly', 'python3 ' + str(self.home / tool.NAMES[0]))
+        directory = self.home / 'cron'
+        directory.mkdir()
+        (directory / 'jobs').symlink_to(self.source, target_is_directory=True)
+        report = self.report(list(tool.sources(directory, all_files=True)))
+        self.assertNotIn(tool.NAMES[0], report['eligible'])
+
+    def test_alias_with_mixed_contexts_keeps_stronger_periodic_scan(self):
+        self.script('nightly', 'python3 ' + str(self.home / tool.NAMES[0]))
+        directory = self.home / 'cron'
+        directory.mkdir()
+        alias = directory / 'jobs'
+        alias.symlink_to(self.source, target_is_directory=True)
+        report = self.report(list(tool.sources(directory, all_files=True)),
+                             [('unit', ('WorkingDirectory=' + str(alias)).encode())])
+        self.assertNotIn(tool.NAMES[0], report['eligible'])
+
+    def test_extensionless_public_file_alias_preserves_candidate(self):
+        alias = self.source / 'legacy'
+        alias.symlink_to(self.home / tool.NAMES[0])
+        report = self.report(list(tool.sources(self.source)))
+        self.assertNotIn(tool.NAMES[0], report['eligible'])
+
+    def test_masked_unit_is_not_a_failure(self):
+        alias = self.source / 'masked.service'
+        alias.symlink_to('/dev/null')
+        self.assertEqual(len(self.report([alias])['eligible']), 17)
+
+    def test_symlink_candidate_is_never_archived(self):
+        path = self.home / tool.NAMES[0]
+        path.unlink()
+        path.symlink_to(self.home / tool.NAMES[1])
+        with self.assertRaises(RuntimeError):
+            self.report()
+        self.assertTrue(path.is_symlink())
+
+    def test_hardlinked_candidate_is_never_archived(self):
+        path = self.home / tool.NAMES[0]
+        os.link(path, self.home / 'second-name')
+        with self.assertRaises(RuntimeError):
+            self.report()
+        self.assertEqual(path.stat().st_nlink, 2)
+
+    def test_candidate_change_after_scan_stops_before_archive_creation(self):
+        report = self.report()
+        (self.home / tool.NAMES[0]).write_text('unknown edit')
+        with self.assertRaises(RuntimeError):
+            self.archive(report)
+        self.assertFalse((self.home / 'private-archives').exists())
+        self.assertTrue(all((self.home / name).exists() for name in tool.NAMES))
+
+    def test_restore_refuses_any_existing_original_before_moving_any_file(self):
+        folder = self.archive(self.report())
+        original = self.home / tool.NAMES[-1]
+        original.write_text('new file')
+        with self.assertRaises(RuntimeError):
+            tool.restore(self.home, self.uid, folder)
+        self.assertEqual(original.read_text(), 'new file')
+        self.assertTrue(all((folder / name).exists() for name in tool.NAMES))
+
+    def test_restore_refuses_modified_archive(self):
+        folder = self.archive(self.report())
+        (folder / tool.NAMES[0]).write_text('unknown edit')
+        with self.assertRaises(RuntimeError):
+            tool.restore(self.home, self.uid, folder)
+        self.assertFalse(any((self.home / name).exists() for name in tool.NAMES))
+
+    def test_interrupted_restore_resumes_without_overwriting(self):
+        report = self.report()
+        folder = self.archive(report)
+        tool.rename_new(folder / tool.NAMES[0], self.home / tool.NAMES[0])
+        self.assertEqual(tool.restore(self.home, self.uid, folder), 16)
+        self.assertEqual(tool.restore(self.home, self.uid, folder), 0)
+        for name in tool.NAMES:
+            self.assertEqual(tool.candidate(self.home / name, self.uid), report['records'][name])
+
+    def test_interrupted_archive_can_restore_before_move_is_journaled(self):
+        report = self.report()
+        rename = tool.rename_new
+        def interrupted(a, b):
+            rename(a, b)
+            raise RuntimeError('fixture interruption after first move')
+        with mock.patch.object(tool, 'rename_new', side_effect=interrupted), \
+             self.assertRaisesRegex(RuntimeError, 'fixture interruption'):
+            self.archive(report)
+        folder = next((self.home / 'private-archives').glob('sitesee-legacy-installers-*'))
+        self.assertEqual(tool.restore(self.home, self.uid, folder), 1)
+        for name in tool.NAMES:
+            self.assertEqual(tool.candidate(self.home / name, self.uid), report['records'][name])
+
+    def test_atomic_move_never_overwrites_destination(self):
+        a, b = self.home / tool.NAMES[0], self.home / tool.NAMES[1]
+        original_a, original_b = a.read_bytes(), b.read_bytes()
+        with self.assertRaises(OSError):
+            tool.rename_new(a, b)
+        self.assertEqual(a.read_bytes(), original_a)
+        self.assertEqual(b.read_bytes(), original_b)
+
+    def test_retry_reports_missing_files_and_does_not_create_second_archive(self):
+        self.archive(self.report())
+        report = self.report(blobs=[('cron', ('python3 ' + str(self.home / tool.NAMES[0])).encode())])
+        self.assertEqual(report['eligible'], [])
+        self.assertEqual(set(report['missing']), set(tool.NAMES))
+        self.assertIsNone(self.archive(report))
+
+    def test_check_creates_no_lock_archive_or_other_file(self):
+        before = sorted(str(p) for p in self.home.rglob('*'))
+        with mock.patch.object(tool, 'HOME', self.home), mock.patch.object(tool.os, 'geteuid', return_value=0), \
+             mock.patch.object(tool.pwd, 'getpwnam', return_value=SimpleNamespace(pw_uid=self.uid)), \
+             mock.patch.object(tool, 'host_scan', return_value=self.report()), \
+             mock.patch('sys.argv', ['archive-legacy-home-files.py', '--check']), \
+             contextlib.redirect_stdout(io.StringIO()):
+            tool.main()
+        self.assertEqual(sorted(str(p) for p in self.home.rglob('*')), before)
+
+    def test_archive_parent_is_synced_before_first_move(self):
+        events = []
+        sync, rename = tool.sync_directory, tool.rename_new
+        def synced(path):
+            events.append(('sync', path))
+            sync(path)
+        def renamed(a, b):
+            events.append(('rename', a))
+            rename(a, b)
+        with mock.patch.object(tool, 'sync_directory', side_effect=synced), \
+             mock.patch.object(tool, 'rename_new', side_effect=renamed):
+            self.archive(self.report())
+        first = next(i for i, event in enumerate(events) if event[0] == 'rename')
+        self.assertIn(('sync', self.home), events[:first])
+        self.assertIn(('sync', self.home / 'private-archives'), events[:first])
+
+
+if __name__ == '__main__':
+    unittest.main(verbosity=2)
