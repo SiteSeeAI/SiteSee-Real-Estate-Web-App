@@ -6,11 +6,13 @@ Each iteration records its ID, purpose, status, source/release, changes, validat
 
 ## DEP-002 — preserve unrelated dangling compiler aliases during cleanup — 2026-10-14
 
-Status: implemented, locally tested and independently reviewed; verified publication and host retry are pending. Stripe remains TEST. No application release payload or archive/restore policy changed.
+Status: implemented, locally tested, independently reviewed and published with verified downloads; host retry is pending. Stripe remains TEST. No application release payload or archive/restore policy changed.
 
 The operator's checksum-verified read-only diagnostic identifies the stopped scan at strict source-alias resolution, with missing target `/usr/lib/gcc/i686-redhat-linux`. This establishes a compiler alias failure, not a ZIP move failure. The replacement records and leaves a dangling compiler alias alone only when both its source namespace and resolved missing target are within `/usr/lib/gcc` or `/usr/lib64/gcc`. An application or scheduler alias pointing into that namespace still stops, as do other missing dependencies and unsafe candidate paths. Source/target compiler-link metadata is retained in the report and private archive journal. Future filesystem stops include errno and filename without configuration contents.
 
 Validation: all 31 focused checks pass locally and in the independent review. The five added regressions exercise actual archive/restore while preserving the dangling compiler link and retain refusal for missing application aliases, scheduler aliases, compiler aliases to application targets and compiler-prefix lookalikes. Independent default-namespace probes and an AST comparison verify the namespace boundary and unchanged original preservation primitives. All earlier dependency, metadata, interruption and destination-preservation checks remain intact. Candidate list remains the same seventeen historical installers. Current helper SHA256: `68ff0308952d6e12d2746ca783b8b8e30d7939066f06d4711e48510f102174ed`. Host completion remains unverified.
+
+Publication: [home-cleanup-3b790b9ea7a7](https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/releases/tag/home-cleanup-3b790b9ea7a7), source `3b790b9ea7a7d3cb9c4d52c0bd8639e7f09aee63`, run `38626391845`. Both Python 3.9 and 3.12 safety jobs and downloads pass every step: 31 tests each unprivileged and as root, 124 executions with no skipped cases. All three assets were independently checked against exact Git source by full bytes, SHA256, GitHub digest, size and attachment headers. The replacement operator command passes shell syntax checking. Frozen application/public/private and approved application installer payloads remain unchanged. This verifies the correction and downloads, not host archive completion.
 
 ## DEP-001 — home-directory cleanup and versioned deployment preparation — 2026-10-13
 
