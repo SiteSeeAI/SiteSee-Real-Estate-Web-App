@@ -66,6 +66,7 @@ SYSTEMD_USER_RUNTIME = pathlib.Path('/run/user')
 STORAGE_ROOTS = (pathlib.Path('/usr'), pathlib.Path('/var'))
 MOUNTINFO = pathlib.Path('/proc/self/mountinfo')
 SWAPS = pathlib.Path('/proc/swaps')
+VIRTUAL_ROOTS = tuple(map(pathlib.Path, ('/dev', '/proc', '/sys')))
 DEVICE_ROOT = pathlib.Path('/dev')
 BLOCK_SYSFS = pathlib.Path('/sys/dev/block')
 LOOP_STATUS = struct.Struct('=5Q4I64s64s32s2Q')  # Linux loop_info64: 232 bytes.
@@ -250,12 +251,30 @@ def package_launcher(path, fd, before):
     # Its actual member offsets distinguish a real ZIP start from magic bytes
     # merely mentioned in shell comments. Inspect the entire bounded prefix too.
     with os.fdopen(os.dup(fd), 'rb') as stream:
-        end = zipfile._EndRecData(stream)
+        class MetadataReader:
+            count = 0
+            def seek(self, *args):
+                return stream.seek(*args)
+            def tell(self):
+                return stream.tell()
+            def read(self, size=-1):
+                if size < 0:  # Python 3.9 uses no-argument reads for ZIP comments.
+                    size = max(0, before.st_size - stream.tell())
+                need(size <= MAX_FILE and self.count + size <= 2 * MAX_FILE,
+                     'Archive metadata read limit; source preserved: ' + str(path))
+                data = stream.read(size)
+                self.count += len(data)
+                return data
+        bounded = MetadataReader()
+        end = zipfile._EndRecData(bounded)
         if not end or not 0 < end[zipfile._ECD_ENTRIES_TOTAL] <= 50000 or not 0 < end[zipfile._ECD_SIZE] <= MAX_FILE:
             return None
         try:
-            with zipfile.ZipFile(stream) as package:
-                boundary = min(info.header_offset for info in package.infolist())
+            with zipfile.ZipFile(bounded) as package:
+                members = package.infolist()
+                if not 0 < len(members) <= 50000:
+                    return None
+                boundary = min(info.header_offset for info in members)
         except zipfile.BadZipFile:
             return None
     if not 0 < boundary <= len(prefix) - 4 or prefix[boundary:boundary + 4] != b'PK\x03\x04' or b'\0' in prefix[:boundary]:
@@ -556,8 +575,10 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
         queue.append(home / name)  # A live installer can invoke another installer.
     def followable(path):
         return (path.suffix.lower() not in NON_CODE and
-                not str(path).startswith(('/dev/', '/proc/', '/sys/')) and
+                not virtual(path) and
                 not packaged_archive(path))
+    def virtual(path):
+        return any(path == root or root in path.parents for root in VIRTUAL_ROOTS)
     def inspect(label, data, extra_contexts=()):
         nonlocal budget
         budget += len(data)
@@ -569,17 +590,22 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
                 if (b'*' in pattern or b'?' in pattern) and fnmatch.fnmatchcase(name, os.fsdecode(pattern)):
                     mark(name, label)
         # Follow literal local script/config paths in scheduler and service wrappers.
-        contexts = {p.resolve(strict=True) for p in [home, *extra_contexts]}
+        contexts = {p.resolve(strict=True) for p in [home, *extra_contexts] if not virtual(p)}
         if label.startswith('/'):
             contexts.add(pathlib.Path(label).parent.resolve(strict=True))
         elif label == 'crontab:root':
             contexts.add(root_home.resolve(strict=True))
+        contexts = {p for p in contexts if not virtual(p)}
         def reference(path):
             # A directory is a resolution context, whether spelled directly or
             # through an alias. Only declared source roots and run-parts calls
             # authorize recursive source discovery; a pathname mention does not.
+            if virtual(path):
+                return
             if literal_probe(path, 'is_dir'):
-                contexts.add(path.resolve(strict=True))
+                resolved = path.resolve(strict=True)
+                if not virtual(resolved):
+                    contexts.add(resolved)
             elif followable(path) and (literal_probe(path, 'is_file') or literal_probe(path, 'is_symlink')):
                 queue.append(path)
         for name, path in home_entries.items():

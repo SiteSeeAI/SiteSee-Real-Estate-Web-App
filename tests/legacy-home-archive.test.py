@@ -386,6 +386,7 @@ class ArchiveSafety(unittest.TestCase):
         path = self.source / name
         path.write_bytes(prefix)
         with zipfile.ZipFile(path, 'a') as package:
+            package.comment = b'bounded package metadata comment'
             with package.open('payload.bin', 'w') as payload:
                 for _ in range((tool.MAX_FILE // 65536) + 1):
                     payload.write(bytes(65536))
@@ -440,6 +441,41 @@ class ArchiveSafety(unittest.TestCase):
         with mock.patch.object(tool.zipfile, 'ZipFile', side_effect=replaced):
             with self.assertRaisesRegex(RuntimeError, 'Changing packaged launcher'):
                 self.report([caller])
+
+    def test_packaged_launcher_metadata_reads_stay_bounded_after_preflight(self):
+        package = self.self_executing_package(b'#!/fixture-shell\nexec java -jar "$0"\n')
+        def oversized_metadata(stream):
+            stream.read(tool.MAX_FILE + 1)
+        caller = self.script('java.sh', str(package))
+        with mock.patch.object(tool.zipfile, 'ZipFile', side_effect=oversized_metadata):
+            with self.assertRaisesRegex(RuntimeError, 'Archive metadata read limit'):
+                self.report([caller])
+
+    def test_virtual_directories_and_directory_aliases_do_not_expand_contexts(self):
+        virtual = self.home / 'kernel-data'
+        virtual.mkdir()
+        (virtual / 'live-looking.py').write_text('python3 ' + str(self.home / tool.NAMES[0]))
+        (virtual / 'volatile').symlink_to(virtual / 'missing-kernel-object')
+        alias = self.source / 'kernel-link'
+        alias.symlink_to(virtual, target_is_directory=True)
+        with mock.patch.object(tool, 'VIRTUAL_ROOTS', (virtual,)):
+            for directory in [virtual, alias]:
+                caller = self.script('context.conf', 'StateDirectory=' + str(directory))
+                with mock.patch.object(tool, 'read_regular', wraps=tool.read_regular) as reads:
+                    report = self.report([caller])
+                self.assertEqual(len(report['eligible']), 17)
+                self.assertFalse(any(virtual in c.args[0].parents for c in reads.call_args_list))
+
+    def test_declared_virtual_sources_and_explicit_file_aliases_still_preserve_live_code(self):
+        virtual = self.home / 'kernel-data'
+        virtual.mkdir()
+        live = virtual / 'live.py'
+        live.write_text('python3 ' + str(self.home / tool.NAMES[0]))
+        alias = self.source / 'declared.py'
+        alias.symlink_to(live)
+        with mock.patch.object(tool, 'VIRTUAL_ROOTS', (virtual,)):
+            for seeds in [[live], [alias]]:
+                self.assertNotIn(tool.NAMES[0], self.report(seeds)['eligible'])
 
     def storage_image(self, path=None):
         path = path or self.source / 'mounted-store'
