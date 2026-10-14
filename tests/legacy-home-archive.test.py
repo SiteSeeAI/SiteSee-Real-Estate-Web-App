@@ -1347,6 +1347,173 @@ print("EXISTING ALARM PRESERVED")
         for name in tool.NAMES[:2]:
             self.assertNotIn(name, report['eligible'])
 
+    def unit_namespace(self):
+        base = self.home / 'unit-system'
+        roots = {base / p: (self.uid, 'system') for p in (
+            'etc/systemd/system', 'usr/lib/systemd/system', 'run/systemd/generator')}
+        for root in roots:
+            root.mkdir(parents=True)
+        return tuple(roots), mock.patch.object(tool, 'unit_directories', return_value=roots)
+
+    def test_missing_unit_links_preserve_actual_aliases_across_exact_archive_restore(self):
+        (config, packaged, generated), namespace = self.unit_namespace()
+        aliases = []
+        for parent, name, target in [
+                (config / 'multi-user.target.wants', 'apport.service', packaged / 'apport.service'),
+                (generated / 'multi-user.target.wants', 'systemd-networkd.service', generated / 'systemd-networkd.service')]:
+            parent.mkdir()
+            alias = parent / name
+            alias.symlink_to(target)
+            aliases.append(alias)
+        before = {p: (p.readlink(), tool.fingerprint(p.lstat())) for p in aliases}
+        with namespace:
+            report = self.report([(p, True) for p in aliases])
+        self.assertEqual(len(report['eligible']), 17)
+        self.assertEqual(set(report['preserved_unit_links']), set(map(str, aliases)))
+        folder = self.archive(report)
+        self.assertEqual(json.loads((folder / 'manifest.json').read_text())['scan']['preserved_unit_links'], report['preserved_unit_links'])
+        self.assertEqual(tool.restore(self.home, self.uid, folder), 17)
+        self.assertEqual(before, {p: (p.readlink(), tool.fingerprint(p.lstat())) for p in aliases})
+
+    def test_unit_fallbacks_templates_and_all_dropins_retain_live_installers(self):
+        (config, packaged, generated), namespace = self.unit_namespace()
+        dependency = generated / 'multi-user.target.wants'
+        dependency.mkdir()
+        alias = dependency / 'shoot@agent.service'
+        alias.symlink_to(generated / 'shoot@.service')
+        for index, relative in enumerate(['shoot@agent.service', 'shoot@.service',
+                                          'shoot@agent.service.d/override.conf',
+                                          'service.d/global.conf', 'shoot-.service.d/prefix.conf']):
+            path = packaged / relative
+            path.parent.mkdir(exist_ok=True)
+            path.write_text('ExecStart=python3 ' + str(self.home / tool.NAMES[index]))
+        with namespace:
+            report = self.report([(alias, True)])
+        self.assertEqual(len(report['eligible']), 12)
+        for name in tool.NAMES[:5]:
+            self.assertNotIn(name, report['eligible'])
+        folder = self.archive(report)
+        self.assertEqual(tool.restore(self.home, self.uid, folder), 12)
+
+    def test_unit_alias_shapes_and_enablement_template_forms(self):
+        (config, packaged, generated), namespace = self.unit_namespace()
+        pairs = [('alias.service', 'real.service'), ('alias@.service', 'real@.service'),
+                 ('alias@agent.service', 'real@agent.service'),
+                 ('one.target.wants/shoot@agent.service', 'shoot@.service'),
+                 ('one.target.requires/shoot.service', 'shoot.service'),
+                 ('one.target.upholds/keep.service', 'keep.service')]
+        aliases = []
+        for name, target in pairs:
+            alias = config / name
+            alias.parent.mkdir(exist_ok=True)
+            alias.symlink_to(packaged / target)
+            aliases.append(alias)
+        with namespace:
+            report = self.report([(p, True) for p in aliases])
+        self.assertEqual(set(report['preserved_unit_links']), set(map(str, aliases)))
+        self.assertEqual(len(report['eligible']), 17)
+
+    def test_unit_alias_exception_rejects_app_cron_nested_and_lookalike_roles(self):
+        (config, packaged, generated), namespace = self.unit_namespace()
+        with namespace:
+            for parent in [self.source, self.home / 'cron.d', config / 'other/nested',
+                           config.parent / 'system-old', config / 'not-a-unit.wants']:
+                parent.mkdir(parents=True, exist_ok=True)
+                alias = parent / 'worker.service'
+                alias.symlink_to(packaged / 'worker.service')
+                with self.subTest(parent=parent), self.assertRaisesRegex(RuntimeError, 'dependency check incomplete'):
+                    self.report([(alias, True)])
+                alias.unlink()
+
+    def test_unit_alias_exception_rejects_external_targets_types_and_invalid_instances(self):
+        (config, packaged, generated), namespace = self.unit_namespace()
+        pairs = [('one.service', self.source / 'one.service'),
+                 ('one.service', packaged / 'one.timer'),
+                 ('one.service', packaged / 'one@.service'),
+                 ('one@agent.service', packaged / 'two@other.service'),
+                 ('one@agent.service', packaged / 'one@.service'),
+                 ('one@@agent.service', packaged / 'one@@agent.service'),
+                 ('multi-user.target.wants/one@agent.service', packaged / 'other@.service'),
+                 ('one.service', packaged / (tool.NAMES[0] + '.service'))]
+        with namespace:
+            for name, target in pairs:
+                alias = config / name
+                alias.parent.mkdir(exist_ok=True)
+                alias.symlink_to(target)
+                with self.subTest(name=name, target=target), self.assertRaisesRegex(RuntimeError, 'dependency check incomplete'):
+                    self.report([(alias, True)])
+                alias.unlink()
+        self.assertFalse((self.home / 'private-archives').exists())
+
+    def test_unit_alias_exception_rejects_unprotected_unit_and_enablement_directories(self):
+        (config, packaged, generated), namespace = self.unit_namespace()
+        parent = config / 'multi-user.target.wants'
+        parent.mkdir()
+        alias = parent / 'worker.service'
+        alias.symlink_to(packaged / 'worker.service')
+        with namespace:
+            for directory in [config, parent, packaged]:
+                directory.chmod(0o777)
+                try:
+                    with self.subTest(directory=directory), self.assertRaisesRegex(RuntimeError, 'dependency check incomplete'):
+                        self.report([(alias, True)])
+                finally:
+                    directory.chmod(0o755)
+        roots = {p: (self.uid + 1, 'system') for p in (config, packaged, generated)}
+        with mock.patch.object(tool, 'unit_directories', return_value=roots), \
+             self.assertRaisesRegex(RuntimeError, 'dependency check incomplete'):
+            self.report([(alias, True)])
+
+    def test_present_unit_alias_and_fallback_source_alias_preserve_real_installer(self):
+        (config, packaged, generated), namespace = self.unit_namespace()
+        alias = config / 'worker.service'
+        target = packaged / 'worker.service'
+        alias.symlink_to(target)
+        target.symlink_to(self.home / tool.NAMES[0])
+        with namespace:
+            report = self.report([(alias, True)])
+        self.assertNotIn(tool.NAMES[0], report['eligible'])
+        self.assertEqual(report['preserved_unit_links'], {})
+
+    def test_missing_unit_alias_cannot_hide_unresolved_fallback_source(self):
+        (config, packaged, generated), namespace = self.unit_namespace()
+        alias = config / 'worker.service'
+        alias.symlink_to(generated / 'worker.service')
+        fallback = packaged / 'worker.service'
+        fallback.symlink_to(self.source / 'missing-script')
+        with namespace, self.assertRaisesRegex(RuntimeError, 'dependency check incomplete') as caught:
+            self.report([(alias, True)])
+        self.assertIn(str(fallback), str(caught.exception))
+        self.assertTrue(all((self.home / name).exists() for name in tool.NAMES))
+
+    def test_unit_target_recreated_during_missing_resolution_is_not_skipped(self):
+        (config, packaged, generated), namespace = self.unit_namespace()
+        alias, target = config / 'worker.service', packaged / 'worker.service'
+        alias.symlink_to(target)
+        original_resolve = pathlib.Path.resolve
+        strict_checks = []
+        def restoring(path, strict=False):
+            if path == alias and strict:
+                strict_checks.append(path)
+            if path == alias and not strict and strict_checks and not target.exists():
+                target.write_text('ExecStart=python3 ' + str(self.home / tool.NAMES[0]))
+            return original_resolve(path, strict=strict)
+        roots = {p: (self.uid, 'system') for p in (config, packaged, generated)}
+        with mock.patch.object(pathlib.Path, 'resolve', restoring):
+            self.assertIsNone(tool.missing_unit_alias(alias, target, roots))
+        with namespace:
+            report = self.report([(alias, True)])
+        self.assertNotIn(tool.NAMES[0], report['eligible'])
+
+    def test_system_and_user_unit_link_catalogues_cannot_be_mixed(self):
+        (config, packaged, generated), namespace = self.unit_namespace()
+        alias, target = config / 'worker.service', packaged / 'worker.service'
+        alias.symlink_to(target)
+        roots = {config: (self.uid, 'system'), packaged: (self.uid, 'user')}
+        with mock.patch.object(tool, 'unit_directories', return_value=roots), \
+             self.assertRaisesRegex(RuntimeError, 'dependency check incomplete'):
+            self.report([(alias, True)])
+
     def system_commands(self):
         system = self.home / 'package-system'
         command = system / 'usr' / 'sbin'

@@ -42,9 +42,7 @@ with tempfile.TemporaryDirectory(prefix='sitesee-runtime-ci-', dir='/var/lib') a
         def inventory(*_):
             paths = [wrapper]
             for name in ['/etc/cron.d', '/etc/cron.hourly', '/etc/cron.daily', '/etc/cron.weekly',
-                         '/etc/cron.monthly', '/etc/systemd/system', '/usr/lib/systemd/system',
-                         '/run/systemd/system', '/run/systemd/transient', '/run/systemd/generator',
-                         '/run/systemd/generator.early', '/run/systemd/generator.late']:
+                         '/etc/cron.monthly', *map(str, tool.unit_directories(home, 0))]:
                 directory = pathlib.Path(name)
                 if directory.is_dir():
                     roots.append(name)

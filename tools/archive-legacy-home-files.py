@@ -150,6 +150,86 @@ def missing_system_command(source, target):
     return False  # A newly restored command must be inspected, never skipped.
 
 
+def unit_directories(home, uid, root_home=pathlib.Path('/root')):
+    # This catalogue is shared with host inventory. Only these complete unit
+    # trees can establish name-based fallback coverage for a dangling unit link.
+    roots = {pathlib.Path(p): (SYSTEM_UID, 'system') for p in (
+        '/etc/systemd/system', '/usr/lib/systemd/system', '/run/systemd/system',
+        '/usr/local/lib/systemd/system', '/run/systemd/transient',
+        '/run/systemd/generator', '/run/systemd/generator.early', '/run/systemd/generator.late')}
+    roots.update({pathlib.Path(p): (SYSTEM_UID, 'user') for p in (
+        '/usr/local/lib/systemd/user', '/run/systemd/user', '/etc/systemd/user', '/usr/lib/systemd/user')})
+    roots[home / '.config/systemd/user'] = (uid, 'user')
+    roots[root_home / '.config/systemd/user'] = (SYSTEM_UID, 'user')
+    for user_id in {SYSTEM_UID, uid}:
+        for name in ('user', 'transient', 'generator', 'generator.early', 'generator.late'):
+            roots[pathlib.Path('/run/user') / str(user_id) / 'systemd' / name] = (user_id, 'user')
+    return roots
+
+
+def missing_unit_alias(source, target, roots):
+    # systemd aliases use unit names/search paths, not the existence of the
+    # symlink target. Full same-manager unit-tree inventory below includes
+    # name/template fallbacks and all drop-ins. Linked files outside that
+    # catalogue remain unresolved source dependencies, never this class.
+    def unit(name):
+        if not re.fullmatch(UNIT_NAME, name):
+            return None
+        stem, kind = name.rsplit('.', 1)
+        if stem.count('@') > 1:
+            return None
+        prefix, separator, instance = stem.partition('@')
+        return (kind, prefix, instance if separator else None) if prefix else None
+    if any(name in str(source) or name in str(target) for name in NAMES):
+        return None
+    match = None
+    for root, (owner, manager) in roots.items():
+        try:
+            parts = source.relative_to(root).parts
+        except ValueError:
+            continue
+        if len(parts) == 1 or (len(parts) == 2 and any(
+                parts[0].endswith(suffix) and unit(parts[0][:-len(suffix)])
+                for suffix in ('.wants', '.requires', '.upholds'))):
+            match = (root, owner, manager, len(parts) == 2)
+            break
+    if match is None or target.parent not in roots:
+        return None
+    root, owner, manager, dependency = match
+    target_owner, target_manager = roots[target.parent]
+    left, right = unit(source.name), unit(target.name)
+    if not left or not right or left[0] != right[0] or manager != target_manager:
+        return None
+    # Plain/template aliases keep their shape; instantiated aliases keep the
+    # same instance. An enablement child may point to its matching template.
+    if left[2] != right[2] and not (
+            dependency and left[2] and right[2] == '' and left[1] == right[1]):
+        return None
+    for directory, expected in ((root, owner), (source.parent, owner), (target.parent, target_owner)):
+        if not directory.is_dir():
+            return None
+        canonical(directory)
+        metadata = directory.stat()
+        if metadata.st_uid != expected or metadata.st_mode & 0o022:
+            return None
+    before = source.lstat()
+    if not stat.S_ISLNK(before.st_mode) or before.st_uid != owner:
+        return None
+    try:
+        source.resolve(strict=True)
+    except FileNotFoundError:
+        if source.resolve(strict=False) != target:
+            return None
+        after = source.lstat()
+        if fingerprint(before) != fingerprint(after) or before.st_ctime_ns != after.st_ctime_ns:
+            return None
+        try:
+            source.resolve(strict=True)
+        except FileNotFoundError:
+            return {'type': 'unit-name-alias', 'target': str(target), 'manager': manager}
+    return None  # A recreated target must receive ordinary strict source checks.
+
+
 def read_regular(path):
     fd = os.open(str(path), os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK |
                  getattr(os, 'O_NOATIME', 0))
@@ -572,11 +652,14 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
     seen, seen_directories, checked, budget = set(), set(), 0, 0
     preserved_compiler_links = {}
     preserved_system_links = {}
+    preserved_unit_links = {}
     preserved_runtime_metadata = {}
     preserved_storage = {}
     inspected_package_launchers = {}
     preserved_ipc_sockets = {}
     unresolved_aliases = {}
+    unit_roots = unit_directories(home, uid, root_home)
+    inventoried_units = set()
     queue = list(source_paths)
     required_sources = {p.parent.resolve(strict=True) / p.name
                         for item in queue for p in [item[0] if isinstance(item, tuple) else item]}
@@ -744,6 +827,18 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
                     preserved_system_links[str(path)] = str(target)
                     checked += 1
                     continue
+                unit_alias = missing_unit_alias(path, target, unit_roots)
+                if unit_alias is not None:
+                    # Inventory every admitted tree, including all alias-name,
+                    # instance/template and prefix drop-ins; not just the broken
+                    # target basename. Preserve all source roles and errors.
+                    for root, (_, manager) in unit_roots.items():
+                        if manager == unit_alias['manager'] and root not in inventoried_units:
+                            enqueue_sources(root, True)
+                            inventoried_units.add(root)
+                    preserved_unit_links[str(path)] = unit_alias
+                    checked += 1
+                    continue
                 unresolved_aliases[str(path)] = str(target)
                 checked += 1
                 continue  # Finish checking other reachable sources before refusing.
@@ -812,6 +907,7 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
     return {'records': records, 'missing': missing, 'sources_checked': checked,
             'preserved_compiler_links': dict(sorted(preserved_compiler_links.items())),
             'preserved_system_links': dict(sorted(preserved_system_links.items())),
+            'preserved_unit_links': dict(sorted(preserved_unit_links.items())),
             'preserved_runtime_metadata': dict(sorted(preserved_runtime_metadata.items())),
             'preserved_storage': dict(sorted(preserved_storage.items())),
             'inspected_package_launchers': dict(sorted(inspected_package_launchers.items())),
@@ -831,20 +927,13 @@ def host_scan(home, uid):
     paths += list(sources(home / 'ctc-publishing', skip=('.git', 'node_modules', 'data', 'backups')))
     for directory in ['/etc/cron.d', '/etc/cron.hourly', '/etc/cron.daily', '/etc/cron.weekly',
                       '/etc/cron.monthly', '/var/spool/cron', '/etc/apache2/conf',
-                      '/etc/apache2/conf.d', '/var/cpanel/userdata/sitesee',
-                      '/etc/systemd/system', '/usr/lib/systemd/system', '/run/systemd/system']:
+                      '/etc/apache2/conf.d', '/var/cpanel/userdata/sitesee']:
         # Unit enablement aliases point to files scanned in their unit directory.
         paths += list(sources(pathlib.Path(directory), all_files=True))
-    for directory in ['/usr/local/lib/systemd/system', '/usr/local/lib/systemd/user',
-                      '/run/systemd/transient', '/run/systemd/generator',
-                      '/run/systemd/generator.early', '/run/systemd/generator.late',
-                      '/run/systemd/user', '/etc/systemd/user', '/usr/lib/systemd/user',
-                      '/var/spool/at', '/var/spool/atjobs',
-                      str(home / '.config/systemd/user'), '/root/.config/systemd/user']:
+    for directory in ['/var/spool/at', '/var/spool/atjobs']:
         paths += list(sources(pathlib.Path(directory), all_files=True))
-    for user_id in {0, uid}:
-        for name in ['user', 'transient', 'generator', 'generator.early', 'generator.late']:
-            paths += list(sources(pathlib.Path('/run/user') / str(user_id) / 'systemd' / name, all_files=True))
+    for directory in unit_directories(home, uid):
+        paths += list(sources(directory, all_files=True))
     for filename in ['/etc/crontab', '/etc/anacrontab']:
         path = pathlib.Path(filename)
         if path.exists():
@@ -1042,6 +1131,7 @@ def main():
                           'referenced_preserved': report['referenced'], 'already_absent': report['missing'],
                           'preserved_compiler_links': report['preserved_compiler_links'],
                           'preserved_system_links': report['preserved_system_links'],
+                          'preserved_unit_links': report['preserved_unit_links'],
                           'preserved_runtime_metadata': report['preserved_runtime_metadata'],
                           'preserved_storage': report['preserved_storage'],
                           'inspected_package_launchers': report['inspected_package_launchers'],
