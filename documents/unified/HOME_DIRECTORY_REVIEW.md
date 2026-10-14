@@ -1,5 +1,8 @@
 # Home-directory cleanup and release layout
 
+
+Current status — October 14, 2026: **cleanup is paused. Do not rerun earlier cleanup commands. CTC Publishing is outside this task, including read-only file inspection.** The operator reported the same ffprobe refusal after the latest command. No host archive success is established. The [DEP-011 assessment](HOME_CLEANUP_ASSESSMENT_2026-10-14.md) documents the proved source-level failure paths, thirty-six independent synthetic scenarios, the unknown exact host predicate and requirements for a later SiteSee-only implementation. No replacement helper is issued and launch preparation continues separately. Entries below retain historical release evidence; they are not retry instructions.
+
 Assessment: 2026-10-13, America/Chicago. The operator supplied a top-level `ls -la /home/sitesee` listing. This is a preparation checkpoint, not evidence of an archive, deletion or migration. Stripe remains TEST.
 
 ## CTC native-media correction — 2026-10-14

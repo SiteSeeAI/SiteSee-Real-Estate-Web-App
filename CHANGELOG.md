@@ -4,6 +4,18 @@ This is the iteration record from October 9, 2026 onward. Dates use America/Chic
 
 Each iteration records its ID, purpose, status, source/release, changes, validation and user acceptance. Keep planned work separate from implemented, installed and accepted work. Add an entry for each subsequent implementation/release and update its acceptance after user review. Documentation-only commits do not change the installed application.
 
+## DEP-011 — assess repeated cleanup refusal; pause cleanup and exclude CTC — 2026-10-14
+
+Status: investigation and independent synthetic review completed; cleanup paused. No helper change, replacement installer, deployment, host command or server inspection. CTC Publishing is outside the task, including read-only access. The application and Stripe TEST mode remain unchanged. Launch preparation proceeds separately; this entry is not LIVE approval.
+
+The operator reports the same `Custom binary wrapper requires review: /home/sitesee/ctc-publishing/server/media-bin/ffprobe` after the DEP-010 command and instructs no more cleanup retries, an assessment for the morning, and absolutely no CTC work. The latest pasted error does not establish that run’s helper checksum/version or rejecting predicate. The last issued helper SHA256 remains `8f2edc2e6634d6e3e72d7241177d7b2c147622726d57057423f9f91bfd008b40`.
+
+Source review confirms the broad scan explicitly inventories CTC and can reach it through references, aliases and processes. The media exception is bypassed for strong source roles; ordinary references can instead fail ownership/mode/link/parent/size/ELF checks. Both routes collapse into the same generic error. A pathname accepted first can be rejected after later source-role promotion. The exact host path through those conditions remains unknown; this is not evidence of a CTC defect.
+
+Independent review completed 36 synthetic-only scenarios: three valid controls and thirty-three expected reproductions of the same generic stop. All seventeen fixture originals remain exact and no archive was created. No CTC source/artifact or host path was inspected and no native code ran. Existing CI used fresh mode-0755 artifacts and substituted inventory; its passing results did not establish host graph/metadata equivalence. No application tests were rerun for this documentation-only assessment.
+
+Saved [assessment and future fix requirements](documents/unified/HOME_CLEANUP_ASSESSMENT_2026-10-14.md) and [independent matrix](documents/unified/HOME_CLEANUP_ASSESSMENT_RESULTS_2026-10-14.json), SHA256 `6cf6bcae4e72af390e12867e526b782920e07420dd58c60a4a4a4311090d9427`. Future work requires SiteSee-only inventory and a no-access boundary before discovery/probes/alias traversal/process-CWD inspection, with incomplete results preserving originals rather than silently skipping dependencies and reporting PASS. Structured provenance/rejection categories and synthetic tests of actual inventory orchestration are required. This specification is not yet implemented. Prior cleanup commands must not be rerun; preserve originals, attempts and journals. Actual host archiving remains unverified.
+
 ## DEP-010 — preserve CTC’s bundled native media tools during cleanup — 2026-10-14
 
 Status: implemented, independently reviewed, passed exact-source CI including real CTC media integration, and published with verified downloads. Actual host archiving remains pending. Same seventeen historical installer candidates. Application files, CTC files, operational data, services, schedules and Stripe TEST settings remain unchanged.

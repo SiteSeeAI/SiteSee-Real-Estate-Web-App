@@ -1,0 +1,304 @@
+{
+  "review": "DEP-011 independent synthetic classifier matrix",
+  "source_commit": "16f68a8003e67abb642abc341f979fc41b702a67",
+  "helper_sha256": "8f2edc2e6634d6e3e72d7241177d7b2c147622726d57057423f9f91bfd008b40",
+  "python_version": "3.12.14",
+  "fixture": "Synthetic 512-byte ELF headers/program tables only, disposable owned /tmp trees; no existing CTC source, artifacts or host paths inspected; native code never executed",
+  "host_limitations": [
+    "Latest reported generic error does not establish exact executed helper SHA/version.",
+    "No actual host source role, metadata, ELF predicate, graph or classifier-call count was observed.",
+    "These are controlled reproductions, not evidence of the exact host cause."
+  ],
+  "scenario_count": 36,
+  "all_passed": true,
+  "results": [
+    {
+      "scenario": "weak_valid64_little",
+      "outcome": "synthetic_control_pass",
+      "eligible": 17,
+      "bundled_media_calls": 1,
+      "all17_originals_exact": true,
+      "archive_created": false
+    },
+    {
+      "scenario": "weak_valid32_little",
+      "outcome": "synthetic_control_pass",
+      "eligible": 17,
+      "bundled_media_calls": 1,
+      "all17_originals_exact": true,
+      "archive_created": false
+    },
+    {
+      "scenario": "weak_valid64_big",
+      "outcome": "synthetic_control_pass",
+      "eligible": 17,
+      "bundled_media_calls": 1,
+      "all17_originals_exact": true,
+      "archive_created": false
+    },
+    {
+      "scenario": "declared_regular",
+      "outcome": "same_generic_custom_binary_stop",
+      "eligible": null,
+      "bundled_media_calls": 0,
+      "all17_originals_exact": true,
+      "archive_created": false
+    },
+    {
+      "scenario": "declared_all_files",
+      "outcome": "same_generic_custom_binary_stop",
+      "eligible": null,
+      "bundled_media_calls": 0,
+      "all17_originals_exact": true,
+      "archive_created": false
+    },
+    {
+      "scenario": "file_alias",
+      "outcome": "same_generic_custom_binary_stop",
+      "eligible": null,
+      "bundled_media_calls": 0,
+      "all17_originals_exact": true,
+      "archive_created": false
+    },
+    {
+      "scenario": "declared_directory_alias",
+      "outcome": "same_generic_custom_binary_stop",
+      "eligible": null,
+      "bundled_media_calls": 0,
+      "all17_originals_exact": true,
+      "archive_created": false
+    },
+    {
+      "scenario": "run_parts_promotion",
+      "outcome": "same_generic_custom_binary_stop",
+      "eligible": null,
+      "bundled_media_calls": 0,
+      "all17_originals_exact": true,
+      "archive_created": false
+    },
+    {
+      "scenario": "weak_then_promoted",
+      "outcome": "same_generic_custom_binary_stop",
+      "eligible": null,
+      "bundled_media_calls": 1,
+      "all17_originals_exact": true,
+      "archive_created": false
+    },
+    {
+      "scenario": "nonexec_mode",
+      "outcome": "same_generic_custom_binary_stop",
+      "eligible": null,
+      "bundled_media_calls": 1,
+      "all17_originals_exact": true,
+      "archive_created": false
+    },
+    {
+      "scenario": "writable_mode",
+      "outcome": "same_generic_custom_binary_stop",
+      "eligible": null,
+      "bundled_media_calls": 1,
+      "all17_originals_exact": true,
+      "archive_created": false
+    },
+    {
+      "scenario": "setuid_mode",
+      "outcome": "same_generic_custom_binary_stop",
+      "eligible": null,
+      "bundled_media_calls": 1,
+      "all17_originals_exact": true,
+      "archive_created": false
+    },
+    {
+      "scenario": "hardlink",
+      "outcome": "same_generic_custom_binary_stop",
+      "eligible": null,
+      "bundled_media_calls": 1,
+      "all17_originals_exact": true,
+      "archive_created": false
+    },
+    {
+      "scenario": "writable_parent",
+      "outcome": "same_generic_custom_binary_stop",
+      "eligible": null,
+      "bundled_media_calls": 1,
+      "all17_originals_exact": true,
+      "archive_created": false
+    },
+    {
+      "scenario": "wrong_file_owner",
+      "outcome": "same_generic_custom_binary_stop",
+      "eligible": null,
+      "bundled_media_calls": 1,
+      "all17_originals_exact": true,
+      "archive_created": false
+    },
+    {
+      "scenario": "wrong_parent_owner",
+      "outcome": "same_generic_custom_binary_stop",
+      "eligible": null,
+      "bundled_media_calls": 1,
+      "all17_originals_exact": true,
+      "archive_created": false
+    },
+    {
+      "scenario": "undersize",
+      "outcome": "same_generic_custom_binary_stop",
+      "eligible": null,
+      "bundled_media_calls": 1,
+      "all17_originals_exact": true,
+      "archive_created": false
+    },
+    {
+      "scenario": "oversize",
+      "outcome": "same_generic_custom_binary_stop",
+      "eligible": null,
+      "bundled_media_calls": 1,
+      "all17_originals_exact": true,
+      "archive_created": false
+    },
+    {
+      "scenario": "bad_elf_class",
+      "outcome": "same_generic_custom_binary_stop",
+      "eligible": null,
+      "bundled_media_calls": 1,
+      "all17_originals_exact": true,
+      "archive_created": false
+    },
+    {
+      "scenario": "bad_elf_endian",
+      "outcome": "same_generic_custom_binary_stop",
+      "eligible": null,
+      "bundled_media_calls": 1,
+      "all17_originals_exact": true,
+      "archive_created": false
+    },
+    {
+      "scenario": "bad_ident_version",
+      "outcome": "same_generic_custom_binary_stop",
+      "eligible": null,
+      "bundled_media_calls": 1,
+      "all17_originals_exact": true,
+      "archive_created": false
+    },
+    {
+      "scenario": "unsupported_osabi",
+      "outcome": "same_generic_custom_binary_stop",
+      "eligible": null,
+      "bundled_media_calls": 1,
+      "all17_originals_exact": true,
+      "archive_created": false
+    },
+    {
+      "scenario": "bad_kind",
+      "outcome": "same_generic_custom_binary_stop",
+      "eligible": null,
+      "bundled_media_calls": 1,
+      "all17_originals_exact": true,
+      "archive_created": false
+    },
+    {
+      "scenario": "zero_machine",
+      "outcome": "same_generic_custom_binary_stop",
+      "eligible": null,
+      "bundled_media_calls": 1,
+      "all17_originals_exact": true,
+      "archive_created": false
+    },
+    {
+      "scenario": "bad_elf_version",
+      "outcome": "same_generic_custom_binary_stop",
+      "eligible": null,
+      "bundled_media_calls": 1,
+      "all17_originals_exact": true,
+      "archive_created": false
+    },
+    {
+      "scenario": "bad_header_size",
+      "outcome": "same_generic_custom_binary_stop",
+      "eligible": null,
+      "bundled_media_calls": 1,
+      "all17_originals_exact": true,
+      "archive_created": false
+    },
+    {
+      "scenario": "bad_ph_size",
+      "outcome": "same_generic_custom_binary_stop",
+      "eligible": null,
+      "bundled_media_calls": 1,
+      "all17_originals_exact": true,
+      "archive_created": false
+    },
+    {
+      "scenario": "zero_ph_count",
+      "outcome": "same_generic_custom_binary_stop",
+      "eligible": null,
+      "bundled_media_calls": 1,
+      "all17_originals_exact": true,
+      "archive_created": false
+    },
+    {
+      "scenario": "excess_ph_count",
+      "outcome": "same_generic_custom_binary_stop",
+      "eligible": null,
+      "bundled_media_calls": 1,
+      "all17_originals_exact": true,
+      "archive_created": false
+    },
+    {
+      "scenario": "ph_before_header",
+      "outcome": "same_generic_custom_binary_stop",
+      "eligible": null,
+      "bundled_media_calls": 1,
+      "all17_originals_exact": true,
+      "archive_created": false
+    },
+    {
+      "scenario": "ph_outside_file",
+      "outcome": "same_generic_custom_binary_stop",
+      "eligible": null,
+      "bundled_media_calls": 1,
+      "all17_originals_exact": true,
+      "archive_created": false
+    },
+    {
+      "scenario": "segment_outside_file",
+      "outcome": "same_generic_custom_binary_stop",
+      "eligible": null,
+      "bundled_media_calls": 1,
+      "all17_originals_exact": true,
+      "archive_created": false
+    },
+    {
+      "scenario": "load_size_gt_memory",
+      "outcome": "same_generic_custom_binary_stop",
+      "eligible": null,
+      "bundled_media_calls": 1,
+      "all17_originals_exact": true,
+      "archive_created": false
+    },
+    {
+      "scenario": "no_exec_load",
+      "outcome": "same_generic_custom_binary_stop",
+      "eligible": null,
+      "bundled_media_calls": 1,
+      "all17_originals_exact": true,
+      "archive_created": false
+    },
+    {
+      "scenario": "entry_outside_load",
+      "outcome": "same_generic_custom_binary_stop",
+      "eligible": null,
+      "bundled_media_calls": 1,
+      "all17_originals_exact": true,
+      "archive_created": false
+    },
+    {
+      "scenario": "no_load_segment",
+      "outcome": "same_generic_custom_binary_stop",
+      "eligible": null,
+      "bundled_media_calls": 1,
+      "all17_originals_exact": true,
+      "archive_created": false
+    }
+  ]
+}
