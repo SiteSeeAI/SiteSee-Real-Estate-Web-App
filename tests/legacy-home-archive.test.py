@@ -201,6 +201,57 @@ class ArchiveSafety(unittest.TestCase):
         self.assertNotIn(tool.NAMES[0], report['eligible'])
         self.assertIn(tool.NAMES[1], report['eligible'])
 
+    def test_heuristic_packaged_archive_references_stay_outside_text_source_scan(self):
+        archives = []
+        for suffix in ['.jar', '.war', '.ear', '.rpm', '.deb', '.xz', '.bz2', '.zst', '.7z']:
+            path = self.source / ('packaged-runtime' + suffix)
+            with path.open('wb') as stream:
+                stream.write(tool.PACKAGED_HEADERS[suffix][0])
+                stream.truncate(tool.MAX_FILE + 4096)
+            archives.append(path)
+        caller = self.script('packaged.sh', '\n'.join('package ' + str(p) for p in archives))
+        with mock.patch.object(tool, 'read_regular', wraps=tool.read_regular) as reads:
+            report = self.report([caller])
+        self.assertEqual(len(report['eligible']), 17)
+        self.assertFalse(any(c.args[0] in archives for c in reads.call_args_list))
+
+    def test_archive_references_do_not_hide_literal_names_globs_or_source_wrappers(self):
+        archive = self.source / 'packaged-runtime.jar'
+        archive.write_bytes(b'PK\x03\x04')
+        live = self.script('package-wrapper.py', 'python3 ' + str(self.home / tool.NAMES[0]))
+        caller = self.script('packaged.sh', 'java -jar ' + str(archive) + '\npython3 ' + str(live) +
+                             '\n# ' + tool.NAMES[1] + '\n# install-re-*.py')
+        report = self.report([caller])
+        for name in tool.NAMES:
+            if name in tool.NAMES[:2] or name.startswith('install-re-'):
+                self.assertNotIn(name, report['eligible'])
+
+    def test_declared_archive_sources_and_source_aliases_remain_strict(self):
+        archive = self.source / 'packaged-runtime.jar'
+        with archive.open('wb') as stream:
+            stream.write(b'PK\x03\x04')
+            stream.truncate(tool.MAX_FILE + 4096)
+        alias = self.source / 'nightly.py'
+        alias.symlink_to(archive)
+        for seeds in [[archive], [alias], [(archive, True)]]:
+            with self.subTest(seeds=str(seeds)), self.assertRaisesRegex(RuntimeError, 'Unreviewed type/size'):
+                self.report(seeds)
+
+    def test_archive_named_text_wrappers_still_preserve_live_installers(self):
+        for suffix in tool.PACKAGED_HEADERS:
+            wrapper = self.script('launcher' + suffix, 'python3 ' + str(self.home / tool.NAMES[0]))
+            caller = self.script('launcher.sh', 'python3 ' + str(wrapper))
+            self.assertNotIn(tool.NAMES[0], self.report([caller])['eligible'])
+
+    def test_archive_named_heuristic_aliases_to_wrappers_and_candidates_stay_live(self):
+        wrapper = self.script('live-source.py', 'python3 ' + str(self.home / tool.NAMES[0]))
+        alias = self.source / 'launcher.jar'
+        for target in [wrapper, self.home / tool.NAMES[0]]:
+            alias.symlink_to(target)
+            caller = self.script('launcher.sh', 'python3 ' + str(alias))
+            self.assertNotIn(tool.NAMES[0], self.report([caller])['eligible'])
+            alias.unlink()
+
     def storage_image(self, path=None):
         path = path or self.source / 'mounted-store'
         size = 20 * 1024 * 1024

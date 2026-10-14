@@ -45,6 +45,12 @@ SUFFIXES = {'.php', '.phtml', '.py', '.js', '.mjs', '.cjs', '.sh', '.conf',
             '.pl', '.rb', '.cgi', '.bash', '.zsh', '.ksh', '.lua', '.tcl', '.awk'}
 NON_CODE = {'.sqlite', '.sqlite3', '.db', '.log', '.gz', '.zip', '.tar', '.pdf',
             '.jpg', '.jpeg', '.png', '.webp', '.gif', '.woff', '.woff2', '.ttf', '.mp4'}
+PACKAGED_HEADERS = {
+    **{suffix: (b'PK\x03\x04', b'PK\x05\x06') for suffix in ('.jar', '.war', '.ear')},
+    '.rpm': (b'\xed\xab\xee\xdb',), '.deb': (b'!<arch>\n',),
+    '.xz': (b'\xfd7zXZ\x00',), '.bz2': tuple(b'BZh' + bytes([n]) for n in range(49, 58)),
+    '.zst': (b'\x28\xb5\x2f\xfd',), '.7z': (b'7z\xbc\xaf\x27\x1c',),
+}
 META = ('dev', 'ino', 'uid', 'gid', 'mode', 'size', 'mtime_ns')
 COMPILER_ROOTS = (pathlib.Path('/usr/lib/gcc'), pathlib.Path('/usr/lib64/gcc'))
 LIBRARY_ROOTS = (pathlib.Path('/usr/lib'), pathlib.Path('/usr/lib64'),
@@ -209,6 +215,25 @@ def literal_probe(path, kind):
         if error.errno == errno.ENAMETOOLONG:
             return False
         raise
+
+
+def packaged_archive(path):
+    headers = PACKAGED_HEADERS.get(path.suffix.lower())
+    if (not headers or literal_probe(path, 'is_symlink') or
+            not literal_probe(path, 'is_file')):
+        return False
+    fd = os.open(str(path), os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK |
+                 getattr(os, 'O_NOATIME', 0))
+    try:
+        before = os.fstat(fd)
+        need(stat.S_ISREG(before.st_mode), 'Unreviewed package reference type: ' + str(path))
+        head = os.read(fd, 8)
+        after = os.fstat(fd)
+        need(fingerprint(before) == fingerprint(after) and before.st_ctime_ns == after.st_ctime_ns,
+             'Changing package reference preserved: ' + str(path))
+        return any(head.startswith(header) for header in headers)
+    finally:
+        os.close(fd)
 
 
 def systemd_metadata(path):
@@ -441,7 +466,8 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
         queue.append(home / name)  # A live installer can invoke another installer.
     def followable(path):
         return (path.suffix.lower() not in NON_CODE and
-                not str(path).startswith(('/dev/', '/proc/', '/sys/')))
+                not str(path).startswith(('/dev/', '/proc/', '/sys/')) and
+                not packaged_archive(path))
     def inspect(label, data, extra_contexts=()):
         nonlocal budget
         budget += len(data)
@@ -624,7 +650,7 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
             'preserved_storage': dict(sorted(preserved_storage.items())),
             'referenced': {n: sorted(v) for n, v in references.items() if v},
             'eligible': sorted(n for n in records if not references[n]),
-            'scope': 'Inspected local literal/wildcard dependencies and observed processes; computed launch paths and external automation are not established.'}
+            'scope': 'Inspected local literal/wildcard source dependencies and observed processes; compiled programs/archive contents, computed launch paths and external automation are not established.'}
 
 
 def host_scan(home, uid):
