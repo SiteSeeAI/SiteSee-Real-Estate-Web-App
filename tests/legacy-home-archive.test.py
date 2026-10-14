@@ -252,6 +252,128 @@ class ArchiveSafety(unittest.TestCase):
             self.assertNotIn(tool.NAMES[0], self.report([caller])['eligible'])
             alias.unlink()
 
+    def test_packaged_archive_replacement_after_open_refuses_new_live_wrapper(self):
+        archive = self.source / 'runtime.jar'
+        archive.write_bytes(b'PK\x03\x04archive')
+        replacement = self.script('new.py', 'python3 ' + str(self.home / tool.NAMES[0]))
+        real_open = os.open
+        def replaced(path, *args, **kwargs):
+            fd = real_open(path, *args, **kwargs)
+            if pathlib.Path(path) == archive:
+                os.replace(replacement, archive)
+            return fd
+        with mock.patch.object(tool.os, 'open', side_effect=replaced):
+            with self.assertRaisesRegex(RuntimeError, 'Changing package reference'):
+                tool.packaged_archive(archive)
+
+    def swap_image(self):
+        image = self.source / 'swap-store'
+        size, page = 20 * 1024 * 1024, os.sysconf('SC_PAGE_SIZE')
+        header = bytearray(page)
+        struct.pack_into('=III', header, 1024, 1, size // page - 1, 0)
+        header[-10:] = b'SWAPSPACE2'
+        with image.open('wb') as stream:
+            stream.write(header)
+            stream.truncate(size)
+        image.chmod(0o600)
+        inventory = self.source / 'swaps'
+        inventory.write_text('Filename Type Size Used Priority\n' + str(image) +
+                             ' file ' + str(size // 1024 - page // 1024) + ' 0 -2\n')
+        stack = contextlib.ExitStack()
+        stack.enter_context(mock.patch.object(tool, 'SYSTEM_UID', self.uid))
+        stack.enter_context(mock.patch.object(tool, 'swap_namespace', return_value=True))
+        stack.enter_context(mock.patch.object(tool, 'SWAPS', inventory))
+        return image, inventory, stack
+
+    def read_swap(self, image):
+        fd = os.open(image, os.O_RDONLY | os.O_NOFOLLOW)
+        try:
+            return tool.active_swap(image, fd, os.fstat(fd))
+        finally:
+            os.close(fd)
+
+    def test_registered_swap_preserved_across_seventeen_real_moves_and_restore(self):
+        image, inventory, stack = self.swap_image()
+        caller = self.script('data.conf', str(image))
+        original = tool.fingerprint(image.stat())
+        with stack:
+            report = self.report([caller])
+        self.assertEqual(report['preserved_storage'][str(image)]['type'], 'active-swap-file')
+        folder = self.archive(report)
+        self.assertEqual(tool.restore(self.home, self.uid, folder), 17)
+        self.assertEqual(original, tool.fingerprint(image.stat()))
+
+    def test_swap_requires_registration_geometry_permissions_and_header(self):
+        image, inventory, stack = self.swap_image()
+        with stack:
+            saved = inventory.read_text()
+            inventory.write_text('Filename Type Size Used Priority\n')
+            self.assertIsNone(self.read_swap(image))
+            inventory.write_text(saved)
+            for mode in [0o700, 0o622, 0o620]:
+                image.chmod(mode)
+                self.assertIsNone(self.read_swap(image))
+            image.chmod(0o600)
+            for offset, value in [(1024, struct.pack('=I', 2)),
+                                  (1028, struct.pack('=I', 0xffffffff)), (0, b'#!/bin/sh')]:
+                with image.open('r+b') as stream:
+                    original = stream.read(os.sysconf('SC_PAGE_SIZE'))
+                    stream.seek(offset)
+                    stream.write(value)
+                self.assertIsNone(self.read_swap(image))
+                with image.open('r+b') as stream:
+                    stream.write(original)
+
+    def test_declared_swap_file_and_alias_keep_source_size_guard(self):
+        image, inventory, stack = self.swap_image()
+        alias = self.source / 'swap-source.py'
+        alias.symlink_to(image)
+        with stack:
+            for seeds in [[image], [alias], [(image, True)]]:
+                with self.subTest(seeds=str(seeds)), self.assertRaisesRegex(RuntimeError, 'Unreviewed type/size'):
+                    self.report(seeds)
+
+    def test_swap_binding_changes_and_path_replacement_fail_closed(self):
+        for change in ['detach', 'replace']:
+            image, inventory, stack = self.swap_image()
+            original_binding = tool.swap_binding
+            calls = []
+            def changed(path, expected):
+                calls.append(1)
+                result = original_binding(path, expected)
+                if len(calls) == 2:
+                    if change == 'detach':
+                        return ()
+                    replacement = self.script('replacement', 'python3 ' + str(self.home / tool.NAMES[0]))
+                    os.replace(replacement, image)
+                return result
+            with stack, mock.patch.object(tool, 'swap_binding', side_effect=changed):
+                with self.assertRaisesRegex(RuntimeError, 'Changing active swap'):
+                    self.read_swap(image)
+
+    def test_swap_inventory_escaped_paths_usage_updates_and_invalid_records(self):
+        image, inventory, stack = self.swap_image()
+        with stack:
+            expected = (image.stat().st_size - os.sysconf('SC_PAGE_SIZE')) // 1024
+            self.assertEqual(tool.swap_binding(image, expected), ((expected, -2),))
+            inventory.write_text(inventory.read_text().replace(' 0 -2', ' 1024 -2'))
+            self.assertEqual(tool.swap_binding(image, expected), ((expected, -2),))
+            spaced = self.source / 'swap with space'
+            line = 'Filename Type Size Used Priority\n' + str(spaced).replace(' ', '\\040') + ' file 128 0 -2\n'
+            inventory.write_text(line)
+            self.assertEqual(tool.swap_binding(spaced, 128), ((128, -2),))
+            inventory.write_text('Invalid inventory\n')
+            with self.assertRaisesRegex(RuntimeError, 'Invalid active swap inventory'):
+                tool.swap_binding(image, expected)
+
+    def test_swap_namespace_excludes_application_and_executable_source_locations(self):
+        for name in ['/home/sitesee/swap', '/root/swap', '/usr/bin/swap', '/etc/swap',
+                     '/var/lib/swap.py', '/var/cron.d/swap', '/opt/app/systemd/swap']:
+            self.assertFalse(tool.swap_namespace(pathlib.Path(name)), name)
+        with mock.patch.object(tool, 'canonical'), mock.patch.object(pathlib.Path, 'stat',
+                return_value=SimpleNamespace(st_uid=0, st_mode=0o755)):
+            self.assertTrue(tool.swap_namespace(pathlib.Path('/swapfile')))
+
     def storage_image(self, path=None):
         path = path or self.source / 'mounted-store'
         size = 20 * 1024 * 1024

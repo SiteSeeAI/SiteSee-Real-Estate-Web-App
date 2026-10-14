@@ -64,6 +64,7 @@ SYSTEMD_UNITS = pathlib.Path('/run/systemd/units')
 SYSTEMD_USER_RUNTIME = pathlib.Path('/run/user')
 STORAGE_ROOTS = (pathlib.Path('/usr'), pathlib.Path('/var'))
 MOUNTINFO = pathlib.Path('/proc/self/mountinfo')
+SWAPS = pathlib.Path('/proc/swaps')
 DEVICE_ROOT = pathlib.Path('/dev')
 BLOCK_SYSFS = pathlib.Path('/sys/dev/block')
 LOOP_STATUS = struct.Struct('=5Q4I64s64s32s2Q')  # Linux loop_info64: 232 bytes.
@@ -229,7 +230,9 @@ def packaged_archive(path):
         need(stat.S_ISREG(before.st_mode), 'Unreviewed package reference type: ' + str(path))
         head = os.read(fd, 8)
         after = os.fstat(fd)
-        need(fingerprint(before) == fingerprint(after) and before.st_ctime_ns == after.st_ctime_ns,
+        current = path.lstat()
+        need(fingerprint(before) == fingerprint(after) == fingerprint(current) and
+             before.st_ctime_ns == after.st_ctime_ns == current.st_ctime_ns,
              'Changing package reference preserved: ' + str(path))
         return any(head.startswith(header) for header in headers)
     finally:
@@ -429,6 +432,59 @@ def mounted_storage(path, fd, before):
             'size': before.st_size, 'bindings': binding}
 
 
+def swap_namespace(path):
+    if (path.suffix.lower() in SUFFIXES or path.name in NAMES or
+            any(p in {'home', 'root', 'etc', 'bin', 'sbin', 'systemd', 'init.d'} or p.endswith('.d')
+                for p in path.parts)):
+        return False
+    canonical(path)
+    return all(p.stat().st_uid == SYSTEM_UID and not p.stat().st_mode & 0o022 for p in path.parents)
+
+
+def swap_binding(path, expected_kib):
+    data, _ = read_regular(SWAPS)
+    lines = data.splitlines()
+    need(lines and lines[0].split() == [b'Filename', b'Type', b'Size', b'Used', b'Priority'],
+         'Invalid active swap inventory; no files archived.')
+    matches = []
+    for line in lines[1:]:
+        fields = line.split()
+        need(len(fields) == 5, 'Invalid active swap entry; no files archived.')
+        filename = re.sub(rb'\\([0-7]{3})', lambda m: bytes([int(m.group(1), 8)]), fields[0])
+        if filename != os.fsencode(path):
+            continue
+        need(fields[1] == b'file' and fields[2].isdigit() and int(fields[2]) == expected_kib and
+             fields[3].isdigit() and re.fullmatch(rb'-?[0-9]+', fields[4]) is not None,
+             'Unreviewed active swap binding; no files archived.')
+        matches.append((int(fields[2]), int(fields[4])))
+    need(len(matches) <= 1, 'Ambiguous active swap binding; no files archived.')
+    return tuple(matches)
+
+
+def active_swap(path, fd, before):
+    if (not stat.S_ISREG(before.st_mode) or before.st_size <= MAX_FILE or
+            before.st_uid != SYSTEM_UID or before.st_nlink != 1 or before.st_mode & 0o133 or
+            not swap_namespace(path)):
+        return None
+    page_size = os.sysconf('SC_PAGE_SIZE')
+    header = os.pread(fd, page_size, 0)
+    if (len(header) != page_size or any(header[:1024]) or header[-10:] != b'SWAPSPACE2'):
+        return None
+    version, last_page = struct.unpack_from('=II', header, 1024)
+    if version != 1 or not 0 < last_page < before.st_size // page_size:
+        return None
+    binding = swap_binding(path, last_page * page_size // 1024)
+    if not binding:
+        return None
+    repeated = swap_binding(path, last_page * page_size // 1024)
+    after, current = os.fstat(fd), path.lstat()
+    stable = lambda s: (s.st_dev, s.st_ino, s.st_mode, s.st_uid, s.st_gid, s.st_nlink, s.st_size)
+    need(stable(before) == stable(after) == stable(current) and binding == repeated,
+         'Changing active swap identity or binding preserved; no files archived.')
+    return {'type': 'active-swap-file', 'dev': before.st_dev, 'ino': before.st_ino,
+            'size': before.st_size, 'binding': binding}
+
+
 def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
          root_home=pathlib.Path('/root'), proc_root=pathlib.Path('/proc')):
     records, missing, references = {}, [], {name: set() for name in NAMES}
@@ -621,6 +677,8 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
             storage = (mounted_storage(path, fd, s)
                        if s.st_size > MAX_FILE and not all_files and path not in required_sources
                        else None)
+            if storage is None and s.st_size > MAX_FILE and not all_files and path not in required_sources:
+                storage = active_swap(path, fd, s)
         finally:
             os.close(fd)
         if storage is not None:
