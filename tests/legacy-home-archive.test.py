@@ -155,6 +155,200 @@ class ArchiveSafety(unittest.TestCase):
         compiler.mkdir(parents=True)
         return compiler
 
+    def system_commands(self):
+        system = self.home / 'package-system'
+        command = system / 'usr' / 'sbin'
+        command.mkdir(parents=True)
+        return system, command
+
+    def test_dangling_package_commands_preserved_in_real_archive_and_restore(self):
+        system, command = self.system_commands()
+        targets = [system / 'etc/rc.d/init.d/mysql',
+                   system / 'etc/init.d/postgresql',
+                   system / 'etc/alternatives/mta',
+                   system / 'usr/libexec/platform-python',
+                   system / 'opt/cpanel/optional/bin/worker']
+        aliases = []
+        for name, target in zip(['rcmysql', 'rcpostgresql', 'sendmail', 'python', 'package-worker'], targets):
+            alias = command / name
+            alias.symlink_to(target)
+            aliases.append(alias)
+        with mock.patch.object(tool, 'SYSTEM_UID', self.uid), \
+             mock.patch.object(tool, 'SYSTEM_COMMAND_DIRS', (command,)), \
+             mock.patch.object(tool, 'SYSTEM_COMMAND_TARGETS', tuple(system / p for p in ['etc/rc.d/init.d', 'etc/init.d', 'etc/alternatives', 'usr', 'opt/cpanel'])):
+            before = {str(p): p.lstat() for p in aliases}
+            report = self.report(blobs=[('unit', (' '.join(map(str, aliases))).encode())])
+        expected = {str(p): str(t) for p, t in zip(aliases, targets)}
+        self.assertEqual(report['preserved_system_links'], expected)
+        self.assertEqual(len(report['eligible']), 17)
+        folder = self.archive(report)
+        journal = json.loads((folder / 'manifest.json').read_text())
+        self.assertEqual(journal['scan']['preserved_system_links'], expected)
+        self.assertEqual(tool.restore(self.home, self.uid, folder), 17)
+        for path, target in zip(aliases, targets):
+            self.assertTrue(path.is_symlink())
+            self.assertEqual(path.readlink(), target)
+            self.assertEqual(tool.fingerprint(path.lstat()), tool.fingerprint(before[str(path)]))
+        for name in tool.NAMES:
+            self.assertEqual(tool.candidate(self.home / name, self.uid), report['records'][name])
+
+    def test_present_system_command_alias_to_live_wrapper_is_followed(self):
+        system, command = self.system_commands()
+        wrapper = self.script('nightly', 'python3 ' + str(self.home / tool.NAMES[0]))
+        alias = command / 'nightly'
+        alias.symlink_to(wrapper)
+        report = self.report([alias])
+        self.assertNotIn(tool.NAMES[0], report['eligible'])
+        self.assertEqual(report['preserved_system_links'], {})
+        folder = self.archive(report)
+        self.assertTrue((self.home / tool.NAMES[0]).exists())
+        self.assertEqual(tool.restore(self.home, self.uid, folder), 16)
+
+    def test_present_system_command_alias_to_installer_is_preserved(self):
+        system, command = self.system_commands()
+        alias = command / 'nightly'
+        alias.symlink_to(self.home / tool.NAMES[0])
+        report = self.report([alias])
+        self.assertNotIn(tool.NAMES[0], report['eligible'])
+        self.assertEqual(report['preserved_system_links'], {})
+
+    def test_missing_application_and_scheduler_aliases_to_package_targets_still_stop(self):
+        system, command = self.system_commands()
+        for name in ['app', 'cron', 'systemd']:
+            directory = self.source / name
+            directory.mkdir()
+            alias = directory / 'rcmysql'
+            alias.symlink_to(system / 'etc/rc.d/init.d/mysql')
+            with self.subTest(role=name), mock.patch.object(tool, 'SYSTEM_UID', self.uid), \
+                 mock.patch.object(tool, 'SYSTEM_COMMAND_DIRS', (command,)), \
+                 mock.patch.object(tool, 'SYSTEM_COMMAND_TARGETS', (system,)), \
+                 self.assertRaisesRegex(RuntimeError, 'Missing dependency alias preserved'):
+                self.report(list(tool.sources(directory, all_files=True)))
+        self.assertFalse((self.home / 'private-archives').exists())
+
+    def test_system_command_exception_rejects_private_scheduler_and_installer_targets(self):
+        system, command = self.system_commands()
+        alias = command / 'rcmysql'
+        targets = [self.home / 'missing.php', self.source / 'missing.py',
+                   system / 'etc/apache2/missing.conf', system / 'opt/custom/missing',
+                   system / 'usr/lib/systemd/system/missing.service',
+                   system / 'usr/local/lib/systemd/user/missing.service',
+                   system / 'usr/local/share/systemd/user/missing.service',
+                   system / 'usr/libexec' / tool.NAMES[0],
+                   system / 'usr/libexec' / tool.NAMES[0] / 'worker',
+                   system / 'usr-lookalike/missing']
+        for target in targets:
+            with self.subTest(target=str(target)):
+                alias.symlink_to(target)
+                with mock.patch.object(tool, 'SYSTEM_UID', self.uid), \
+                     mock.patch.object(tool, 'SYSTEM_COMMAND_DIRS', (command,)), \
+                     mock.patch.object(tool, 'SYSTEM_COMMAND_TARGETS', tuple(system / p for p in ['usr', 'etc/init.d', 'etc/rc.d/init.d', 'etc/alternatives', 'opt/cpanel'])), \
+                     self.assertRaisesRegex(RuntimeError, 'Missing dependency alias preserved'):
+                    self.report([alias])
+                alias.unlink()
+        self.assertFalse((self.home / 'private-archives').exists())
+
+    def test_system_command_exception_rejects_source_directory_lookalikes_and_nested_dirs(self):
+        system, command = self.system_commands()
+        for directory in [command.parent / 'sbin-backup', command / 'nested', self.source]:
+            directory.mkdir(parents=True, exist_ok=True)
+            alias = directory / 'rcmysql'
+            alias.symlink_to(system / 'etc/rc.d/init.d/mysql')
+            with self.subTest(directory=str(directory)), mock.patch.object(tool, 'SYSTEM_UID', self.uid), \
+                 mock.patch.object(tool, 'SYSTEM_COMMAND_DIRS', (command,)), \
+                 mock.patch.object(tool, 'SYSTEM_COMMAND_TARGETS', (system,)), \
+                 self.assertRaisesRegex(RuntimeError, 'Missing dependency alias preserved'):
+                self.report([alias])
+        self.assertFalse((self.home / 'private-archives').exists())
+
+    def test_system_command_exception_rejects_unexpected_ownership_and_writable_directory(self):
+        system, command = self.system_commands()
+        alias = command / 'rcmysql'
+        alias.symlink_to(system / 'etc/rc.d/init.d/mysql')
+        with mock.patch.object(tool, 'SYSTEM_COMMAND_DIRS', (command,)), \
+             mock.patch.object(tool, 'SYSTEM_COMMAND_TARGETS', (system,)):
+            with mock.patch.object(tool, 'SYSTEM_UID', self.uid + 1), \
+                 self.assertRaisesRegex(RuntimeError, 'Missing dependency alias preserved'):
+                self.report([alias])
+            command.chmod(0o777)
+            with mock.patch.object(tool, 'SYSTEM_UID', self.uid), \
+                 self.assertRaisesRegex(RuntimeError, 'Missing dependency alias preserved'):
+                self.report([alias])
+        self.assertFalse((self.home / 'private-archives').exists())
+
+    def test_restored_system_command_is_not_classified_as_missing(self):
+        system, command = self.system_commands()
+        target = system / 'usr/worker'
+        target.write_text('python3 ' + str(self.home / tool.NAMES[0]))
+        alias = command / 'worker'
+        alias.symlink_to(target)
+        with mock.patch.object(tool, 'SYSTEM_UID', self.uid), \
+             mock.patch.object(tool, 'SYSTEM_COMMAND_DIRS', (command,)), \
+             mock.patch.object(tool, 'SYSTEM_COMMAND_TARGETS', (system,)):
+            self.assertFalse(tool.missing_system_command(alias, target))
+            self.assertNotIn(tool.NAMES[0], self.report([alias])['eligible'])
+
+    def test_archive_cli_reports_preserved_package_aliases_and_real_archive_result(self):
+        system, command = self.system_commands()
+        alias, target = command / 'rcmysql', system / 'etc/rc.d/init.d/mysql'
+        alias.symlink_to(target)
+        with mock.patch.object(tool, 'SYSTEM_UID', self.uid), \
+             mock.patch.object(tool, 'SYSTEM_COMMAND_DIRS', (command,)), \
+             mock.patch.object(tool, 'SYSTEM_COMMAND_TARGETS', (system,)):
+            report = self.report([alias])
+        base = self.home / 'private-archives'
+        base.mkdir(mode=0o700)
+        lock = base / '.legacy-installers.lock'
+        lock.touch(mode=0o600)
+        lock_id = (lock.stat().st_dev, lock.stat().st_ino)
+        original_fstat = os.fstat
+        def lock_owner(fd):
+            s = original_fstat(fd)
+            # Only supply root lock ownership on unprivileged local runs. All
+            # candidate/archive metadata and filesystem moves remain real.
+            if (s.st_dev, s.st_ino) == lock_id:
+                return SimpleNamespace(st_uid=0, st_mode=s.st_mode, st_nlink=s.st_nlink)
+            return s
+        output = io.StringIO()
+        with mock.patch.object(tool, 'HOME', self.home), \
+             mock.patch.object(tool.os, 'geteuid', return_value=0), \
+             mock.patch.object(tool.pwd, 'getpwnam', return_value=SimpleNamespace(pw_uid=self.uid)), \
+             mock.patch.object(tool, 'host_scan', return_value=report), \
+             mock.patch.object(tool.os, 'fstat', side_effect=lock_owner), \
+             mock.patch('sys.argv', ['archive-legacy-home-files.py', '--archive']), \
+             contextlib.redirect_stdout(output):
+            tool.main()
+        result = json.loads(next(line for line in output.getvalue().splitlines() if line.startswith('{')))
+        self.assertEqual(result['result'], 'ARCHIVE PASS')
+        self.assertEqual(result['archived'], 17)
+        self.assertEqual(result['preserved_system_links'], {str(alias): str(target)})
+        self.assertTrue(alias.is_symlink())
+        self.assertEqual(tool.restore(self.home, self.uid, pathlib.Path(result['archive'])), 17)
+
+    def test_system_command_restored_during_missing_target_recheck_is_not_skipped(self):
+        system, command = self.system_commands()
+        alias, target = command / 'worker', system / 'usr' / 'worker'
+        alias.symlink_to(target)
+        original_resolve = pathlib.Path.resolve
+        strict_checks = []
+        restored = []
+        def restored_during_resolve(path, strict=False):
+            if path == alias and strict:
+                strict_checks.append(path)
+            if path == alias and not strict and len(strict_checks) == 1 and not restored:
+                target.write_text('python3 ' + str(self.home / tool.NAMES[0]))
+                restored.append(target)
+            return original_resolve(path, strict=strict)
+        with mock.patch.object(tool, 'SYSTEM_UID', self.uid), \
+             mock.patch.object(tool, 'SYSTEM_COMMAND_DIRS', (command,)), \
+             mock.patch.object(tool, 'SYSTEM_COMMAND_TARGETS', (system,)), \
+             mock.patch.object(pathlib.Path, 'resolve', new=restored_during_resolve):
+            self.assertFalse(tool.missing_system_command(alias, target))
+            self.assertEqual(len(strict_checks), 2)
+            self.assertEqual(restored, [target])
+            self.assertNotIn(tool.NAMES[0], self.report([alias])['eligible'])
+        self.assertTrue((self.home / tool.NAMES[0]).exists())
+
     def test_missing_system_compiler_alias_is_recorded_preserved_and_does_not_block_archive(self):
         compiler = self.compiler_namespace()
         alias, target = compiler / 'i386-redhat-linux', compiler / 'i686-redhat-linux'

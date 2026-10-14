@@ -43,6 +43,11 @@ META = ('dev', 'ino', 'uid', 'gid', 'mode', 'size', 'mtime_ns')
 COMPILER_ROOTS = (pathlib.Path('/usr/lib/gcc'), pathlib.Path('/usr/lib64/gcc'))
 LIBRARY_ROOTS = (pathlib.Path('/usr/lib'), pathlib.Path('/usr/lib64'),
                  pathlib.Path('/lib'), pathlib.Path('/lib64'))
+SYSTEM_UID = 0
+SYSTEM_COMMAND_DIRS = tuple(map(pathlib.Path, ('/usr/bin', '/usr/sbin', '/bin', '/sbin')))
+SYSTEM_COMMAND_TARGETS = tuple(map(pathlib.Path, (
+    '/usr', '/lib', '/lib64', '/bin', '/sbin', '/opt/cpanel',
+    '/etc/alternatives', '/etc/init.d', '/etc/rc.d/init.d')))
 
 
 def need(ok, message):
@@ -80,6 +85,40 @@ def compiler_link(source, target):
         return re.fullmatch(re.escape(shared.group(1)) +
                             r'(?:-[0-9]+(?:[.-][0-9]+)*)?\.so(?:\.[0-9]+)*', target.name) is not None
     return re.fullmatch(r'lib[A-Za-z0-9_+.-]+\.a', source.name) is not None and target.name == source.name
+
+
+def missing_system_command(source, target):
+    # Optional package commands can retain a dangling alias after a package is
+    # removed. Such a command has no current executable to inspect. This applies
+    # only to root-owned aliases directly in protected system command directories,
+    # never to application/scheduler sources or aliases to historical installers.
+    source = source.parent.resolve(strict=True) / source.name
+    if source.parent not in {p.resolve(strict=False) for p in SYSTEM_COMMAND_DIRS}:
+        return False
+    before, parent = source.lstat(), source.parent.stat()
+    if (not stat.S_ISLNK(before.st_mode) or before.st_uid != SYSTEM_UID or
+            parent.st_uid != SYSTEM_UID or parent.st_mode & 0o022):
+        return False
+    if source.name in NAMES or any(part in NAMES for part in target.parts):
+        return False
+    if not any(root in target.parents for root in SYSTEM_COMMAND_TARGETS):
+        return False
+    if 'systemd' in target.parts:
+        return False
+    try:
+        source.resolve(strict=True)
+    except FileNotFoundError:
+        if source.resolve(strict=False) != target:
+            return False
+        after = source.lstat()
+        if (fingerprint(before) != fingerprint(after) or
+                before.st_ctime_ns != after.st_ctime_ns):
+            return False
+        try:
+            source.resolve(strict=True)
+        except FileNotFoundError:
+            return True
+    return False  # A newly restored command must be inspected, never skipped.
 
 
 def read_regular(path):
@@ -151,6 +190,7 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
     identities = {(r['dev'], r['ino']): n for n, r in records.items()}
     seen, seen_directories, checked, budget = set(), set(), 0, 0
     preserved_compiler_links = {}
+    preserved_system_links = {}
     queue = list(source_paths)
     home_entries = {p.name: p for p in home.iterdir()
                     if p.name not in NAMES and not p.name.startswith('.')
@@ -263,6 +303,10 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
                     preserved_compiler_links[str(path)] = str(target)
                     checked += 1
                     continue
+                if missing_system_command(path, target):
+                    preserved_system_links[str(path)] = str(target)
+                    checked += 1
+                    continue
                 raise RuntimeError('Missing dependency alias preserved: ' + str(path) +
                                    '; target: ' + str(target) + '; no files archived.')
             if resolved.parent == home and resolved.name in NAMES:
@@ -302,6 +346,7 @@ def scan(home, uid, source_paths, blobs=(), inspect_processes=False,
         checked += 1
     return {'records': records, 'missing': missing, 'sources_checked': checked,
             'preserved_compiler_links': dict(sorted(preserved_compiler_links.items())),
+            'preserved_system_links': dict(sorted(preserved_system_links.items())),
             'referenced': {n: sorted(v) for n, v in references.items() if v},
             'eligible': sorted(n for n in records if not references[n]),
             'scope': 'Inspected local literal/wildcard dependencies and observed processes; computed launch paths and external automation are not established.'}
@@ -496,6 +541,7 @@ def main():
                           'archived': len(report['eligible']), 'archive': str(folder) if folder else None,
                           'referenced_preserved': report['referenced'], 'already_absent': report['missing'],
                           'preserved_compiler_links': report['preserved_compiler_links'],
+                          'preserved_system_links': report['preserved_system_links'],
                           'sources_checked': report['sources_checked'], 'scope': report['scope']}))
         if folder:
             print('Restore: python3 ' + __file__ + ' --restore ' + str(folder))
