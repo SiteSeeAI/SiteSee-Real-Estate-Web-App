@@ -4,6 +4,14 @@ This is the iteration record from October 9, 2026 onward. Dates use America/Chic
 
 Each iteration records its ID, purpose, status, source/release, changes, validation and user acceptance. Keep planned work separate from implemented, installed and accepted work. Add an entry for each subsequent implementation/release and update its acceptance after user review. Documentation-only commits do not change the installed application.
 
+## DEP-001 — home-directory cleanup and versioned deployment preparation — 2026-10-13
+
+Status: assessed; host archiving and version-folder migration have not been performed. Stripe remains TEST. This documentation checkpoint does not change any frozen release payload.
+
+The operator supplied the home-directory listing and requested a complete release inside its version folder. Seventeen historical loose installer files are identified as first archive candidates; current public/private source has no references to their home-directory installer paths. Server schedule/service references still need checking before they move. The home `pricing.php`, diagnostic/recovery tools, cleanup reports and prior quarantine evidence need individual identification. Preserve the active public/private roots, the actively used `.sitesee-graph-mail.json`, account/cPanel/mail/SSL state and the separate CTC Publishing application. No blanket deletion is appropriate.
+
+The current installer updates fixed roots; its version-named staging/backup directories are not the live application directory. The planned layout separates versioned code/public assets from shared private state and must preserve existing URLs, provider bindings, worker identity/lock, configuration and financial records. Full assessment and exact installer candidate list: [home-directory review](documents/unified/HOME_DIRECTORY_REVIEW.md).
+
 ## UX-003 — client workspace, reports and archives — 2026-10-13
 
 Status: implemented, reviewed, tested and published as `unified-test-e0bed2b3726c`. Operator installation and connected acceptance of this new UX iteration are pending. Stripe remains TEST.
