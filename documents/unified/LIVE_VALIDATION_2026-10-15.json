@@ -176,7 +176,78 @@
     "initial_attempt": "stopped at credential-format validation",
     "private_retry": "completed using the single-line hidden-prompt command",
     "credentials_in_chat": false,
-    "actual_host_fpm_preflight": "pending"
+    "actual_host_fpm_preflight": "passed; active runtime TEST, LIVE activation environment ready"
   },
-  "scope": "GitHub release and validation evidence plus operator-reported private preparation; no host code installation or LIVE activation"
+  "scope": "GitHub release and validation evidence plus operator-reported private preparation and WHM/FPM preflight; no host code installation or LIVE activation",
+  "operator_host_preflight": {
+    "evidence": "operator-reported WHM output",
+    "wrapper_checksum": "OK",
+    "preflight": {
+      "result": "PREFLIGHT PASS",
+      "release": "unified-test-fe96ebabe207",
+      "commit": "fe96ebabe207d0ab9f712939385a6aa26e7109ac",
+      "stage": "TEST",
+      "deployment_files": 285,
+      "changed_files": 66,
+      "runtime_modes": [
+        "TEST",
+        "LIVE"
+      ],
+      "default_runtime_mode": "TEST",
+      "runtime_stage": "TEST",
+      "runtime_binding": {
+        "stage": "TEST",
+        "realm": null,
+        "stripe_account": null
+      },
+      "runtime_binding_sha256": "f7e06098b2dc7ae352981fbec685fa450e4edc159a3457a2d26dde93f29e8a7e",
+      "database_modes": [
+        "LIVE",
+        "TEST"
+      ],
+      "journal": null,
+      "database": "each present ledger read-only integrity checked",
+      "preserved_host_files": {
+        "public/.htaccess": "e640befd468cd72a53a925ae633490e09fae922c7bf7299e9d73b523178c7ee2",
+        "public/assets/images/platform/notes-collaboration.svg": "0fd47ceb96ace2afc73878e1be338d037140472c4b90e12471c75730049a9f4e",
+        "public/assets/js/turnstile.js": "106d79ade29b3139805004ed44cc6c185709622fe32d1df70d667c92f4840c73"
+      },
+      "fpm_and_connected_acceptance": "pending; CLI is not FPM evidence"
+    },
+    "host_preflight": {
+      "result": "HOST PREFLIGHT PASS",
+      "pool": "re_sitesee_ai",
+      "fpm": {
+        "sapi": "fpm-fcgi",
+        "version": "8.2.34",
+        "opcache_enabled": false,
+        "cache_observable": true,
+        "runtime_binding": {
+          "stage": "TEST",
+          "realm": null,
+          "stripe_account": null
+        },
+        "stage_environment": "",
+        "live_activation_environment_ready": true
+      },
+      "maintenance_scope": "re.sitesee.ai",
+      "shared_service_graceful_reload": "ea-php82-php-fpm",
+      "schedule_changes": "none",
+      "stage_environment": "",
+      "live_activation_environment_ready": true,
+      "scheduler_inventory": {
+        "sources_checked": 27,
+        "matching_local_jobs": [
+          {
+            "source": "/etc/cron.d/sitesee-booking-reconcile",
+            "command_sha256": "6a441248c39b531318e903f4d2c3a57494f679bb8b5e52e9f991619bfb36ba13",
+            "lock": "canonical"
+          }
+        ],
+        "absence_scope": "local cron and systemd timers only; external automation is not established"
+      }
+    },
+    "installation": false,
+    "live_activation": false
+  }
 }

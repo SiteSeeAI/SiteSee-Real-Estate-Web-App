@@ -9,7 +9,9 @@ Private preparation tool SHA256: `8e1e3d6fd698275147703add4ef5d5605671f02145773f
 
 Status: published after all four exact-source CI workflows passed; all eight public downloads independently verified by full bytes, SHA256, GitHub digest, size and attachment headers. Nothing in this review records a host installation or LIVE activation. See the matching LIVE_VALIDATION.json download for completed release checks. The `unified-test` prefix and immutable package stage describe the default installation mode; this release supports TEST and LIVE. Installation alone preserves TEST.
 
-Operator preparation accepted on October 15, 2026: `LIVE PREPARED; TEST STILL ACTIVE`. The reported counts are one customer account, profile and verified-phone identity plus one vendor identity. No financial data was copied, no provider writes occurred and activation was not performed. Actual host/FPM preflight is pending; this result does not establish code installation or LIVE activation.
+Operator preparation accepted on October 15, 2026: `LIVE PREPARED; TEST STILL ACTIVE`. The reported counts are one customer account, profile and verified-phone identity plus one vendor identity. No financial data was copied, no provider writes occurred and activation was not performed.
+
+The operator's subsequent WHM result records `PREFLIGHT PASS` and `HOST PREFLIGHT PASS`: exact source/release, 285 deployment files with 66 changes, both present TEST/LIVE ledgers passing read-only integrity, and all three original host variants preserved. Actual PHP-FPM 8.2.34 reports TEST matching CLI, blank stage environment and `live_activation_environment_ready: true`. The original canonical reconciliation job remains present among 27 checked local scheduler sources; external automation is not established. These results establish preflight only. Code installation and LIVE activation remain unperformed. Code-cutover approval must cover the shared Apache/PHP reloads, including their effect on other sites' shared services; no CTC application files are accessed or modified.
 
 ## Decisions retained
 
