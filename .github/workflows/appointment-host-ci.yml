@@ -4,12 +4,14 @@ on:
     branches: ['feat/unified-*']
     paths:
       - 'tools/install-appointment-approval-host.py'
+      - '_private/server/application-mode.php'
       - 'tests/appointment-approval-host.test.py'
       - 'tests/appointment-approval-fpm.test.py'
       - '.github/workflows/appointment-host-ci.yml'
   pull_request:
     paths:
       - 'tools/install-appointment-approval-host.py'
+      - '_private/server/application-mode.php'
       - 'tests/appointment-approval-host.test.py'
       - 'tests/appointment-approval-fpm.test.py'
       - '.github/workflows/appointment-host-ci.yml'
