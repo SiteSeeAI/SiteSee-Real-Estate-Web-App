@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__ . '/support/booking-date.php';
 $testEmail=getenv('PORTAL_FIXTURE_AGENT_EMAIL')?:'sales@re.sitesee.ai';
 if(!in_array($testEmail,['sales@re.sitesee.ai','info@1789media.com'],true))throw new RuntimeException('Isolated approved-recipient fixture required.');
 $completed=false;register_shutdown_function(static function()use(&$completed):void{if(!$completed){fwrite(STDERR,"Service assertions did not complete.\n");exit(1);}});
@@ -13,7 +14,7 @@ function check(bool $ok,string $label):void{if(!$ok)throw new RuntimeException($
 function rejects(callable $fn,string $label):void{try{$fn();}catch(Throwable){return;}throw new RuntimeException('Accepted: '.$label);}
 $db=booking_db();portal_access_schema($db);portal_purchase_schema($db);portal_billing_schema($db);booking_communication_schema($db);$now=time();
 $one=str_repeat('a',32);$two=str_repeat('b',32);foreach([[$one,$testEmail],[$two,'two@example.com']] as [$id,$email])$db->prepare('INSERT INTO portal_accounts VALUES (?,?,?,0)')->execute([$id,$email,time()]);
-$payload=['market'=>'residential','details'=>['first'=>'Test','last'=>'Customer','company'=>'Synthetic','phone'=>'3125550100','street'=>'101 Example','city'=>'Chicago','state'=>'IL','zip'=>'60601'],'state'=>['category'=>'small','package'=>'gold','sqft'=>1500,'selected'=>['photo','mp'],'matterportSqft'=>1500],'appointment'=>['date'=>(new DateTimeImmutable('+10 days',new DateTimeZone('America/Chicago')))->format('Y-m-d'),'time'=>'09:00','rushRequested'=>false,'meetPhotographer'=>'No','accessType'=>'Lockbox','lockboxCode'=>'1234567890','cancellationAccepted'=>true]];
+$payload=['market'=>'residential','details'=>['first'=>'Test','last'=>'Customer','company'=>'Synthetic','phone'=>'3125550100','street'=>'101 Example','city'=>'Chicago','state'=>'IL','zip'=>'60601'],'state'=>['category'=>'small','package'=>'gold','sqft'=>1500,'selected'=>['photo','mp'],'matterportSqft'=>1500],'appointment'=>['date'=>sitesee_fixture_booking_date(),'time'=>'09:00','rushRequested'=>false,'meetPhotographer'=>'No','accessType'=>'Lockbox','lockboxCode'=>'1234567890','cancellationAccepted'=>true]];
 portal_profile_schema($db);foreach($db->query('SELECT id FROM portal_accounts')->fetchAll(PDO::FETCH_COLUMN) as $profileId)portal_save_profile($db,$profileId,['first_name'=>'Fixture','last_name'=>'Agent','company'=>'Synthetic','phone'=>'3125550100']);
 $review=portal_purchase_review($db,$one,$payload);$ref=portal_purchase_submit($db,$one,$review['review']);
 $db->prepare("UPDATE bookings SET status='deposit_paid_test',deposit_paid_at=?,stripe_session_id='cs_test_deposit',stripe_payment_intent_id='pi_deposit',stripe_customer_id='cus_owned' WHERE reference=?")->execute([gmdate('c'),$ref]);booking_review_paid($db,$ref,95,'David',true);

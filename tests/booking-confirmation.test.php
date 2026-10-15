@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__ . '/support/booking-date.php';
 $tmp = sys_get_temp_dir() . '/sitesee-confirm-' . bin2hex(random_bytes(6));
 mkdir($tmp, 0700);
 putenv('SITESEE_REAL_ESTATE_SITE_URL=https://re.sitesee.ai');
@@ -12,7 +13,7 @@ function check(bool $ok, string $why): void { global $checks; ++$checks; if (!$o
 function rejects(callable $fn, string $why): void { try { $fn(); } catch (InvalidArgumentException | RuntimeException $e) { check(true, $why); return; } throw new RuntimeException($why); }
 $db = booking_db();
 $now = new DateTimeImmutable('now', new DateTimeZone('America/Chicago'));
-$day = $now->modify('+10 days')->format('Y-m-d');
+$day = sitesee_fixture_booking_date(10, $now);
 $config = ['confirmation_stage'=>'test','confirmation_enabled'=>true,'invitations_enabled'=>true,'enabled'=>true,
     'test_recipient_email'=>'agent@example.com','client_id'=>'fixture','client_secret'=>'fixture','refresh_token'=>'fixture',
     'calendar_uid'=>'83fd48b78da6469684c4051099b39737'];

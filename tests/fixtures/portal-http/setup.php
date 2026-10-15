@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once dirname(__DIR__, 2) . '/support/booking-date.php';
 if (PHP_SAPI !== 'cli') exit(1);
 $root=getenv('PORTAL_TEST_PRIVATE');
 if (!$root || !str_starts_with($root,sys_get_temp_dir().'/sitesee-portal-http-')) throw new RuntimeException('Isolated fixture directory required.');
@@ -31,7 +32,7 @@ if($command==='seed-service'){
     file_put_contents($root.'/booking-lifecycle.json',json_encode(['schema'=>1,'stage'=>'test','enabled'=>true,'recipient'=>'sales@re.sitesee.ai']));chmod($root.'/booking-lifecycle.json',0600);
     file_put_contents($root.'/real-estate-pricing-pending/'.str_repeat('3',32).'.json',json_encode(['email'=>'sales@re.sitesee.ai','status'=>'approved','approved_at'=>gmdate('c')]));
     $id=str_repeat('d',32);$ref='DDDD000001';$db->prepare('INSERT INTO portal_accounts VALUES (?,?,?,0)')->execute([$id,'sales@re.sitesee.ai',time()]);portal_phone_enroll($db,'sales@re.sitesee.ai','3125550102','Synthetic staff verification',static fn()=>true);
-    $s=real_estate_prepare_submission(['version'=>2,'action'=>'request_appointment','market'=>'residential','details'=>['first'=>'Test','last'=>'Customer','company'=>'Example','email'=>'sales@re.sitesee.ai','phone'=>'3125550100','street'=>'404 Service Example','city'=>'Chicago','state'=>'IL','zip'=>'60601'],'state'=>['category'=>'small','package'=>'gold','sqft'=>1500,'selected'=>['photo','mp'],'matterportSqft'=>1500],'appointment'=>['date'=>(new DateTimeImmutable('+10 days',new DateTimeZone('America/Chicago')))->format('Y-m-d'),'time'=>'09:00','rushRequested'=>true,'meetPhotographer'=>'No','accessType'=>'Lockbox','lockboxCode'=>'1234567890','cancellationAccepted'=>true]]);
+    $s=real_estate_prepare_submission(['version'=>2,'action'=>'request_appointment','market'=>'residential','details'=>['first'=>'Test','last'=>'Customer','company'=>'Example','email'=>'sales@re.sitesee.ai','phone'=>'3125550100','street'=>'404 Service Example','city'=>'Chicago','state'=>'IL','zip'=>'60601'],'state'=>['category'=>'small','package'=>'gold','sqft'=>1500,'selected'=>['photo','mp'],'matterportSqft'=>1500],'appointment'=>['date'=>sitesee_fixture_booking_date(),'time'=>'09:00','rushRequested'=>true,'meetPhotographer'=>'No','accessType'=>'Lockbox','lockboxCode'=>'1234567890','cancellationAccepted'=>true]]);
     booking_capture($db,$s,$ref,true);$db->prepare("UPDATE bookings SET status='deposit_paid_test',deposit_paid_at=?,stripe_session_id='cs_test_http_deposit',stripe_payment_intent_id='pi_http',stripe_customer_id='cus_http' WHERE reference=?")->execute([gmdate('c'),$ref]);
     $db->prepare('INSERT INTO portal_order_owners VALUES (?,?,?,?)')->execute([$ref,$id,'isolated-fixture',time()]);
     // Explicitly requested and approved rush exercises the displayed price breakdown.

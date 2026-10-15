@@ -4,6 +4,18 @@ This is the iteration record from October 9, 2026 onward. Dates use America/Chic
 
 Each iteration records its ID, purpose, status, source/release, changes, validation and user acceptance. Keep planned work separate from implemented, installed and accepted work. Add an entry for each subsequent implementation/release and update its acceptance after user review. Documentation-only commits do not change the installed application.
 
+## QA-001 — final TEST regression and acceptance — 2026-10-15
+
+Status: local application checks pass after a fixture-only calendar correction; exact-source CI and installed release-record/hash proof remain pending. No application, deployment-installer, provider, configuration or LIVE-mode change. Cleanup remains paused and CTC remains outside this work, including read-only access.
+
+The operator confirms all three new connected customer checks: cancelled orders move from Open to Previous, order sections open inline beneath the appointment overview, and Current Month reports display and download a readable PDF. Earlier accepted financial, calendar, cancellation, customer/vendor, closeout/delivery and CRM readiness checks remain accepted. Anonymous HTTPS checks of the customer/staff/vendor sign-in pages return TEST access and no-store; all three shared client assets match exact published UX-003 `e0bed2b3726c05b52c5d2c943ccd887cd3b376b8`. This corroborates served assets without proving every private payload or reconstructing the missing install transcript/backup.
+
+The initial fresh run exposes clock-sensitive positive test data: +10 days from October 15 is Sunday October 25, while seeds assume 09:00. Eleven PHP suites and four browser seeds correctly fail the intact production Sunday rule. A shared test-only helper now selects an ordinary future Tuesday/Wednesday pair, retaining minimum lead time and avoiding fixed-date holidays on both days. Positive PHP/browser/current-source HTTP seeds use that same helper; no runtime policy, existing assertion or explicit negative Sunday/holiday/rush case changes. The new helper passes 55 boundary checks plus an independent 18,996-case sweep over 2024–2036, including timezone/DST/leap/year boundaries. Historical diagnostic/audit fixture contracts remain unchanged.
+
+Corrected local results: all 44 PHP suites pass on PHP 8.2.34 and 8.3.35; all 110 Node unit checks and seven isolated HTTPS browser journeys pass; all 193 PHP files lint; all four historical UX/finance/readiness/client-source checks pass. Python discovery is recorded separately with its available-privilege limitations. Logs/results retain the initial failures as well as corrected outcomes under the private execution evidence directory; source-pinned CI must establish the privileged checks. No cleanup/media tests were run.
+
+A concrete launch blocker is verified independently: current application bootstrap, payment/webhook, portal/SMS, calendar/mail and finance-worker gates require TEST. LIVE stage and synthetic LIVE credentials are rejected. A separately reviewed LIVE-capable release and deliberate TEST/LIVE data/provider separation are required; replacing Stripe keys alone cannot launch this build. These gates remain intact. Final TEST acceptance is not authorization to switch modes.
+
 ## DEP-011 — assess repeated cleanup refusal; pause cleanup and exclude CTC — 2026-10-14
 
 Status: investigation and independent synthetic review completed; cleanup paused. No helper change, replacement installer, deployment, host command or server inspection. CTC Publishing is outside the task, including read-only access. The application and Stripe TEST mode remain unchanged. Launch preparation proceeds separately; this entry is not LIVE approval.

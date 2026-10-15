@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__ . '/support/booking-date.php';
 $completed=false;
 register_shutdown_function(static function()use(&$completed):void{if(!$completed){fwrite(STDERR,"Purchase assertions did not complete.\n");exit(1);}});
 putenv('SITESEE_REAL_ESTATE_SITE_URL=https://portal-test.example');
@@ -17,7 +18,7 @@ try{
     foreach([[$one,'one@example.com'],[$two,'two@example.com']] as [$id,$email])$db->prepare('INSERT INTO portal_accounts VALUES (?,?,?,0)')->execute([$id,$email,time()]);
     $payload=['market'=>'residential','details'=>['first'=>'Test','last'=>'Customer','company'=>'Synthetic','email'=>'two@example.com','phone'=>'3125550100','street'=>'101 Example','city'=>'Chicago','state'=>'IL','zip'=>'60601'],
         'state'=>['category'=>'small','package'=>'gold','sqft'=>1500,'selected'=>['photo','mp'],'matterportSqft'=>1500],
-        'appointment'=>['date'=>(new DateTimeImmutable('+8 days'))->format('Y-m-d'),'time'=>'09:00','rushRequested'=>false,'meetPhotographer'=>'No','accessType'=>'Lockbox','lockboxCode'=>'1234567890','cancellationAccepted'=>true]];
+        'appointment'=>['date'=>sitesee_fixture_booking_date(8),'time'=>'09:00','rushRequested'=>false,'meetPhotographer'=>'No','accessType'=>'Lockbox','lockboxCode'=>'1234567890','cancellationAccepted'=>true]];
     rejects(fn()=>portal_purchase_review($db,$one,$payload),'Missing required account profile cannot create booking review');
     foreach([$one,$two] as $id)portal_save_profile($db,$id,['first_name'=>'Test','last_name'=>'Customer','company'=>'Synthetic','phone'=>'3125550100']);
     $review=portal_purchase_review($db,$one,$payload);check($review['details']['email']==='one@example.com','Server identity wins');

@@ -207,7 +207,7 @@ const listen=(server,port)=>new Promise(resolve=>server.listen(port,'127.0.0.1',
     const estimated=await page.locator('.sp-total strong').textContent();
     if(shots&&market==='commercial'){await page.setViewportSize({width:1200,height:950});await page.screenshot({path:path.join(shots,'purchase-services.png'),fullPage:true});console.log('PORTAL_VISUAL_purchase-services:'+(await page.screenshot({type:'jpeg',quality:45,fullPage:true})).toString('base64'));}
     await page.getByRole('button',{name:'Next →',exact:true}).click();
-    const date=new Date(Date.now()+10*86400000).toISOString().slice(0,10);await page.getByLabel('Preferred date',{exact:true}).fill(date);await page.locator('[data-key=time]').selectOption('09:00');
+    const date=execFileSync('php',[path.join(__dirname,'support/booking-date.php')],{encoding:'utf8'}).trim();await page.getByLabel('Preferred date',{exact:true}).fill(date);await page.locator('[data-key=time]').selectOption('09:00');
     await page.locator('[data-key=meetPhotographer][value=No]').check();await page.getByLabel('Lockbox code · 10 digits',{exact:true}).fill('1112223334');
     await page.getByLabel('I agree to the cancellation policy.',{exact:true}).check();
     if(market==='residential')setup('rotate-one-csrf'); // Simulate the token rotation after reauthentication while draft stays open.

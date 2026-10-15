@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__ . '/support/booking-date.php';
 $finished=false;register_shutdown_function(static function()use(&$finished){if(!$finished){fwrite(STDERR,"Financial assertions did not complete.\n");exit(1);}});
 $tmp=sys_get_temp_dir().'/sitesee-finance-'.bin2hex(random_bytes(8));mkdir($tmp,0700);mkdir($tmp.'/private',0700);mkdir($tmp.'/private/server',0700);
 foreach(glob(__DIR__.'/../_private/server/*.php') as $file)copy($file,$tmp.'/private/server/'.basename($file));
@@ -11,7 +12,7 @@ $checks=0;function check(bool $ok,string $label):void{global $checks;++$checks;i
 function rejects(callable $f,string $label):void{try{$f();}catch(Throwable){check(true,$label);return;}check(false,$label);}
 $db=booking_db();portal_access_schema($db);portal_profile_schema($db);portal_purchase_schema($db);portal_billing_schema($db);booking_communication_schema($db);booking_job_schema($db);
 $account=str_repeat('a',32);$other=str_repeat('b',32);foreach([[$account,'sales@re.sitesee.ai'],[$other,'other@example.test']] as [$id,$email]){$db->prepare('INSERT INTO portal_accounts VALUES (?,?,?,0)')->execute([$id,$email,time()]);portal_save_profile($db,$id,['first_name'=>'Synthetic','last_name'=>'Agent','company'=>'Fixture','phone'=>'3125550100']);}
-$payload=['market'=>'residential','details'=>['first'=>'Synthetic','last'=>'Agent','company'=>'Fixture','phone'=>'3125550100','street'=>'101 Example','city'=>'Chicago','state'=>'IL','zip'=>'60601'],'state'=>['category'=>'small','package'=>'gold','sqft'=>1500,'selected'=>['photo','mp'],'matterportSqft'=>1500],'appointment'=>['date'=>(new DateTimeImmutable('+10 days',new DateTimeZone('America/Chicago')))->format('Y-m-d'),'time'=>'09:00','rushRequested'=>false,'meetPhotographer'=>'No','accessType'=>'Lockbox','lockboxCode'=>'1234567890','cancellationAccepted'=>true]];
+$payload=['market'=>'residential','details'=>['first'=>'Synthetic','last'=>'Agent','company'=>'Fixture','phone'=>'3125550100','street'=>'101 Example','city'=>'Chicago','state'=>'IL','zip'=>'60601'],'state'=>['category'=>'small','package'=>'gold','sqft'=>1500,'selected'=>['photo','mp'],'matterportSqft'=>1500],'appointment'=>['date'=>sitesee_fixture_booking_date(),'time'=>'09:00','rushRequested'=>false,'meetPhotographer'=>'No','accessType'=>'Lockbox','lockboxCode'=>'1234567890','cancellationAccepted'=>true]];
 $sessions=[];$intents=[];$charges=[];$refunds=[];$writes=0;$keys=[];$lost=false;$refundStatus='succeeded';$counter=0;
 $api=static function(string $method,string $path,array $body=[],string $key='')use(&$sessions,&$intents,&$charges,&$refunds,&$writes,&$keys,&$lost,&$refundStatus):array{
     if($method==='GET'){

@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once dirname(__DIR__, 2) . '/support/booking-date.php';
 if (PHP_SAPI !== 'cli') exit(1);
 $root=getenv('STAFF_TEST_PRIVATE');
 if (!$root || !str_starts_with($root,sys_get_temp_dir().'/sitesee-staff-http-')) throw new RuntimeException('Isolated fixture directory required.');
@@ -28,7 +29,7 @@ foreach($cases as $i=>$case){
     $stage=str_starts_with($case,'agent-')?substr($case,6):$case;
     $email=str_starts_with($case,'agent-')?'info@1789media.com':(in_array($case,['other-recipient','legacy-uncertain'])?'fixture@example.test':'sales@re.sitesee.ai');
     $ref=sprintf('AB%08X',$i);$refs[$case]=$ref;
-    $s=real_estate_prepare_submission(['version'=>2,'action'=>'request_appointment','market'=>'residential','details'=>['first'=>'Jordan','last'=>'Example','company'=>'Example Realty','email'=>$email,'phone'=>'3125550100','street'=>'404 Example Lane','city'=>'Chicago','state'=>'IL','zip'=>'60601'],'state'=>['category'=>'small','package'=>'gold','sqft'=>1500,'selected'=>['photo','mp'],'matterportSqft'=>1500],'appointment'=>['date'=>(new DateTimeImmutable('+10 days',new DateTimeZone('America/Chicago')))->format('Y-m-d'),'time'=>'09:00','rushRequested'=>in_array($stage,['rush','declined']),'meetPhotographer'=>'No','accessType'=>'Lockbox','lockboxCode'=>'1234567890','cancellationAccepted'=>true]]);
+    $s=real_estate_prepare_submission(['version'=>2,'action'=>'request_appointment','market'=>'residential','details'=>['first'=>'Jordan','last'=>'Example','company'=>'Example Realty','email'=>$email,'phone'=>'3125550100','street'=>'404 Example Lane','city'=>'Chicago','state'=>'IL','zip'=>'60601'],'state'=>['category'=>'small','package'=>'gold','sqft'=>1500,'selected'=>['photo','mp'],'matterportSqft'=>1500],'appointment'=>['date'=>sitesee_fixture_booking_date(),'time'=>'09:00','rushRequested'=>in_array($stage,['rush','declined']),'meetPhotographer'=>'No','accessType'=>'Lockbox','lockboxCode'=>'1234567890','cancellationAccepted'=>true]]);
     booking_capture($db,$s,$ref,$stage!=='legacy');
     $db->prepare('UPDATE bookings SET created_at=? WHERE reference=?')->execute(['2026-10-02T14:00:00Z',$ref]);
     if(in_array($stage,['legacy','unpaid']))continue;

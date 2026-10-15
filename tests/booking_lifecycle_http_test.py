@@ -8,13 +8,13 @@ class ManagementHTTP(unittest.TestCase):
   self.private=self.root/'private';shutil.copytree(PROJECT/'_private',self.private)
   cfg=self.private/'booking-lifecycle.json';cfg.write_text(json.dumps(dict(schema=1,stage='test',enabled=True,recipient='sales@re.sitesee.ai'),sort_keys=True));cfg.chmod(0o600)
   self.env=os.environ.copy();self.env.update(SITESEE_REAL_ESTATE_SITE_URL='https://re.sitesee.ai',SITESEE_REAL_ESTATE_PRICING_GATE_SECRET='fixture-'*8,SITESEE_REAL_ESTATE_BOOKING_TEST_ENABLED='1',SITESEE_REAL_ESTATE_BOOKING_DB=str(self.private/'data/bookings.sqlite'))
-  setup=self.root/'setup.php';setup.write_text('''<?php require $argv[1].'/server/booking-lifecycle.php';
+  setup=self.root/'setup.php';setup.write_text('''<?php require $argv[2];require $argv[1].'/server/booking-lifecycle.php';
 $db=booking_db();booking_communication_schema($db);
-$day=(new DateTimeImmutable('+10 days',new DateTimeZone('America/Chicago')))->format('Y-m-d');
+$day=sitesee_fixture_booking_date();
 $s=real_estate_prepare_submission(['version'=>2,'action'=>'request_appointment','market'=>'residential','details'=>['first'=>'Test','last'=>'Customer','company'=>'Fixture','email'=>'sales@re.sitesee.ai','phone'=>'5555550100','street'=>'123 Example','unit'=>'','city'=>'Madison','state'=>'WI','zip'=>'53703','optOut'=>'Yes'],'state'=>['category'=>'average','package'=>'custom','sqft'=>'2000','selected'=>['photo'],'videoSeconds'=>60,'images'=>1],'appointment'=>['date'=>$day,'time'=>'09:00','windowMinutes'=>120,'rushRequested'=>false,'meetPhotographer'=>'Yes','cancellationAccepted'=>true]]);
 booking_capture($db,$s,'ABC0000001',true);$db->exec("UPDATE bookings SET status='deposit_paid_test',deposit_paid_at='paid',approved_at='reviewed',photographer='David',duration_minutes=95");
 $db->prepare("INSERT INTO booking_confirmations(reference,state,calendar_uid,event_uid,planned_start,planned_end,event_json,created_at,confirmed_at,invitation_state) VALUES('ABC0000001','confirmed',?,'saved',?,?,?,? ,?,'sent')")->execute(['microsoft:'.BOOKING_MS_CALENDAR,time()+864000,time()+870000,'{}',gmdate('c'),gmdate('c')]);echo booking_management_issue($db,'ABC0000001');''')
-  self.link=subprocess.check_output([PHP,str(setup),str(self.private)],env=self.env,text=True);self.credential=self.link.split('#',1)[1]
+  self.link=subprocess.check_output([PHP,str(setup),str(self.private),str(PROJECT/'tests/support/booking-date.php')],env=self.env,text=True);self.credential=self.link.split('#',1)[1]
   self.router=self.root/'router.php';self.router.write_text('<?php require '+repr(str(self.private/'server/booking-manage.php'))+';')
   sock=socket.socket();sock.bind(('127.0.0.1',0));self.port=sock.getsockname()[1];sock.close()
   self.log=open(self.root/'server.log','w');self.addCleanup(self.log.close)

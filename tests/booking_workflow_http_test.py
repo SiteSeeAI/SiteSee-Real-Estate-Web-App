@@ -26,16 +26,16 @@ class StaffWorkflowHTTP(unittest.TestCase):
     SITESEE_REAL_ESTATE_PRICING_GATE_SECRET='q'*48,SITESEE_REAL_ESTATE_BOOKING_DB=str(cls.root/'bookings.sqlite'))
   cls.env['SITESEE_REAL_ESTATE_STAFF_PASSWORD_HASH']=subprocess.check_output([PHP,'-r',"echo password_hash('test-password',PASSWORD_DEFAULT);"],env=cls.env).decode()
   seed=cls.root/'seed.php';seed.write_text('''<?php
-require __DIR__.'/_private/server/booking-workflow.php';$db=booking_db();booking_communication_schema($db);
+require $argv[1];require __DIR__.'/_private/server/booking-workflow.php';$db=booking_db();booking_communication_schema($db);
 $s=real_estate_prepare_submission(['version'=>2,'action'=>'request_appointment','market'=>'residential',
 'details'=>['first'=>'David','last'=>'Cro','company'=>'SiteSee','email'=>'sales@re.sitesee.ai','phone'=>'5555550100','street'=>'123 Main','unit'=>'','city'=>'Madison','state'=>'WI','zip'=>'53703','optOut'=>'Yes'],
 'state'=>['category'=>'average','package'=>'custom','sqft'=>'2000','selected'=>['photo'],'videoSeconds'=>60,'images'=>1],
-'appointment'=>['date'=>(new DateTimeImmutable('+10 days'))->format('Y-m-d'),'time'=>'09:00','windowMinutes'=>120,'rushRequested'=>false,'meetPhotographer'=>'Yes','cancellationAccepted'=>true]]);
+'appointment'=>['date'=>sitesee_fixture_booking_date(),'time'=>'09:00','windowMinutes'=>120,'rushRequested'=>false,'meetPhotographer'=>'Yes','cancellationAccepted'=>true]]);
 booking_capture($db,$s,'CCD0000001',true);$db->exec("UPDATE bookings SET status='deposit_paid_test',deposit_paid_at='paid',approved_at='reviewed',photographer='David',duration_minutes=95");
 $c=booking_scheduling_ms_config();file_put_contents(__DIR__.'/_private/microsoft-scheduling.json',json_encode($c));chmod(__DIR__.'/_private/microsoft-scheduling.json',0600);
 $db->prepare("INSERT INTO booking_confirmations(reference,state,calendar_uid,event_uid,event_json,planned_start,planned_end,created_at,confirmed_at) VALUES('CCD0000001','confirmed',?,'immutable-event','{}',?,?,'created','confirmed')")->execute([$c['calendar_uid'],time()+864000,time()+870000]);
 ''')
-  subprocess.run([PHP,str(seed)],env=cls.env,check=True,stdout=subprocess.PIPE)
+  subprocess.run([PHP,str(seed),str(PROJECT/'tests/support/booking-date.php')],env=cls.env,check=True,stdout=subprocess.PIPE)
   router=cls.root/'router.php';router.write_text("<?php require __DIR__.'/_private/server/booking-staff.php';")
   with contextlib.closing(socket.socket()) as sock:sock.bind(('127.0.0.1',0));cls.port=sock.getsockname()[1]
   cls.process=subprocess.Popen([PHP,'-d','session.save_path='+str(cls.root/'sessions'),'-S','127.0.0.1:'+str(cls.port),str(router)],env=cls.env,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)

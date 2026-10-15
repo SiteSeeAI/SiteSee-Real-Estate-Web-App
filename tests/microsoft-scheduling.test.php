@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__ . '/support/booking-date.php';
 $tmp=sys_get_temp_dir().'/sitesee-ms-schedule-'.bin2hex(random_bytes(6));mkdir($tmp,0700);
 putenv('SITESEE_REAL_ESTATE_SITE_URL=https://re.sitesee.ai');putenv('SITESEE_REAL_ESTATE_PRICING_GATE_SECRET='.str_repeat('q',48));
 putenv('SITESEE_REAL_ESTATE_BOOKING_DB='.$tmp.'/bookings.sqlite');putenv('SITESEE_REAL_ESTATE_BOOKING_TEST_ENABLED=1');
@@ -7,7 +8,7 @@ require_once __DIR__.'/../_private/server/booking-invitation.php';
 $checks=0;
 function ok(bool $yes,string $why):void{global $checks;++$checks;if(!$yes)throw new RuntimeException($why);}
 function no(callable $fn,string $why):void{try{$fn();}catch(InvalidArgumentException|RuntimeException $e){ok(true,$why);return;}throw new RuntimeException($why);}
-$db=booking_db();$now=new DateTimeImmutable('now',new DateTimeZone('America/Chicago'));$day=$now->modify('+10 days')->format('Y-m-d');
+$db=booking_db();$now=new DateTimeImmutable('now',new DateTimeZone('America/Chicago'));$day=sitesee_fixture_booking_date(10, $now);
 $config=booking_scheduling_ms_config();$lock=$tmp.'/confirm.lock';
 function paid_ms(string $ref,string $time='09:00'):array{
  global $db,$now,$day;

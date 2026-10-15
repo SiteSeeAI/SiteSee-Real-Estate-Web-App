@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__ . '/support/booking-date.php';
 $completed=false;
 register_shutdown_function(static function()use(&$completed):void{if(!$completed){fwrite(STDERR,"Email assertions did not complete.\n");exit(1);}});
 putenv('SITESEE_REAL_ESTATE_SITE_URL=https://portal-test.example');
@@ -26,7 +27,7 @@ try {
  $confirm=static fn($id,$code,$at)=>portal_email_confirm($db,$one,$id,$code,$secret,$at);
  $payload=['market'=>'residential','details'=>['first'=>'Fixture','last'=>'Agent','company'=>'Synthetic','phone'=>'3125550100','street'=>'101 Example','city'=>'Chicago','state'=>'IL','zip'=>'60601'],
   'state'=>['category'=>'small','package'=>'gold','sqft'=>1500,'selected'=>['photo','mp'],'matterportSqft'=>1500],
-  'appointment'=>['date'=>(new DateTimeImmutable('+8 days'))->format('Y-m-d'),'time'=>'09:00','rushRequested'=>false,'meetPhotographer'=>'No','accessType'=>'Lockbox','lockboxCode'=>'1234567890','cancellationAccepted'=>true]];
+  'appointment'=>['date'=>sitesee_fixture_booking_date(8),'time'=>'09:00','rushRequested'=>false,'meetPhotographer'=>'No','accessType'=>'Lockbox','lockboxCode'=>'1234567890','cancellationAccepted'=>true]];
 portal_profile_schema($db);foreach($db->query('SELECT id FROM portal_accounts')->fetchAll(PDO::FETCH_COLUMN) as $profileId)portal_save_profile($db,$profileId,['first_name'=>'Fixture','last_name'=>'Agent','company'=>'Synthetic','phone'=>'3125550100']);
  $review=portal_purchase_review($db,$one,$payload);$ref=portal_purchase_submit($db,$one,$review['review']);
  $payload['details']['street']='An unsubmitted order';$stale=portal_purchase_review($db,$one,$payload);

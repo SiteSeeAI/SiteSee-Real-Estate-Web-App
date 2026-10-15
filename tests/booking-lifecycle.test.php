@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__ . '/support/booking-date.php';
 $tmp=sys_get_temp_dir().'/sitesee-lifecycle-'.bin2hex(random_bytes(6));mkdir($tmp,0700);
 putenv('SITESEE_REAL_ESTATE_SITE_URL=https://re.sitesee.ai');putenv('SITESEE_REAL_ESTATE_PRICING_GATE_SECRET='.str_repeat('q',48));
 putenv('SITESEE_REAL_ESTATE_BOOKING_DB='.$tmp.'/bookings.sqlite');putenv('SITESEE_REAL_ESTATE_BOOKING_TEST_ENABLED=1');
@@ -7,7 +8,7 @@ require_once __DIR__.'/../_private/server/booking-lifecycle-ui.php';
 $checks=0;
 function ok(bool $yes,string $why):void{global $checks;++$checks;if(!$yes)throw new RuntimeException($why);}
 function no(callable $f,string $why):void{try{$f();}catch(Throwable){ok(true,$why);return;}throw new RuntimeException($why);}
-$db=booking_db();booking_communication_schema($db);$now=time();$day=(new DateTimeImmutable('+10 days',new DateTimeZone('America/Chicago')))->format('Y-m-d');
+$db=booking_db();booking_communication_schema($db);$now=time();$day=sitesee_fixture_booking_date();
 $events=[];$writes=0;$mode='ok';$reads=0;$otherCalendar=false;
 $api=static function($method,$path,$body=null,$etag=null)use(&$events,&$writes,&$mode,&$reads,&$otherCalendar){
     if($mode==='outage')return ['status'=>503,'body'=>[]];

@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__ . '/support/booking-date.php';
 $tmp=sys_get_temp_dir().'/sitesee-link-'.bin2hex(random_bytes(6));mkdir($tmp,0700);
 putenv('SITESEE_REAL_ESTATE_BOOKING_TEST_ENABLED=1');
 putenv('SITESEE_REAL_ESTATE_SITE_URL=https://re.sitesee.ai');putenv('SITESEE_REAL_ESTATE_PRICING_GATE_SECRET='.str_repeat('x',48));putenv('SITESEE_REAL_ESTATE_BOOKING_DB='.$tmp.'/bookings.sqlite');
@@ -8,7 +9,7 @@ define('SITESEE_CONTACT_LINK_TEST_LIBRARY',true);require_once __DIR__.'/../tools
 $db=booking_db();booking_communication_schema($db);$checks=0;
 function ok(bool $v,string $why):void{global $checks;++$checks;if(!$v)throw new RuntimeException($why);}
 function no(callable $f,string $why):void{try{$f();}catch(InvalidArgumentException|RuntimeException $e){ok(true,$why);return;}throw new RuntimeException($why);}
-$day=(new DateTimeImmutable('+10 days',new DateTimeZone('America/Chicago')))->format('Y-m-d');
+$day=sitesee_fixture_booking_date();
 foreach(['E4E51A0481','D32FFC7458']as$ref){
  $s=real_estate_prepare_submission(['version'=>2,'action'=>'request_appointment','market'=>'residential',
  'details'=>['first'=>'David','last'=>'Cro','company'=>'SiteSee','email'=>'cro@sitesee.ai','phone'=>'5555550100','street'=>'123 Main','unit'=>'','city'=>'Madison','state'=>'WI','zip'=>'53703','optOut'=>'Yes'],
