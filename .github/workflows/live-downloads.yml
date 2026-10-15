@@ -42,6 +42,36 @@ jobs:
               with urllib.request.urlopen(urllib.request.Request(url,method=method,headers=headers,data=data),timeout=120) as response:
                   return json.load(response)
           
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, req, fp, code, msg, headers, newurl):
+                  return None
+          
+          def log_archive(run_id):
+              # GitHub's log API needs actions:read even for public repositories. Never
+              # forward that authorization header to the signed storage redirect.
+              url=BASE+'/actions/runs/'+str(run_id)+'/logs'
+              request=urllib.request.Request(url,headers={
+                  'Authorization':'Bearer '+os.environ['GH_TOKEN'],
+                  'Accept':'application/vnd.github+json','User-Agent':'SiteSee-exact-release-validation'})
+              opener=urllib.request.build_opener(NoRedirect())
+              for attempt in range(12):
+                  try:
+                      try:
+                          response=opener.open(request,timeout=120)
+                      except urllib.error.HTTPError as error:
+                          if error.code not in [301,302,303,307,308]:raise
+                          target=error.headers['Location']
+                          parsed=urllib.parse.urlsplit(target)
+                          assert parsed.scheme=='https' and parsed.username is None and parsed.password is None
+                          assert parsed.hostname and (parsed.hostname.endswith('.blob.core.windows.net') or parsed.hostname.endswith('.actions.githubusercontent.com'))
+                          response=urllib.request.urlopen(urllib.request.Request(target,headers={'User-Agent':'SiteSee-exact-release-validation'}),timeout=120)
+                      with response:data=response.read(33554433)
+                      assert len(data)<=33554432
+                      return data
+                  except urllib.error.HTTPError as error:
+                      if error.code not in [404,409,429,500,502,503,504] or attempt==11:raise
+                      time.sleep(5)
+          
           required=['Server Form CI','Customer Portal Checks','Appointment Host Checks','Unified Release Checks']
           for attempt in range(180):
               runs=api(BASE+'/actions/runs?branch=feat/unified-server-app-20261007&per_page=100')['workflow_runs']
@@ -61,9 +91,7 @@ jobs:
               assert all(s['conclusion'] in ['success','skipped'] for j in jobs for s in j['steps'])
               # gh's formatted log output truncates very long screenshot lines and can
               # omit later completion markers. Inspect the complete public log archive.
-              request=urllib.request.Request(BASE+'/actions/runs/'+str(run['id'])+'/logs',headers={'User-Agent':'SiteSee-exact-release-validation'})
-              with urllib.request.urlopen(request,timeout=120) as response:data=response.read(33554433)
-              assert len(data)<=33554432
+              data=log_archive(run['id'])
               with zipfile.ZipFile(io.BytesIO(data)) as zipped:
                   logs[name]='\n'.join(zipped.read(n).decode(errors='replace') for n in zipped.namelist())
               proof.append({'workflow':name,'id':run['id'],'url':run['html_url'],'conclusion':run['conclusion'],
