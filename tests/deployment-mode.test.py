@@ -58,6 +58,8 @@ class DeploymentMode(unittest.TestCase):
                         'stripe_account': 'acct_synthetic12345678'}
         self.live_db = self.root / 'runtime/live/data/bookings.sqlite'
         self.live_db.parent.mkdir(parents=True, mode=0o700)
+        for directory in [self.root/'runtime',self.root/'runtime/live',self.live_db.parent]:
+            directory.chmod(0o700)
         self.make_db(self.live_db, self.control)
         configs = {name: {} for name in installer.LIVE_CONFIGS}
         configs['environment.json'] = {'stage': 'LIVE', 'realm': self.control['realm'], 'values': {
