@@ -138,6 +138,16 @@ class Preparation(unittest.TestCase):
             with self.assertRaises(tool.Stop):tool.prepare(self.root,self.credentials,read)
             self.assertFalse((self.root/'runtime/live').exists())
 
+    def test_exact_dashboard_webhook_version_is_separate_from_checkout_version(self):
+        self.assertEqual(tool.VERSION,'2026-03-25.dahlia')
+        self.assertIn("BOOKING_CHECKOUT_API_VERSION = '2026-08-26.dahlia'",(ROOT/'_private/server/booking-checkout.php').read_text())
+        def changed(url,authorization):
+            result=self.provider(url,authorization)
+            if '/webhook_endpoints?' in url:result['data'][0]['api_version']='2026-09-30.endive'
+            return result
+        with self.assertRaises(tool.Stop):tool.prepare(self.root,self.credentials,changed)
+        self.assertFalse((self.root/'runtime/live').exists())
+
     def test_activation_during_provider_reads_or_missing_marker_cannot_reset_live(self):
         def race(url,authorization):
             result=self.provider(url,authorization)

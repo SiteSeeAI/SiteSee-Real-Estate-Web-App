@@ -58,6 +58,8 @@ class ActualFpm(unittest.TestCase):
             command.extend(['-c', ini])
         if module:
             command.extend(['-d', 'zend_extension=' + module])
+        self.fpm_command = command
+        self.fpm_environment = environment
         self.process = subprocess.Popen(command, env=environment, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         self.addCleanup(self.stop)
         for _ in range(100):
@@ -72,6 +74,23 @@ class ActualFpm(unittest.TestCase):
     def stop(self):
         if self.process.poll() is None:
             self.process.terminate(); self.process.wait(timeout=10)
+
+    def set_pool_stage_environment(self, value):
+        # Use an actual FPM pool setting, rather than altering the generated probe
+        # or borrowing the CLI environment that this test is meant to distinguish.
+        self.stop()
+        config = self.root / 'fpm.conf'
+        with config.open('a') as output:
+            output.write('\nenv[SITESEE_APPLICATION_STAGE]=' + value + '\n')
+        self.process = subprocess.Popen(self.fpm_command, env=self.fpm_environment,
+                                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        for _ in range(100):
+            if self.sock.exists():
+                return
+            if self.process.poll() is not None:
+                raise RuntimeError('Isolated stage-bound FPM failed startup.')
+            time.sleep(.05)
+        raise RuntimeError('Isolated stage-bound FPM did not become ready.')
 
     def test_private_filename_public_script_name_reproduces_prior_failure(self):
         # Execute the exact historical helper to demonstrate the former mismatch under actual doc_root.
@@ -88,6 +107,45 @@ class ActualFpm(unittest.TestCase):
         self.assertTrue(result['cache_observable'])
         self.assertNotIn('probe_id', result)
         self.assertEqual(result['runtime_binding'], {'stage': 'TEST', 'realm': None, 'stripe_account': None})
+        self.assertEqual(result['stage_environment'], '')
+        self.assertTrue(result['live_activation_environment_ready'])
+        self.assertFalse(list(self.public.iterdir()))
+
+    def test_explicit_test_fpm_setting_is_valid_now_but_not_ready_for_live_activation(self):
+        self.set_pool_stage_environment('TEST')
+        for action in ('read', 'verify'):
+            result = host.runtime_probe(str(self.sock), self.account, action)
+            self.assertEqual(result['runtime_binding']['stage'], 'TEST')
+            self.assertEqual(result['stage_environment'], 'TEST')
+            self.assertFalse(result['live_activation_environment_ready'])
+        self.assertFalse(list(self.public.iterdir()))
+
+    def test_explicit_test_fpm_setting_refuses_an_active_live_binding(self):
+        self.live_binding()
+        self.set_pool_stage_environment('TEST')
+        with self.assertRaisesRegex(RuntimeError, 'stage environment differs from active runtime'):
+            host.runtime_probe(str(self.sock), self.account)
+        self.assertFalse((self.private / 'runtime/live/data/bookings.sqlite').exists())
+        self.assertFalse(list(self.public.iterdir()))
+
+    def test_explicit_live_fpm_setting_requires_active_live_and_then_proves_ready(self):
+        self.set_pool_stage_environment('LIVE')
+        with self.assertRaisesRegex(RuntimeError, 'stage environment differs from active runtime'):
+            host.runtime_probe(str(self.sock), self.account)
+        expected = self.live_binding()
+        for action in ('read', 'verify'):
+            result = host.runtime_probe(str(self.sock), self.account, action)
+            self.assertEqual(result['runtime_binding'], expected)
+            self.assertEqual(result['stage_environment'], 'LIVE')
+            self.assertTrue(result['live_activation_environment_ready'])
+        self.assertFalse(list(self.public.iterdir()))
+
+    def test_unrecognized_fpm_stage_setting_is_refused_without_exposing_its_value(self):
+        value = 'synthetic-unrecognized-private-value'
+        self.set_pool_stage_environment(value)
+        with self.assertRaisesRegex(RuntimeError, 'unrecognized; value not exposed') as caught:
+            host.runtime_probe(str(self.sock), self.account)
+        self.assertNotIn(value, str(caught.exception))
         self.assertFalse(list(self.public.iterdir()))
 
     def live_binding(self):

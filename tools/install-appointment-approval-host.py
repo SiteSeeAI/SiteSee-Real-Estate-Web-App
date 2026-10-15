@@ -91,6 +91,9 @@ def runtime_binding_code(private):
     code += '$out["runtime_binding"]=["stage"=>site_runtime_mode(),"realm"=>site_runtime_live()?$binding["realm"]:null,"stripe_account"=>site_runtime_live()?$binding["stripe_account"]:null];}'
     code += 'else{if(file_exists(' + php_string(str(private / 'application-live.json')) + '))throw new RuntimeException("LIVE code binding unavailable");'
     code += '$out["runtime_binding"]=["stage"=>"TEST","realm"=>null,"stripe_account"=>null];}'
+    code += '$stageEnvironment=getenv("SITESEE_APPLICATION_STAGE");if($stageEnvironment===false)$stageEnvironment="";'
+    code += '$out["stage_environment"]=in_array($stageEnvironment,["","TEST","LIVE"],true)?$stageEnvironment:"unrecognized";'
+    code += '$out["live_activation_environment_ready"]=$stageEnvironment===""||($out["runtime_binding"]["stage"]==="LIVE"&&$stageEnvironment==="LIVE");'
     return code
 
 
@@ -102,6 +105,16 @@ def checked_binding(value):
         need(value['stage'] == 'LIVE' and re.fullmatch('[0-9a-f]{32}', str(value['realm']))
              and re.fullmatch('acct_[A-Za-z0-9]{8,64}', str(value['stripe_account'])), 'LIVE runtime identity differs.')
     return value
+
+
+def checked_stage_environment(result):
+    binding = checked_binding(result.get('runtime_binding'))
+    value = result.get('stage_environment')
+    need(value in ('', 'TEST', 'LIVE'), 'FPM application stage environment is unrecognized; value not exposed.')
+    need(value in ('', binding['stage']), 'FPM application stage environment differs from active runtime.')
+    ready = value == '' or (binding['stage'] == 'LIVE' and value == 'LIVE')
+    need(result.get('live_activation_environment_ready') is ready, 'FPM activation environment evidence differs.')
+    return ready
 
 
 def checked_file(path, uid, digest=None):
@@ -280,7 +293,7 @@ def runtime_probe(sockpath, account, action='read', files=()):
         need(isinstance(identity, str) and secrets.compare_digest(identity, token), 'FPM probe identity differs; no runtime evidence established.')
         need(result.get('sapi') == 'fpm-fcgi' and str(result.get('version', '')).startswith('8.2.'), 'Actual FPM PHP runtime differs.')
         need(result.get('cache_observable') is True, 'Enabled FPM compiled-code cache is not observable; no reset evidence established.')
-        checked_binding(result.get('runtime_binding'))
+        checked_stage_environment(result)
         return result
     finally:
         path.unlink(missing_ok=True)
@@ -474,6 +487,8 @@ def main():
     need(probe['runtime_binding'] == binding, 'Actual FPM runtime binding differs from code preflight; no traffic pause started.')
     print(json.dumps({'result': 'HOST PREFLIGHT PASS', 'pool': POOL, 'fpm': probe, 'maintenance_scope': DOMAIN,
                       'shared_service_graceful_reload': SERVICE, 'schedule_changes': 'none',
+                      'stage_environment': probe['stage_environment'],
+                      'live_activation_environment_ready': probe['live_activation_environment_ready'],
                       'scheduler_inventory': inventory}), flush=True)
     if args.preflight:
         return
@@ -512,7 +527,8 @@ def main():
         run(['systemctl', 'reload', SERVICE]); wait_gone(php_old, 'Old target PHP executions')
         need(service(SERVICE).get('ActiveState') == 'active', 'FPM reload is not active.')
         reset = runtime_probe(listen[0], account, 'reset')
-        need(reset.get('cache_reset') is True and reset['runtime_binding'] == binding, 'FPM compiled-code reset/runtime binding was not verified.')
+        need(reset.get('cache_reset') is True and reset['runtime_binding'] == binding
+             and reset['stage_environment'] == probe['stage_environment'], 'FPM compiled-code reset/runtime binding was not verified.')
         journal = PRIVATE / ('unified-' + args.release.removeprefix('unified-test-') + '-install.json')
         action = '--resume' if journal.exists() else '--install'
         print('Installing the exact approved mode-capable code; active runtime ' + binding['stage'] + ' is preserved.', flush=True)
@@ -532,6 +548,7 @@ def main():
         need(verified.get('cache_ready') is True and verified.get('functions') == expected,
              'Actual FPM approval implementation differs; maintenance preserved.')
         need(verified['runtime_binding'] == binding, 'Actual FPM runtime binding changed; maintenance preserved.')
+        need(verified['stage_environment'] == probe['stage_environment'], 'Actual FPM stage environment changed; maintenance preserved.')
         print('Actual FPM approval functions and compiled-code refresh verified.', flush=True)
         drain_workers()
         reopen(includes, gate, rebuild, httpd, graceful)

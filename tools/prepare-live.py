@@ -22,7 +22,9 @@ import urllib.request
 PRIVATE = Path('/home/sitesee/.sitesee-real-estate')
 PUBLIC = Path('/home/sitesee/public_html/re')
 SITE = 'https://re.sitesee.ai'
-VERSION = '2026-08-26.dahlia'
+# Webhook snapshot version offered by this merchant's dashboard. Checkout
+# requests retain their already-tested 2026-08-26.dahlia request version.
+VERSION = '2026-03-25.dahlia'
 EVENTS = {'checkout.session.completed', 'checkout.session.expired',
           'payment_intent.succeeded', 'payment_intent.payment_failed'}
 IDENTITIES = {
