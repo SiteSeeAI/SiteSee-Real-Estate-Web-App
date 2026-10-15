@@ -115,6 +115,23 @@ class Preparation(unittest.TestCase):
         self.assertEqual(before,(self.root/'runtime/live/data/bookings.sqlite').read_bytes())
         self.assertEqual(self.original,self.db.read_bytes())
 
+    def test_check_and_activation_from_account_home_preserve_the_database_guard(self):
+        self.prepare()
+        previous=Path.cwd()
+        try:
+            # Match cPanel's home-directory CWD, above the private application.
+            os.chdir(self.tmp)
+            self.check()
+            self.assertEqual(self.activate()['result'],'LIVE ACTIVATED')
+            # The guard itself still refuses a ledger under an actual web root.
+            code="define('SITESEE_PREPARE_LIVE',true);require $argv[1].'/server/booking-store.php';$_SERVER['DOCUMENT_ROOT']=$argv[1];try{booking_db();echo 'UNSAFE';}catch(RuntimeException $e){echo $e->getMessage()==='Booking database must remain outside the document root.'?'GUARD PRESERVED':'OTHER';}"
+            result=subprocess.run(['php','-r',code,str(self.root)],cwd=self.root/'server',capture_output=True,text=True,env=self.env)
+            self.assertEqual(result.returncode,0)
+            self.assertEqual(result.stdout,'GUARD PRESERVED')
+            self.assertEqual(self.original,self.db.read_bytes())
+        finally:
+            os.chdir(previous)
+
     def test_wrong_mode_and_unknown_edits_are_preserved(self):
         wrong=self.credentials|{'secret':'sk_'+'test_'+'0'*32}
         with self.assertRaises(tool.Stop): tool.prepare(self.root,wrong,self.provider)

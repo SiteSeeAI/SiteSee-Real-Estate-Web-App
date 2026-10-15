@@ -314,7 +314,10 @@ def check_prepared(root, php='php', read=provider_read):
     need((root/'server/application-mode.php').is_file(), 'Install the reviewed mode-capable code before activation.')
     code = "define('SITESEE_PREPARE_LIVE',true);foreach(['application','portal-release','portal-sms','portal-purchase','portal-billing','vendor-access'] as $name)require_once $argv[1].'/server/'.$name.'.php';site_application_bootstrap($argv[1]);$db=booking_db();portal_access_schema($db);portal_profile_schema($db);portal_phone_schema($db);portal_purchase_schema($db);portal_billing_schema($db);booking_communication_schema($db);vendor_schema($db);booking_job_schema($db);if(!portal_release_enabled(site_runtime_path('portal-test.json'))||!booking_lifecycle_enabled()||booking_test_enabled())throw new RuntimeException('Prepared gates differ');booking_checkout_config();portal_sms_config();booking_mail_config(true);booking_crm_config();booking_scheduling_config();booking_ms_validate_config(booking_ms_private_json(site_runtime_path('microsoft-calendar.json')));echo json_encode(['mode'=>site_runtime_mode(),'realm'=>site_runtime_control()['realm'],'provider_writes_enabled'=>booking_test_enabled()]);"
     # Loading configuration and creating empty LIVE schemas are preparation only.
-    result = subprocess.run([php, '-r', code, str(root)], capture_output=True, text=True, timeout=30)
+    # CLI has an empty DOCUMENT_ROOT; the ledger guard resolves it against CWD.
+    # cPanel starts in /home/sitesee, which contains the private ledger. Use the
+    # installed server directory so the guard cannot mistake HOME for a web root.
+    result = subprocess.run([php, '-r', code, str(root)], cwd=root/'server', capture_output=True, text=True, timeout=30)
     need(result.returncode == 0, 'Private LIVE configuration/schema check failed; inspect local PHP configuration without exposing secrets.')
     proof = json.loads(result.stdout)
     need(proof == {'mode':'LIVE','realm':journal['realm'],'provider_writes_enabled':False}, 'Prepared PHP binding differs.')

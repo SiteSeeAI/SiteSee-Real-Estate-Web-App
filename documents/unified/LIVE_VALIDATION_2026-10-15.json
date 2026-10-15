@@ -292,7 +292,34 @@
     "schedule_change": false,
     "existing_callback_ownership": "TEST",
     "live_aliases": "require separate activation",
-    "prepared_live_configuration_check": "pending",
+    "prepared_live_configuration_check": "first attempt stopped in PHP; QA-003 corrected helper retry pending",
     "connected_live_payment_acceptance": "pending"
+  },
+  "preparation_helper_correction": {
+    "iteration": "QA-003",
+    "operator_result": {
+      "result": "STOPPED",
+      "reason": "Private LIVE configuration/schema check failed; inspect local PHP configuration without exposing secrets.",
+      "activation": false
+    },
+    "reproduction": "Original helper fails from a home-like parent directory; PHP raises the intact document-root ledger guard at booking-store.php:45. The same original helper succeeds from private/server.",
+    "fix": "Set only the PHP subprocess cwd to the installed server directory.",
+    "helper_sha256": "3090ba3a4a4fdda5ba1bb3d87fe1ed3da51b4bdc2a81972c61cb834ff3607b1b",
+    "preparation_tests": {
+      "PHP 8.2": {
+        "passed": 10,
+        "failed": 0
+      },
+      "PHP 8.3": {
+        "passed": 10,
+        "failed": 0
+      }
+    },
+    "independent_review": "closed; reproduced original failure and corrected success, preserved real web-root rejection and byte-exact TEST ledger; no blocker",
+    "host_retry": "pending",
+    "app_package_changed": false,
+    "server_reinstall": false,
+    "service_reload": false,
+    "live_activation": false
   }
 }
