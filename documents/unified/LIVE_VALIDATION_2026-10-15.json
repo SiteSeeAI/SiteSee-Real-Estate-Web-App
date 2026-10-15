@@ -249,5 +249,21 @@
     },
     "installation": false,
     "live_activation": false
+  },
+  "code_cutover_approval": {
+    "evidence": "user explicitly replied approved to the exact release and shared-service scope",
+    "release": "unified-test-fe96ebabe207",
+    "package_sha256": "dd78302ee8b35333d9a32ab9a161438c41b278931e438ca58d3753dedc5006f3",
+    "approved_actions": [
+      "back up both present databases and private settings",
+      "briefly pause re.sitesee.ai and drain requests",
+      "install and verify exact code",
+      "gracefully reload server-wide Apache and shared PHP 8.2, including the disclosed CTC shared webserver scope"
+    ],
+    "runtime_after_update": "TEST",
+    "ctc_application_files_settings": "excluded",
+    "home_cleanup": "paused",
+    "live_activation_approved": false,
+    "execution_result": "not yet reported"
   }
 }
