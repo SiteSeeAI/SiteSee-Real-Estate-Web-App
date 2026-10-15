@@ -163,9 +163,20 @@
     "workflow_commit": "708d227f6ec243a6f1d64e5bbaa16a96f096903f"
   },
   "operator_preparation": {
-    "reported_result": "stopped at credential-format validation",
-    "private_retry": "single-line hidden-prompt retry issued after the pasted multiline block lost its line breaks; successful result not yet reported",
-    "credentials_in_chat": false
+    "reported_result": "LIVE PREPARED; TEST STILL ACTIVE",
+    "identity_counts": {
+      "portal_accounts": 1,
+      "portal_profiles": 1,
+      "portal_phone_identities": 1,
+      "vendor_accounts": 1
+    },
+    "financial_data_copied": false,
+    "provider_writes": "none",
+    "activation": "not performed",
+    "initial_attempt": "stopped at credential-format validation",
+    "private_retry": "completed using the single-line hidden-prompt command",
+    "credentials_in_chat": false,
+    "actual_host_fpm_preflight": "pending"
   },
-  "scope": "GitHub release and validation evidence; no host installation or LIVE activation"
+  "scope": "GitHub release and validation evidence plus operator-reported private preparation; no host code installation or LIVE activation"
 }

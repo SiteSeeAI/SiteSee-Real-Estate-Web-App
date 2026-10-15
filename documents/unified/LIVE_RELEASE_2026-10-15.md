@@ -9,6 +9,8 @@ Private preparation tool SHA256: `8e1e3d6fd698275147703add4ef5d5605671f02145773f
 
 Status: published after all four exact-source CI workflows passed; all eight public downloads independently verified by full bytes, SHA256, GitHub digest, size and attachment headers. Nothing in this review records a host installation or LIVE activation. See the matching LIVE_VALIDATION.json download for completed release checks. The `unified-test` prefix and immutable package stage describe the default installation mode; this release supports TEST and LIVE. Installation alone preserves TEST.
 
+Operator preparation accepted on October 15, 2026: `LIVE PREPARED; TEST STILL ACTIVE`. The reported counts are one customer account, profile and verified-phone identity plus one vendor identity. No financial data was copied, no provider writes occurred and activation was not performed. Actual host/FPM preflight is pending; this result does not establish code installation or LIVE activation.
+
 ## Decisions retained
 
 The user confirms Stripe is activated for LIVE payments and Twilio is upgraded. CTC Publishing is excluded from all access. Home cleanup remains paused. Existing final TEST acceptance is retained; this change does not reopen that entire manual checklist.
