@@ -1,0 +1,171 @@
+{
+  "result": "EXACT LIVE-CAPABLE DOWNLOADS VERIFIED",
+  "source": "fe96ebabe207d0ab9f712939385a6aa26e7109ac",
+  "release": "unified-test-fe96ebabe207",
+  "release_url": "https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/releases/tag/unified-test-fe96ebabe207",
+  "assets": [
+    {
+      "name": "DOWNLOADS_SHA256SUMS.txt",
+      "sha256": "b71738efd9453c3ec61ea1fdd0cc04d2fe644c210a18660d1114ece761e1c9cb",
+      "bytes": 624,
+      "url": "https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/releases/download/unified-test-fe96ebabe207/DOWNLOADS_SHA256SUMS.txt",
+      "attachment": true
+    },
+    {
+      "name": "HOST_LIVE_REVIEW.md",
+      "sha256": "312567034fe6ee7311021e7cffed64a79a7f5ada3075c10e67152ab1d50e1dbd",
+      "bytes": 9472,
+      "url": "https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/releases/download/unified-test-fe96ebabe207/HOST_LIVE_REVIEW.md",
+      "attachment": true
+    },
+    {
+      "name": "install-appointment-approval-host.py",
+      "sha256": "b44e777737268a3201ea84940bc4469142cc96c1a3fd139ce3a5d21329f220c1",
+      "bytes": 31792,
+      "url": "https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/releases/download/unified-test-fe96ebabe207/install-appointment-approval-host.py",
+      "attachment": true
+    },
+    {
+      "name": "install-unified.py",
+      "sha256": "87692538eca9e197d772b64cba616612215636e147f73ceae4f01371e7fdd347",
+      "bytes": 56970,
+      "url": "https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/releases/download/unified-test-fe96ebabe207/install-unified.py",
+      "attachment": true
+    },
+    {
+      "name": "INSTALL_CODE.sh",
+      "sha256": "c5f70f8041a7083edfbf73ed8ebdfeb054bf3da7e1a3328e091e3fdce385d2ed",
+      "bytes": 894,
+      "url": "https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/releases/download/unified-test-fe96ebabe207/INSTALL_CODE.sh",
+      "attachment": true
+    },
+    {
+      "name": "LIVE_VALIDATION.json",
+      "sha256": "590cbb5d5b063e19e8bd68c5d89bedbf27ad5346433d1701afdda60b75bf3069",
+      "bytes": 2747,
+      "url": "https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/releases/download/unified-test-fe96ebabe207/LIVE_VALIDATION.json",
+      "attachment": true
+    },
+    {
+      "name": "prepare-live.py",
+      "sha256": "8e1e3d6fd698275147703add4ef5d5605671f02145773f642c3814240902a9fb",
+      "bytes": 25577,
+      "url": "https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/releases/download/unified-test-fe96ebabe207/prepare-live.py",
+      "attachment": true
+    },
+    {
+      "name": "unified-test-fe96ebabe207.tar.gz",
+      "sha256": "dd78302ee8b35333d9a32ab9a161438c41b278931e438ca58d3753dedc5006f3",
+      "bytes": 58574531,
+      "url": "https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/releases/download/unified-test-fe96ebabe207/unified-test-fe96ebabe207.tar.gz",
+      "attachment": true
+    }
+  ],
+  "validation": {
+    "source": "fe96ebabe207d0ab9f712939385a6aa26e7109ac",
+    "release": "unified-test-fe96ebabe207",
+    "deployment_files": 285,
+    "runtime_modes": [
+      "TEST",
+      "LIVE"
+    ],
+    "default_runtime_mode": "TEST",
+    "workflows": [
+      {
+        "workflow": "Server Form CI",
+        "id": 38768931995,
+        "url": "https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/actions/runs/38768931995",
+        "conclusion": "success",
+        "log_archive_sha256": "633eba61372a793604a60d9adcef0185ff4d710933cfef059f46ac8bf4c6cc85",
+        "jobs": [
+          {
+            "id": 116539350745,
+            "name": "validate",
+            "conclusion": "success"
+          },
+          {
+            "id": 116539351283,
+            "name": "Historical Installer Ownership CI",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "workflow": "Customer Portal Checks",
+        "id": 38768931900,
+        "url": "https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/actions/runs/38768931900",
+        "conclusion": "success",
+        "log_archive_sha256": "1ad01d40d85572c463b72401a0c648d57e1c4d0c79fc664ecb94722e1f0fda27",
+        "jobs": [
+          {
+            "id": 116539352692,
+            "name": "portal",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "workflow": "Appointment Host Checks",
+        "id": 38768931932,
+        "url": "https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/actions/runs/38768931932",
+        "conclusion": "success",
+        "log_archive_sha256": "9839e4704030278950808bebf0be164cfa66d363201f202c83d005a187bde3e4",
+        "jobs": [
+          {
+            "id": 116541802408,
+            "name": "fpm",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "workflow": "Unified Release Checks",
+        "id": 38768931931,
+        "url": "https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/actions/runs/38768931931",
+        "conclusion": "success",
+        "log_archive_sha256": "6c04f1d08f4b67dd36da2f5dbb6a01a89474a262288bf3e44d03b347b8b1a49b",
+        "jobs": [
+          {
+            "id": 116539355619,
+            "name": "release (8.3)",
+            "conclusion": "success"
+          },
+          {
+            "id": 116539356199,
+            "name": "release (8.2)",
+            "conclusion": "success"
+          }
+        ]
+      }
+    ],
+    "privileged_release_cases_per_php": 65,
+    "privileged_release_skips": 0,
+    "actual_fpm_cases": 14,
+    "host_cases": 27,
+    "live_runtime_cases": 18,
+    "preparation_cases": 9,
+    "deployment_mode_cases": 13,
+    "test_finance_assertions": 95,
+    "synthetic_live_finance_assertions": 94,
+    "browser_suites": 7,
+    "host_installation": false,
+    "live_activation": false,
+    "provider_operations": "none during local/release validation",
+    "cleanup": "paused",
+    "CTC": "excluded from access"
+  },
+  "host_installation": false,
+  "live_activation": false,
+  "publication": {
+    "id": 38772014261,
+    "url": "https://github.com/SiteSeeAI/SiteSee-Real-Estate-Web-App/actions/runs/38772014261",
+    "conclusion": "success",
+    "workflow_commit": "708d227f6ec243a6f1d64e5bbaa16a96f096903f"
+  },
+  "operator_preparation": {
+    "reported_result": "stopped at credential-format validation",
+    "private_retry": "single-line hidden-prompt retry issued after the pasted multiline block lost its line breaks; successful result not yet reported",
+    "credentials_in_chat": false
+  },
+  "scope": "GitHub release and validation evidence; no host installation or LIVE activation"
+}

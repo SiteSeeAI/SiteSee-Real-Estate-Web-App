@@ -1,0 +1,48 @@
+# LIVE-001 release and activation review
+
+Prepared source: `fe96ebabe207d0ab9f712939385a6aa26e7109ac`.
+Package: `unified-test-fe96ebabe207.tar.gz`, 285 deployment files.
+Package SHA256: `dd78302ee8b35333d9a32ab9a161438c41b278931e438ca58d3753dedc5006f3`.
+Installer SHA256: `87692538eca9e197d772b64cba616612215636e147f73ceae4f01371e7fdd347`.
+Host wrapper SHA256: `b44e777737268a3201ea84940bc4469142cc96c1a3fd139ce3a5d21329f220c1`.
+Private preparation tool SHA256: `8e1e3d6fd698275147703add4ef5d5605671f02145773f642c3814240902a9fb`.
+
+Status: published after all four exact-source CI workflows passed; all eight public downloads independently verified by full bytes, SHA256, GitHub digest, size and attachment headers. Nothing in this review records a host installation or LIVE activation. See the matching LIVE_VALIDATION.json download for completed release checks. The `unified-test` prefix and immutable package stage describe the default installation mode; this release supports TEST and LIVE. Installation alone preserves TEST.
+
+## Decisions retained
+
+The user confirms Stripe is activated for LIVE payments and Twilio is upgraded. CTC Publishing is excluded from all access. Home cleanup remains paused. Existing final TEST acceptance is retained; this change does not reopen that entire manual checklist.
+
+The current accepted host release is UX-003 `e0bed2b3726c05b52c5d2c943ccd887cd3b376b8`. Its exact package, manifest, schema declaration and 276-file map are the predecessor contract. The new code preserves pricing, cancellation/refund policy, job calculations, commission, account ownership, provider operations and uncertain-operation recovery.
+
+## Four review passes
+
+1. Dependencies and routing: mode helper loads before bootstrap; fixed new LIVE payment/webhook/management/pricing routes cannot accept a client-selected mode. Original TEST payment and management links stay TEST. Authenticated TEST recovery uses `staff-test-bookings.php`, `staff-test-production.php`, `staff-test-vendors.php`, the original TEST staff cookie and generated links within those routes. Ordinary account/staff/vendor URLs follow the activated mode. Original nonfinancial TEST pricing approval and confirmation links return 410 after LIVE activation, before handler effects; fresh LIVE pricing links use separate routes. Stored TEST pricing records remain preserved.
+2. Financial/data invariants: LIVE has a different, explicitly bound SQLite ledger and private settings. TEST credit, cards, orders, provider capabilities, job grants, login challenges and sessions are not copied. Only customer identity/profile/verified-phone rows and vendor identities are retained. Fresh LIVE card consent is mandatory. LIVE secret key, object mode, session prefix, immutable operation key and pinned Stripe merchant must agree; signed webhook events are additionally read back from that merchant. Existing TEST operation IDs and idempotency keys are unchanged. Both realms use the original shared calendar lock and read each other's holds, including uncertain old/new intervals.
+3. Automated/browser parity: original TEST PHP, JavaScript, responsive HTTPS journeys and historical builders are retained. A strict reversible 60-file source layer rejects unknown changes. Synthetic LIVE financial tests exercise the original refund/credit suite with mode-correct provider objects. Dedicated runtime/preparation cases cover wrong mode/account/secret/database, private aliases, cookie separation, provider-write-disabled preparation, preserved calendar holds, activation races, exact installed code and interrupted activation.
+4. Deployment/interruption/preservation: helper-first installation; exact predecessor checks; private configuration backups plus WAL-consistent snapshots of every present TEST/LIVE ledger. Partial updates bind their original configuration; installed verification separately validates later authorized activation. Active LIVE history or LIVE operational rows block obsolete code rollback. Activation marker plus journal must agree before requests can run LIVE; partial activation stays closed and resumes the same identity. No operational database rollback. Independent audit reports its concrete runtime/preparer findings resolved; parent review of deployment changes found no remaining blocker. Frozen package CI passed before publication, including 65 directly privileged installation/recovery cases on each PHP version with zero privileged skips.
+
+## Host sequence
+
+1. Configure the LIVE Stripe webhook below. Keep its signing secret private.
+2. In **cPanel Terminal as sitesee**, download and checksum-verify `prepare-live.py`, then run `python3 -W error prepare-live.py --prepare`. The warnings-as-errors option refuses an insecure terminal fallback before reading credentials. It prompts privately for the LIVE secret key, matching publishable key and new webhook signing secret. It reads Stripe account/webhook and Twilio account/service readiness; no provider writes or charges. It creates private staged settings and an identity-only LIVE ledger. It does not activate LIVE or change TEST orders. Run no cleanup helper.
+3. Review the safe JSON result and exact code-update scope. Under the project brief's separate cutover decision, obtain approval for this exact release/root service scope before installing. In **WHM Terminal as root**, the matching host wrapper verifies downloads, pauses only this vhost, drains requests, gracefully reloads Apache and the shared PHP 8.2 service (other PHP 8.2 sites are included in that graceful reload), installs/backups/verifies exact code and checks actual FPM mode. Existing schedules remain unchanged. It must finish with active runtime TEST.
+4. In **cPanel Terminal as sitesee**, `prepare-live.py --check` validates private LIVE configuration, creates only empty LIVE application schemas and proves provider writes remain disabled. It also checks the process stage setting; conflicting explicit TEST stage settings must be corrected deliberately before activation, never ignored. The root preflight must report `live_activation_environment_ready: true`. It reads the actual FPM stage environment separately from CLI. An explicit TEST FPM stage setting reports false; resolve that setting deliberately before approving activation. No automatic pool environment edit is included.
+5. Present the exact activation and expected merchant after these results, and obtain explicit LIVE activation approval. Only then run `prepare-live.py --activate --approved-release unified-test-fe96ebabe207`. It verifies installed source bytes and bindings, refreshes identity-only rows while requests are excluded, and commits the marker/journal. The main routes then use LIVE; retained TEST orders remain separate. Users sign in again using the isolated LIVE sessions. Activation itself performs no provider write or charge.
+6. Run the matching host wrapper with `--preflight` to corroborate actual FPM mode/realm/merchant against CLI and read-only file/backup checks. Check the public login and use the first authorized genuine LIVE booking to establish LIVE checkout/webhook/receipt evidence. TEST success alone is not evidence of a real LIVE payment. Do not fabricate a charge or weaken a policy for this check.
+
+Root wrapper arguments always include the exact release/package/installer hashes above. `--preflight` is read-only; `--install` is the approved code update. Activation is a different cPanel command. Do not replay the older incremental installers.
+
+## Stripe destination
+
+Use the LIVE dashboard → Workbench/Developers → Webhooks/Event destinations → Add destination. Choose events from this account and a webhook endpoint, with snapshot payloads/API version `2026-03-25.dahlia`:
+
+`https://re.sitesee.ai/booking-live-webhook.php`
+
+Enable `checkout.session.completed`, `checkout.session.expired`, `payment_intent.succeeded`, `payment_intent.payment_failed`. The preparation tool checks the exact endpoint, API version, event set and merchant using authenticated GET requests. The user supplied a screenshot of an active destination offering `2026-03-25.dahlia`; the requested August version is unavailable in its edit options. Checkout keeps its separately tested `2026-08-26.dahlia` request header. [Stripe versioning](https://docs.stripe.com/api/versioning) states monthly releases within one major family are nonbreaking; [Stripe Events](https://docs.stripe.com/api/events/object) retain their creation-version payload irrespective of retrieval headers, so authenticated event readback compares the same saved object. Both pins are explicit, and unreviewed versions such as Endive are rejected before preparation creates LIVE state. Endpoint delivery can fail until mode-capable code is installed and LIVE activated. No secret values belong in chat, shell command arguments, logs or GitHub.
+
+## Repair forward
+
+Keep the exact code package, private plan, activation history and deployment backups. A failed preparation preserves unknown edits. A marker written before its active journal leaves traffic closed; repeat the same approved activation to finish it. An active journal with a missing marker refuses fallback to TEST. Never remove history to bypass this protection. After LIVE activity, preserve the ledger and repair code/configuration forward; do not restore an earlier operational database or reuse a TEST payment method, credit or callback for a LIVE booking.
+
+The original five-minute cron remains its sole owner. After activation it dispatches TEST and LIVE in separate processes under the existing outer lock. No new schedule, subscriptions, payouts, provider migration, TEST-order deletion or CTC/home cleanup is included.
