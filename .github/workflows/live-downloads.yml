@@ -24,7 +24,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           python3 - <<'PY'
-          import base64, hashlib, json, os, pathlib, subprocess, time, urllib.request, urllib.error, urllib.parse
+          import base64, hashlib, io, json, os, pathlib, subprocess, time, urllib.request, urllib.error, urllib.parse, zipfile
           
           SOURCE = '22a751dd79b906b5e91f697686c57d7eb372deef'
           TAG = 'unified-test-22a751dd79b9'
@@ -59,10 +59,15 @@ jobs:
               jobs=api(BASE+'/actions/runs/'+str(run['id'])+'/jobs?per_page=100')['jobs']
               assert jobs and all(j['conclusion']=='success' for j in jobs)
               assert all(s['conclusion'] in ['success','skipped'] for j in jobs for s in j['steps'])
-              data=subprocess.check_output(['gh','run','view',str(run['id']),'--repo',REPO,'--log'],timeout=120)
-              logs[name]=data.decode(errors='replace')
+              # gh's formatted log output truncates very long screenshot lines and can
+              # omit later completion markers. Inspect the complete public log archive.
+              request=urllib.request.Request(BASE+'/actions/runs/'+str(run['id'])+'/logs',headers={'User-Agent':'SiteSee-exact-release-validation'})
+              with urllib.request.urlopen(request,timeout=120) as response:data=response.read(33554433)
+              assert len(data)<=33554432
+              with zipfile.ZipFile(io.BytesIO(data)) as zipped:
+                  logs[name]='\n'.join(zipped.read(n).decode(errors='replace') for n in zipped.namelist())
               proof.append({'workflow':name,'id':run['id'],'url':run['html_url'],'conclusion':run['conclusion'],
-                            'log_sha256':hashlib.sha256(data).hexdigest(),
+                            'log_archive_sha256':hashlib.sha256(data).hexdigest(),
                             'jobs':[{'id':j['id'],'name':j['name'],'conclusion':j['conclusion']} for j in jobs]})
           assert logs['Unified Release Checks'].count('Unified release: 65 cases completed; 0 privileged skips.')>=2
           assert 'Ran 14 tests' in logs['Appointment Host Checks']
