@@ -4,6 +4,14 @@ This is the iteration record from October 9, 2026 onward. Dates use America/Chic
 
 Each iteration records its ID, purpose, status, source/release, changes, validation and user acceptance. Keep planned work separate from implemented, installed and accepted work. Add an entry for each subsequent implementation/release and update its acceptance after user review. Documentation-only commits do not change the installed application.
 
+## QA-002 — allow the release checker through search-only directories — 2026-10-15
+
+Status: diagnostic correction; installed-release result remains pending. Application, release package, deployment installers and Stripe TEST settings are unchanged. No hosting permission or service change is needed. Cleanup remains paused; CTC remains outside all access.
+
+The operator verified the original checker download, then received `Permission denied: '/'`. The diagnostic requested directory read access to obtain its traversal anchor, which is unnecessary and can be denied to the cPanel account even when access to its application files is permitted. The failure occurred before opening application roots or reading their files. This is not an application integrity failure.
+
+The checker now uses Linux `O_PATH` search handles for the fixed root anchor and intermediate directories. Final application directories still use read handles for the existing private shared lock; payload reads, exact release/file-map pins, alias refusal and final root-identity checks remain unchanged. Actual UID-1000 mode-0111 directories reproduce errno 13 with the original read flags and accept the corrected search flags. Exact corrected checker SHA256: `899645d659242a1f3243b8e8908e8c3ab2dc64c9b8df39084cd9cb8445f6dd82`. Final verification remains a read-only cPanel Terminal command as `sitesee`, not a root installation. Accepted application tests are not repeated for this diagnostic-only correction.
+
 ## QA-001 — final TEST regression and acceptance — 2026-10-15
 
 Status: local application checks and exact-source CI pass after a fixture-only calendar correction; the three new connected client checks are accepted. Installed release-record/hash proof remains pending. No application, deployment-installer, provider, configuration or LIVE-mode change. Cleanup remains paused and CTC remains outside this work, including read-only access.

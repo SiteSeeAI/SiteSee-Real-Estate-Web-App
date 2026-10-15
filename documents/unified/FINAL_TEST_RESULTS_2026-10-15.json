@@ -101,17 +101,31 @@
   },
   "release_diagnostic": {
     "path": "documents/unified/check-installed-test-release.py",
-    "sha256": "8a4a2c4f593d9ee0d05c845d1551096eae72d9e74907a82979fc85339f430522",
+    "sha256": "899645d659242a1f3243b8e8908e8c3ab2dc64c9b8df39084cd9cb8445f6dd82",
     "independent_synthetic_cases": 22,
     "controls": 2,
     "expected_stops": 20,
-    "host_result": "pending",
+    "host_result": "corrected diagnostic pending",
     "excludes": [
       "current FPM code",
       "backup contents",
       "provider bindings",
       "LIVE readiness"
-    ]
+    ],
+    "previous_sha256": "8a4a2c4f593d9ee0d05c845d1551096eae72d9e74907a82979fc85339f430522",
+    "previous_host_result": {
+      "result": "STOPPED",
+      "errno": 13,
+      "path": "/",
+      "stage": "before application access"
+    },
+    "permission_correction": "O_PATH|O_DIRECTORY|O_NOFOLLOW for anchor/intermediate traversal only; final application handles and payload checks unchanged",
+    "local_permission_reproduction": {
+      "uid": 1000,
+      "directory_mode": "0111",
+      "previous_flags": "errno 13",
+      "corrected_flags": "PASS"
+    }
   },
   "live": "blocked by intact TEST-only runtime gates; separate mode-aware release and TEST/LIVE data/provider separation required",
   "boundaries": {

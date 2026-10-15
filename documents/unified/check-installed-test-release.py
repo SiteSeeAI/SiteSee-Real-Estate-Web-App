@@ -6,6 +6,9 @@ COMMIT = 'e0bed2b3726c05b52c5d2c943ccd887cd3b376b8'
 PACKAGE = '82be15dbd74b6f0e22627c2992d0db0fc743adf752a47dfb9799e8a7702ad0b6'
 HOST = {'public/.htaccess':'e640befd468cd72a53a925ae633490e09fae922c7bf7299e9d73b523178c7ee2','public/assets/images/platform/notes-collaboration.svg':'0fd47ceb96ace2afc73878e1be338d037140472c4b90e12471c75730049a9f4e','public/assets/js/turnstile.js':'106d79ade29b3139805004ed44cc6c185709622fe32d1df70d667c92f4840c73'}
 D = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+# cPanel may allow searching / and /home without allowing directory listing.
+# O_PATH obtains a traversal handle without requesting directory read access.
+SEARCH = os.O_PATH | os.O_DIRECTORY | os.O_NOFOLLOW
 
 def root_identity(fd):
     s = os.fstat(fd)
@@ -18,7 +21,7 @@ def opened(base, name, directory=False):
     fd = os.dup(base)
     try:
         for part in parts[:-1]:
-            nxt = os.open(part, D, dir_fd=fd); os.close(fd); fd = nxt
+            nxt = os.open(part, SEARCH, dir_fd=fd); os.close(fd); fd = nxt
         return os.open(parts[-1], D if directory else os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | getattr(os,'O_NOATIME',0), dir_fd=fd)
     finally:
         os.close(fd)
@@ -47,7 +50,7 @@ def read(base, name, uid, limit=128*1024*1024):
         os.close(fd)
 
 def verify(private, public, uid):
-    top = os.open('/', D); private_fd = public_fd = None
+    top = os.open('/', SEARCH); private_fd = public_fd = None
     try:
         private_fd = opened(top, private.lstrip('/'), True)
         public_fd = opened(top, public.lstrip('/'), True)
