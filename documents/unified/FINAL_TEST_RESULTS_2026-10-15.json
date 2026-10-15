@@ -105,7 +105,17 @@
     "independent_synthetic_cases": 28,
     "controls": 4,
     "expected_stops": 24,
-    "host_result": "corrected diagnostic pending",
+    "host_result": {
+      "result": "SITESEE RELEASE FILE CHECK PASS",
+      "release": "unified-test-e0bed2b3726c",
+      "commit": "e0bed2b3726c05b52c5d2c943ccd887cd3b376b8",
+      "stage": "TEST",
+      "files_checked": 276,
+      "journal": "installed",
+      "backup": "/home/sitesee/.sitesee-real-estate/unified-deployments/unified-test-e0bed2b3726c-jcgl_ff_",
+      "backup_directory_present": true,
+      "scope": "SiteSee code and release metadata only; no FPM probe or backup-content check"
+    },
     "excludes": [
       "current FPM code",
       "backup contents",
@@ -131,7 +141,12 @@
     "independent_results_sha256": "6de43119a33c4ac0a7a5721c94cfa90e4cdf352d06b957a999137a09c9781004",
     "published_commit": "6e96021a38f90d01338e9e695fedab0484ab9ed0",
     "published_bytes": "HTTP 200; exact reviewed bytes matched",
-    "operator_command_syntax": "PASS"
+    "operator_command_syntax": "PASS",
+    "host_result_provenance": {
+      "source": "operator-supplied cPanel output",
+      "date": "2026-10-15",
+      "download_checksum": "OK"
+    }
   },
   "live": "blocked by intact TEST-only runtime gates; separate mode-aware release and TEST/LIVE data/provider separation required",
   "boundaries": {
@@ -140,5 +155,6 @@
     "ctc": "no access, including read-only",
     "hosting_changes": "none",
     "provider_writes": "none"
-  }
+  },
+  "functional_test_acceptance": "complete; LIVE preparation remains separate"
 }

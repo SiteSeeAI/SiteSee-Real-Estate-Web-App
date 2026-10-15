@@ -1,6 +1,6 @@
 # Final TEST acceptance — October 15, 2026
 
-Functional TEST acceptance passes. This records checks performed, prior operator acceptance, and the remaining release-identity and LIVE preparation limits. It does not authorize LIVE activation or a new installation.
+Final functional TEST acceptance is complete. This records checks performed, operator acceptance, installed release/file verification and the limits of that evidence. LIVE preparation remains separate. This does not authorize LIVE activation or a new installation.
 
 ## Application and tested source
 
@@ -35,13 +35,13 @@ Earlier operator acceptance of customer/staff/vendor sign-in and isolation, assi
 
 ## Installed release identity
 
-The complete UX-003 installation transcript and backup name have not been supplied. Public assets and accepted UI behavior corroborate the working release but cannot reconstruct that transcript.
+The operator supplies the corrected checker checksum OK and `SITESEE RELEASE FILE CHECK PASS`: release `unified-test-e0bed2b3726c`, commit `e0bed2b3726c05b52c5d2c943ccd887cd3b376b8`, stage TEST, all 276 files checked and journal installed. The recorded backup directory exists at `/home/sitesee/.sitesee-real-estate/unified-deployments/unified-test-e0bed2b3726c-jcgl_ff_`. This closes the previously pending installed release/file identity. The full original UX-003 installation transcript is not reconstructed.
 
-The companion [read-only release check](check-installed-test-release.py) checks the 276 expected file hashes, pinned release record, installed journal, absence of the application maintenance marker and presence of the exact journal-named backup directory. It opens only the two fixed SiteSee application roots and approved payload paths, rejects aliases, and performs no writes, PHP bootstrap, database access, provider calls, service operations or broad inventory. Run it as `sitesee` in cPanel Terminal, after verifying the distributed script checksum. It is a diagnostic, not an installer. A PASS does not establish current FPM code, backup-content integrity or a fresh restore rehearsal. Its exact host result remains pending.
+The companion [read-only release check](check-installed-test-release.py) checks the 276 expected file hashes, pinned release record, installed journal, absence of the application maintenance marker and presence of the exact journal-named backup directory. It opens only the two fixed SiteSee application roots and approved payload paths, rejects aliases, and performs no writes, PHP bootstrap, database access, provider calls, service operations or broad inventory. The operator ran the checksum-verified diagnostic in cPanel Terminal and reported PASS. This does not establish current FPM code, backup-content integrity or a fresh restore rehearsal. No repeat installation or repeat of the accepted client checks is needed.
 
 Initial independent diagnostic review passes 22 synthetic cases: two complete controls and 20 correctly stopped negatives, including replacement of either root, aliases, edited files, untrusted paths, incomplete journals, wrong package identity and unsafe metadata. Instrumented outside-source sentinel reads remain zero. Initial reviewed script SHA256: `8a4a2c4f593d9ee0d05c845d1551096eae72d9e74907a82979fc85339f430522`.
 
-The operator subsequently verified that exact download but the check stopped with errno 13 opening `/`, before accessing application files. QA-002 corrects its unnecessary directory-read requirement: the root anchor and intermediate directories now use search-only Linux `O_PATH` handles, retaining `O_DIRECTORY` and `O_NOFOLLOW`. Actual unprivileged mode-0111 directory probes reproduce the old denial and accept the corrected handles. No server chmod, root terminal or installation is needed. Corrected checker SHA256: `899645d659242a1f3243b8e8908e8c3ab2dc64c9b8df39084cd9cb8445f6dd82`. Its host result remains pending; prior application acceptance is unchanged.
+The operator initially verified that download but the check stopped with errno 13 opening `/`, before accessing application files. QA-002 corrects its unnecessary directory-read requirement: the root anchor and intermediate directories now use search-only Linux `O_PATH` handles, retaining `O_DIRECTORY` and `O_NOFOLLOW`. Actual unprivileged mode-0111 directory probes reproduce the old denial and accept the corrected handles. No server chmod, root terminal or installation was needed. Corrected checker SHA256: `899645d659242a1f3243b8e8908e8c3ab2dc64c9b8df39084cd9cb8445f6dd82`. The operator's subsequent PASS above closes that retry; prior application acceptance is unchanged.
 
 The corrected checker independently passes all 28 expected outcomes: 22 previous regressions plus six actual UID-1000 permission cases. Outside-source reads remain zero. Published GitHub bytes match the exact reviewed hash, and the updated operator command passes shell syntax checking.
 
