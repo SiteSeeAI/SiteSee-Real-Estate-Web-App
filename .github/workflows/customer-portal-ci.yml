@@ -122,6 +122,9 @@ jobs:
           php tests/booking-review-ui.test.php
           php tests/portal-job.test.php
           php tests/booking-finance.test.php
+          php -d disable_functions=curl_exec tests/booking-finance.test.php --live
+          python3 -m unittest discover -s tests -p live_runtime_test.py
+          python3 -m unittest discover -s tests -p prepare_live_test.py
           php tests/portal-onsite-catalog.test.php
           php tests/portal-vendor.test.php
           php -l public/vendor.php

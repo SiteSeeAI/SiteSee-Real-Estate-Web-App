@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/application-mode.php';
 require_once __DIR__ . '/booking-availability.php';
 
 /** Zoho's event route requires a literal @; encoded %40 returns a non-JSON 404. */
@@ -17,7 +18,7 @@ function booking_calendar_event_path(string $calendarUid, string $eventUid): str
 /** Private read-only connection. No CRM writes, calendar writes or invitations. */
 function booking_calendar_config(?string $path = null): array
 {
-    $path ??= dirname(__DIR__) . '/zoho-calendar.json';
+    $path ??= site_runtime_path('zoho-calendar.json');
     $info = @lstat($path);
     if (!$info || ($info['mode'] & 0170000) !== 0100000 || ($info['mode'] & 0077) !== 0
         || $info['nlink'] !== 1 || $info['uid'] !== @fileowner(dirname($path)) || $info['size'] > 32768) {
@@ -94,7 +95,7 @@ function booking_calendar_snapshot(array $config, array $range, ?callable $reque
 {
     if (($config['enabled'] ?? false) !== true) throw new BookingCalendarUnavailable('Calendar feedback is disabled.');
     $request ??= 'booking_zoho_request';
-    $cachePath ??= dirname(__DIR__) . '/zoho-calendar-runtime.json';
+    $cachePath ??= site_runtime_path('zoho-calendar-runtime.json');
     $info = @lstat($cachePath);
     if ($info && (($info['mode'] & 0170000) !== 0100000 || ($info['mode'] & 0077) !== 0
         || $info['nlink'] !== 1 || $info['uid'] !== @fileowner(dirname($cachePath)))) {

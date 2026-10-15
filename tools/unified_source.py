@@ -7,7 +7,7 @@ import json
 def before_unified_update(root, source):
     actual = (root / source).read_bytes()
     # Reverse the reviewed acceptance correction before presentation/bootstrap layers.
-    for name in ['client-workspace-source.json', 'readiness-source.json', 'finance-source.json', 'ux-workspace-source.json', 'account-workflow-source.json', 'decline-notice-source.json', 'booking-review-source.json', 'appointment-approval-source.json', 'shell-source.json', 'bootstrap-source.json']:
+    for name in ['mode-source.json', 'client-workspace-source.json', 'readiness-source.json', 'finance-source.json', 'ux-workspace-source.json', 'account-workflow-source.json', 'decline-notice-source.json', 'booking-review-source.json', 'appointment-approval-source.json', 'shell-source.json', 'bootstrap-source.json']:
         manifest = root / 'documents/unified' / name
         if not manifest.exists():
             continue
@@ -24,9 +24,23 @@ def before_unified_update(root, source):
     return actual
 
 
-def before_client_update(root, source, actual=None):
+def before_mode_update(root, source, actual=None):
     if actual is None:
         actual = (root / source).read_bytes()
+    manifest = root / 'documents/unified/mode-source.json'
+    if manifest.exists():
+        change = json.loads(manifest.read_text())['files'].get(source)
+        if change:
+            before = base64.b64decode(change['before'], validate=True)
+            after = base64.b64decode(change['after'], validate=True)
+            if actual != after or hashlib.sha256(after).hexdigest() != change['after_sha256'] or hashlib.sha256(before).hexdigest() != change['before_sha256']:
+                raise RuntimeError('Reviewed mode source differs: ' + source)
+            actual = before
+    return actual
+
+
+def before_client_update(root, source, actual=None):
+    actual = before_mode_update(root, source, actual)
     manifest = root / 'documents/unified/client-workspace-source.json'
     if manifest.exists():
         change = json.loads(manifest.read_text())['files'].get(source)

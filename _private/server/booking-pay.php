@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/application-mode.php';
 require_once __DIR__ . '/booking-confirmation.php';
 require_once __DIR__ . '/booking-checkout.php';
 require_once dirname(__DIR__) . '/views/booking-payment.php';
@@ -31,7 +32,8 @@ function pay_json(array $data, int $status=200): never
     echo json_encode($data, JSON_THROW_ON_ERROR);
     exit;
 }
-session_name('sitesee_real_estate_agent_payment');
+site_runtime_session_storage('payment');
+    session_name(site_runtime_cookie('sitesee_real_estate_agent_payment'));
 session_set_cookie_params(['lifetime'=>0,'path'=>'/','secure'=>true,'httponly'=>true,'samesite'=>'Lax']);
 session_start();
 if (empty($_SESSION['booking_csrf'])) $_SESSION['booking_csrf'] = bin2hex(random_bytes(24));
@@ -47,7 +49,7 @@ try {
     $db = booking_db();
     $row = booking_agent_record($db, $reference, $token);
 } catch (Throwable $error) {
-    error_log('SiteSee test payment unavailable: ' . $error->getMessage());
+    error_log(site_runtime_copy('SiteSee test payment unavailable: ') . $error->getMessage());
     if ($isJson) pay_json(['error'=>'Payment is temporarily unavailable. Please try again.'],503);
     pay_page('<p>Test payment is temporarily unavailable.</p>', 503);
 }
@@ -105,13 +107,13 @@ if ($row['status'] === 'deposit_paid_test') {
         $body .= '<p>Remaining job balance: <strong>$' . number_format(booking_remaining_cents($row) / 100, 2) . '</strong>.</p>';
         $confirmation = booking_confirmation_get($db, $reference);
         if ($confirmation && $confirmation['state'] === 'confirmed') {
-            $body .= '<p class="notice"><strong>Test Appointment Confirmed</strong><br>SiteSee has confirmed the arrival window shown above. This remains an integration test; no live charge has been collected.</p>';
-            if ($confirmation['invitation_state'] === 'sent') $body .= '<p>Your test calendar invitation was accepted by our mail server. Please check your inbox.</p>';
+            $body .= site_runtime_copy('<p class="notice"><strong>Test Appointment Confirmed</strong><br>SiteSee has confirmed the arrival window shown above. This remains an integration test; no live charge has been collected.</p>');
+            if ($confirmation['invitation_state'] === 'sent') $body .= site_runtime_copy('<p>Your test calendar invitation was accepted by our mail server. Please check your inbox.</p>');
             elseif ($confirmation['invitation_state'] === 'none') $body .= '<p>Your calendar invitation has not yet been sent.</p>';
             else $body .= '<p>Your window is confirmed. Invitation delivery needs a staff check; please contact SiteSee if it has not arrived.</p>';
         } else $body .= '<p>We’ll be in contact in less than two hours. Your appointment is not yet confirmed. No invitation has been sent.</p>';
     }
-    pay_page($body,200,['title'=>'Thank You. You’re One Step Closer.','intro'=>'Your test deposit has been verified. Appointment status is shown below.','step'=>'review']);
+    pay_page($body,200,['title'=>'Thank You. You’re One Step Closer.','intro'=>site_runtime_copy('Your test deposit has been verified. Appointment status is shown below.'),'step'=>'review']);
 }
 $returnPending = ($_GET['result'] ?? '') === 'success';
 if (($_GET['result'] ?? '') === 'return') {
@@ -122,7 +124,7 @@ if ($returnPending) {
     pay_page('<span class="status-mark waiting" aria-hidden="true">···</span><h2>Checking Your Payment.</h2>'
         .'<p class="payment-note">We’re waiting for Stripe to verify your deposit. This page will update when it is recorded.</p>'
         .'<div class="notice">Your appointment will be confirmed separately after schedule review.</div>'
-        .'<a class="button" href="booking-pay.php?result=return&amp;reference='.rawurlencode($reference).'">Check Payment Status</a>',
+        .'<a class="button" href="'.site_runtime_link_path('booking-pay.php?result=return&amp;reference=').''.rawurlencode($reference).'">Check Payment Status</a>',
         200,['title'=>'Your Payment Status','intro'=>'We’ll show your verified deposit here as soon as it is received.',
         'client'=>['reference'=>$reference,'csrf'=>$csrf,'poll'=>true]]);
 }
@@ -164,12 +166,12 @@ $body='<p class="section-marker">Your Next Step</p><h2>Complete Your Deposit.</h
     .'<div class="security-line"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="4" y="8" width="12" height="10" rx="2"/><path d="M6 8V5a4 4 0 018 0v3"/></svg>Secure Payment · Powered By Stripe</div>'
     .'<div class="notice"><strong>What Happens Next</strong><br>Your deposit starts our schedule review. Your preferred date and arrival window are not guaranteed. We’ll contact you in less than two hours. You must accept any alternative before confirmation. If no mutually acceptable date is available, the deposit is refundable. Any scope or price change requires your agreement.</div>'
     .'<div id="payment-error" class="error" role="alert" tabindex="-1"'.($error?'':' hidden').'>'.pay_escape($error).'</div>'
-    .'<form id="payment-consent" method="post" action="booking-pay.php"><input type="hidden" name="action" value="checkout">'
+    .'<form id="payment-consent" method="post" action="'.site_runtime_link_path('booking-pay.php').'"><input type="hidden" name="action" value="checkout">'
     .'<input type="hidden" name="csrf" value="'.pay_escape($csrf).'"><input type="hidden" name="reference" value="'.pay_escape($reference).'">'
     .'<input type="hidden" name="token" value="'.pay_escape($token).'">'
     .'<label class="consent"><input type="checkbox" name="card_consent" value="yes" required><span>'.pay_escape(BOOKING_CONSENT_TEXT).'</span></label>'
     .'<button class="primary-action" type="submit">Continue To Secure Payment <span aria-hidden="true">→</span></button></form>'
     .'<p id="checkout-status" class="checkout-status" aria-live="polite"></p><div id="stripe-checkout" class="checkout-mount"></div>'
-    .'<p class="policy">This is a test payment. No live charge will be collected. Only the deposit is due today; the remaining balance is shown in your booking summary.</p>';
+    .site_runtime_copy('<p class="policy">This is a test payment. No live charge will be collected. Only the deposit is due today; the remaining balance is shown in your booking summary.</p>');
 if ($config['enabled']) $body.='<noscript><p class="notice">Please enable JavaScript to use the secure payment form.</p></noscript>';
 pay_page($body,200,['client'=>['enabled'=>$config['enabled'],'publishableKey'=>$config['publishable_key'],'reference'=>$reference]]);

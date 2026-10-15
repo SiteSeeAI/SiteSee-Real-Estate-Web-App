@@ -1,14 +1,15 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/../server/application-mode.php';
 function portal_new_order_page(PDO $db,array $account,string $again=''): never
 {
     if(!portal_profile_complete($db,$account['id']))portal_profile_page($db,$account,'Complete all Account fields before booking a new appointment.');
     $p=portal_profile($db,$account['id']);$seed=$again!==''?portal_purchase_seed($db,$account['id'],$again):null;
     if($again!==''&&!$seed)portal_page('Order Unavailable','<p>This order is not available in your account.</p>',$account,404);
-    $config=['serverNow'=>time(),'csrf'=>$_SESSION['csrf'],'details'=>['first'=>$p['first_name'],'last'=>$p['last_name'],'company'=>$p['company'],'phone'=>$p['phone'],'email'=>$account['email']],'seed'=>$seed];
+    $config=['live'=>site_runtime_live(),'serverNow'=>time(),'csrf'=>$_SESSION['csrf'],'details'=>['first'=>$p['first_name'],'last'=>$p['last_name'],'company'=>$p['company'],'phone'=>$p['phone'],'email'=>$account['email']],'seed'=>$seed];
     $body=($seed?'<p class="notice">This is a new service order. Review the property, service quantities and current pricing, then choose a new date and provide fresh access instructions.</p>':'')
         .'<div id="portal-wizard" data-config="'.portal_escape(json_encode($config,JSON_THROW_ON_ERROR)).'"><div id="sp-screen"></div><noscript>Enable JavaScript to complete the guided order form.</noscript></div>'
-        .'<link rel="stylesheet" href="/portal-assets/order.css"><script src="/account.php?view=engine&amp;market=residential" defer></script><script src="/account.php?view=engine&amp;market=commercial" defer></script><script src="/portal-assets/booking-notice.js?v=account-workflow-r1" defer></script><script src="/portal-assets/order.js?v=ux-003" defer></script>';
+        .'<link rel="stylesheet" href="/portal-assets/order.css"><script src="/account.php?view=engine&amp;market=residential" defer></script><script src="/account.php?view=engine&amp;market=commercial" defer></script><script src="/portal-assets/booking-notice.js?v=account-workflow-r1" defer></script><script src="/portal-assets/order.js?v=live-001" defer></script>';
     portal_page('New Order',$body,$account);
 }
 function portal_payment_page(PDO $db,array $account,string $reference,bool $return): never
@@ -18,7 +19,7 @@ function portal_payment_page(PDO $db,array $account,string $reference,bool $retu
     $row=booking_get($db,$reference);$paid=$row['status']==='deposit_paid_test' && $row['deposit_paid_at'];
     $e='portal_escape';$url='/account.php?view=order&amp;reference='.$e($reference);
     $body='<p><a href="'.$url.'">← Order Details</a></p><p class="lead">'. $e(portal_property(booking_request($row)['details'])).'</p>';
-    if($paid)portal_page('Test Deposit Recorded',$body.'<section class="panel"><h2>'.real_estate_money((int)$row['deposit_cents']).' Received</h2><p>Your deposit is recorded. Staff price review, rush approval and appointment confirmation are separate steps.</p><a href="'.$url.'">View Your Order Status</a></section>',$account);
+    if($paid)portal_page(site_runtime_copy('Test Deposit Recorded'),$body.'<section class="panel"><h2>'.real_estate_money((int)$row['deposit_cents']).' Received</h2><p>Your deposit is recorded. Staff price review, rush approval and appointment confirmation are separate steps.</p><a href="'.$url.'">View Your Order Status</a></section>',$account);
     if($row['status']==='expired_credit_test')portal_page('Payment Expired',$body.'<section class="panel"><h2>Your Credit Was Returned</h2><p>This unpaid checkout expired. Start a new order to apply your available credit.</p><a class="step-primary" href="/account.php?view=new">Start New Order →</a></section>',$account);
     $q=$db->prepare('SELECT state FROM booking_lifecycle WHERE reference=?');$q->execute([$reference]);$life=$q->fetchColumn();
     if(!in_array($row['status'],['awaiting_deposit_test','approved_test'],true)||($life!==false&&$life!=='active'))portal_page('Payment Unavailable',$body.'<p>This order needs staff review before payment.</p>',$account);
@@ -28,12 +29,12 @@ function portal_payment_page(PDO $db,array $account,string $reference,bool $retu
     $held=(int)($row['deposit_credit_cents']??0);$available=booking_finance_available($db,$account['id']);
     if($held)$body.='<section class="panel"><h2>Credit Reserved</h2><p>Deposit credit: '.real_estate_money($held).'<br>Cash due: '.real_estate_money(booking_finance_cash($row)).'</p></section>';
     elseif($available>0)$body.='<p class="notice">Available credit: '.real_estate_money($available).'. It will apply automatically to this deposit first, then the approved balance. Your secure payment form shows the exact cash amount.</p>';
-    $body.='<section class="panel"><h2>50% Test Deposit · '.real_estate_money((int)$row['deposit_cents']).'</h2><p>Only the deposit is due today. No live charge or subscription is created.</p><p>Your deposit starts schedule review. Your preferred window is not guaranteed. You must accept any alternative before confirmation. If no mutually acceptable date is available, the deposit is refundable. Any scope or price change requires your agreement.</p>'
+    $body.=site_runtime_copy('<section class="panel"><h2>50% Test Deposit · ').real_estate_money((int)$row['deposit_cents']).site_runtime_copy('</h2><p>Only the deposit is due today. No live charge or subscription is created.</p><p>Your deposit starts schedule review. Your preferred window is not guaranteed. You must accept any alternative before confirmation. If no mutually acceptable date is available, the deposit is refundable. Any scope or price change requires your agreement.</p>')
         .'<form id="portal-payment" data-email="'.$e($account['email']).'" data-key="'.$e($config['enabled']?$config['publishable_key']:'').'" method="post">'.portal_csrf_field().'<input type="hidden" name="action" value="checkout"><input type="hidden" name="reference" value="'.$e($reference).'"><label class="card-consent"><input type="checkbox" name="card_consent" value="yes" required><span>'.$e(BOOKING_CONSENT_TEXT).'</span></label><button class="primary">Continue To Secure Payment</button></form><p role="alert" id="payment-error" hidden></p><p id="checkout-status" aria-live="polite"></p><div id="stripe-checkout"></div></section><script src="/portal-assets/payment.js" defer></script>';
     if($config['enabled']){
         $body.=portal_payment_stripe_assets();
     }
-    portal_page('Your Test Deposit',$body,$account);
+    portal_page(site_runtime_copy('Your Test Deposit'),$body,$account);
 }
 
 function portal_payment_stripe_assets(): string

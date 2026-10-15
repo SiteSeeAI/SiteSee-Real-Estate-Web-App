@@ -54,7 +54,13 @@ function booking_communication_submit(PDO $db, string $key, callable $graph): vo
     $s->execute([$key]);
     if ($s->rowCount() !== 1) throw new InvalidArgumentException('This communication was already attempted. Recheck the saved message; do not resend.');
     $row = booking_communication_get($db,$key);
-    if ($row['sender'] !== BOOKING_MAIL_SENDER || !booking_test_recipient_allowed($row['recipient']) || $row['kind'] === 'original') {
+    if (site_runtime_live()) {
+        $booking=booking_get($db,$row['reference']);
+        if (!$booking || !in_array(strtolower($row['recipient']),[strtolower($booking['email']),BOOKING_MAIL_SENDER],true)) {
+            throw new InvalidArgumentException('Saved notice recipient differs from its booking.');
+        }
+    }
+    if ($row['sender'] !== BOOKING_MAIL_SENDER || !booking_recipient_allowed($row['recipient']) || $row['kind'] === 'original') {
         throw new InvalidArgumentException('Only the dedicated sender and configured test recipient may submit.');
     }
     $m = json_decode($row['message_json'], true, 32, JSON_THROW_ON_ERROR);
@@ -82,7 +88,7 @@ function booking_communication_unsent_draft(array $row): bool
 {
     if (!in_array($row['submission_state'] ?? '', ['draft','draft_blocked'], true)
         || empty($row['provider_message_id']) || ($row['sender'] ?? '') !== BOOKING_MAIL_SENDER
-        || !booking_test_recipient_allowed($row['recipient'] ?? '') || ($row['kind'] ?? '') === 'original') return false;
+        || !booking_recipient_allowed($row['recipient'] ?? '') || ($row['kind'] ?? '') === 'original') return false;
     foreach (['submission_attempted_at','provider_accepted_at','sent_observed_at','sent_at'] as $field) {
         if (!empty($row[$field])) return false;
     }

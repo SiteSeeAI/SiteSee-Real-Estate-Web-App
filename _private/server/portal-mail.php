@@ -39,7 +39,7 @@ function portal_send_order(string $recipient,array $submission,string $reference
     $staff=$recipient==='staff';
     $link=SITESEE_REAL_ESTATE_SITE_URL.($staff?'/staff-bookings.php?reference='.rawurlencode($reference):'/account.php?view=order&reference='.rawurlencode($reference));
     $plain="Reference: ".$reference."\n\n".($staff?$submission['salesPlain']:$submission['plain'])
-        ."\n\nYour request is saved. The TEST deposit and SiteSee schedule review are still required. Your arrival window is not confirmed.\n".$link;
+        .site_runtime_copy("\n\nYour request is saved. The TEST deposit and SiteSee schedule review are still required. Your arrival window is not confirmed.\n").$link;
     $html='<div style="font-family:Arial,sans-serif;max-width:640px;margin:auto"><h1>'.($staff?'New Preferred-Date Request':'Your SiteSee Request Is Saved').'</h1><pre style="font-family:Arial,sans-serif;white-space:pre-wrap">'.htmlspecialchars($plain,ENT_QUOTES,'UTF-8').'</pre></div>';
     return real_estate_send_mail($staff?SITESEE_REAL_ESTATE_SALES_EMAIL:$submission['details']['email'],
         $staff?$submission['details']['email']:SITESEE_REAL_ESTATE_SALES_EMAIL,booking_property_subject($submission['quote']['subject'],$submission['details']),$html,$plain);

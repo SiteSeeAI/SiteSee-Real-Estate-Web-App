@@ -22,6 +22,12 @@ $raw = file_get_contents('php://input');
 try {
     booking_test_key();
     $event = booking_verify_stripe_event((string)$raw, (string)($_SERVER['HTTP_STRIPE_SIGNATURE'] ?? ''));
+    // Other products in the same merchant account cannot select this app's ledger.
+    if (site_runtime_live() && ($event['data']['object']['metadata']['site_application_realm']??'')!==site_runtime_control()['realm']) {
+        echo 'ignored';exit;
+    }
+    booking_verify_live_event($event);
+    site_runtime_stripe_account(booking_test_key());
     $db = booking_db();
     if (!booking_job_event($db,$event) && !portal_balance_event($db, $event)) booking_process_stripe_event($db, $event);
     $object=$event['data']['object']??[];

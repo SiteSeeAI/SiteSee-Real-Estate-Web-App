@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/application-mode.php';
 require_once __DIR__ . '/booking-test-recipients.php';
 
 const BOOKING_MAIL_SENDER = 'sales@re.sitesee.ai';
@@ -7,6 +8,7 @@ const BOOKING_MAIL_SENDER = 'sales@re.sitesee.ai';
 /** Fixed provider hosts, no redirects, bounded responses, no credentials in errors. */
 function booking_provider_http(string $method, string $url, array $headers = [], ?string $body = null): array
 {
+    if($method!=='GET' && !str_contains($url,'/oauth2/v2.0/token') && $url!=='https://accounts.zoho.com/oauth/v2/token')site_runtime_provider_write();
     $host = parse_url($url, PHP_URL_HOST);
     if (parse_url($url, PHP_URL_SCHEME) !== 'https' || !in_array($host,
         ['graph.microsoft.com', 'login.microsoftonline.com', 'accounts.zoho.com', 'www.zohoapis.com'], true)) {
@@ -42,10 +44,10 @@ function booking_private_json(string $path): array
 
 function booking_mail_config(bool $sending = false): array
 {
-    $c = booking_private_json(dirname(__DIR__) . '/booking-mail.json');
-    if (($c['sender'] ?? '') !== BOOKING_MAIL_SENDER || ($c['stage'] ?? '') !== 'test'
-        || ($c['graph_credentials'] ?? '') !== '/home/sitesee/.sitesee-graph-mail.json'
-        || ($c['test_recipient_email'] ?? '') !== 'sales@re.sitesee.ai'
+    $c = booking_private_json(site_runtime_path('booking-mail.json'));
+    if (($c['sender'] ?? '') !== BOOKING_MAIL_SENDER || ($c['stage'] ?? '') !== site_runtime_stage()
+        || ($c['graph_credentials'] ?? '') !== (site_runtime_live()?site_runtime_path('graph-mail.json'):'/home/sitesee/.sitesee-graph-mail.json')
+        || ($c['test_recipient_email'] ?? '') !== (site_runtime_live()?'':'sales@re.sitesee.ai')
         || !is_bool($c['enabled'] ?? null) || ($sending && !$c['enabled'])) {
         throw new InvalidArgumentException('The dedicated booking mail path is not enabled or verified.');
     }
@@ -70,6 +72,7 @@ function booking_graph_client(array $config): callable
     return static function (string $method, string $path, ?string $body = null, ?string $ifMatch = null) use ($token): array {
         // Only booking sender and the expressly designated test recipient/original sender.
         if (!preg_match('~^/users/(sales%40re\.sitesee\.ai|cro%40sitesee\.ai)/(messages|mailFolders/[^/?]+/messages)(?:[/?].*)?$~D', $path)
+            || (site_runtime_live() && !str_starts_with($path,'/users/sales%40re.sitesee.ai/'))
             || !in_array($method, ['GET','POST','PATCH'], true)
             || ($method === 'POST' && !str_starts_with($path, '/users/sales%40re.sitesee.ai/messages'))) {
             throw new RuntimeException('Graph operation is outside the booking mail path.');
@@ -98,7 +101,7 @@ function booking_graph_draft_patch_guard(string $path, ?string $body, ?string $i
     foreach ($fields as $field=>$value) {
         $address = $value[0]['emailAddress']['address'] ?? null;
         if (!is_string($address) || $value !== [['emailAddress'=>['address'=>$address]]]
-            || ($field === 'replyTo' ? $address !== BOOKING_MAIL_SENDER : !booking_test_recipient_allowed($address))) {
+            || ($field === 'replyTo' ? $address !== BOOKING_MAIL_SENDER : !booking_recipient_allowed($address))) {
             throw new RuntimeException('Draft repair requires an approved recipient and the fixed RE reply address.');
         }
     }
@@ -106,7 +109,7 @@ function booking_graph_draft_patch_guard(string $path, ?string $body, ?string $i
 
 function booking_crm_config(): array
 {
-    $c = booking_private_json(dirname(__DIR__) . '/zoho-crm.json');
+    $c = booking_private_json(site_runtime_path('zoho-crm.json'));
     foreach (['client_id','client_secret','refresh_token','org_id','user_id'] as $k) {
         if (empty($c[$k]) || !is_string($c[$k])) throw new RuntimeException('CRM authorization is incomplete.');
     }

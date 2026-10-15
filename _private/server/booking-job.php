@@ -134,7 +134,7 @@ function booking_job_complete(PDO $db,string $reference,string $scope,bool $agre
 function booking_job_validate_intent(array $p,array $job): void
 {
     portal_billing_need((bool)preg_match('/^pi_[A-Za-z0-9_]+$/D',(string)($p['id']??''))&&(!$job['payment_intent']||$job['payment_intent']===$p['id'])
-        &&($p['livemode']??null)===false&&($p['customer']??'')===$job['customer']&&($p['currency']??'')==='usd'&&($p['amount']??null)===(int)$job['amount']
+        &&($p['livemode']??null)===site_runtime_livemode()&&($p['customer']??'')===$job['customer']&&($p['currency']??'')==='usd'&&($p['amount']??null)===(int)$job['amount']
         &&($p['metadata']['booking_reference']??'')===$job['reference']&&($p['metadata']['portal_payment_kind']??'')==='job_closeout'&&($p['metadata']['job_scope']??'')===$job['scope']
         &&in_array($p['status']??'',['requires_payment_method','requires_confirmation','requires_action','processing','succeeded','canceled'],true));
 }
@@ -165,7 +165,7 @@ function booking_job_refresh(PDO $db,string $reference,?callable $api=null,bool 
         if($p['status']==='succeeded'){
             portal_billing_need(($p['amount_received']??null)===(int)$job['amount']&&(bool)preg_match('/^ch_[A-Za-z0-9_]+$/D',(string)($p['latest_charge']??'')));
             $c=$api('GET','/charges/'.$p['latest_charge']);
-            portal_billing_need(($c['id']??'')===$p['latest_charge']&&($c['livemode']??null)===false&&($c['customer']??'')===$job['customer']&&($c['payment_intent']??'')===$p['id']
+            portal_billing_need(($c['id']??'')===$p['latest_charge']&&($c['livemode']??null)===site_runtime_livemode()&&($c['customer']??'')===$job['customer']&&($c['payment_intent']??'')===$p['id']
                 &&($c['paid']??false)===true&&($c['captured']??false)===true&&($c['currency']??'')==='usd'&&($c['amount']??null)===(int)$job['amount']&&($c['amount_captured']??null)===(int)$job['amount']
                 &&is_int($c['amount_refunded']??null)&&$c['amount_refunded']>=0&&$c['amount_refunded']<=(int)$job['amount']&&is_bool($c['disputed']??null));
             $refunded=$c['amount_refunded'];$disputed=$c['disputed']?1:0;$state=$refunded||$disputed||!$priorClear?'review':'paid';$paid=gmdate('c');
@@ -185,6 +185,7 @@ function booking_job_collect(PDO $db,string $reference,?callable $api=null): arr
         if(!$job['request_json']){
             $body=['amount'=>(string)$job['amount'],'currency'=>'usd','customer'=>$job['customer'],'payment_method_types[0]'=>'card',
                 'description'=>'SiteSee final job balance '.$reference,'metadata[booking_reference]'=>$reference,'metadata[portal_payment_kind]'=>'job_closeout','metadata[job_scope]'=>$job['scope']];
+            $body=site_runtime_payment_body($body);
             $db->prepare("UPDATE booking_jobs SET request_json=?,request_at=?,payment_state='creating' WHERE reference=? AND request_json IS NULL")->execute([json_encode($body,JSON_THROW_ON_ERROR),time(),$reference]);$job=booking_job_get($db,$reference);
         }
         if(!$job['payment_intent']){
@@ -192,20 +193,20 @@ function booking_job_collect(PDO $db,string $reference,?callable $api=null): arr
                 $list=$api('GET','/payment_intents?customer='.$job['customer'].'&limit=100');portal_billing_need(($list['has_more']??null)===false&&is_array($list['data']??null));
                 $matches=array_values(array_filter($list['data'],static fn($p)=>($p['metadata']['job_scope']??'')===$job['scope']&&($p['metadata']['booking_reference']??'')===$reference));
                 if(count($matches)!==1)throw new InvalidArgumentException('The earlier payment request needs billing review. Another charge was not created.');$p=$matches[0];
-            }else $p=$api('POST','/payment_intents',json_decode($job['request_json'],true,16,JSON_THROW_ON_ERROR),'sitesee-job-create-test-'.$reference);
+            }else $p=$api('POST','/payment_intents',json_decode($job['request_json'],true,16,JSON_THROW_ON_ERROR),site_runtime_idempotency('sitesee-job-create-test-'.$reference));
             booking_job_validate_intent($p,$job);
             $db->prepare('UPDATE booking_jobs SET payment_intent=? WHERE reference=? AND payment_intent IS NULL')->execute([$p['id'],$reference]);$job=booking_job_get($db,$reference);booking_job_validate_intent($p,$job);
         }
         $p=$api('GET','/payment_intents/'.$job['payment_intent']);booking_job_validate_intent($p,$job);
         if(in_array($p['status'],['requires_payment_method','requires_confirmation'],true)&&!$job['recovery_at']&&!$job['confirm_at']){
             $row=booking_get($db,$reference);
-            if(!$row['consent_at']||!in_array($row['consent_version'],[BOOKING_CONSENT_VERSION,'test-card-reuse-v1'],true))throw new InvalidArgumentException('Saved-card permission requires customer review.');
+            if(!$row['consent_at']||!in_array($row['consent_version'],(site_runtime_live()?[BOOKING_CONSENT_VERSION]:[BOOKING_CONSENT_VERSION,'test-card-reuse-v1']),true))throw new InvalidArgumentException('Saved-card permission requires customer review.');
             $deposit=$api('GET','/payment_intents/'.($row['stripe_payment_intent_id']??$row['credit_card_intent']??''));$pm=(string)($deposit['payment_method']??'');
-            portal_billing_need(($deposit['id']??'')===($row['stripe_payment_intent_id']??$row['credit_card_intent']??'')&&($deposit['livemode']??null)===false&&($deposit['customer']??'')===$job['customer']&&($deposit['setup_future_usage']??'')==='off_session'&&(bool)preg_match('/^pm_[A-Za-z0-9_]+$/D',$pm));
-            $method=$api('GET','/payment_methods/'.$pm);portal_billing_need(($method['id']??'')===$pm&&($method['livemode']??null)===false&&($method['customer']??'')===$job['customer']&&($method['type']??'')==='card');
+            portal_billing_need(($deposit['id']??'')===($row['stripe_payment_intent_id']??$row['credit_card_intent']??'')&&($deposit['livemode']??null)===site_runtime_livemode()&&($deposit['customer']??'')===$job['customer']&&($deposit['setup_future_usage']??'')==='off_session'&&(bool)preg_match('/^pm_[A-Za-z0-9_]+$/D',$pm));
+            $method=$api('GET','/payment_methods/'.$pm);portal_billing_need(($method['id']??'')===$pm&&($method['livemode']??null)===site_runtime_livemode()&&($method['customer']??'')===$job['customer']&&($method['type']??'')==='card');
             $claim=$db->prepare('UPDATE booking_jobs SET confirm_at=? WHERE reference=? AND recovery_at IS NULL AND confirm_at IS NULL');$claim->execute([time(),$reference]);
             if($claim->rowCount()===1){
-                $p=$api('POST','/payment_intents/'.$job['payment_intent'].'/confirm',['off_session'=>'true','payment_method'=>$pm],'sitesee-job-confirm-test-'.$reference);booking_job_validate_intent($p,$job);
+                $p=$api('POST','/payment_intents/'.$job['payment_intent'].'/confirm',['off_session'=>'true','payment_method'=>$pm],site_runtime_idempotency('sitesee-job-confirm-test-'.$reference));booking_job_validate_intent($p,$job);
             }
         }
         return booking_job_refresh($db,$reference,$api);
@@ -235,17 +236,19 @@ function booking_job_event(PDO $db,array $event): bool
 {
     $p=$event['data']['object']??[];
     if(($p['metadata']['portal_payment_kind']??'')!=='job_closeout'||!str_starts_with((string)($event['type']??''),'payment_intent.'))return false;
-    portal_billing_need(($event['livemode']??null)===false&&(bool)preg_match('/^evt_[A-Za-z0-9_]+$/D',(string)($event['id']??'')));
+    portal_billing_need(($event['livemode']??null)===site_runtime_livemode()&&(bool)preg_match('/^evt_[A-Za-z0-9_]+$/D',(string)($event['id']??'')));
     $job=booking_job_get($db,(string)($p['metadata']['booking_reference']??''));portal_billing_need((bool)$job);booking_job_validate_intent($p,$job);
     $db->prepare("UPDATE booking_jobs SET payment_intent=COALESCE(payment_intent,?),payment_state=CASE WHEN paid_at IS NULL THEN 'verification_pending' ELSE payment_state END WHERE reference=? AND (payment_intent IS NULL OR payment_intent=?)")->execute([$p['id'],$job['reference'],$p['id']]);
     return true;
 }
 function booking_job_stripe(string $method,string $path,array $body=[],string $key=''): array
 {
+    if($method!=='GET')site_runtime_provider_write();
     if($method==='GET'&&!str_starts_with($path,'/payment_methods/'))return portal_stripe($method,$path,$body,$key);
     $allowed=($method==='GET'&&(bool)preg_match('~^/payment_methods/pm_[A-Za-z0-9_]+$~D',$path))
-        ||($method==='POST'&&($path==='/payment_intents'||preg_match('~^/payment_intents/pi_[A-Za-z0-9_]+/confirm$~D',$path))&&preg_match('/^sitesee-job-(?:create|confirm)-test-[A-F0-9]{10,32}$/D',$key));
+        ||($method==='POST'&&($path==='/payment_intents'||preg_match('~^/payment_intents/pi_[A-Za-z0-9_]+/confirm$~D',$path))&&preg_match('/^sitesee-job-(?:create|confirm)-'.site_runtime_stage().'-[A-F0-9]{10,32}$/D',$key));
     if(!$allowed)throw new RuntimeException('Invalid final billing request.');
+    site_runtime_stripe_account(booking_test_key());
     $curl=curl_init('https://api.stripe.com/v1'.$path);if($curl===false)throw new RuntimeException('Billing unavailable.');$raw='';
     $headers=['Authorization: Bearer '.booking_test_key(),'Stripe-Version: '.BOOKING_CHECKOUT_API_VERSION];
     if($method==='POST'){$headers[]='Idempotency-Key: '.$key;$headers[]='Content-Type: application/x-www-form-urlencoded';curl_setopt($curl,CURLOPT_POST,true);curl_setopt($curl,CURLOPT_POSTFIELDS,http_build_query($body,'','&',PHP_QUERY_RFC3986));}

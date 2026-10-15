@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/../server/application-mode.php';
 
 /** Presentation only: callers supply escaped, trusted application body markup. */
 function site_application_shell(string $role, string $title, string $body, bool $authenticated = false, string $staffStyle = '', array $navigation = []): string
@@ -31,10 +32,11 @@ function site_application_shell(string $role, string $title, string $body, bool 
         };
         $nav = str_replace('href="'.$current.'"', 'href="'.$current.'" aria-current="page"', $nav);
     }
-    return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><title>'.$escape($title).' | SiteSee</title>'.$head.'</head>'
+    $html='<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><title>'.$escape($title).' | SiteSee</title>'.$head.'</head>'
         .'<body class="site-shell role-'.$role.($authenticated ? ' is-authenticated' : '').'"><a class="skip" href="#content">Skip To Content</a><header><a class="brand" href="'.$page['home'].'" aria-label="SiteSee '.$page['label'].'">SiteSee<span>.</span><small>Show More. Decide Faster.</small></a>'.$nav.'</header>'
-        .'<div class="test-notice">TEST ACCESS <span>Orders and payments remain in test mode.</span></div><main id="content"><h1>'.$escape($title).'</h1>'.$body.'</main>'
+        .(site_runtime_live()?'':'<div class="test-notice">TEST ACCESS <span>Orders and payments remain in test mode.</span></div>').'<main id="content"><h1>'.$escape($title).'</h1>'.$body.'</main>'
         .'<footer><span>SiteSee Real Estate · '.$page['label'].'</span><a href="mailto:sales@re.sitesee.ai">sales@re.sitesee.ai</a></footer></body></html>';
+    return $role==='staff'?site_runtime_staff_html($html):$html;
 }
 
 /** Recorded-state progress, not links to unavailable operations. */

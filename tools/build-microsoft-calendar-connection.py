@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import re
 import zlib
+from unified_source import before_mode_update
 
 root = Path(__file__).resolve().parents[1]
 def historical(path):
@@ -13,7 +14,7 @@ def historical(path):
     return frozen if '_private' in path.parts and frozen.is_file() else path
 paths = {'server/booking-microsoft-calendar.php': root / '_private/server/booking-microsoft-calendar.php',
          'tools/verify-microsoft-calendar-connection.php': root / 'tools/verify-microsoft-calendar-connection.php'}
-raw = json.dumps({name: path.read_text() for name, path in paths.items()}, sort_keys=True).encode()
+raw = json.dumps({name: before_mode_update(root,str(path.relative_to(root))).decode() for name, path in paths.items()}, sort_keys=True).encode()
 installer = root / 'tools/install-microsoft-calendar-connection.py'
 text = installer.read_text()
 text = re.sub(r"^PAYLOAD = .*?$", 'PAYLOAD = ' + repr(base64.b64encode(zlib.compress(raw, 9)).decode()), text, flags=re.M)

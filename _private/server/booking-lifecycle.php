@@ -1,14 +1,15 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/application-mode.php';
 require_once __DIR__.'/booking-workflow.php';
 require_once __DIR__.'/booking-job.php';
 
 function booking_lifecycle_enabled(): bool
 {
-    $p=dirname(__DIR__).'/booking-lifecycle.json';
+    $p=site_runtime_path('booking-lifecycle.json');
     if(!is_file($p))return false;
     $c=booking_ms_private_json($p);
-    $expected=['schema'=>1,'stage'=>'test','enabled'=>true,'recipient'=>'sales@re.sitesee.ai'];
+    $expected=['schema'=>1,'stage'=>site_runtime_stage(),'enabled'=>true,'recipient'=>site_runtime_live()?'booking-customer':'sales@re.sitesee.ai'];
     return count($c)===count($expected) && array_replace($expected,$c)===$expected;
 }
 function booking_lifecycle_row(PDO $db,string $reference): array
@@ -35,14 +36,14 @@ function booking_management_issue(PDO $db,string $reference): string
     $token=bin2hex(random_bytes(32));
     booking_lifecycle_set($db,$reference,['token_hash'=>hash('sha256',$token),'token_expires'=>time()+7*86400]);
     // Fragment secrets never enter HTTP request URLs, server logs, or Referer headers.
-    return SITESEE_REAL_ESTATE_SITE_URL.'/manage-appointment.php#'.$reference.'.'.$token;
+    return SITESEE_REAL_ESTATE_SITE_URL.site_runtime_link_path('/manage-appointment.php#').$reference.'.'.$token;
 }
 /** Reuse only an unexpired, unrevoked link from this booking's private saved notices. */
 function booking_management_notice_link(PDO $db,string $reference): string
 {
     $q=$db->prepare('SELECT message_json FROM booking_communications WHERE reference=? ORDER BY created_at DESC');
     $q->execute([$reference]);
-    $prefix=SITESEE_REAL_ESTATE_SITE_URL.'/manage-appointment.php#'.$reference.'.';
+    $prefix=SITESEE_REAL_ESTATE_SITE_URL.site_runtime_link_path('/manage-appointment.php#').$reference.'.';
     foreach($q->fetchAll() as $saved){
         $message=json_decode($saved['message_json'],true,64,JSON_THROW_ON_ERROR);
         if(preg_match('~'.preg_quote($prefix,'~').'([a-f0-9]{64})(?![a-f0-9])~D',$message['plain']??'',$match)
@@ -85,7 +86,7 @@ function booking_lifecycle_connection(array $claim): callable
 {
     $c=booking_scheduling_config($claim);
     if(!booking_scheduling_is_microsoft($c))return booking_confirmation_connection($c);
-    $connection=booking_ms_private_json(dirname(__DIR__).'/microsoft-calendar.json');booking_ms_validate_config($connection);
+    $connection=booking_ms_private_json(site_runtime_path('microsoft-calendar.json'));booking_ms_validate_config($connection);
     return booking_lifecycle_ms_transport(booking_ms_private_json($connection['graph_credentials']),$claim['event_uid']);
 }
 function booking_lifecycle_missing_reply(array $r): bool
@@ -217,7 +218,7 @@ function booking_lifecycle_message(array $row,array $claim,int $revision,string 
 {
     $m=booking_invitation_message($row,$claim);$cancel=$action==='cancel';
     $method=$cancel?'CANCEL':'REQUEST';
-    $plain='This is a SiteSee TEST appointment. No live payment has been collected.' . "\n\n"
+    $plain=site_runtime_copy('This is a SiteSee TEST appointment. No live payment has been collected.') . "\n\n"
         .($cancel?'Your appointment is cancelled.':'Your appointment arrival window has been updated to '.booking_request($row)['appointment']['date'].' '.booking_request($row)['appointment']['time'].'–'.booking_request($row)['appointment']['windowEnd'].' Central Time.')
         ."\nReference: ".$row['reference']."\nProperty: ".booking_confirmation_property(booking_request($row)['details'])
         ."\nCancellation billing is processed separately under the refund and credit policy. View Billing in your account for verified results. This notice does not confirm that a refund has completed."
@@ -227,7 +228,7 @@ function booking_lifecycle_message(array $row,array $claim,int $revision,string 
     $ical=str_replace(['METHOD:REQUEST','SEQUENCE:0','STATUS:CONFIRMED','PARTSTAT=NEEDS-ACTION;RSVP=TRUE'],
         ['METHOD:'.$method,'SEQUENCE:'.$revision,$cancel?'STATUS:CANCELLED':'STATUS:CONFIRMED',$cancel?'PARTSTAT=DECLINED;RSVP=FALSE':'PARTSTAT=NEEDS-ACTION;RSVP=TRUE'],$ical);
     $ical=preg_replace('/DTSTAMP:[^\r\n]+/','DTSTAMP:'.gmdate('Ymd\THis\Z'),$ical);
-    $subject=booking_property_subject('[TEST] SiteSee Appointment '.($cancel?'Cancellation':'Updated'),booking_request($row)['details']);
+    $subject=booking_property_subject(site_runtime_copy('[TEST] SiteSee Appointment ').($cancel?'Cancellation':'Updated'),booking_request($row)['details']);
     $html='<p>'.nl2br(htmlspecialchars($plain,ENT_QUOTES,'UTF-8')).'</p>';
     $boundary='sitesee_change_'.bin2hex(random_bytes(16));$body='';
     foreach([['text/plain; charset=UTF-8',$plain],['text/html; charset=UTF-8',$html],['text/calendar; charset=UTF-8; method='.$method.'; name="arrival-window.ics"',$ical]]as[$type,$part]){
@@ -342,14 +343,14 @@ function booking_change_request_create(PDO $db,string $reference,string $fingerp
 function booking_change_request_message(array $row,array $request): array
 {
     $a=booking_request($row)['appointment'];
-    $plain="A customer has requested a new TEST appointment window. Manager approval is required.\n\nReference: ".$row['reference']
+    $plain=site_runtime_copy("A customer has requested a new TEST appointment window. Manager approval is required.\n\nReference: ").$row['reference']
         ."\nProperty: ".booking_confirmation_property(booking_request($row)['details'])
         ."\nConfirmed window: ".$a['date'].' '.$a['time'].'–'.$a['windowEnd'].' Central Time'
         ."\nRequested window: ".$request['date'].' '.$request['time'].'–'.$request['window_end'].' Central Time'
         ."\n\nThe calendar, customer RSVP and payment records have not changed. Review the saved request in Staff Bookings:\n"
         .SITESEE_REAL_ESTATE_SITE_URL.'/staff-bookings.php?reference='.rawurlencode($row['reference']);
     return ['from'=>BOOKING_MAIL_SENDER,'to'=>BOOKING_MAIL_SENDER,
-        'subject'=>booking_property_subject('[TEST] Appointment Change Requested',booking_request($row)['details']),
+        'subject'=>booking_property_subject(site_runtime_copy('[TEST] Appointment Change Requested'),booking_request($row)['details']),
         'plain'=>$plain,'body'=>$plain,'headers'=>['From: SiteSee Real Estate <'.BOOKING_MAIL_SENDER.'>',
             'Reply-To: '.BOOKING_MAIL_SENDER,'MIME-Version: 1.0','Content-Type: text/plain; charset=UTF-8']];
 }
@@ -416,7 +417,7 @@ function booking_change_request_decline_message(array $row,array $request): arra
         ."\n\nThis decline did not change your confirmed appointment or payment records.\n"
         ."Check your current appointment status or request another available window in Customer Account:\n".SITESEE_REAL_ESTATE_SITE_URL.'/account.php';
     return ['from'=>BOOKING_MAIL_SENDER,'to'=>$row['email'],
-        'subject'=>booking_property_subject('[TEST] Appointment Change Declined',booking_request($row)['details']),
+        'subject'=>booking_property_subject(site_runtime_copy('[TEST] Appointment Change Declined'),booking_request($row)['details']),
         'plain'=>$plain,'body'=>$plain,'html'=>nl2br(htmlspecialchars($plain,ENT_QUOTES,'UTF-8')),'headers'=>['From: SiteSee Real Estate <'.BOOKING_MAIL_SENDER.'>',
             'Reply-To: '.BOOKING_MAIL_SENDER,'MIME-Version: 1.0','Content-Type: text/plain; charset=UTF-8']];
 }

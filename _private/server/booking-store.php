@@ -8,12 +8,12 @@ require_once __DIR__ . '/booking-schedule.php';
 require_once __DIR__.'/booking-identifiers.php';
 require_once __DIR__.'/booking-finance.php';
 
-const BOOKING_CONSENT_VERSION = 'test-card-reuse-v2';
-const BOOKING_CONSENT_TEXT = 'I authorize SiteSee to use the card saved for this test deposit or, when credit covers it, the verified card previously saved on my account for the remaining approved job balance and any on-site services I separately approve. If I selected the residential platform, I authorize its separate monthly billing only after publication until I notify SiteSee the property is sold. I understand later charges require their own approved scope and that a saved card may require further authentication.';
+define('BOOKING_CONSENT_VERSION',site_runtime_live()?'live-card-reuse-v1':'test-card-reuse-v2');
+define('BOOKING_CONSENT_TEXT','I authorize SiteSee to use the card saved for this '.(site_runtime_live()?'':'test ').'deposit or, when credit covers it, the verified card previously saved on my account for the remaining approved job balance and any on-site services I separately approve. If I selected the residential platform, I authorize its separate monthly billing only after publication until I notify SiteSee the property is sold. I understand later charges require their own approved scope and that a saved card may require further authentication.');
 
 function booking_test_enabled(): bool
 {
-    return getenv('SITESEE_REAL_ESTATE_BOOKING_TEST_ENABLED') === '1';
+    return site_runtime_bookings_enabled();
 }
 
 /** Decode the transport prefix so PHP-FPM never receives a leading dollar sign. */
@@ -29,7 +29,8 @@ function booking_staff_password_hash(): string
 
 function booking_db(): PDO
 {
-    $path = getenv('SITESEE_REAL_ESTATE_BOOKING_DB') ?: dirname(__DIR__) . '/data/bookings.sqlite';
+    $path = site_runtime_live()?site_runtime_path('data/bookings.sqlite'):(getenv('SITESEE_REAL_ESTATE_BOOKING_DB') ?: dirname(__DIR__) . '/data/bookings.sqlite');
+    if (site_runtime_live() && (!is_file($path) || is_link($path))) throw new RuntimeException('LIVE ledger must be prepared before activation.');
     if (!str_starts_with($path, '/') || str_contains($path, "\0")) {
         throw new RuntimeException('Booking database path must be absolute.');
     }
@@ -51,6 +52,7 @@ function booking_db(): PDO
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_TIMEOUT => 5,
     ]);
+    site_runtime_bind_db($db);
     $db->exec('PRAGMA busy_timeout=5000');
     $db->exec('PRAGMA journal_mode=WAL');
     $db->exec('CREATE TABLE IF NOT EXISTS bookings (
@@ -207,8 +209,8 @@ function booking_rotate_test_link(PDO $db, string $reference): string
 
 function booking_test_key(): string
 {
-    $key = (string)getenv('SITESEE_REAL_ESTATE_STRIPE_TEST_SECRET');
-    if (!preg_match('/^sk_test_[A-Za-z0-9_]{12,}$/D', $key)) {
+    $key = (string)site_runtime_env(site_runtime_live()?'SITESEE_REAL_ESTATE_STRIPE_LIVE_SECRET':'SITESEE_REAL_ESTATE_STRIPE_TEST_SECRET');
+    if (!site_runtime_key_valid($key)) {
         throw new RuntimeException('Stripe test mode is not configured. No payment link was created.');
     }
     return $key;
@@ -258,15 +260,16 @@ function booking_start_checkout(PDO $db, string $reference, string $token, strin
         'payment_intent_data[setup_future_usage]' => 'off_session',
         'payment_intent_data[metadata][booking_reference]' => $reference,
         'metadata[booking_reference]' => $reference,
-        'success_url' => SITESEE_REAL_ESTATE_SITE_URL . '/booking-pay.php?result=success&reference=' . rawurlencode($reference),
-        'cancel_url' => SITESEE_REAL_ESTATE_SITE_URL . '/booking-pay.php?result=canceled&reference=' . rawurlencode($reference),
+        'success_url' => SITESEE_REAL_ESTATE_SITE_URL . site_runtime_link_path('/booking-pay.php?result=success&reference=') . rawurlencode($reference),
+        'cancel_url' => SITESEE_REAL_ESTATE_SITE_URL . site_runtime_link_path('/booking-pay.php?result=canceled&reference=') . rawurlencode($reference),
     ];
     try {
-        $session = $transport ? $transport($body, 'sitesee-deposit-test-' . $reference . '-' . $attempt, $key)
-            : booking_stripe_create_session($body, 'sitesee-deposit-test-' . $reference . '-' . $attempt, $key);
-        if (!is_array($session) || !preg_match('/^cs_test_[A-Za-z0-9_]+$/D', (string)($session['id'] ?? ''))
+        $body=site_runtime_payment_body($body);
+        $session = $transport ? $transport($body, site_runtime_idempotency('sitesee-deposit-test-' . $reference . '-' . $attempt), $key)
+            : booking_stripe_create_session($body, site_runtime_idempotency('sitesee-deposit-test-' . $reference . '-' . $attempt), $key);
+        if (!is_array($session) || !site_runtime_session_id((string)($session['id'] ?? ''))
             || !preg_match('~^https://checkout\.stripe\.com/~', (string)($session['url'] ?? ''))
-            || ($session['livemode'] ?? null) !== false) {
+            || ($session['livemode'] ?? null) !== site_runtime_livemode()) {
             throw new RuntimeException('Stripe returned an invalid test Checkout session.');
         }
         $stmt = $db->prepare('UPDATE bookings SET stripe_session_id=?, stripe_checkout_url=?, checkout_state=\'open\'
@@ -286,6 +289,8 @@ function booking_start_checkout(PDO $db, string $reference, string $token, strin
 
 function booking_stripe_create_session(array $body, string $idempotency, string $key): array
 {
+    site_runtime_provider_write();
+    site_runtime_stripe_account($key);
     $curl = curl_init('https://api.stripe.com/v1/checkout/sessions');
     if ($curl === false) {
         throw new RuntimeException('Stripe is unavailable.');
@@ -311,7 +316,7 @@ function booking_stripe_create_session(array $body, string $idempotency, string 
 
 function booking_verify_stripe_event(string $raw, string $signature, ?int $now = null): array
 {
-    $secret = (string)getenv('SITESEE_REAL_ESTATE_STRIPE_TEST_WEBHOOK_SECRET');
+    $secret = (string)site_runtime_env(site_runtime_live()?'SITESEE_REAL_ESTATE_STRIPE_LIVE_WEBHOOK_SECRET':'SITESEE_REAL_ESTATE_STRIPE_TEST_WEBHOOK_SECRET');
     if (!preg_match('/^whsec_[A-Za-z0-9_]{12,}$/D', $secret) || $raw === '' || strlen($raw) > 1048576) {
         throw new RuntimeException('Stripe test webhook is not configured or the payload is invalid.');
     }
@@ -335,12 +340,35 @@ function booking_verify_stripe_event(string $raw, string $signature, ?int $now =
         throw new InvalidArgumentException('Stripe webhook signature is invalid.');
     }
     $event = json_decode($raw, true, 32, JSON_THROW_ON_ERROR);
-    if (!is_array($event) || ($event['livemode'] ?? null) !== false
+    if (!is_array($event) || ($event['livemode'] ?? null) !== site_runtime_livemode()
         || !preg_match('/^evt_[A-Za-z0-9_]+$/D', (string)($event['id'] ?? ''))
         || !is_array($event['data']['object'] ?? null)) {
         throw new InvalidArgumentException('Expected a Stripe test event.');
     }
     return $event;
+}
+
+/** Signature and merchant ownership are separate proofs for a LIVE webhook. */
+function booking_verify_live_event(array $event,?callable $read=null): void
+{
+    if (!site_runtime_live()) return;
+    if (($event['livemode']??null)!==true || !preg_match('/^evt_[A-Za-z0-9_]+$/D',(string)($event['id']??''))
+        || (isset($event['account']) && $event['account']!==site_runtime_control()['stripe_account'])) {
+        throw new InvalidArgumentException('LIVE webhook account or mode differs.');
+    }
+    $verified=($read??'portal_stripe')('GET','/events/'.$event['id']);
+    $canonical=static function(mixed $value)use(&$canonical):mixed {
+        if (!is_array($value)) return $value;
+        if (!array_is_list($value)) ksort($value);
+        return array_map($canonical,$value);
+    };
+    if (($verified['id']??'')!==$event['id'] || ($verified['type']??'')!==($event['type']??'')
+        || ($verified['livemode']??null)!==true
+        || (isset($verified['account']) && $verified['account']!==site_runtime_control()['stripe_account'])
+        || !hash_equals(hash('sha256',json_encode($canonical($verified['data']['object']??null),JSON_THROW_ON_ERROR)),
+            hash('sha256',json_encode($canonical($event['data']['object']??null),JSON_THROW_ON_ERROR)))) {
+        throw new InvalidArgumentException('LIVE event does not belong to the configured merchant.');
+    }
 }
 
 /** A paid deposit never sends an invitation. Calendar/CRM reconciliation is a later stage. */
@@ -355,8 +383,8 @@ function booking_process_stripe_event(PDO $db, array $event): string
     }
     $object = $event['data']['object'] ?? [];
     $reference = (string)($object['client_reference_id'] ?? '');
-    if (($object['livemode'] ?? null) !== false || ($object['mode'] ?? '') !== 'payment'
-        || !preg_match('/^cs_test_[A-Za-z0-9_]+$/D', (string)($object['id'] ?? ''))
+    if (($object['livemode'] ?? null) !== site_runtime_livemode() || ($object['mode'] ?? '') !== 'payment'
+        || !site_runtime_session_id((string)($object['id'] ?? ''))
         || !preg_match('/^[A-F0-9]{10,32}$/D', $reference)
         || ($object['metadata']['booking_reference'] ?? '') !== $reference) {
         throw new InvalidArgumentException('Stripe test session does not match a booking.');

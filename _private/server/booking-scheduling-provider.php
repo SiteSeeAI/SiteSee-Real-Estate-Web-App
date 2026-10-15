@@ -1,14 +1,15 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/application-mode.php';
 /** Provider routing is durable per confirmation; old Zoho identities are never rewritten. */
 require_once __DIR__ . '/booking-microsoft-calendar.php';
 
 function booking_scheduling_is_microsoft(array $config): bool { return ($config['provider'] ?? 'zoho') === 'microsoft'; }
 function booking_scheduling_ms_config(): array
 {
-    return ['schema'=>1, 'stage'=>'test', 'provider'=>'microsoft', 'enabled'=>true,
-        'confirmation_stage'=>'test', 'confirmation_enabled'=>true, 'invitations_enabled'=>true,
-        'test_recipient_email'=>'sales@re.sitesee.ai', 'calendar_uid'=>'microsoft:' . BOOKING_MS_CALENDAR];
+    return ['schema'=>1, 'stage'=>site_runtime_stage(), 'provider'=>'microsoft', 'enabled'=>true,
+        'confirmation_stage'=>site_runtime_stage(), 'confirmation_enabled'=>true, 'invitations_enabled'=>true,
+        'test_recipient_email'=>site_runtime_live()?'':'sales@re.sitesee.ai', 'calendar_uid'=>'microsoft:' . BOOKING_MS_CALENDAR];
 }
 function booking_scheduling_valid_config(array $config): bool
 {
@@ -18,7 +19,7 @@ function booking_scheduling_valid_config(array $config): bool
 function booking_scheduling_config(array|false|null $claim = null): array
 {
     if ($claim && !str_starts_with($claim['calendar_uid'], 'microsoft:')) return booking_confirmation_config();
-    $path = dirname(__DIR__) . '/microsoft-scheduling.json';
+    $path = site_runtime_path('microsoft-scheduling.json');
     if (!$claim && !file_exists($path) && !is_link($path)) return booking_confirmation_config();
     $config = booking_ms_private_json($path);
     booking_ms_need(booking_scheduling_valid_config($config), 'Microsoft TEST scheduling configuration differs.');
@@ -30,7 +31,7 @@ function booking_scheduling_config(array|false|null $claim = null): array
 function booking_scheduling_ms_connection(array $config, ?callable $http = null): Closure
 {
     booking_ms_need(booking_scheduling_valid_config($config), 'Microsoft TEST scheduling gates differ.');
-    $connection = booking_ms_private_json(dirname(__DIR__) . '/microsoft-calendar.json');
+    $connection = booking_ms_private_json(site_runtime_path('microsoft-calendar.json'));
     booking_ms_validate_config($connection);
     $secret = booking_ms_private_json($connection['graph_credentials']);
     return booking_scheduling_ms_transport($secret, $http);
@@ -68,7 +69,7 @@ function booking_scheduling_ms_payload_check(array $event): void
         && $event['showAs'] === 'busy' && $event['isReminderOn'] === false && $event['isOnlineMeeting'] === false
         && $event['isAllDay'] === false && $event['responseRequested'] === false && $event['allowNewTimeProposals'] === false
         && is_string($event['transactionId']) && (bool)preg_match('/^[a-f0-9]{32}$/D',$event['transactionId'])
-        && (bool)preg_match('/^SiteSee TEST Shoot [A-F0-9]{10,32} [a-f0-9]{32}$/D',(string)$event['subject'])
+        && (bool)preg_match('/^SiteSee '.(site_runtime_live()?'':'TEST ').'Shoot [A-F0-9]{10,32} [a-f0-9]{32}$/D',(string)$event['subject'])
         && ($event['body']['contentType'] ?? '') === 'text' && is_string($event['body']['content'] ?? null)
         && is_string($event['location']['displayName'] ?? null), 'Unsafe Microsoft appointment payload refused.');
     $duration = booking_ms_timestamp($event['end']) - booking_ms_timestamp($event['start']);

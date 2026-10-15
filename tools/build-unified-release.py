@@ -27,16 +27,23 @@ CHANGED_PRIVATE |= {'private/views/portal-job.php','private/server/booking-ident
 CHANGED_PRIVATE.add('private/pricing-assets/scheduling.js')
 CHANGED_PUBLIC.add('public/portal-assets/portal.js')
 CHANGED_PRIVATE |= {'private/server/portal-billing.php', 'private/server/booking-checkout.php', 'private/server/booking-job.php', 'private/server/booking-job-catalog.php', 'private/server/booking-webhook.php', 'private/views/portal-purchase.php'}
-PREDECESSOR = {'commit': '201b1888abad434d37236e3f478b3e0b2068919b',
-               'manifest_sha256': '38ef090abe2c6b24eabb445b85d8e3327a3e1a97f9922ca8ea97ff9c7a1bf19e',
-               'runtime_schema': 'Additive booking_finance_cancellations, booking_finance_refunds, booking_finance_credits, booking_finance_allocations and booking_finance_funding tables plus existing account/workflow schema on first normal application use; original prices, references and payment rows retained. Financial activity requires repair forward; no operational database rollback.'}
-RUNTIME_SCHEMA = 'Additive booking_finance_refund_dates evidence table plus existing financial/account/workflow schema on first normal application use; first verified refund dates retained immutably, original prices, references and payment rows retained. Financial activity requires repair forward; no operational database rollback.'
+
+NEW_FILES |= {'public/staff-test-bookings.php','public/staff-test-production.php','public/staff-test-vendors.php'}
+# LIVE-001 explicitly reviewed runtime boundary; package installation still defaults to TEST.
+NEW_FILES |= {'public/booking-live-pay.php', 'private/server/application-mode.php', 'public/pricing-live-approve.php', 'public/pricing-live-confirm.php', 'public/manage-live-appointment.php', 'public/booking-live-webhook.php'}
+CHANGED_PRIVATE |= {'private/views/portal-job.php', 'private/server/booking-scheduling-provider.php', 'private/real-estate-form-config.php', 'private/server/booking-mail-client.php', 'private/server/portal-mail.php', 'private/server/booking-communication.php', 'private/server/booking-store.php', 'private/server/booking-lifecycle.php', 'private/server/booking-finance.php', 'private/server/booking-confirmation.php', 'private/server/portal-session.php', 'private/server/vendor-app.php', 'private/server/vendor-access.php', 'private/server/booking-pay.php', 'private/server/application-mode.php', 'private/payment-assets/booking-payment.js', 'private/server/booking-workflow.php', 'private/views/portal-service.php', 'private/server/quote-submit.php', 'private/views/application-shell.php', 'private/server/booking-checkout.php', 'private/server/portal-orders.php', 'private/server/portal-app.php', 'private/views/pricing.php', 'private/server/pricing-request.php', 'private/server/booking-test-recipients.php', 'private/server/booking-invitation.php', 'private/server/booking-job.php', 'private/server/pricing-approve.php', 'private/server/booking-review-ui.php', 'private/server/booking-webhook.php', 'private/server/booking-manage.php', 'private/server/portal-sms.php', 'private/pricing-assets/commercial-pricing.js', 'private/views/portal-purchase.php', 'private/views/portal.php', 'private/pricing-assets/pricing.js', 'private/server/booking-lifecycle-reconcile.php', 'private/server/booking-calendar-client.php', 'private/server/application.php', 'private/server/portal-billing.php', 'private/server/portal-release.php', 'private/server/booking-staff.php', 'private/server/booking-lifecycle-store.php', 'private/views/booking-payment.php', 'private/server/booking-microsoft-calendar.php'}
+CHANGED_PUBLIC |= {'public/booking-live-pay.php', 'public/portal-assets/order.js', 'public/manage-appointment.php', 'public/pricing-live-approve.php', 'public/pricing-live-confirm.php', 'public/pricing-confirm.php', 'public/manage-live-appointment.php', 'public/pricing-approve.php', 'public/booking-webhook.php', 'public/booking-pay.php', 'public/booking-live-webhook.php'}
+PREDECESSOR = {'commit': 'e0bed2b3726c05b52c5d2c943ccd887cd3b376b8',
+               'manifest_sha256': '1d9f8f6bc14dccabf3894501c1e9b2792389232a3c6684628851b6f6d2a29fb0',
+               'runtime_schema': 'Additive booking_finance_refund_dates evidence table plus existing financial/account/workflow schema on first normal application use; first verified refund dates retained immutably, original prices, references and payment rows retained. Financial activity requires repair forward; no operational database rollback.'}
+RUNTIME_SCHEMA = 'Separate TEST and LIVE ledgers; LIVE application_realm is prepared explicitly before activation. Existing financial/account/workflow schemas and immutable refund-date evidence retained; financial activity and LIVE activation require repair forward. No operational database rollback.'
 ALIASES = {'account.php', 'vendor.php', 'staff-bookings.php', 'staff-production.php',
            'staff-vendors.php', 'manage-appointment.php', 'booking-pay.php',
            'booking-webhook.php', 'booking-availability.php', 'pricing.php',
            'pricing-request.php', 'pricing-approve.php', 'pricing-confirm.php',
            'pricing-logout.php', 'pricing-asset.php', 'quote-submit.php', 'contact-submit.php'}
 
+ALIASES |= {'staff-test-bookings.php','staff-test-production.php','staff-test-vendors.php','booking-live-webhook.php','booking-live-pay.php','manage-live-appointment.php','pricing-live-approve.php','pricing-live-confirm.php'}
 
 def encode(value):
     return (json.dumps(value, sort_keys=True, separators=(',', ':')) + '\n').encode()
@@ -114,7 +121,8 @@ def build(commit, output):
     members['source-test-manifest.json'] = encode(source)
     manifest = {'format': 1, 'release': 'unified-test-' + commit[:12], 'commit': commit,
                 'baseline': BASELINE, 'stage': 'TEST', 'migration': 'none',
-                'compatibility': 'reviewed client inline workflow, owned expense reports/PDF and cancellation/archive classification; additive immutable refund-date evidence and monotonic readback; existing cancellation policy, authorization and provider operation identities retained',
+                'runtime_modes': ['TEST','LIVE'], 'default_runtime_mode': 'TEST',
+                'compatibility': 'reviewed mode/account-bound runtime, isolated LIVE ledger and sessions, preserved TEST callbacks and recovery; explicit private activation, fresh LIVE consent, shared calendar locks; original payment policy and pricing retained',
                 'runtime_schema': RUNTIME_SCHEMA,
                 'predecessor': PREDECESSOR | {'files': {n: sha(b) for n, b in sorted(previous_deploy.items())}},
                 'installer_sha256': sha(runner), 'source_manifest_sha256': sha(members['source-test-manifest.json']),

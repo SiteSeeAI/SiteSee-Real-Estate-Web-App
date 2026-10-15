@@ -7,6 +7,7 @@ foreach(glob(__DIR__.'/../_private/server/*.php') as $file)copy($file,$tmp.'/pri
 foreach(glob(__DIR__.'/../_private/*.php') as $file)copy($file,$tmp.'/private/'.basename($file));
 file_put_contents($tmp.'/private/booking-lifecycle.json',json_encode(['schema'=>1,'stage'=>'test','enabled'=>true,'recipient'=>'sales@re.sitesee.ai']));chmod($tmp.'/private/booking-lifecycle.json',0600);
 putenv('SITESEE_REAL_ESTATE_SITE_URL=https://portal-test.example');putenv('SITESEE_REAL_ESTATE_BOOKING_DB='.$tmp.'/bookings.sqlite');putenv('SITESEE_REAL_ESTATE_BOOKING_TEST_ENABLED=1');putenv('SITESEE_REAL_ESTATE_PRICING_GATE_SECRET=isolated-finance-secret-1234567890');putenv('SITESEE_REAL_ESTATE_STRIPE_TEST_SECRET=sk_test_'.str_repeat('0',16));
+if(in_array('--live',$argv??[],true)){require __DIR__.'/support/live-mode.php';sitesee_fixture_activate_live($tmp.'/private');}
 require $tmp.'/private/server/portal-purchase.php';require $tmp.'/private/server/portal-billing.php';
 $checks=0;function check(bool $ok,string $label):void{global $checks;++$checks;if(!$ok)throw new RuntimeException($label);}
 function rejects(callable $f,string $label):void{try{$f();}catch(Throwable){check(true,$label);return;}check(false,$label);}
@@ -16,7 +17,7 @@ $payload=['market'=>'residential','details'=>['first'=>'Synthetic','last'=>'Agen
 $sessions=[];$intents=[];$charges=[];$refunds=[];$writes=0;$keys=[];$lost=false;$refundStatus='succeeded';$counter=0;
 $api=static function(string $method,string $path,array $body=[],string $key='')use(&$sessions,&$intents,&$charges,&$refunds,&$writes,&$keys,&$lost,&$refundStatus):array{
     if($method==='GET'){
-        if(preg_match('~^/checkout/sessions/(cs_test_\w+)$~',$path,$m))return $sessions[$m[1]];
+        if(preg_match('~^/checkout/sessions/(cs_'.site_runtime_stage().'_\w+)$~',$path,$m))return $sessions[$m[1]];
         if(preg_match('~^/payment_intents/(pi_\w+)$~',$path,$m))return $intents[$m[1]];
         if(preg_match('~^/charges/(ch_\w+)$~',$path,$m))return $charges[$m[1]];
         if(preg_match('~^/refunds/(re_\w+)$~',$path,$m))return $refunds[$m[1]];
@@ -24,19 +25,19 @@ $api=static function(string $method,string $path,array $body=[],string $key='')u
         if(preg_match('~^/(checkout/sessions|payment_intents|invoices|subscriptions)\?customer=(cus_\w+)&(?:status=all&)?limit=100$~',$path,$m)){
             $items=match($m[1]){'checkout/sessions'=>$sessions,'payment_intents'=>$intents,default=>[]};return ['has_more'=>false,'data'=>array_values(array_filter($items,static fn($v)=>$v['customer']===$m[2]))];
         }
-        if(preg_match('~^/payment_methods/(pm_\w+)$~',$path,$m))return ['id'=>$m[1],'livemode'=>false,'customer'=>'cus_'.substr($m[1],3),'type'=>'card'];
+        if(preg_match('~^/payment_methods/(pm_\w+)$~',$path,$m))return ['id'=>$m[1],'livemode'=>site_runtime_livemode(),'customer'=>'cus_'.substr($m[1],3),'type'=>'card'];
     }
     if($method==='POST'&&$path==='/payment_intents'){
         $id='pi_job_'.$body['metadata[booking_reference]'];
-        return $intents[$id]??= ['id'=>$id,'livemode'=>false,'customer'=>$body['customer'],'status'=>'requires_confirmation','currency'=>'usd','amount'=>(int)$body['amount'],'metadata'=>['booking_reference'=>$body['metadata[booking_reference]'],'portal_payment_kind'=>'job_closeout','job_scope'=>$body['metadata[job_scope]']]];
+        return $intents[$id]??= ['id'=>$id,'livemode'=>site_runtime_livemode(),'customer'=>$body['customer'],'status'=>'requires_confirmation','currency'=>'usd','amount'=>(int)$body['amount'],'metadata'=>['booking_reference'=>$body['metadata[booking_reference]'],'portal_payment_kind'=>'job_closeout','job_scope'=>$body['metadata[job_scope]']]];
     }
     if($method==='POST'&&preg_match('~^/payment_intents/(pi_\w+)/confirm$~',$path,$m)){
         $p=$intents[$m[1]];check($body['payment_method']==='pm_'.substr($p['customer'],4)&&$body['off_session']==='true','Full-credit collection uses the verified source card.');
         $ch='ch_'.$p['id'];$p['status']='succeeded';$p['amount_received']=$p['amount'];$p['latest_charge']=$ch;$intents[$p['id']]=$p;
-        $charges[$ch]=['id'=>$ch,'livemode'=>false,'customer'=>$p['customer'],'payment_intent'=>$p['id'],'paid'=>true,'captured'=>true,'currency'=>'usd','amount'=>$p['amount'],'amount_captured'=>$p['amount'],'amount_refunded'=>0,'disputed'=>false];return $p;
+        $charges[$ch]=['id'=>$ch,'livemode'=>site_runtime_livemode(),'customer'=>$p['customer'],'payment_intent'=>$p['id'],'paid'=>true,'captured'=>true,'currency'=>'usd','amount'=>$p['amount'],'amount_captured'=>$p['amount'],'amount_refunded'=>0,'disputed'=>false];return $p;
     }
     if($method==='POST'&&$path==='/refunds'){
-        check((bool)preg_match('/^sitesee-refund-test-[a-f0-9]{64}$/D',$key),'Stable refund key.');
+        check((bool)preg_match('/^sitesee-refund-'.site_runtime_stage().'-[a-f0-9]{64}$/D',$key),'Stable refund key.');
         if(isset($keys[$key]))return $refunds[$keys[$key]];
         ++$writes;$id='re_refund'.$writes;$charge=$charges[$body['charge']];$r=['id'=>$id,'charge'=>$charge['id'],'payment_intent'=>$charge['payment_intent'],'amount'=>(int)$body['amount'],'currency'=>'usd','status'=>$refundStatus,'metadata'=>['sitesee_operation'=>$body['metadata[sitesee_operation]'],'booking_reference'=>$body['metadata[booking_reference]']]];$refunds[$id]=$r;$keys[$key]=$id;
         if($refundStatus==='succeeded')$charges[$charge['id']]['amount_refunded']+=(int)$body['amount'];
@@ -51,11 +52,11 @@ function order(string $owner,?int $gross=null,bool $paid=true,string $customer='
     return $ref;
 }
 function payment(string $ref,int $amount,string $kind='deposit',int $attempt=1,string $customer=''):array{
-    global $db,$sessions,$intents,$charges;$suffix=strtolower($ref).'_'.$kind.$attempt;$sid='cs_test_'.$suffix;$pi='pi_'.$suffix;$ch='ch_'.$suffix;$customer=$customer?:'cus_'.$suffix;
+    global $db,$sessions,$intents,$charges;$suffix=strtolower($ref).'_'.$kind.$attempt;$sid='cs_'.site_runtime_stage().'_'.$suffix;$pi='pi_'.$suffix;$ch='ch_'.$suffix;$customer=$customer?:'cus_'.$suffix;
     $meta=['booking_reference'=>$ref];if($kind==='balance')$meta+=['portal_payment_kind'=>'balance','portal_attempt'=>(string)$attempt];
-    $s=['id'=>$sid,'livemode'=>false,'mode'=>'payment','status'=>'complete','payment_status'=>'paid','currency'=>'usd','amount_total'=>$amount,'client_reference_id'=>$ref,'metadata'=>$meta,'customer'=>$customer,'payment_intent'=>$pi];$sessions[$sid]=$s;
-    $intents[$pi]=['id'=>$pi,'livemode'=>false,'customer'=>$customer,'status'=>'succeeded','currency'=>'usd','amount_received'=>$amount,'latest_charge'=>$ch,'payment_method'=>'pm_'.substr($customer,4),'setup_future_usage'=>'off_session'];
-    $charges[$ch]=['id'=>$ch,'livemode'=>false,'customer'=>$customer,'payment_intent'=>$pi,'paid'=>true,'captured'=>true,'currency'=>'usd','amount'=>$amount,'amount_captured'=>$amount,'amount_refunded'=>0,'disputed'=>false];
+    $s=['id'=>$sid,'livemode'=>site_runtime_livemode(),'mode'=>'payment','status'=>'complete','payment_status'=>'paid','currency'=>'usd','amount_total'=>$amount,'client_reference_id'=>$ref,'metadata'=>$meta,'customer'=>$customer,'payment_intent'=>$pi];$sessions[$sid]=$s;
+    $intents[$pi]=['id'=>$pi,'livemode'=>site_runtime_livemode(),'customer'=>$customer,'status'=>'succeeded','currency'=>'usd','amount_received'=>$amount,'latest_charge'=>$ch,'payment_method'=>'pm_'.substr($customer,4),'setup_future_usage'=>'off_session'];
+    $charges[$ch]=['id'=>$ch,'livemode'=>site_runtime_livemode(),'customer'=>$customer,'payment_intent'=>$pi,'paid'=>true,'captured'=>true,'currency'=>'usd','amount'=>$amount,'amount_captured'=>$amount,'amount_refunded'=>0,'disputed'=>false];
     if($kind==='deposit')$db->prepare('UPDATE bookings SET stripe_session_id=?,stripe_payment_intent_id=?,stripe_customer_id=? WHERE reference=?')->execute([$sid,$pi,$customer,$ref]);
     return $s;
 }
@@ -104,11 +105,11 @@ foreach(['pending','failed'] as $status){$ref=order($other,5000);cancel_plan($re
 // Already adjusted deposit is preserved with no refund or credit grant.
 $ref=order($other,5000);$r=booking_get($db,$ref);$charges[$intents[$r['stripe_payment_intent_id']]['latest_charge']]['amount_refunded']=100;cancel_plan($ref,'customer',1);$before=$writes;booking_finance_process($db,$ref,$api);check($writes===$before&&booking_finance_status($db,$ref)['credit']===0,'Existing adjustment needs review.');
 // Manager cancellation still dispositions a balance payment that arrives afterwards.
-$ref=order($other,5000);$s=balance($ref,8000,false);cancel_plan($ref,'staff',1);booking_finance_process($db,$ref,$api);check(booking_finance_status($db,$ref)['state']==='pending','Open balance held after cancellation.');portal_balance_event($db,['id'=>'evt_late_balance','type'=>'checkout.session.completed','livemode'=>false,'data'=>['object'=>$s]]);booking_finance_process($db,$ref,$api);check(booking_finance_status($db,$ref)['refunded']===13000,'Late signed balance refunded under original management policy.');
+$ref=order($other,5000);$s=balance($ref,8000,false);cancel_plan($ref,'staff',1);booking_finance_process($db,$ref,$api);check(booking_finance_status($db,$ref)['state']==='pending','Open balance held after cancellation.');portal_balance_event($db,['id'=>'evt_late_balance','type'=>'checkout.session.completed','livemode'=>site_runtime_livemode(),'data'=>['object'=>$s]]);booking_finance_process($db,$ref,$api);check(booking_finance_status($db,$ref)['refunded']===13000,'Late signed balance refunded under original management policy.');
 // Partial credit never leaves an invalid sub50cent Stripe amount.
 // A signed payment arriving inside refund readback must survive the processor's final write.
 $ref=order($other,5000);$s=balance($ref,8000,false);cancel_plan($ref,'staff',1);$arrived=false;
-$duringRefund=static function($m,$p,$b=[],$k='')use($api,$db,$s,&$arrived){if(!$arrived&&$m==='GET'&&str_starts_with($p,'/refunds')){$arrived=true;portal_balance_event($db,['id'=>'evt_balance_during_refund','type'=>'checkout.session.completed','livemode'=>false,'data'=>['object'=>$s]]);}return $api($m,$p,$b,$k);};
+$duringRefund=static function($m,$p,$b=[],$k='')use($api,$db,$s,&$arrived){if(!$arrived&&$m==='GET'&&str_starts_with($p,'/refunds')){$arrived=true;portal_balance_event($db,['id'=>'evt_balance_during_refund','type'=>'checkout.session.completed','livemode'=>site_runtime_livemode(),'data'=>['object'=>$s]]);}return $api($m,$p,$b,$k);};
 booking_finance_process($db,$ref,$duringRefund);check($arrived&&booking_finance_status($db,$ref)['state']==='pending','Concurrent signed cash remains selected for worker recovery.');
 booking_finance_process($db,$ref,$api);check(booking_finance_status($db,$ref)['state']==='completed'&&booking_finance_status($db,$ref)['refunded']===13000,'Concurrent late cash receives the full original manager refund.');
 $available=booking_finance_available($db,$account);$ref=order($account,$available+25,false);booking_finance_reserve($db,$account,$ref,$api);check(booking_finance_cash(booking_get($db,$ref))===50&&booking_finance_credit_sum($db,$ref,'balance','reserved')===25,'Minimum cash respected; residual credit retained.');
@@ -140,7 +141,7 @@ booking_process_stripe_event($db,['id'=>'evt_credit_expired','type'=>'checkout.s
 // An aged but provably unsubmitted request may safely make its first POST.
 $ref=order($account,5000);cancel_plan($ref,'staff',1);$readOffline=static function($m,$p,$b=[],$k='')use($api){if(str_starts_with($p,'/refunds'))throw new RuntimeException('Refund reads unavailable');return $api($m,$p,$b,$k);};booking_finance_process($db,$ref,$readOffline);$before=$writes;booking_finance_process($db,$ref,$api,time()+25*3600);check($writes===$before+1&&booking_finance_status($db,$ref)['refunded']===5000,'Never-submitted aged request creates first refund safely.');
 // Late payment wakes a previously completed plan inside the signed payment commit.
-$ref=order($account,5000);cancel_plan($ref,'staff',1);booking_finance_process($db,$ref,$api);check(booking_finance_status($db,$ref)['state']==='completed','Initial cancellation completed.');$s=balance($ref,5000,false);portal_balance_event($db,['id'=>'evt_completed_plan_late','type'=>'checkout.session.completed','livemode'=>false,'data'=>['object'=>$s]]);check(booking_finance_status($db,$ref)['state']==='queued','Late signed evidence durably wakes completed plan.');booking_finance_process($db,$ref,$api);check(booking_finance_status($db,$ref)['refunded']===10000,'Worker refunds late evidence without a browser handoff.');
+$ref=order($account,5000);cancel_plan($ref,'staff',1);booking_finance_process($db,$ref,$api);check(booking_finance_status($db,$ref)['state']==='completed','Initial cancellation completed.');$s=balance($ref,5000,false);portal_balance_event($db,['id'=>'evt_completed_plan_late','type'=>'checkout.session.completed','livemode'=>site_runtime_livemode(),'data'=>['object'=>$s]]);check(booking_finance_status($db,$ref)['state']==='queued','Late signed evidence durably wakes completed plan.');booking_finance_process($db,$ref,$api);check(booking_finance_status($db,$ref)['refunded']===10000,'Worker refunds late evidence without a browser handoff.');
 // A fully credited deposit can collect a later cash balance from its verified card lineage, with fresh consent.
 $third=str_repeat('c',32);$db->prepare('INSERT INTO portal_accounts VALUES (?,?,?,0)')->execute([$third,'info@1789media.com',time()]);portal_save_profile($db,$third,['first_name'=>'Synthetic','last_name'=>'Agent','company'=>'Fixture','phone'=>'3125550100']);
 $source=order($third,3000,true,'cus_lineage');cancel_plan($source,'customer',1);booking_finance_process($db,$source,$api);$target=order($third,3000,false);booking_finance_reserve($db,$third,$target,$api);booking_finance_credit_checkout($db,$third,$target,'127.0.0.1',$api);
@@ -167,6 +168,8 @@ $healthy=order($account,6000);cancel_plan($healthy,'customer',1);booking_finance
 // Repeated cancellation after a provider event reappears is explicit review, preserving prior money.
 $ref=order($account,5000);cancel_plan($ref,'customer',1);booking_finance_process($db,$ref,$api);$before=$writes;$op=['operation_id'=>bin2hex(random_bytes(16)),'reference'=>$ref,'revision'=>2,'actor'=>'staff','action'=>'cancel','created_at'=>gmdate('c')];$payload2=['claim'=>['planned_start'=>time()+86400]];
 $db->prepare("INSERT INTO booking_lifecycle_operations(operation_id,reference,revision,actor,action,state,payload_json,created_at) VALUES (?,?,?,?,?,'applied',?,?)")->execute([$op['operation_id'],$ref,2,'staff','cancel',json_encode($payload2),$op['created_at']]);booking_finance_queue($db,$op,$payload2);booking_finance_process($db,$ref,$api);check(booking_finance_status($db,$ref)['state']==='review'&&$writes===$before,'Repeated cancellation cannot impersonate old completed policy.');
+if(!site_runtime_live()){
 booking_finance_worker_key(true);check((fileperms($tmp.'/private/booking-finance-key.json')&0077)===0,'Worker key private.');putenv('SITESEE_REAL_ESTATE_STRIPE_TEST_SECRET');booking_finance_worker_key();check(str_starts_with(booking_test_key(),'sk_test_'),'CLI loads private TEST key.');chmod($tmp.'/private/booking-finance-key.json',0644);clearstatcache();rejects(fn()=>booking_finance_worker_key(),'Broad-readable key rejected.');
-$finished=true;echo "booking-finance: PASS ($checks assertions; refund recovery, ownership, cash/credit, balances, late events, card lineage, review, TEST key)\n";
+}else{booking_finance_worker_key(true);check(!file_exists($tmp.'/private/booking-finance-key.json'),'LIVE never exports its key to the TEST bridge.');check(str_starts_with(booking_test_key(),'sk_'.'live_'),'LIVE worker loads only its bound private key.');}
+$finished=true;echo "booking-finance: PASS ($checks assertions; refund recovery, ownership, cash/credit, balances, late events, card lineage, review, mode-bound worker key)\n";
 $cleanup=static function($path)use(&$cleanup){foreach(scandir($path) as $name){if($name==='.'||$name==='..')continue;$p=$path.'/'.$name;if(is_dir($p)&&!is_link($p))$cleanup($p);else unlink($p);}rmdir($path);};$db=null;$cleanup($tmp);

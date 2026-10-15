@@ -2,6 +2,27 @@
 declare(strict_types=1);
 /** Scheduled calendar GET reconciliation and durable TEST refund outbox; no calendar/mail writes. */
 if(PHP_SAPI!=='cli'){http_response_code(404);error_log('SiteSee reconciliation requires the PHP CLI executable.');exit;}
+require_once __DIR__.'/application-mode.php';
+$requestedRealm=null;
+foreach(array_slice($argv,1) as $argument){
+    if(str_starts_with($argument,'--realm=')){
+        $requestedRealm=substr($argument,8);
+        if(!in_array($requestedRealm,['TEST','LIVE'],true)){fwrite(STDERR,"Unknown reconciliation realm.\n");exit(1);}
+    }elseif($argument!=='--diagnose'){fwrite(STDERR,"Unknown reconciliation argument.\n");exit(1);}
+}
+if($requestedRealm!==null)define('SITESEE_REQUEST_MODE',$requestedRealm);
+elseif(site_runtime_control()['stage']==='LIVE'){
+    // Keep the existing single cron/outer lock. Each realm has a fresh PHP process,
+    // its own DB, sessions and credentials, and unchanged saved provider keys.
+    $failed=false;
+    foreach(['TEST','LIVE'] as $realm){
+        $command=[PHP_BINARY,__FILE__,'--realm='.$realm];
+        if(in_array('--diagnose',$argv,true))$command[]='--diagnose';
+        $child=proc_open($command,[0=>['file','/dev/null','r'],1=>STDOUT,2=>STDERR],$pipes);
+        if(!is_resource($child)||proc_close($child)!==0)$failed=true;
+    }
+    exit($failed?1:0);
+}
 echo gmdate('c')." Worker started.\n";
 $workerStage='bootstrap';
 set_exception_handler(static function(Throwable $error)use(&$workerStage):void{
@@ -26,19 +47,20 @@ putenv('SITESEE_REAL_ESTATE_BOOKING_TEST_ENABLED=1');
 require_once __DIR__.'/booking-lifecycle.php';
 require_once __DIR__.'/application.php';
 site_application_bootstrap(dirname(__DIR__));
-if(!booking_lifecycle_enabled()){echo "TEST lifecycle activation unavailable.\n";exit(1);}
+if(!booking_lifecycle_enabled()){echo site_runtime_mode()." lifecycle activation unavailable.\n";exit(1);}
 $workerStage='database';
 $db=booking_db();
 $workerStage='schema';booking_communication_schema($db);
 $started=microtime(true);$count=0;$errors=0;
+$recipientClause=site_runtime_live()?'':'AND lower(b.email) IN (?,?)';
 $sql="SELECT c.reference FROM booking_confirmations c JOIN bookings b ON b.reference=c.reference
  LEFT JOIN booking_lifecycle l ON l.reference=c.reference
- WHERE c.state='confirmed' AND c.event_uid IS NOT NULL AND lower(b.email) IN (?,?) AND b.status='deposit_paid_test'
+ WHERE c.state='confirmed' AND c.event_uid IS NOT NULL $recipientClause AND b.status='deposit_paid_test'
  AND b.reference <> 'D32FFC7458'
  AND (c.planned_end > strftime('%s','now')-86400 OR EXISTS (SELECT 1 FROM booking_lifecycle_operations o WHERE o.reference=c.reference AND o.state IN ('prepared','uncertain')))
  ORDER BY COALESCE(l.checked_at,0) ASC LIMIT 20";
-$workerStage='selection';$selection=$db->prepare($sql);$selection->execute(booking_test_recipients());$eligible=$selection->fetchAll();
-if(($argv[1]??'')==='--diagnose'){echo "CLI, database and worker selection: PASS. No booking-row or provider writes.\n";exit;}
+$workerStage='selection';$selection=$db->prepare($sql);$selection->execute(site_runtime_live()?[]:booking_test_recipients());$eligible=$selection->fetchAll();
+if(in_array('--diagnose',$argv,true)){echo "CLI, database and worker selection: PASS. No booking-row or provider writes.\n";exit;}
 $workerStage='reconciliation';
 foreach($eligible as$row){
     if(microtime(true)-$started>45)break;
@@ -53,5 +75,5 @@ try{
     booking_finance_worker_key();
     $financial=$db->query("SELECT reference FROM booking_finance_cancellations WHERE state<>'completed' ORDER BY COALESCE(checked_at,0),requested_at LIMIT 10")->fetchAll(PDO::FETCH_COLUMN);
     foreach($financial as $reference){if(microtime(true)-$financialStarted>45)break;booking_finance_process($db,$reference);++$financialCount;}
-    echo gmdate('c')." Financial TEST outbox checked: $financialCount. Original refund keys preserved.\n";
+    echo gmdate('c')." Financial ".site_runtime_mode()." outbox checked: $financialCount. Original refund keys preserved.\n";
 }catch(Throwable){echo gmdate('c')." Financial outbox needs private credential/staff review. No secrets exposed.\n";}

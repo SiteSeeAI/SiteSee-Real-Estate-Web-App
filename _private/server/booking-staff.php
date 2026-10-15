@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/application-mode.php';
 
 require_once __DIR__ . '/booking-lifecycle-ui.php';
 require_once __DIR__ . '/booking-job-ui.php';
@@ -48,7 +49,8 @@ $hash = booking_staff_password_hash();
 if (!booking_test_enabled() || $hash === '' || !str_starts_with(SITESEE_REAL_ESTATE_SITE_URL, 'https://')) {
     staff_page('<p>Staff review is not configured.</p>', 503);
 }
-session_name('sitesee_real_estate_staff');
+site_runtime_session_storage('staff');
+    session_name(site_runtime_cookie('sitesee_real_estate_staff'));
 session_set_cookie_params(['lifetime'=>0,'path'=>'/','secure'=>true,'httponly'=>true,'samesite'=>'Strict']);
 session_start();
 $db = booking_db();
@@ -75,7 +77,7 @@ if ($method === 'POST') {
             session_regenerate_id(true);
             $_SESSION['staff_until'] = time() + 7200;
             $_SESSION['csrf'] = bin2hex(random_bytes(24));
-            header('Location: '.(defined('SITESEE_VENDOR_ADMIN_PAGE')&&SITESEE_VENDOR_ADMIN_PAGE?'staff-vendors.php':(defined('SITESEE_PRODUCTION_PAGE')&&SITESEE_PRODUCTION_PAGE?'staff-production.php':'staff-bookings.php')), true, 303);
+            header('Location: '.site_runtime_link_path(defined('SITESEE_VENDOR_ADMIN_PAGE')&&SITESEE_VENDOR_ADMIN_PAGE?'staff-vendors.php':(defined('SITESEE_PRODUCTION_PAGE')&&SITESEE_PRODUCTION_PAGE?'staff-production.php':'staff-bookings.php')), true, 303);
             exit;
         }
         $db->prepare('INSERT INTO staff_login_attempts (ip_hash,at) VALUES (?,?)')->execute([$ipHash, time()]);
@@ -83,7 +85,7 @@ if ($method === 'POST') {
     } elseif ($action === 'logout') {
         $_SESSION = [];
         session_destroy();
-        header('Location: '.(defined('SITESEE_VENDOR_ADMIN_PAGE')&&SITESEE_VENDOR_ADMIN_PAGE?'staff-vendors.php':(defined('SITESEE_PRODUCTION_PAGE')&&SITESEE_PRODUCTION_PAGE?'staff-production.php':'staff-bookings.php')), true, 303);
+        header('Location: '.site_runtime_link_path(defined('SITESEE_VENDOR_ADMIN_PAGE')&&SITESEE_VENDOR_ADMIN_PAGE?'staff-vendors.php':(defined('SITESEE_PRODUCTION_PAGE')&&SITESEE_PRODUCTION_PAGE?'staff-production.php':'staff-bookings.php')), true, 303);
         exit;
     } elseif (empty($_SESSION['staff_until']) || (int)$_SESSION['staff_until'] < time()) {
         staff_page('<p>Your staff session has expired. Reload and sign in again.</p>', 403);
@@ -238,7 +240,7 @@ if ($method === 'POST') {
         try {
             $reference = (string)($_POST['reference'] ?? '');
             $token = booking_rotate_test_link($db, $reference);
-            $issuedLink = SITESEE_REAL_ESTATE_SITE_URL . '/booking-pay.php?reference=' . rawurlencode($reference) . '&token=' . rawurlencode($token);
+            $issuedLink = SITESEE_REAL_ESTATE_SITE_URL . site_runtime_link_path('/booking-pay.php?reference=') . rawurlencode($reference) . '&token=' . rawurlencode($token);
         } catch (Throwable $exception) {
             $error = $exception instanceof InvalidArgumentException ? $exception->getMessage() : 'The test link could not be replaced.';
         }
@@ -252,7 +254,7 @@ if ($method === 'POST') {
         try {
             $reference = (string)($_POST['reference'] ?? '');
             $token = booking_reschedule_link($db, $reference);
-            $issuedLink = SITESEE_REAL_ESTATE_SITE_URL . '/booking-pay.php?reference=' . rawurlencode($reference) . '&token=' . rawurlencode($token);
+            $issuedLink = SITESEE_REAL_ESTATE_SITE_URL . site_runtime_link_path('/booking-pay.php?reference=') . rawurlencode($reference) . '&token=' . rawurlencode($token);
         } catch (Throwable $exception) {
             $error = $exception instanceof InvalidArgumentException ? $exception->getMessage() : 'Rescheduling link could not be created.';
         }
@@ -288,7 +290,7 @@ if ($method === 'POST') {
                     (string)($_POST['photographer'] ?? ''), ($_POST['available'] ?? '') === 'yes',
                     (string)($_POST['price_reason'] ?? ''), (string)($_POST['crm_contact_id'] ?? '')
                 );
-                $issuedLink = SITESEE_REAL_ESTATE_SITE_URL . '/booking-pay.php?reference=' . rawurlencode($reference) . '&token=' . rawurlencode($token);
+                $issuedLink = SITESEE_REAL_ESTATE_SITE_URL . site_runtime_link_path('/booking-pay.php?reference=') . rawurlencode($reference) . '&token=' . rawurlencode($token);
             } catch (Throwable $exception) {
                 $error = $exception instanceof InvalidArgumentException ? $exception->getMessage() : 'Approval could not be saved.';
             }
@@ -354,11 +356,11 @@ if ($row) {
             . '<form method="post"><input type="hidden" name="csrf" value="' . $csrf . '"><input type="hidden" name="action" value="reschedule_link"><input type="hidden" name="reference" value="' . staff_escape($reference) . '"><button>Create Rescheduling Link</button></form>';
     }
     if ($row['status'] === 'awaiting_deposit_test') {
-        $reviewHtml .= '<p class="note">Waiting for the test deposit. Schedule review becomes available only after the verified payment notification.</p>';
+        $reviewHtml .= site_runtime_copy('<p class="note">Waiting for the test deposit. Schedule review becomes available only after the verified payment notification.</p>');
     }
     $workflowStatus = null;
     $workflowHtml = $lifecycleHtml = '';
-    if ($row['status'] === 'deposit_paid_test' && $row['deposit_paid_at'] && booking_test_recipient_allowed($row['email'])) {
+    if ($row['status'] === 'deposit_paid_test' && $row['deposit_paid_at'] && booking_recipient_allowed($row['email'])) {
         $workflowStatus = booking_workflow_status($db, $row);
         $needsRecovery = $staffClaim && ($staffClaim['state'] !== 'confirmed' || !in_array($staffClaim['invitation_state'], ['none', 'sent'], true));
         $needsEvidence = $staffMail ? ($staffMail['submission_state'] !== 'sent_observed' || (booking_communication_receipt_available($staffMail) && $staffMail['delivery_state'] !== 'recipient_copy_observed') || $staffMail['crm_state'] !== 'associated') : ($staffClaim && $staffClaim['invitation_state'] !== 'none');
@@ -463,9 +465,9 @@ if ($row) {
             . '<button>Lock Price &amp; Create Test Link</button></form>';
     } else {
         $paymentHtml .= '<p>Locked price: ' . staff_money((int)$row['approved_cents'])
-            . '; test deposit: ' . staff_money((int)$row['deposit_cents'])
+            . site_runtime_copy('; test deposit: ') . staff_money((int)$row['deposit_cents'])
             . '; photographer: ' . staff_escape((string)$row['photographer'])
-            . '; payment: ' . staff_escape($row['checkout_state']) . '.</p><p>Approved balance after deposit, including any approved rush fee: <strong>' . staff_money(booking_remaining_cents($row)) . '</strong>. Customers can review eligible TEST balance payments in their portal. No automatic charge is made.</p>';
+            . '; payment: ' . staff_escape($row['checkout_state']) . '.</p><p>Approved balance after deposit, including any approved rush fee: <strong>' . staff_money(booking_remaining_cents($row)) . site_runtime_copy('</strong>. Customers can review eligible TEST balance payments in their portal. No automatic charge is made.</p>');
         if (in_array($row['status'], ['approved_test', 'awaiting_deposit_test'], true) && in_array($row['checkout_state'], ['ready', 'expired'], true)) {
             $paymentHtml .= '<form method="post"><input type="hidden" name="csrf" value="' . $csrf
                 . '"><input type="hidden" name="action" value="rotate"><input type="hidden" name="reference" value="'
@@ -483,7 +485,7 @@ if ($row) {
     $screens['details'] = ['label'=>'Booking Details', 'html'=>$detailsHtml];
     // Price-link replacement remains reachable even when no review is pending.
     if ($reviewHtml === '' && in_array($row['status'], ['approved_test', 'awaiting_deposit_test'], true)) {
-        $screens['review'] = ['label'=>'Review Request', 'html'=>'<p>The checkout link is ready. Wait for the verified TEST deposit before schedule review.</p>'];
+        $screens['review'] = ['label'=>'Review Request', 'html'=>site_runtime_copy('<p>The checkout link is ready. Wait for the verified TEST deposit before schedule review.</p>')];
     }
     if ($postedAction === 'rotate') $screens['review'] = ['label'=>'Review Request', 'html'=>'<p>The replacement link is shown above. Keep it private.</p>'];
     $next = staff_booking_next($row, $staffClaim ?: null, $staffLife, (bool)$staffPending, $staffChangeRequest ?: null, $staffMail ?: null, $changeMail ?: null, $workflowStatus, (bool)booking_job_get($db,$reference), (bool)($staffMail && booking_communication_receipt_available($staffMail)), (bool)($changeMail && booking_communication_receipt_available($changeMail)), $declineAttention);

@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/application-mode.php';
 
 /** Additive TEST ledger. Prices and Stripe payment rows remain gross/immutable. */
 function booking_finance_schema(PDO $db): void
@@ -237,9 +238,11 @@ function booking_finance_use_balance(PDO $db,string $reference,int $amount): voi
 /** Dedicated TEST-only refund transport. Refund objects themselves have no livemode field. */
 function booking_finance_stripe(string $method,string $path,array $body=[],string $key=''): array
 {
+    if($method!=='GET')site_runtime_provider_write();
     if($method==='GET'&&!str_starts_with($path,'/refunds'))return portal_stripe($method,$path,$body,$key);
-    if(!(($method==='GET'&&preg_match('~^/refunds(?:/re_[A-Za-z0-9_]+|\?charge=ch_[A-Za-z0-9_]+&limit=100)$~D',$path))||($method==='POST'&&$path==='/refunds'&&preg_match('/^sitesee-refund-test-[a-f0-9]{64}$/D',$key))))throw new RuntimeException('Invalid refund request.');
+    if(!(($method==='GET'&&preg_match('~^/refunds(?:/re_[A-Za-z0-9_]+|\?charge=ch_[A-Za-z0-9_]+&limit=100)$~D',$path))||($method==='POST'&&$path==='/refunds'&&preg_match('/^sitesee-refund-'.site_runtime_stage().'-[a-f0-9]{64}$/D',$key))))throw new RuntimeException('Invalid refund request.');
     if(!booking_test_enabled())throw new RuntimeException('TEST refunds disabled.');$secret=booking_test_key();
+    site_runtime_stripe_account($secret);
     $curl=curl_init('https://api.stripe.com/v1'.$path);if($curl===false)throw new RuntimeException('Refund connection unavailable.');$raw='';
     $headers=['Authorization: Bearer '.$secret,'Stripe-Version: '.BOOKING_CHECKOUT_API_VERSION];
     if($method==='POST'){$headers[]='Idempotency-Key: '.$key;$headers[]='Content-Type: application/x-www-form-urlencoded';curl_setopt($curl,CURLOPT_POST,true);curl_setopt($curl,CURLOPT_POSTFIELDS,http_build_query($body,'','&',PHP_QUERY_RFC3986));}
@@ -266,14 +269,14 @@ function booking_finance_refund_run(PDO $db,array $op,callable $api,int $now): v
             if($op['submitted_at']!==null&&$now-(int)$op['submitted_at']>=23*3600)throw new RuntimeException('Aged unknown refund needs staff review; no new request sent.');
             // An adjustment that is not our exact refund is never overwritten or netted away.
             $charge=$api('GET','/charges/'.$op['charge']);
-            portal_billing_need(($charge['id']??'')===$op['charge']&&($charge['livemode']??null)===false&&($charge['payment_intent']??'')===$op['payment_intent']&&($charge['disputed']??null)===false&&($charge['amount_refunded']??null)===0&&($charge['amount']??null)===(int)$op['amount']);
+            portal_billing_need(($charge['id']??'')===$op['charge']&&($charge['livemode']??null)===site_runtime_livemode()&&($charge['payment_intent']??'')===$op['payment_intent']&&($charge['disputed']??null)===false&&($charge['amount_refunded']??null)===0&&($charge['amount']??null)===(int)$op['amount']);
             $db->prepare('UPDATE booking_finance_refunds SET submitted_at=COALESCE(submitted_at,?) WHERE id=?')->execute([$now,$op['id']]);
-            $r=$api('POST','/refunds',json_decode($op['request_json'],true,16,JSON_THROW_ON_ERROR),'sitesee-refund-test-'.$op['id']);
+            $r=$api('POST','/refunds',json_decode($op['request_json'],true,16,JSON_THROW_ON_ERROR),site_runtime_idempotency('sitesee-refund-test-'.$op['id']));
         }
     }
     booking_finance_refund_valid($r,$op);
     if($r['status']==='succeeded'){
-        $charge=$api('GET','/charges/'.$op['charge']);portal_billing_need(($charge['id']??'')===$op['charge']&&($charge['livemode']??null)===false&&($charge['payment_intent']??'')===$op['payment_intent']&&($charge['amount_refunded']??null)===(int)$op['amount']&&($charge['disputed']??null)===false);
+        $charge=$api('GET','/charges/'.$op['charge']);portal_billing_need(($charge['id']??'')===$op['charge']&&($charge['livemode']??null)===site_runtime_livemode()&&($charge['payment_intent']??'')===$op['payment_intent']&&($charge['amount_refunded']??null)===(int)$op['amount']&&($charge['disputed']??null)===false);
     }
     $ownTransaction=!$db->inTransaction();if($ownTransaction)$db->exec('BEGIN IMMEDIATE');
     try{
@@ -354,7 +357,8 @@ function booking_finance_process(PDO $db,string $reference,?callable $api=null,?
 /** Private credential bridge for the existing account-owned CLI worker, never logs/arguments. */
 function booking_finance_worker_key(bool $save=false): void
 {
-    $path=dirname(__DIR__).'/booking-finance-key.json';$st=@lstat($path);
+    if(site_runtime_live()){booking_test_key();return;} // LIVE worker uses its realm-bound private environment.
+    $path=site_runtime_path('booking-finance-key.json');$st=@lstat($path);
     if($st!==false){
         if(($st['mode']&0170000)!==0100000||($st['mode']&0077)!==0||$st['nlink']!==1||(function_exists('posix_geteuid')&&$st['uid']!==posix_geteuid())||$st['size']>2048)throw new RuntimeException('Financial worker key permissions need review.');
         $v=json_decode((string)file_get_contents($path),true,8,JSON_THROW_ON_ERROR);

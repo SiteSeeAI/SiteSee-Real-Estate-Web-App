@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/server/application-mode.php';
 
 /**
  * SiteSee Real Estate quote-request delivery configuration.
@@ -8,29 +9,29 @@ declare(strict_types=1);
  * intentionally compatible with the corporate SiteSee mail configuration.
  */
 
-define('SITESEE_REAL_ESTATE_SALES_EMAIL', getenv('SITESEE_REAL_ESTATE_SALES_EMAIL') ?: 'sales@sitesee.ai');
-define('SITESEE_FROM_EMAIL', getenv('SITESEE_FROM_EMAIL') ?: 'sales@sitesee.ai');
-define('SITESEE_SMTP_HOST', getenv('SITESEE_SMTP_HOST') ?: '');
-define('SITESEE_SMTP_PORT', (int)(getenv('SITESEE_SMTP_PORT') ?: 587));
-define('SITESEE_SMTP_USERNAME', getenv('SITESEE_SMTP_USERNAME') ?: '');
-define('SITESEE_SMTP_PASSWORD', getenv('SITESEE_SMTP_PASSWORD') ?: '');
-define('SITESEE_SMTP_ENCRYPTION', strtolower(getenv('SITESEE_SMTP_ENCRYPTION') ?: 'tls'));
+define('SITESEE_REAL_ESTATE_SALES_EMAIL', site_runtime_env('SITESEE_REAL_ESTATE_SALES_EMAIL') ?: 'sales@sitesee.ai');
+define('SITESEE_FROM_EMAIL', site_runtime_env('SITESEE_FROM_EMAIL') ?: 'sales@sitesee.ai');
+define('SITESEE_SMTP_HOST', site_runtime_env('SITESEE_SMTP_HOST') ?: '');
+define('SITESEE_SMTP_PORT', (int)(site_runtime_env('SITESEE_SMTP_PORT') ?: 587));
+define('SITESEE_SMTP_USERNAME', site_runtime_env('SITESEE_SMTP_USERNAME') ?: '');
+define('SITESEE_SMTP_PASSWORD', site_runtime_env('SITESEE_SMTP_PASSWORD') ?: '');
+define('SITESEE_SMTP_ENCRYPTION', strtolower(site_runtime_env('SITESEE_SMTP_ENCRYPTION') ?: 'tls'));
 define('SITESEE_TURNSTILE_VERIFY_URL', 'https://challenges.cloudflare.com/turnstile/v0/siteverify');
 define('SITESEE_REAL_ESTATE_TURNSTILE_HOSTNAME', 're.sitesee.ai');
 if (!defined('SITESEE_REAL_ESTATE_TURNSTILE_CONFIG_PATH')) {
     define('SITESEE_REAL_ESTATE_TURNSTILE_CONFIG_PATH', '/home/sitesee/.sitesee-audit-guard/config.json');
 }
 if (!defined('SITESEE_REAL_ESTATE_TURNSTILE_RATE_FILE')) {
-    define('SITESEE_REAL_ESTATE_TURNSTILE_RATE_FILE', __DIR__ . '/real-estate-turnstile-rate.json');
+    define('SITESEE_REAL_ESTATE_TURNSTILE_RATE_FILE', site_runtime_path('real-estate-turnstile-rate.json'));
 }
-define('SITESEE_REAL_ESTATE_RATE_DIR', __DIR__ . '/real-estate-rate');
+define('SITESEE_REAL_ESTATE_RATE_DIR', site_runtime_path('real-estate-rate'));
 define('SITESEE_REAL_ESTATE_PRICING_ACCESS_HOURS', 36);
 define('SITESEE_REAL_ESTATE_PRICING_APPROVAL_HOURS', 168);
 define('SITESEE_REAL_ESTATE_PRICING_SESSION_HOURS', 12);
-define('SITESEE_REAL_ESTATE_PRICING_LEAD_LOG', __DIR__ . '/real-estate-pricing-leads.ndjson');
-define('SITESEE_REAL_ESTATE_PRICING_MAIL_LOG', __DIR__ . '/real-estate-pricing-mail.ndjson');
+define('SITESEE_REAL_ESTATE_PRICING_LEAD_LOG', site_runtime_path('real-estate-pricing-leads.ndjson'));
+define('SITESEE_REAL_ESTATE_PRICING_MAIL_LOG', site_runtime_path('real-estate-pricing-mail.ndjson'));
 
-$realEstateSiteUrl = rtrim((string)getenv('SITESEE_REAL_ESTATE_SITE_URL'), '/');
+$realEstateSiteUrl = rtrim((string)site_runtime_env('SITESEE_REAL_ESTATE_SITE_URL'), '/');
 if (!preg_match('~^https://[A-Za-z0-9.-]+(?::\d+)?$~', $realEstateSiteUrl)) {
     error_log('SiteSee Real Estate pricing gate is unavailable: SITESEE_REAL_ESTATE_SITE_URL is not configured.');
     http_response_code(503);
@@ -41,7 +42,7 @@ if (!preg_match('~^https://[A-Za-z0-9.-]+(?::\d+)?$~', $realEstateSiteUrl)) {
 define('SITESEE_REAL_ESTATE_SITE_URL', $realEstateSiteUrl);
 unset($realEstateSiteUrl);
 
-$realEstatePricingSecret = getenv('SITESEE_REAL_ESTATE_PRICING_GATE_SECRET');
+$realEstatePricingSecret = site_runtime_env('SITESEE_REAL_ESTATE_PRICING_GATE_SECRET');
 if (!is_string($realEstatePricingSecret) || strlen($realEstatePricingSecret) < 32) {
     error_log('SiteSee Real Estate pricing gate is unavailable: SITESEE_REAL_ESTATE_PRICING_GATE_SECRET is not configured.');
     http_response_code(503);
@@ -294,7 +295,8 @@ function real_estate_pricing_start_session(): void
     if (session_status() === PHP_SESSION_ACTIVE) {
         return;
     }
-    session_name('sitesee_real_estate_pricing');
+    site_runtime_session_storage('pricing');
+    session_name(site_runtime_cookie('sitesee_real_estate_pricing'));
     session_set_cookie_params([
         'lifetime' => SITESEE_REAL_ESTATE_PRICING_SESSION_HOURS * 3600,
         'path' => '/',
@@ -403,7 +405,7 @@ function real_estate_pricing_validate_approval_token(string $token): array|false
 
 function real_estate_pricing_pending_dir(): string
 {
-    $dir = __DIR__ . '/real-estate-pricing-pending';
+    $dir = site_runtime_path('real-estate-pricing-pending');
     if (!is_dir($dir)) {
         @mkdir($dir, 0700, true);
     }

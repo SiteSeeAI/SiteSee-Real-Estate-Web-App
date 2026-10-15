@@ -2,6 +2,8 @@
 /** Build a disposable copy of the actual pre-lifecycle release for historical diagnostics. */
 function historical_before_workspace(string $base, string $key): string {
     $bytes=file_get_contents($base.'/'.$key);
+    $mode=json_decode(file_get_contents($base.'/documents/unified/mode-source.json'),true)['files'][$key]??null;
+    if($mode){if(hash('sha256',$bytes)!==$mode['after_sha256'])throw new RuntimeException('Unknown historical mode edit');$bytes=base64_decode($mode['before'],true);if($bytes===false||hash('sha256',$bytes)!==$mode['before_sha256'])throw new RuntimeException('Invalid historical mode source');}
     $client=json_decode(file_get_contents($base.'/documents/unified/client-workspace-source.json'),true)['files'][$key]??null;
     if($client){if(hash('sha256',$bytes)!==$client['after_sha256'])throw new RuntimeException('Unknown historical client edit');$bytes=base64_decode($client['before'],true);if($bytes===false||hash('sha256',$bytes)!==$client['before_sha256'])throw new RuntimeException('Invalid historical client source');}
     $readiness=json_decode(file_get_contents($base.'/documents/unified/readiness-source.json'),true)['files'][$key]??null;

@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/application-mode.php';
 require_once __DIR__.'/booking-lifecycle-ui.php';
 header('Cache-Control: no-store, private, max-age=0');header('X-Robots-Tag: noindex, nofollow, noarchive');
 header('Referrer-Policy: no-referrer');header('X-Frame-Options: DENY');header('X-Content-Type-Options: nosniff');
@@ -12,7 +13,8 @@ function manage_page(string $body,int $status=200): never{
 }
 if(!booking_test_enabled()||!booking_lifecycle_enabled()||!str_starts_with(SITESEE_REAL_ESTATE_SITE_URL,'https://'))manage_page('<p>Appointment management is unavailable. Please contact SiteSee.</p>',503);
 if(!in_array($_SERVER['REQUEST_METHOD']??'GET',['GET','POST'],true)){header('Allow: GET, POST');manage_page('<p>Use your private appointment link.</p>',405);}
-session_name('sitesee_appointment_management');session_set_cookie_params(['lifetime'=>0,'path'=>'/','secure'=>true,'httponly'=>true,'samesite'=>'Strict']);session_start();
+site_runtime_session_storage('management');
+    session_name(site_runtime_cookie('sitesee_appointment_management'));session_set_cookie_params(['lifetime'=>0,'path'=>'/','secure'=>true,'httponly'=>true,'samesite'=>'Strict']);session_start();
 if(empty($_SESSION['csrf']))$_SESSION['csrf']=bin2hex(random_bytes(24));
 $db=booking_db();booking_communication_schema($db);$error='';$windows=[];
 $method=$_SERVER['REQUEST_METHOD']??'GET';
@@ -30,7 +32,7 @@ if($method==='POST'){
         if(count($parts)!==2||!booking_management_auth($db,$parts[0],$parts[1]))manage_page('<p>This private link is invalid or expired. Ask SiteSee for a replacement.</p>',403);
         booking_lifecycle_row($db,$parts[0]);session_regenerate_id(true);
         $_SESSION['access']=['reference'=>$parts[0],'hash'=>hash('sha256',$parts[1]),'until'=>time()+1800];
-        $_SESSION['csrf']=bin2hex(random_bytes(24));header('Location: manage-appointment.php',true,303);exit;
+        $_SESSION['csrf']=bin2hex(random_bytes(24));header('Location: '.site_runtime_link_path('manage-appointment.php'),true,303);exit;
     }
 }
 $access=$_SESSION['access']??[];$reference=(string)($access['reference']??'');$s=booking_lifecycle_state($db,$reference);
@@ -57,7 +59,7 @@ if($method==='POST'){
                 try{booking_lifecycle_notice($db,$reference,true);$notice.=' Your change notice is being verified.';}catch(Throwable){$notice.=' Staff must finish the change notice; your appointment result is saved.';}
             }
             if($action==='cancel')booking_finance_process($db,$reference);
-            $_SESSION['notice']=$notice;header('Location: manage-appointment.php',true,303);exit;
+            $_SESSION['notice']=$notice;header('Location: '.site_runtime_link_path('manage-appointment.php'),true,303);exit;
         }else throw new InvalidArgumentException('Unknown action.');
     }catch(Throwable $e){$error=$e instanceof InvalidArgumentException||$e instanceof BookingCalendarUnavailable?$e->getMessage():'We could not verify the change. Please contact SiteSee before trying again.';}
 }

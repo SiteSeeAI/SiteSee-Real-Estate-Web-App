@@ -1,4 +1,5 @@
 from release_source import historical
+import sys
 import importlib.util
 import json
 import os
@@ -12,6 +13,8 @@ import unittest
 from unittest.mock import patch
 
 PROJECT = Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(PROJECT/'tools'))
+from unified_source import before_mode_update
 spec = importlib.util.spec_from_file_location('ms_install', PROJECT / 'tools/install-microsoft-calendar-connection.py')
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
@@ -59,7 +62,7 @@ class ConnectionInstaller(unittest.TestCase):
     def test_payload_matches_committed_source_and_rebuild_is_reproducible(self):
         for name, data in self.files.items():
             path = PROJECT / ('_private/' + name if name.startswith('server/') else name)
-            self.assertEqual(data, path.read_bytes())
+            self.assertEqual(data, before_mode_update(PROJECT,str(path.relative_to(PROJECT))))
         before = (PROJECT / 'tools/install-microsoft-calendar-connection.py').read_bytes()
         subprocess.run(['python3', str(PROJECT / 'tools/build-microsoft-calendar-connection.py')], check=True)
         self.assertEqual(before, (PROJECT / 'tools/install-microsoft-calendar-connection.py').read_bytes())

@@ -15,7 +15,7 @@ function booking_workflow_row(PDO $db, string $reference): array
 {
     $row = booking_get($db, $reference);
     if (!booking_test_enabled() || !$row || $row['status'] !== 'deposit_paid_test' || !$row['deposit_paid_at']
-        || !booking_test_recipient_allowed($row['email'])) {
+        || !booking_recipient_allowed($row['email'])) {
         throw new InvalidArgumentException('This workflow requires a recorded TEST deposit and the authorized test recipient.');
     }
     return $row;
@@ -63,7 +63,7 @@ function booking_workflow_check(PDO $db, string $reference, array $deps = []): a
     $row = booking_workflow_row($db, $reference);
     $claim = booking_confirmation_get($db, $reference);
     $report = ['items'=>[], 'candidates'=>[], 'alternatives'=>[], 'fingerprint'=>booking_workflow_fingerprint($row)];
-    $report['items']['Payment'] = 'TEST deposit recorded.';
+    $report['items']['Payment'] = site_runtime_live()?'Deposit recorded.':'TEST deposit recorded.';
     $report['items']['Staff review'] = $row['approved_at'] ? 'Recorded; duration ' . (int)$row['duration_minutes'] . ' minutes.' : 'Required before calendar confirmation.';
     try {
         $config = $deps['calendar_config'] ?? booking_scheduling_config($claim);
@@ -265,7 +265,7 @@ function booking_workflow_html(array $row, array $status, string $csrf, ?array $
 {
     $ref = $row['reference']; $claim = $status['claim']; $mail = $status['mail'];
     $values = ['Assigned calendar'=>$status['calendar'], 'Staff review'=>$row['approved_at'] ? 'Recorded' : 'Required',
-        'CRM contact'=>$status['contact'], 'Invitation configuration'=>($status['mail_ready'] ?? false) ? 'TEST sender configured; check readiness for current mailbox access' : 'Unavailable or disabled — sending blocked',
+        'CRM contact'=>$status['contact'], 'Invitation configuration'=>($status['mail_ready'] ?? false) ? (site_runtime_live()?'Sender configured; check readiness for current mailbox access':'TEST sender configured; check readiness for current mailbox access') : 'Unavailable or disabled — sending blocked',
         'Calendar appointment'=>($status['lifecycle']['state']??'active') !== 'active' ? $status['lifecycle']['state'] : ($claim ? $claim['state'] : 'Not confirmed'),
         'Invitation'=>$claim ? $claim['invitation_state'] : 'Not attempted',
         'Saved message'=>$mail ? $mail['submission_state'] : 'No communication record',
@@ -279,7 +279,7 @@ function booking_workflow_html(array $row, array $status, string $csrf, ?array $
         $html .= '<details' . (!$status['link'] || ($claim && $claim['invitation_state'] === 'none' && !$status['can_send']) ? ' open' : '') . '><summary>Recheck Connections &amp; CRM Contact</summary>' . booking_workflow_form($csrf, $ref, 'workflow_check', 'Check Booking Readiness') . '</details>';
     } else $html .= booking_workflow_form($csrf, $ref, 'workflow_check', 'Check Booking Readiness');
     if ($status['can_resume_draft'] ?? false) {
-        $fields = '<p>The saved invitation stopped before sending. This action restores missing recipient fields, verifies the same draft and sends it once.</p><label><input type="checkbox" name="verify_recipient" value="yes" required> Send this saved TEST invitation to ' . booking_workflow_escape($row['email']) . '.</label>';
+        $fields = '<p>The saved invitation stopped before sending. This action restores missing recipient fields, verifies the same draft and sends it once.</p><label><input type="checkbox" name="verify_recipient" value="yes" required> Send this saved '.(site_runtime_live()?'':'TEST ').'invitation to ' . booking_workflow_escape($row['email']) . '.</label>';
         $html .= booking_workflow_form($csrf,$ref,'resume_invitation','Repair & Send Saved Invitation',$fields);
     }
     if ($report) {

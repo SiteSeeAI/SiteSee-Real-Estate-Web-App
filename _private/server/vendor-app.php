@@ -5,7 +5,7 @@ header('Cache-Control: no-store, private, max-age=0');header('Pragma: no-cache')
 header('Referrer-Policy: same-origin');header('X-Content-Type-Options: nosniff');header('X-Frame-Options: DENY');
 header('X-Robots-Tag: noindex, nofollow, noarchive');header('Content-Type: text/html; charset=utf-8');
 header("Content-Security-Policy: default-src 'none'; style-src 'self'; font-src 'self'; script-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");
-if(getenv('SITESEE_REAL_ESTATE_PORTAL_TEST_ENABLED')!=='1'||getenv('SITESEE_REAL_ESTATE_BOOKING_TEST_ENABLED')!=='1'){http_response_code(503);exit('Vendor access is not available yet.');}
+if(getenv('SITESEE_REAL_ESTATE_PORTAL_TEST_ENABLED')!=='1'||!site_runtime_bookings_enabled()){http_response_code(503);exit('Vendor access is not available yet.');}
 if(empty($_SERVER['HTTPS'])||$_SERVER['HTTPS']==='off'){http_response_code(400);exit('Use the secure SiteSee vendor address.');}
 require_once __DIR__.'/booking-job-ui.php';
 require_once __DIR__.'/vendor-access.php';
@@ -28,7 +28,7 @@ function vendor_sign_in(string $error='',bool $verify=false,int $status=200): ne
 {
     $e='staff_escape';$html=$error?'<p class="error" role="alert">'.$e($error).'</p>':'';
     $html.='<form method="post"><input type="hidden" name="csrf" value="'.$e(staff_csrf()).'">';
-    if($verify)$html.='<p>If this number has an active vendor account and is approved for TEST texts, a sign-in code will arrive shortly.</p><label>Sign In Code<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{4,10}" maxlength="10" required></label><button name="action" value="verify_sms">Sign In</button></form><p><a href="/vendor.php">Use another number or request a new code</a></p>';
+    if($verify)$html.=site_runtime_copy('<p>If this number has an active vendor account and is approved for TEST texts, a sign-in code will arrive shortly.</p><label>Sign In Code<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{4,10}" maxlength="10" required></label><button name="action" value="verify_sms">Sign In</button></form><p><a href="/vendor.php">Use another number or request a new code</a></p>');
     else $html.='<p>Sign in to view your assigned jobs and complete onsite work.</p><label>Cell Phone Number<input name="phone" type="tel" autocomplete="tel" maxlength="40" required></label><label><input name="sms_consent" type="checkbox" value="yes" required>Text me a one-time sign-in code.</label><button name="action" value="request_sms">Text My Sign In Code</button></form><p class="help">Your manager creates your vendor account and assigns your jobs.</p>';
     vendor_page($verify?'Enter Your Text Code':'Vendor Sign In',$html,null,$status);
 }

@@ -1,20 +1,23 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/application-mode.php';
 /** Explicitly configured provider only. No email fallback and no hard-coded credentials. */
 function portal_sms_config(?string $path=null): array
 {
-    $path??=dirname(__DIR__).'/portal-sms.json';
+    $path??=site_runtime_path('portal-sms.json');
     clearstatcache(true,$path);
     if(!is_file($path)||is_link($path)||(fileperms($path)&0077)!==0||filesize($path)>4096)throw new RuntimeException('SMS configuration unavailable.');
     $c=json_decode((string)file_get_contents($path),true,8,JSON_THROW_ON_ERROR);
-    if(!is_array($c)||($c['provider']??'')!=='twilio-verify'||($c['enabled']??false)!==true||($c['stage']??'')!=='TEST'
+    if(!is_array($c)||($c['provider']??'')!=='twilio-verify'||($c['enabled']??false)!==true||($c['stage']??'')!==site_runtime_mode()
         ||!preg_match('/^AC[0-9a-fA-F]{32}$/D',(string)($c['account_sid']??''))||!preg_match('/^VA[0-9a-fA-F]{32}$/D',(string)($c['service_sid']??''))
-        ||!preg_match('/^[0-9a-fA-F]{32}$/D',(string)($c['auth_token']??''))||!is_array($c['allowed_numbers']??null)||count($c['allowed_numbers'])<1||count($c['allowed_numbers'])>10)throw new RuntimeException('SMS configuration unavailable.');
+        ||!preg_match('/^[0-9a-fA-F]{32}$/D',(string)($c['auth_token']??''))||!is_array($c['allowed_numbers']??null)
+        ||(site_runtime_live()?($c['allowed_numbers']!==[]||($c['recipient_policy']??'')!=='authentication-only'):(count($c['allowed_numbers'])<1||count($c['allowed_numbers'])>10)))throw new RuntimeException('SMS configuration unavailable.');
     foreach($c['allowed_numbers'] as $phone)if(!is_string($phone)||!preg_match('/^\+[1-9][0-9]{7,14}$/D',$phone))throw new RuntimeException('SMS test recipients unavailable.');
     return $c;
 }
 function portal_sms_request(array $config,string $operation,array $fields): array
 {
+    site_runtime_provider_write();
     if(!in_array($operation,['Verifications','VerificationCheck'],true))throw new RuntimeException('Unsupported verification operation.');
     $ch=curl_init('https://verify.twilio.com/v2/Services/'.$config['service_sid'].'/'.$operation);
     curl_setopt_array($ch,[CURLOPT_POST=>true,CURLOPT_POSTFIELDS=>http_build_query($fields),CURLOPT_RETURNTRANSFER=>true,CURLOPT_FOLLOWLOCATION=>false,CURLOPT_CONNECTTIMEOUT=>5,CURLOPT_TIMEOUT=>15,CURLOPT_PROTOCOLS=>CURLPROTO_HTTPS,CURLOPT_USERPWD=>$config['account_sid'].':'.$config['auth_token'],CURLOPT_HTTPAUTH=>CURLAUTH_BASIC,CURLOPT_HTTPHEADER=>['Content-Type: application/x-www-form-urlencoded']]);
@@ -24,13 +27,13 @@ function portal_sms_request(array $config,string $operation,array $fields): arra
 }
 function portal_sms_send(string $phone): string
 {
-    $c=portal_sms_config();if(!in_array($phone,$c['allowed_numbers'],true))throw new RuntimeException('Test recipient not enabled.');
+    $c=portal_sms_config();if((!site_runtime_live()&&!in_array($phone,$c['allowed_numbers'],true))||!preg_match('/^\+[1-9][0-9]{7,14}$/D',$phone))throw new RuntimeException('Verification recipient not enabled.');
     $r=portal_sms_request($c,'Verifications',['To'=>$phone,'Channel'=>'sms']);
     if(($r['status']??'')!=='pending'||($r['to']??'')!==$phone||($r['service_sid']??'')!==$c['service_sid']||($r['account_sid']??'')!==$c['account_sid']||($r['channel']??'')!=='sms'||!preg_match('/^VE[0-9a-fA-F]{32}$/D',(string)($r['sid']??'')))throw new RuntimeException('Verification response mismatch.');return $r['sid'];
 }
 function portal_sms_check(string $phone,string $sid,string $code): bool
 {
-    $c=portal_sms_config();if(!in_array($phone,$c['allowed_numbers'],true)||!preg_match('/^VE[0-9a-fA-F]{32}$/D',$sid))throw new RuntimeException('Verification unavailable.');
+    $c=portal_sms_config();if((!site_runtime_live()&&!in_array($phone,$c['allowed_numbers'],true))||!preg_match('/^\+[1-9][0-9]{7,14}$/D',$phone)||!preg_match('/^VE[0-9a-fA-F]{32}$/D',$sid))throw new RuntimeException('Verification unavailable.');
     $r=portal_sms_request($c,'VerificationCheck',['VerificationSid'=>$sid,'Code'=>$code]);
     if(($r['to']??'')!==$phone||($r['sid']??'')!==$sid||($r['service_sid']??'')!==$c['service_sid']||($r['account_sid']??'')!==$c['account_sid']||($r['channel']??'')!=='sms'||!in_array($r['status']??'',['pending','approved'],true))throw new RuntimeException('Verification response mismatch.');
     return $r['status']==='approved';

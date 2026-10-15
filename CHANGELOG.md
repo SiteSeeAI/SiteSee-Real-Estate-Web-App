@@ -4,6 +4,16 @@ This is the iteration record from October 9, 2026 onward. Dates use America/Chic
 
 Each iteration records its ID, purpose, status, source/release, changes, validation and user acceptance. Keep planned work separate from implemented, installed and accepted work. Add an entry for each subsequent implementation/release and update its acceptance after user review. Documentation-only commits do not change the installed application.
 
+## LIVE-001 — prepare mode-aware runtime and isolated LIVE operations — 2026-10-15
+
+Status: implementation and review in progress; not published, installed or activated. User authorizes preparation after final TEST acceptance and confirms Stripe LIVE payments and full Twilio Verify are available. Existing installed UX-003 and Stripe TEST remain unchanged. CTC access and home-directory cleanup remain excluded.
+
+Preparing an explicit private activation boundary, a separate LIVE operational ledger and configuration, mode/account-bound Stripe requests and object proofs, fresh LIVE payment consent and isolated sign-in sessions. Existing TEST records, provider IDs, pending refunds and callback URLs remain in their original realm. New LIVE signed payment, appointment-management and approval URLs use fixed server-selected routes. The existing scheduler will process each realm in a separate process under its existing outer lock; shared calendar locking and preserved TEST reservations remain enforced. Customer/profile and approved vendor identities are retained without copying TEST financial balances, payment methods, login challenges, sessions or job grants. No real payment or provider write is part of local development.
+
+Implemented safeguards include fresh LIVE card consent, pinned merchant/event readback, fixed authenticated TEST staff recovery routes, and symmetric TEST/LIVE calendar reservations. Old TEST pricing approval/confirmation links retire with HTTP 410 at activation, without creating or moving orders; preserved TEST payment and appointment-management links remain available. Preparation cannot reset an active or partly activated realm, and activation verifies installed code bytes before switching. An interrupted marker/journal transition stays closed and resumes only the same identity. Both present ledgers and private settings are backed up by the consolidated installer; LIVE activity blocks obsolete code rollback.
+
+The release must pass both-mode tests, original parity and deployment/recovery checks plus independent audit before publication. Host activation, LIVE credentials and provider setup remain separate from installing mode-capable code; exact steps and evidence will be recorded before activation approval.
+
 ## QA-002 — allow the release checker through search-only directories — 2026-10-15
 
 Status: diagnostic correction tested, published and accepted on the host. The operator reports SITESEE RELEASE FILE CHECK PASS for all 276 UX-003 files, installed journal and backup-directory presence. Application, release package, deployment installers and Stripe TEST settings are unchanged. No hosting permission or service change was needed. Cleanup remains paused; CTC remains outside all access.

@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/../server/application-mode.php';
 function portal_service_back(string $reference): string {return '<p><a href="/account.php?view=order&amp;reference='.portal_escape($reference).'">← Order Details</a></p>';}
 function portal_service_form(string $reference,string $action,string $fields,string $label): string
 {
@@ -59,7 +60,7 @@ function portal_billing_page(PDO $db,array $account,string $reference): never
     try{$payments=portal_billing_records($db,$account['id'],$reference);}catch(Throwable){portal_order_section_page($db,$account,$reference,'billing','Billing & Receipts',$body.'<p class="notice">Billing records could not be verified right now. Please try again or contact SiteSee.</p>',503);}
     if(!$payments)$body.='<section class="panel"><p>No verified payment has been recorded for this order yet.</p></section>';
     foreach($payments as $p){
-        $body.='<section class="panel"><h2>'.($p['kind']==='deposit'?'Test Deposit':'Test Balance').'</h2><dl><dt>Paid</dt><dd>'.$money($p['amount']).'</dd><dt>Refunded</dt><dd>'.$money($p['refunded']).'</dd><dt>Net Paid</dt><dd>'.$money($p['amount']-$p['refunded']).'</dd></dl>';
+        $body.='<section class="panel"><h2>'.($p['kind']==='deposit'?site_runtime_copy('Test Deposit'):site_runtime_copy('Test Balance')).'</h2><dl><dt>Paid</dt><dd>'.$money($p['amount']).'</dd><dt>Refunded</dt><dd>'.$money($p['refunded']).'</dd><dt>Net Paid</dt><dd>'.$money($p['amount']-$p['refunded']).'</dd></dl>';
         if(!empty($p['credit']))$body.='<p>Credit applied: '.$money($p['credit']).'</p>';
         if(!empty($p['credit_restored']))$body.='<p>Credit returned to account: '.$money($p['credit_restored']).'</p>';
         if($p['disputed'])$body.='<p class="notice">This payment has a dispute. Contact SiteSee for assistance.</p>';
@@ -67,7 +68,7 @@ function portal_billing_page(PDO $db,array $account,string $reference): never
         if(!$p['invoice'])$body.='<p class="help">No invoice is available for this payment.</p>';
         $body.='</section>';
     }
-    if($payments)$body.='<section class="panel"><h2>Payment Methods</h2><p>Manage the billing address and test payment methods associated with this order. Changes do not authorize a charge.</p>'.portal_service_form($reference,'billing_manage','','Manage Test Payment Methods').'</section>';
+    if($payments)$body.=site_runtime_copy('<section class="panel"><h2>Payment Methods</h2><p>Manage the billing address and test payment methods associated with this order. Changes do not authorize a charge.</p>').portal_service_form($reference,'billing_manage','',site_runtime_copy('Manage Test Payment Methods')).'</section>';
     portal_order_section_page($db,$account,$reference,'billing','Billing & Receipts',$body);
 }
 function portal_balance_page(PDO $db,array $account,string $reference,bool $return): never
@@ -76,11 +77,11 @@ function portal_balance_page(PDO $db,array $account,string $reference,bool $retu
     if(booking_job_get($db,$reference))portal_job_page($db,$account,$reference);
     $body=portal_service_back($reference);$e='portal_escape';
     $paid=portal_balance_paid($db,$reference);
-    if($paid>0)portal_page('Test Balance Recorded',$body.'<section class="panel"><h2>'.real_estate_money($paid).' Received</h2><p>Your balance payment is recorded.</p><a href="/account.php?view=billing&amp;reference='.$e($reference).'">Billing &amp; Receipts</a></section>',$account);
-    try{$current=portal_balance_scope($db,$account['id'],$reference);}catch(InvalidArgumentException $error){portal_page('Your Test Balance',$body.'<p>'.$e($error->getMessage()).'</p>',$account);}
+    if($paid>0)portal_page(site_runtime_copy('Test Balance Recorded'),$body.'<section class="panel"><h2>'.real_estate_money($paid).' Received</h2><p>Your balance payment is recorded.</p><a href="/account.php?view=billing&amp;reference='.$e($reference).'">Billing &amp; Receipts</a></section>',$account);
+    try{$current=portal_balance_scope($db,$account['id'],$reference);}catch(InvalidArgumentException $error){portal_page(site_runtime_copy('Your Test Balance'),$body.'<p>'.$e($error->getMessage()).'</p>',$account);}
     if($return)$body.='<p class="notice" role="status">Payment has not been recorded yet. Allow time for verification if you completed checkout. Returning here does not confirm payment.</p><p><a href="/account.php?view=balance&amp;reference='.$e($reference).'&amp;result=return">Check Payment Status</a></p>';
-    $config=booking_checkout_config();$text='I authorize one TEST payment of '.real_estate_money($current['amount']).' for the approved balance on order '.booking_order_number($db,$reference).'.';
-    $body.='<section class="panel"><dl><dt>Approved Job Amount</dt><dd>'.real_estate_money((int)$current['row']['approved_cents']).'</dd><dt>Approved Rush Fee</dt><dd>'.real_estate_money((int)$current['row']['rush_fee_cents']).'</dd><dt>Deposit Recorded</dt><dd>'.real_estate_money((int)$current['row']['deposit_cents']).'</dd></dl><h2>Approved Test Balance · '.real_estate_money($current['amount']).'</h2><p>This includes the approved job amount and any approved rush fee, less your recorded deposit. Your appointment status is separate.</p><form id="portal-payment" data-view="balance" data-email="'.$e($account['email']).'" data-key="'.$e($config['enabled']?$config['publishable_key']:'').'" method="post">'.portal_csrf_field().'<input type="hidden" name="action" value="balance_checkout"><input type="hidden" name="reference" value="'.$e($reference).'"><input type="hidden" name="scope" value="'.$e($current['scope']).'"><label class="card-consent"><input type="checkbox" name="card_consent" value="yes" required><span>'.$e($text).'</span></label><button class="primary">Continue To Secure Payment</button></form><p id="payment-error" role="alert" hidden></p><p id="checkout-status" aria-live="polite"></p><div id="stripe-checkout"></div></section><script src="/portal-assets/payment.js" defer></script>';
+    $config=booking_checkout_config();$text=site_runtime_copy('I authorize one TEST payment of ').real_estate_money($current['amount']).' for the approved balance on order '.booking_order_number($db,$reference).'.';
+    $body.='<section class="panel"><dl><dt>Approved Job Amount</dt><dd>'.real_estate_money((int)$current['row']['approved_cents']).'</dd><dt>Approved Rush Fee</dt><dd>'.real_estate_money((int)$current['row']['rush_fee_cents']).'</dd><dt>Deposit Recorded</dt><dd>'.real_estate_money((int)$current['row']['deposit_cents']).site_runtime_copy('</dd></dl><h2>Approved Test Balance · ').real_estate_money($current['amount']).'</h2><p>This includes the approved job amount and any approved rush fee, less your recorded deposit. Your appointment status is separate.</p><form id="portal-payment" data-view="balance" data-email="'.$e($account['email']).'" data-key="'.$e($config['enabled']?$config['publishable_key']:'').'" method="post">'.portal_csrf_field().'<input type="hidden" name="action" value="balance_checkout"><input type="hidden" name="reference" value="'.$e($reference).'"><input type="hidden" name="scope" value="'.$e($current['scope']).'"><label class="card-consent"><input type="checkbox" name="card_consent" value="yes" required><span>'.$e($text).'</span></label><button class="primary">Continue To Secure Payment</button></form><p id="payment-error" role="alert" hidden></p><p id="checkout-status" aria-live="polite"></p><div id="stripe-checkout"></div></section><script src="/portal-assets/payment.js" defer></script>';
     if($config['enabled']){$body.=portal_payment_stripe_assets();}
-    portal_page('Your Test Balance',$body,$account);
+    portal_page(site_runtime_copy('Your Test Balance'),$body,$account);
 }

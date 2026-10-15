@@ -209,7 +209,7 @@
   function openReceipt(data) {
     if (data.payment_url) {
       const payment = new URL(data.payment_url, window.location.href);
-      if (payment.origin !== new URL(window.location.href).origin || payment.pathname !== '/booking-pay.php'
+      if (payment.origin !== new URL(window.location.href).origin || payment.pathname !== (document.body?.dataset?.paymentPath || '/booking-pay.php')
           || payment.searchParams.get('reference') !== data.reference || !/^[a-f0-9]{64}$/.test(payment.searchParams.get('token') || ''))
         throw new Error('The payment link could not be verified. Please contact SiteSee with reference ' + data.reference + '.');
       window.location.replace(payment.href);

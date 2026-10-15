@@ -16,7 +16,7 @@
     window.history.replaceState(null, '', clean.pathname + clean.search);
   }
   const returnToStatus = () => {
-    window.location.assign('booking-pay.php?result=success&reference=' + encodeURIComponent(config.reference));
+    window.location.assign(window.location.pathname + '?result=success&reference=' + encodeURIComponent(config.reference));
   };
   if (form && config.enabled) {
     form.addEventListener('submit', async (event) => {
@@ -30,7 +30,7 @@
       errorBox.hidden = true;
       try {
         if (typeof window.Stripe !== 'function') throw new Error('The secure payment form could not load. Please refresh this page and try again.');
-        const response = await fetch('booking-pay.php', {
+        const response = await fetch(window.location.pathname, {
           method: 'POST', credentials: 'same-origin', cache: 'no-store',
           headers: { Accept: 'application/json' }, body: new FormData(form)
         });
@@ -70,7 +70,7 @@
       attempts += 1;
       try {
         const body = new URLSearchParams({action:'payment_status',reference:config.reference,csrf:config.csrf});
-        const response = await fetch('booking-pay.php', {method:'POST',credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'},body});
+        const response = await fetch(window.location.pathname, {method:'POST',credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'},body});
         if (!response.ok) return;
         const result = await response.json();
         if (result.paid === true) { window.location.reload(); return; }

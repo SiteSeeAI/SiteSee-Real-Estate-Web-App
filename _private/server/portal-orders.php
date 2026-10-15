@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/application-mode.php';
 require_once __DIR__ . '/portal-access.php';
 require_once __DIR__ . '/portal-phone.php';
 require_once __DIR__ . '/booking-lifecycle.php';
@@ -7,7 +8,7 @@ require_once __DIR__ . '/booking-lifecycle.php';
 /** Stored staff approval, not an expiring pricing browser session or an email match to a booking. */
 function portal_pricing_approved(string $email, ?string $directory = null): bool
 {
-    $directory ??= dirname(__DIR__) . '/real-estate-pricing-pending';
+    $directory ??= site_runtime_path('real-estate-pricing-pending');
     if (!is_dir($directory)) return false;
     foreach (new DirectoryIterator($directory) as $file) {
         if (!$file->isFile() || $file->isLink() || !preg_match('/^[a-f0-9]{32}\.json$/D', $file->getFilename()) || $file->getSize() > 65536) continue;
@@ -109,8 +110,8 @@ function portal_claim_code(string $input): array|false
     $base = parse_url(SITESEE_REAL_ESTATE_SITE_URL);
     if (($url['scheme'] ?? '') !== 'https' || ($url['host'] ?? '') !== $base['host']
         || ($url['port'] ?? 443) !== ($base['port'] ?? 443)) return false;
-    if (($url['path'] ?? '') === '/manage-appointment.php') return portal_claim_code((string)($url['fragment'] ?? ''));
-    if (($url['path'] ?? '') !== '/booking-pay.php') return false;
+    if (($url['path'] ?? '') === site_runtime_link_path('/manage-appointment.php')) return portal_claim_code((string)($url['fragment'] ?? ''));
+    if (($url['path'] ?? '') !== site_runtime_link_path('/booking-pay.php')) return false;
     parse_str($url['query'] ?? '', $q);
     if (!is_string($q['reference'] ?? null) || !is_string($q['token'] ?? null)) return false;
     return preg_match('/^[A-F0-9]{10,32}$/D',$q['reference']) && preg_match('/^[a-f0-9]{64}$/D',$q['token']) ? [$q['reference'],$q['token']] : false;

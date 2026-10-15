@@ -31,6 +31,7 @@ FUNCTIONS = ['site_application_bootstrap', 'booking_change_request_create', 'boo
              'booking_staff_cancel', 'booking_order_number', 'booking_order_list', 'booking_order_close_cancelled',
              'booking_window_times', 'booking_arrival_start', 'portal_require_profile', 'vendor_review_paid', 'vendor_review_grant_ready', 'booking_finance_queue', 'booking_finance_process',
              'booking_finance_reserve', 'booking_finance_credit_checkout', 'booking_finance_deposit_evidence', 'booking_finance_prepare_balance']
+FUNCTIONS += ['site_runtime_control', 'site_runtime_mode', 'site_runtime_path', 'site_runtime_bind_db']
 
 
 def need(value, message):
@@ -78,7 +79,29 @@ def reflection_code(private):
     code += ''.join('require_once ' + php_string(str(private / n)) + ';' for n in
                     ['server/application.php', 'server/portal-service.php', 'server/booking-lifecycle-ui.php', 'views/portal-service.php', 'server/portal-purchase.php', 'server/vendor-access.php'])
     code += '$out["functions"]=[];foreach(json_decode(' + php_string(json.dumps(FUNCTIONS)) + ',true) as $n){$out["functions"][$n]=function_exists($n)?(new ReflectionFunction($n))->getEndLine():null;}'
+    code += runtime_binding_code(private)
     return code
+
+
+def runtime_binding_code(private):
+    # Configuration and mode only: never open a ledger, bootstrap its schema or
+    # contact a provider. The old TEST predecessor has no mode module yet.
+    path = php_string(str(private / 'server/application-mode.php'))
+    code = 'if(is_file(' + path + ')){require_once ' + path + ';$binding=site_runtime_control();'
+    code += '$out["runtime_binding"]=["stage"=>site_runtime_mode(),"realm"=>site_runtime_live()?$binding["realm"]:null,"stripe_account"=>site_runtime_live()?$binding["stripe_account"]:null];}'
+    code += 'else{if(file_exists(' + php_string(str(private / 'application-live.json')) + '))throw new RuntimeException("LIVE code binding unavailable");'
+    code += '$out["runtime_binding"]=["stage"=>"TEST","realm"=>null,"stripe_account"=>null];}'
+    return code
+
+
+def checked_binding(value):
+    need(isinstance(value, dict) and set(value) == {'stage', 'realm', 'stripe_account'}, 'Runtime mode evidence is incomplete.')
+    if value['stage'] == 'TEST':
+        need(value['realm'] is None and value['stripe_account'] is None, 'TEST runtime identity differs.')
+    else:
+        need(value['stage'] == 'LIVE' and re.fullmatch('[0-9a-f]{32}', str(value['realm']))
+             and re.fullmatch('acct_[A-Za-z0-9]{8,64}', str(value['stripe_account'])), 'LIVE runtime identity differs.')
+    return value
 
 
 def checked_file(path, uid, digest=None):
@@ -241,6 +264,8 @@ def runtime_probe(sockpath, account, action='read', files=()):
         code += 'foreach($paths as $p){if($c!==false&&opcache_is_script_cached($p)&&!opcache_invalidate($p,true)){$out["cache_ready"]=false;}}'
         code += reflection_code(PRIVATE)
         code += 'site_application_bootstrap(' + php_string(str(PRIVATE)) + ');'
+    else:
+        code += runtime_binding_code(PRIVATE)
     code += 'echo json_encode($out);'
     # Match the actual vhost document root, including FPM doc_root/user.ini rules.
     # The file is account-owned0600, random and token guarded; never expose probe output over ordinary HTTP.
@@ -255,6 +280,7 @@ def runtime_probe(sockpath, account, action='read', files=()):
         need(isinstance(identity, str) and secrets.compare_digest(identity, token), 'FPM probe identity differs; no runtime evidence established.')
         need(result.get('sapi') == 'fpm-fcgi' and str(result.get('version', '')).startswith('8.2.'), 'Actual FPM PHP runtime differs.')
         need(result.get('cache_observable') is True, 'Enabled FPM compiled-code cache is not observable; no reset evidence established.')
+        checked_binding(result.get('runtime_binding'))
         return result
     finally:
         path.unlink(missing_ok=True)
@@ -419,7 +445,7 @@ def main():
     base = pathlib.Path('/etc/apache2/conf.d/userdata').resolve()
     need(base.is_dir(), 'Apache userdata directory unavailable.')
     includes = [base / mode / '2_4/sitesee/re.sitesee.ai/zz-sitesee-unified-approval.conf' for mode in ['std', 'ssl']]
-    gate = ('# SiteSee exact TEST update: ' + args.release + '\nRedirect 503 /\n').encode()
+    gate = ('# SiteSee exact code update: ' + args.release + '\nRedirect 503 /\n').encode()
     for p in includes:
         if p.exists() or p.is_symlink():
             need(checked_file(p, 0) == gate, 'Unknown Apache maintenance include preserved.')
@@ -432,9 +458,20 @@ def main():
     installer = stage_download(stage, 'install-unified.py', args.installer_sha256, args.release, account)
     command = [shutil.which('runuser') or '/usr/sbin/runuser', '-u', 'sitesee', '--', shutil.which('python3'), str(installer),
                '--package', str(package), '--sha256', args.package_sha256, '--php', PHP]
-    print(run(command + ['--preflight']), end='', flush=True)
+    preflight_output = run(command + ['--preflight'])
+    print(preflight_output, end='', flush=True)
+    preflight = json.loads(preflight_output)
+    need(preflight.get('result') == 'PREFLIGHT PASS' and preflight.get('release') == args.release
+         and preflight.get('runtime_modes') == ['TEST', 'LIVE'] and preflight.get('default_runtime_mode') == 'TEST',
+         'Exact mode-capable preflight evidence differs.')
+    binding = checked_binding(preflight.get('runtime_binding'))
+    binding_sha = sha((json.dumps(binding, sort_keys=True, separators=(',', ':')) + '\n').encode())
+    need(preflight.get('runtime_binding_sha256') == binding_sha and preflight.get('runtime_stage') == binding['stage'],
+         'Runtime preflight identity checksum differs.')
+    command += ['--expect-runtime-binding', binding_sha]
     inventory = scheduler_inventory()
     probe = runtime_probe(listen[0], account)
+    need(probe['runtime_binding'] == binding, 'Actual FPM runtime binding differs from code preflight; no traffic pause started.')
     print(json.dumps({'result': 'HOST PREFLIGHT PASS', 'pool': POOL, 'fpm': probe, 'maintenance_scope': DOMAIN,
                       'shared_service_graceful_reload': SERVICE, 'schedule_changes': 'none',
                       'scheduler_inventory': inventory}), flush=True)
@@ -475,26 +512,31 @@ def main():
         run(['systemctl', 'reload', SERVICE]); wait_gone(php_old, 'Old target PHP executions')
         need(service(SERVICE).get('ActiveState') == 'active', 'FPM reload is not active.')
         reset = runtime_probe(listen[0], account, 'reset')
-        need(reset.get('cache_reset') is True, 'FPM compiled-code reset was not verified.')
+        need(reset.get('cache_reset') is True and reset['runtime_binding'] == binding, 'FPM compiled-code reset/runtime binding was not verified.')
         journal = PRIVATE / ('unified-' + args.release.removeprefix('unified-test-') + '-install.json')
         action = '--resume' if journal.exists() else '--install'
-        print('Installing the exact approved TEST code with existing records preserved.', flush=True)
+        print('Installing the exact approved mode-capable code; active runtime ' + binding['stage'] + ' is preserved.', flush=True)
         print(run(command + [action, '--first-upgrade-drained']), end='', flush=True)
         print(run(command + ['--verify']), end='', flush=True)
         record = json.loads(checked_file(PRIVATE / 'unified-release.json', account.pw_uid))
         files = [str((PRIVATE if n.startswith('private/') else PUBLIC) / n.split('/', 1)[1])
                  for n in record['files'] if n.endswith('.php')]
-        php_code = '$out=[];' + reflection_code(PRIVATE) + 'echo json_encode($out["functions"]);'
-        expected = json.loads(run([PHP, '-d', 'opcache.enable_cli=0', '-r', php_code]))
+        php_code = '$out=[];' + reflection_code(PRIVATE) + 'echo json_encode($out);'
+        cli = json.loads(run([PHP, '-d', 'opcache.enable_cli=0', '-r', php_code]))
+        expected = cli.get('functions')
+        need(checked_binding(cli.get('runtime_binding')) == binding, 'Installed CLI runtime binding differs; maintenance preserved.')
+        need(isinstance(expected, dict), 'Installed CLI declarations are unavailable; maintenance preserved.')
         need(set(expected) == set(FUNCTIONS) and all(type(line) is int and line > 0 for line in expected.values()),
              'Installed CLI approval declarations incomplete; maintenance preserved.')
         verified = runtime_probe(listen[0], account, 'verify', files)
         need(verified.get('cache_ready') is True and verified.get('functions') == expected,
              'Actual FPM approval implementation differs; maintenance preserved.')
+        need(verified['runtime_binding'] == binding, 'Actual FPM runtime binding changed; maintenance preserved.')
         print('Actual FPM approval functions and compiled-code refresh verified.', flush=True)
         drain_workers()
         reopen(includes, gate, rebuild, httpd, graceful)
-        print('HOST UPDATE PASS: app serving, exact files verified, FPM approval code verified, Stripe TEST. Existing schedules unchanged.', flush=True)
+        print('HOST UPDATE PASS: app serving, exact files verified, FPM approval code and ' + binding['stage']
+              + ' runtime binding verified. Activation, configurations and schedules unchanged.', flush=True)
     finally:
         os.close(fd)
 

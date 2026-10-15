@@ -35,15 +35,15 @@ function booking_invitation_message(array $row, array $confirmation, string $man
     $start = booking_arrival_start($appointment['date'],$appointment['time']);
     $end = $start->modify('+2 hours');
     $property = booking_confirmation_property($request['details']);
-    $summary = '[TEST] SiteSee Photography Arrival Window';
-    $plain = 'This is a SiteSee booking integration test, not a real photography appointment.' . "\n\n"
-        . 'Your test arrival window is confirmed for ' . $start->format('F j, Y, g:i A') . '–' . $end->format('g:i A') . ' Central Time.'
+    $summary = site_runtime_copy('[TEST] SiteSee Photography Arrival Window');
+    $plain = site_runtime_copy('This is a SiteSee booking integration test, not a real photography appointment.') . "\n\n"
+        . site_runtime_copy('Your test arrival window is confirmed for ') . $start->format('F j, Y, g:i A') . '–' . $end->format('g:i A') . ' Central Time.'
         . "\nProperty: " . $property . "\nReference: " . $row['reference']
         . "\nThe calendar entry shows the two-hour arrival window. Photography may continue beyond that window."
-        . "\nNo live payment has been collected."
+        . (site_runtime_live()?"\nPayment and appointment confirmation are recorded separately.":"\nNo live payment has been collected.")
         . ($managementLink !== '' ? "\n\nManage your appointment securely: " . $managementLink . "\nThis private link expires after seven days. Contact SiteSee for a replacement." : "\n\nPlease contact SiteSee to request a change. Your confirmed window stays in place until a change is agreed.");
     $lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//SiteSee//Arrival Window//EN', 'CALSCALE:GREGORIAN',
-        'METHOD:REQUEST', 'BEGIN:VEVENT', 'UID:sitesee-arrival-test-' . $row['reference'] . '@re.sitesee.ai',
+        'METHOD:REQUEST', 'BEGIN:VEVENT', site_runtime_copy('UID:sitesee-arrival-test-') . $row['reference'] . '@re.sitesee.ai',
         'DTSTAMP:' . gmdate('Ymd\THis\Z', strtotime($confirmation['confirmed_at'])), 'SEQUENCE:0',
         'DTSTART:' . gmdate('Ymd\THis\Z', $start->getTimestamp()), 'DTEND:' . gmdate('Ymd\THis\Z', $end->getTimestamp()),
         'SUMMARY:' . booking_ical_text($summary), 'LOCATION:' . booking_ical_text($property),
@@ -87,7 +87,7 @@ function booking_send_invitation_locked(PDO $db, string $reference, ?array $conf
     $graph = null; $crm = null; $crmConfig = null;
     if ($send === null) {
         $mailConfig = $mailDependencies['config'] ?? booking_mail_config(true);
-        if (!booking_test_recipient_matches($before['email'],$mailConfig['test_recipient_email'])) throw new InvalidArgumentException('Dedicated mail test recipient mismatch.');
+        if (!booking_recipient_matches($before['email'],$mailConfig['test_recipient_email'])) throw new InvalidArgumentException('Dedicated mail test recipient mismatch.');
         $crmConfig = $mailDependencies['crm_config'] ?? booking_crm_config(); $crm = $mailDependencies['crm'] ?? booking_crm_client($crmConfig);
         booking_crm_verify_org($crmConfig,$crm);
         $link = booking_crm_linked($db,$reference,$before['email'],$crmConfig);
@@ -168,12 +168,12 @@ function booking_invitation_draft_resumable(PDO $db, string $reference): bool
     try {
         $row = booking_get($db,$reference);
         $message = json_decode($mail['message_json'],true,32,JSON_THROW_ON_ERROR);
-        $prefix = SITESEE_REAL_ESTATE_SITE_URL.'/manage-appointment.php#'.$reference.'.';
+        $prefix = SITESEE_REAL_ESTATE_SITE_URL.site_runtime_link_path('/manage-appointment.php#').$reference.'.';
         if (!preg_match('~'.preg_quote($prefix,'~').'([a-f0-9]{64})(?![a-f0-9])~',$message['plain'] ?? '',$match)
             || !booking_management_auth($db,$reference,$match[1])) return false;
         $expected = booking_invitation_message($row,$claim,$prefix.$match[1]);
         foreach (['plain','ical','subject','from','to'] as $field) {
-            if ($field==='subject' && ($message[$field]??null)==='[TEST] SiteSee Photography Arrival Window | '.$reference) continue;
+            if ($field==='subject' && ($message[$field]??null)===site_runtime_copy('[TEST] SiteSee Photography Arrival Window | ').$reference) continue;
             if (($message[$field] ?? null) !== $expected[$field]) return false;
         }
         return true;

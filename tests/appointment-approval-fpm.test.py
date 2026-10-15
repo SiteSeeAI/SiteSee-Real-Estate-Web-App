@@ -87,6 +87,46 @@ class ActualFpm(unittest.TestCase):
         self.assertEqual(result['sapi'], 'fpm-fcgi')
         self.assertTrue(result['cache_observable'])
         self.assertNotIn('probe_id', result)
+        self.assertEqual(result['runtime_binding'], {'stage': 'TEST', 'realm': None, 'stripe_account': None})
+        self.assertFalse(list(self.public.iterdir()))
+
+    def live_binding(self):
+        control = {'format': 1, 'stage': 'LIVE', 'enabled': True, 'realm': 'a' * 32,
+                   'stripe_account': 'acct_synthetic12345678', 'initial_code_release': 'unified-test-' + '1' * 12}
+        journal = {key: control[key] for key in ('realm', 'stripe_account', 'initial_code_release')}
+        journal['state'] = 'active'
+        live = self.private / 'runtime/live'; live.mkdir(parents=True, mode=0o700)
+        live.parent.chmod(0o700)
+        environment = {'stage': 'LIVE', 'realm': control['realm'], 'values': {
+            'SITESEE_REAL_ESTATE_SITE_URL': 'https://re.sitesee.ai',
+            'SITESEE_REAL_ESTATE_PRICING_GATE_SECRET': 'b' * 64}}
+        for path, value in [(self.private / 'application-live.json', control),
+                            (self.private / 'live-activation-journal.json', journal),
+                            (live / 'environment.json', environment)]:
+            path.write_text(json.dumps(value)); path.chmod(0o600)
+        return {key: control[key] for key in ('stage', 'realm', 'stripe_account')}
+
+    def test_live_read_reset_and_cli_fpm_mode_proof_without_database_or_provider_operations(self):
+        expected_binding = self.live_binding()
+        for action in ('read', 'reset', 'verify'):
+            result = host.runtime_probe(str(self.sock), self.account, action)
+            self.assertEqual(result['runtime_binding'], expected_binding)
+            if action == 'verify':
+                expected_code = '$out=[];' + host.reflection_code(self.private) + 'echo json_encode($out);'
+                cli = json.loads(subprocess.check_output(['php', '-d', 'opcache.enable_cli=0', '-r', expected_code]))
+                self.assertEqual(cli['runtime_binding'], expected_binding)
+                self.assertEqual(result['functions'], cli['functions'])
+                self.assertTrue(all(type(line) is int and line > 0 for line in result['functions'].values()))
+                self.assertTrue(result['cache_ready'])
+        self.assertFalse((self.private / 'data/bookings.sqlite').exists())
+        self.assertFalse((self.private / 'runtime/live/data/bookings.sqlite').exists())
+        self.assertFalse(list(self.public.iterdir()))
+
+    def test_live_history_without_activation_control_is_refused_on_actual_fpm(self):
+        self.live_binding()
+        (self.private / 'application-live.json').unlink()
+        with self.assertRaisesRegex(RuntimeError, 'FPM probe refused'):
+            host.runtime_probe(str(self.sock), self.account)
         self.assertFalse(list(self.public.iterdir()))
 
     def test_missing_or_wrong_token_is_denied_on_actual_fpm(self):

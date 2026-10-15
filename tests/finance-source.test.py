@@ -18,7 +18,7 @@ class FinanceSource(unittest.TestCase):
         name='_private/server/booking-finance.php';manifest='documents/unified/finance-source.json'
         with tempfile.TemporaryDirectory() as directory:
             root=pathlib.Path(directory)
-            for path in (name,manifest,'documents/unified/client-workspace-source.json'):
+            for path in (name,manifest,'documents/unified/client-workspace-source.json','documents/unified/mode-source.json'):
                 target=root/path;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes((ROOT/path).read_bytes())
             self.assertEqual(before_unified_update(root,name),b'')
             with (root/name).open('ab') as f:f.write(b'// unknown financial change\n')

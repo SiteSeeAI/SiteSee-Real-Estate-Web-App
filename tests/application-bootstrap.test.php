@@ -15,6 +15,7 @@ register_shutdown_function(static function () use ($fixture): void {
     rmdir($fixture);
 });
 copy(__DIR__ . '/../_private/server/application.php', $fixture . '/private/server/application.php');
+copy(__DIR__.'/../_private/server/application-mode.php',$fixture.'/private/server/application-mode.php');
 copy(__DIR__ . '/../_private/server/portal-release.php', $fixture . '/private/server/portal-release.php');
 copy(__DIR__ . '/../public/application-entry.php', $fixture . '/public/application-entry.php');
 $routes = site_application_routes();
@@ -28,7 +29,7 @@ foreach ($original['files'] as $path => $change) {
         'production'=>str_contains($before,"define('SITESEE_PRODUCTION_PAGE',true)"),
         'vendors'=>str_contains($before,"define('SITESEE_VENDOR_ADMIN_PAGE',true)")];
 }
-$actualNames=array_keys($routes); $originalNames=array_keys($contracts); sort($actualNames); sort($originalNames);
+$actualNames=array_keys($routes); $originalNames=array_merge(array_keys($contracts),['booking-live-webhook.php','booking-live-pay.php','manage-live-appointment.php','pricing-live-approve.php','pricing-live-confirm.php','staff-test-bookings.php','staff-test-production.php','staff-test-vendors.php']); sort($actualNames); sort($originalNames);
 application_ok($actualNames===$originalNames, 'Every original route alias is retained.');
 foreach ($contracts as $name => $entry) {
     copy(__DIR__ . '/../public/' . $name, $fixture . '/public/' . $name);
@@ -56,6 +57,11 @@ foreach ($contracts as $name => $entry) {
     application_ok($result['production'] === $entry['production'] && $result['vendors'] === $entry['vendors'], 'Staff page flags stay separate: '.$name);
     if (!empty($entry['portal'])) application_ok($result['portal'] === '0', 'Missing physical portal gate overrides inherited enabled flag.');
 }
+foreach(['booking-live-webhook.php','booking-live-pay.php','manage-live-appointment.php','pricing-live-approve.php','pricing-live-confirm.php'] as $newAlias){
+    copy(__DIR__.'/../public/'.$newAlias,$fixture.'/public/'.$newAlias);
+    [$body,$status,$exit]=application_request($newAlias);
+    application_ok($status===503&&!str_contains($body,'handler'),'LIVE alias remains closed before private activation: '.$newAlias);
+}
 $flag = $fixture.'/private/portal-test.json';
 file_put_contents($flag, json_encode(['release'=>'portal-20260929-r2','stage'=>'TEST','enabled'=>true])); chmod($flag,0600);
 foreach (['account.php','vendor.php'] as $route) {
@@ -75,5 +81,5 @@ application_ok(application_request('account.php',['SITESEE_APPLICATION_PRIVATE_R
 application_ok(application_request('application-entry.php')[1]===404, 'Shared loader is not a public controller.');
 try { site_application_route_target('../server/booking-staff.php'); throw new RuntimeException('Unknown route accepted.'); }
 catch (InvalidArgumentException) { application_ok(true, 'Request data cannot select an arbitrary PHP file.'); }
-application_ok(count($routes)===17 && $routes['account.php']['role']==='customer' && $routes['vendor.php']['role']==='vendor' && $routes['staff-bookings.php']['role']==='staff', 'Customer, vendor and staff entry points remain distinct.');
+application_ok(count($routes)===25 && $routes['account.php']['role']==='customer' && $routes['vendor.php']['role']==='vendor' && $routes['staff-bookings.php']['role']==='staff', 'Customer, vendor and staff entry points remain distinct across original and explicit LIVE aliases.');
 echo "Application bootstrap: $checks route and configuration checks passed.\n";

@@ -29,10 +29,10 @@ function booking_ms_private_json(string $path): array
 
 function booking_ms_validate_config(array $c): void
 {
-    booking_ms_need(($c['schema'] ?? null) === 1 && ($c['stage'] ?? '') === 'test'
+    booking_ms_need(($c['schema'] ?? null) === 1 && ($c['stage'] ?? '') === site_runtime_stage()
         && ($c['mailbox'] ?? '') === BOOKING_MS_MAILBOX && ($c['application_id'] ?? '') === BOOKING_MS_APP
         && ($c['calendar_id'] ?? '') === BOOKING_MS_CALENDAR
-        && ($c['graph_credentials'] ?? '') === '/home/sitesee/.sitesee-graph-mail.json'
+        && ($c['graph_credentials'] ?? '') === (site_runtime_live()?site_runtime_path('graph-mail.json'):'/home/sitesee/.sitesee-graph-mail.json')
         && ($c['scheduling_enabled'] ?? null) === false && ($c['invitations_enabled'] ?? null) === false,
         'Microsoft connection identity or disabled TEST gates differ.');
 }

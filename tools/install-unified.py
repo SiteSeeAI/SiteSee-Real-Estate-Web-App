@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline TEST release: preflight, file-only install/resume, verify and code recovery."""
+"""Offline mode-capable code release; configuration and activation remain separate."""
 import argparse
 import contextlib
 import fcntl
@@ -19,6 +19,18 @@ import tarfile
 import tempfile
 import time
 import urllib.parse
+
+PREDECESSOR_COMMIT = 'e0bed2b3726c05b52c5d2c943ccd887cd3b376b8'
+PREDECESSOR_MANIFEST = '1d9f8f6bc14dccabf3894501c1e9b2792389232a3c6684628851b6f6d2a29fb0'
+PREDECESSOR_SCHEMA = 'Additive booking_finance_refund_dates evidence table plus existing financial/account/workflow schema on first normal application use; first verified refund dates retained immutably, original prices, references and payment rows retained. Financial activity requires repair forward; no operational database rollback.'
+RUNTIME_SCHEMA = 'Separate TEST and LIVE ledgers; LIVE application_realm is prepared explicitly before activation. Existing financial/account/workflow schemas and immutable refund-date evidence retained; financial activity and LIVE activation require repair forward. No operational database rollback.'
+MODE_ADDITIONS = {'private/server/application-mode.php', 'public/booking-live-pay.php',
+                  'public/booking-live-webhook.php', 'public/manage-live-appointment.php',
+                  'public/pricing-live-approve.php', 'public/pricing-live-confirm.php',
+                  'public/staff-test-bookings.php', 'public/staff-test-production.php', 'public/staff-test-vendors.php'}
+LIVE_CONFIGS = {'environment.json', 'booking-checkout.json', 'portal-test.json',
+                'booking-lifecycle.json', 'portal-sms.json', 'graph-mail.json',
+                'microsoft-calendar.json', 'microsoft-scheduling.json', 'booking-mail.json', 'zoho-crm.json'}
 
 
 class Stop(RuntimeError):
@@ -116,11 +128,13 @@ def load(package, expected):
     need(obj['format'] == 1 and obj['stage'] == 'TEST' and obj['migration'] == 'none', 'Release mode/migration differs.')
     if 'predecessor' in obj:
         previous = obj['predecessor']
-        need(previous.get('commit') == '201b1888abad434d37236e3f478b3e0b2068919b'
-             and previous.get('manifest_sha256') == '38ef090abe2c6b24eabb445b85d8e3327a3e1a97f9922ca8ea97ff9c7a1bf19e'
-             and previous.get('runtime_schema') == 'Additive booking_finance_cancellations, booking_finance_refunds, booking_finance_credits, booking_finance_allocations and booking_finance_funding tables plus existing account/workflow schema on first normal application use; original prices, references and payment rows retained. Financial activity requires repair forward; no operational database rollback.'
-             and set(previous.get('files', {})) == set(obj['files']) - {'private/server/portal-reports.php','private/server/portal-report-pdf.php'}, 'Reviewed predecessor differs.')
-        need(obj.get('runtime_schema') == 'Additive booking_finance_refund_dates evidence table plus existing financial/account/workflow schema on first normal application use; first verified refund dates retained immutably, original prices, references and payment rows retained. Financial activity requires repair forward; no operational database rollback.', 'Runtime schema review differs.')
+        need(previous.get('commit') == PREDECESSOR_COMMIT
+             and previous.get('manifest_sha256') == PREDECESSOR_MANIFEST
+             and previous.get('runtime_schema') == PREDECESSOR_SCHEMA
+             and set(previous.get('files', {})) == set(obj['files']) - MODE_ADDITIONS, 'Reviewed predecessor differs.')
+        need(obj.get('runtime_schema') == RUNTIME_SCHEMA, 'Runtime schema review differs.')
+    need(obj.get('runtime_modes') == ['TEST', 'LIVE'] and obj.get('default_runtime_mode') == 'TEST',
+         'Reviewed runtime capabilities differ.')
     need(re.fullmatch('[0-9a-f]{40}', obj['commit']) and obj['release'] == 'unified-test-' + obj['commit'][:12], 'Release identity differs.')
     need(sha(values['install-unified.py']) == obj['installer_sha256'] == sha(pathlib.Path(__file__).read_bytes()),
          'Use the installer belonging to this exact package.')
@@ -168,7 +182,158 @@ def check_dirs(root, public, db, uid, files):
                  'SQLite companion ownership/mode differs.')
 
 
-def test_settings(root, uid, own_journal):
+def private_configuration(path, uid, optional=False):
+    """Read a private binding without following a substituted leaf descriptor."""
+    safe(path)
+    if not path.exists():
+        need(optional, 'Required private configuration missing: ' + path.name)
+        return None
+    before = path.lstat()
+    fields = lambda s: (s.st_dev, s.st_ino, s.st_mode, s.st_uid, s.st_gid,
+                        s.st_nlink, s.st_size, s.st_mtime_ns, s.st_ctime_ns)
+    need(stat.S_ISREG(before.st_mode) and before.st_uid == uid and before.st_nlink == 1
+         and not before.st_mode & 0o077 and before.st_size <= 65536,
+         'Unsafe private configuration preserved: ' + path.name)
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    try:
+        need(fields(os.fstat(fd)) == fields(before), 'Private configuration changed before reading.')
+        with os.fdopen(fd, 'rb', closefd=False) as handle:
+            raw = handle.read(65537)
+        need(len(raw) == before.st_size and fields(os.fstat(fd)) == fields(before)
+             and fields(path.lstat()) == fields(before), 'Private configuration changed during reading.')
+        return raw
+    finally:
+        os.close(fd)
+
+
+def private_object(path, uid, optional=False):
+    raw = private_configuration(path, uid, optional)
+    if raw is None:
+        return None
+    value = json.loads(raw)
+    need(isinstance(value, dict), 'Private configuration object differs: ' + path.name)
+    return value
+
+
+def check_private_directory(path, uid):
+    safe(path)
+    value = path.stat()
+    need(stat.S_ISDIR(value.st_mode) and value.st_uid == uid and stat.S_IMODE(value.st_mode) == 0o700,
+         'Private runtime directory ownership/mode differs: ' + str(path))
+
+
+def check_database(path, uid):
+    safe(path)
+    check_private_directory(path.parent, uid)
+    for item in [path, pathlib.Path(str(path) + '-wal'), pathlib.Path(str(path) + '-shm')]:
+        safe(item)
+        if item == path or item.exists():
+            s = item.stat()
+            need(stat.S_ISREG(s.st_mode) and s.st_uid == uid and s.st_nlink == 1
+                 and stat.S_IMODE(s.st_mode) == 0o600, 'SQLite runtime ownership/mode differs: ' + str(item))
+
+
+def database_binding(path, stage, control=None):
+    with contextlib.closing(readonly_db(path)) as connection:
+        connection.execute('PRAGMA query_only=ON')
+        exists = connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='application_realm'").fetchone()
+        if not exists:
+            need(stage == 'TEST', 'LIVE database realm is missing.')
+            return
+        rows = connection.execute('SELECT stage,realm,stripe_account FROM application_realm').fetchall()
+        need(len(rows) == 1 and rows[0][0] == stage, 'Database runtime mode differs.')
+        if stage == 'LIVE':
+            need(tuple(rows[0]) == ('LIVE', control['realm'], control['stripe_account']), 'LIVE database realm differs.')
+
+
+def configuration_inventory(root, uid):
+    # Operational configuration only. Source manifests, installer journals and the
+    # installer's own maintenance marker have separate integrity/recovery rules.
+    excluded = {'unified-release.json', 'microsoft-calendar-probe.json', '.unified-maintenance.json'}
+    excluded.update({'calendar-confirmation-release.json', 'microsoft-scheduling-release.json',
+                     'booking-workflow-release.json', 'branded-checkout-release.json', 'appointment-management-release.json'})
+    paths = [p for p in root.glob('*.json') if p.name not in excluded
+             and not p.name.endswith(('install.json', 'repair.json'))]
+    live = root / 'runtime/live'
+    if live.exists() or live.is_symlink():
+        check_private_directory(root / 'runtime', uid)
+        check_private_directory(live, uid)
+        paths.extend(live.glob('*.json'))
+        plan = live / '.preparation-plan.json'
+        if plan.exists() or plan.is_symlink():
+            paths.append(plan)
+    return {str(p.relative_to(root)): {'sha256': sha(private_configuration(p, uid)), 'metadata': metadata(p),
+            'identity': {key: getattr(p.stat(), 'st_' + key) for key in ('dev', 'ino', 'size', 'mtime_ns', 'ctime_ns')}}
+            for p in sorted(set(paths))}
+
+
+def runtime_state(root, db, uid):
+    """Validate both ledgers and private bindings without bootstrapping PHP or providers."""
+    check_database(db, uid)
+    database_binding(db, 'TEST')
+    result = {'stage': 'TEST', 'realm': None, 'stripe_account': None,
+              'databases': {'TEST': str(db)}, 'live_state': 'absent'}
+    marker = private_object(root / 'application-live.json', uid, True)
+    ready = private_object(root / 'application-live-ready.json', uid, True)
+    journal = private_object(root / 'live-activation-journal.json', uid, True)
+    live = root / 'runtime/live'
+    if marker is not None or ready is not None or journal is not None or live.exists() or live.is_symlink():
+        for directory in (root / 'runtime', live, live / 'data'):
+            check_private_directory(directory, uid)
+        plan = private_object(live / '.preparation-plan.json', uid)
+        control = plan.get('control')
+        need(plan.get('format') == 1 and isinstance(control, dict) and control.get('format') == 1
+             and control.get('stage') == 'LIVE' and control.get('enabled') is True
+             and re.fullmatch('[0-9a-f]{32}', str(control.get('realm', '')))
+             and re.fullmatch('acct_[A-Za-z0-9]{8,64}', str(control.get('stripe_account', ''))), 'Prepared LIVE identity differs.')
+        need(ready == control and isinstance(journal, dict) and journal.get('format') == 1
+             and journal.get('state') in ('prepared', 'active') and journal.get('realm') == control['realm']
+             and journal.get('stripe_account') == control['stripe_account']
+             and journal.get('plan_sha256') == sha(encode(plan)), 'LIVE activation history differs; repair forward.')
+        planned = plan.get('files')
+        need(isinstance(planned, dict) and set(planned) == LIVE_CONFIGS
+             and all(isinstance(value, dict) for value in planned.values())
+             and isinstance(journal.get('configuration'), dict) and set(journal['configuration']) == LIVE_CONFIGS,
+             'Prepared LIVE configuration inventory differs.')
+        for name in sorted(LIVE_CONFIGS):
+            raw = private_configuration(live / name, uid)
+            need(sha(raw) == journal['configuration'][name] == sha(encode(planned[name])), 'LIVE configuration changed: ' + name)
+        environment = planned['environment.json']
+        need(isinstance(environment, dict) and environment.get('stage') == 'LIVE'
+             and environment.get('realm') == control['realm'] and isinstance(environment.get('values'), dict),
+             'LIVE environment realm differs.')
+        values = environment['values']
+        need(re.fullmatch('sk_live_[A-Za-z0-9_]{12,}', str(values.get('SITESEE_REAL_ESTATE_STRIPE_LIVE_SECRET', '')))
+             and re.fullmatch('whsec_[A-Za-z0-9_]{12,}', str(values.get('SITESEE_REAL_ESTATE_STRIPE_LIVE_WEBHOOK_SECRET', '')))
+             and len(str(values.get('SITESEE_REAL_ESTATE_PRICING_GATE_SECRET', ''))) >= 32,
+             'LIVE credential modes differ; no credential values exposed.')
+        checkout = planned['booking-checkout.json']
+        need(checkout.get('stage') == 'LIVE' and checkout.get('enabled') is True
+             and re.fullmatch('pk_live_[A-Za-z0-9]{12,512}', str(checkout.get('publishable_key', ''))), 'LIVE checkout binding differs.')
+        live_db = live / 'data/bookings.sqlite'
+        need(db != live_db, 'TEST and LIVE ledgers must remain separate.')
+        check_database(live_db, uid)
+        database_binding(live_db, 'LIVE', control)
+        result['databases']['LIVE'] = str(live_db)
+        result['live_state'] = journal['state']
+        if marker is not None:
+            initial = journal.get('initial_code_release')
+            need(journal['state'] == 'active' and isinstance(initial, str)
+                 and re.fullmatch('unified-test-[0-9a-f]{12}', initial)
+                 and marker == control | {'initial_code_release': initial},
+                 'LIVE activation is incomplete or changed; repair forward.')
+            result.update(stage='LIVE', realm=control['realm'], stripe_account=control['stripe_account'])
+        else:
+            need(journal['state'] == 'prepared', 'LIVE history prevents fallback to TEST; repair forward.')
+    result['configuration'] = configuration_inventory(root, uid)
+    return result
+
+
+def runtime_identity(state):
+    return {key: state[key] for key in ('stage', 'realm', 'stripe_account')}
+
+
+def test_settings(root, uid, own_journal, runtime=None):
     for name in ('booking-checkout.json', 'portal-test.json'):
         path = root / name
         raw = read(path, uid)
@@ -177,7 +342,8 @@ def test_settings(root, uid, own_journal):
         need(obj.get('stage') == 'TEST' and isinstance(obj.get('enabled'), bool), 'Existing TEST setting differs: ' + name)
         if name == 'booking-checkout.json':
             need(re.fullmatch('pk_test_[A-Za-z0-9]{12,512}', str(obj.get('publishable_key', ''))), 'Checkout must remain TEST.')
-    need(os.getenv('SITESEE_APPLICATION_STAGE', 'TEST') in ('', 'TEST'), 'Application stage must remain TEST.')
+    need(os.getenv('SITESEE_APPLICATION_STAGE', '') in ('', (runtime or {'stage': 'TEST'})['stage']),
+         'Application stage differs from its private activation.')
     for name in ('SITESEE_REAL_ESTATE_STRIPE_TEST_SECRET', 'SITESEE_REAL_ESTATE_STRIPE_PUBLISHABLE_KEY'):
         need(not os.getenv(name, '').startswith(('sk_live_', 'pk_live_', 'rk_live_')), 'LIVE Stripe binding rejected.')
     journals = set(root.glob('*install.json')) | set(root.glob('*repair.json'))
@@ -269,6 +435,7 @@ def preserved_public(name, source, current, accepted):
 
 def release_record(obj, files, deployed, manifest_sha):
     record = {'release': obj['release'], 'commit': obj['commit'], 'stage': 'TEST',
+        'runtime_modes': obj['runtime_modes'], 'default_runtime_mode': obj['default_runtime_mode'],
         'manifest_sha256': manifest_sha, 'migration': 'none',
         'files': {n: sha(deployed[n]) for n in files},
         'preserved_host_files': {n: sha(deployed[n]) for n in sorted(PRESERVED_PUBLIC)}}
@@ -365,15 +532,19 @@ def snapshot(db, destination, uid, gid):
     return result
 
 
-def space(root, public, db, before, after):
-    wal = pathlib.Path(str(db) + '-wal')
-    private_need = sum(len(v) for v in before.values() if v is not None) + db.stat().st_size + (wal.stat().st_size if wal.exists() else 0) + 64 * 1024 * 1024
+def space(root, public, db, before, after, runtime=None):
+    databases = [pathlib.Path(p) for p in runtime['databases'].values()] if runtime else [db]
+    database_bytes = sum(p.stat().st_size + (pathlib.Path(str(p) + '-wal').stat().st_size
+                         if pathlib.Path(str(p) + '-wal').exists() else 0) for p in databases)
+    config_bytes = sum((root / p).stat().st_size for p in runtime['configuration']) if runtime else 0
+    private_need = sum(len(v) for v in before.values() if v is not None) + database_bytes + config_bytes + 64 * 1024 * 1024
     public_need = max(len(v) for n, v in after.items() if n.startswith('public/')) + 16 * 1024 * 1024
     need(shutil.disk_usage(root).free >= private_need + public_need and shutil.disk_usage(public).free >= public_need,
          'Insufficient capacity for durable backups and atomic replacement.')
 
 
-def prepare(obj, package_sha, root, public, db, uid, before, after, metas):
+def prepare(obj, package_sha, root, public, db, uid, before, after, metas, runtime=None):
+    runtime = runtime or runtime_state(root, db, uid)
     state = root / 'unified-deployments'
     safe(state)
     if not state.exists():
@@ -391,22 +562,31 @@ def prepare(obj, package_sha, root, public, db, uid, before, after, metas):
         if data is not None:
             atomic(folder / (sha(name.encode()) + '.bin'), data, {'uid': uid, 'gid': pwd.getpwuid(uid).pw_gid, 'mode': 0o600})
         entries[name] = {'before': sha(data), 'after': sha(after[name]), 'metadata': metas[name]}
-    database = snapshot(db, folder / 'bookings.sqlite', uid, pwd.getpwuid(uid).pw_gid)
-    configs = {}
-    for path in sorted(root.glob('*.json')):
-        if path.name == 'unified-release.json':
-            continue
-        raw = read(path, uid)
-        configs[path.name] = {'sha256': sha(raw), 'metadata': metadata(path)}
-    atomic(folder / 'configuration-metadata.json', encode(configs), {'uid': uid, 'gid': pwd.getpwuid(uid).pw_gid, 'mode': 0o600})
+    databases = {}
+    for stage, path in runtime['databases'].items():
+        filename = 'bookings.sqlite' if stage == 'TEST' else 'live-bookings.sqlite'
+        fingerprint = snapshot(pathlib.Path(path), folder / filename, uid, pwd.getpwuid(uid).pw_gid)
+        databases[stage] = {'path': path, 'backup': filename, 'fingerprint': fingerprint,
+                            'sha256': sha((folder / filename).read_bytes())}
+    need(runtime_state(root, db, uid) == runtime, 'Runtime binding/configuration changed before backup completion.')
+    configs = runtime['configuration']
+    for name, item in configs.items():
+        raw = private_configuration(root / name, uid)
+        need(sha(raw) == item['sha256'], 'Configuration changed before backup: ' + name)
+        atomic(folder / ('config-' + sha(name.encode()) + '.bin'), raw,
+               {'uid': uid, 'gid': pwd.getpwuid(uid).pw_gid, 'mode': 0o600})
+    config_bytes = encode(configs)
+    atomic(folder / 'configuration-metadata.json', config_bytes, {'uid': uid, 'gid': pwd.getpwuid(uid).pw_gid, 'mode': 0o600})
+    need(runtime_state(root, db, uid) == runtime, 'Runtime binding/configuration changed during backup.')
     sync_dir(state)
     journal = {'release': obj['release'], 'package_sha256': package_sha, 'state': 'prepared', 'backup': folder.name,
                'private_root': str(root), 'public_root': str(public), 'database_path': str(db),
-               'entries': entries, 'database': database, 'database_sha256': sha((folder / 'bookings.sqlite').read_bytes())}
+               'entries': entries, 'database': databases['TEST']['fingerprint'], 'database_sha256': databases['TEST']['sha256'],
+               'databases': databases, 'runtime': runtime, 'configuration_sha256': sha(config_bytes)}
     return journal
 
 
-def recover_plan(obj, files, journal, package_sha, root, public, db, uid, manifest_sha):
+def recover_plan(obj, files, journal, package_sha, root, public, db, uid, manifest_sha, runtime=None):
     need(journal.get('release') == obj['release'] and journal.get('package_sha256') == package_sha and
          journal.get('state') in ('prepared', 'installed', 'restoring', 'restored') and
          journal.get('private_root') == str(root) and journal.get('public_root') == str(public) and
@@ -452,10 +632,41 @@ def recover_plan(obj, files, journal, package_sha, root, public, db, uid, manife
         choices = [value] if journal['state'] == 'installed' else ([before[name]] if journal['state'] == 'restored' else [before[name], value])
         need(current in choices and (current is None or metadata(path) == metas[name]), 'Concurrent/unknown edit preserved: ' + name)
     need(sha(read(folder / 'bookings.sqlite', uid)) == journal['database_sha256'], 'SQLite backup checksum differs.')
+    saved_runtime = journal.get('runtime')
+    need(isinstance(saved_runtime, dict) and isinstance(journal.get('databases'), dict)
+         and set(journal['databases']) == set(saved_runtime['databases']) and 'TEST' in journal['databases'],
+         'Runtime backup inventory differs.')
+    expected_paths = {'TEST': str(db)}
+    if 'LIVE' in saved_runtime['databases']:
+        expected_paths['LIVE'] = str(root / 'runtime/live/data/bookings.sqlite')
+    need(saved_runtime['databases'] == expected_paths, 'Runtime backup paths differ.')
+    need(journal['database'] == journal['databases']['TEST']['fingerprint']
+         and journal['database_sha256'] == journal['databases']['TEST']['sha256'], 'TEST backup descriptor differs.')
+    for stage, item in journal['databases'].items():
+        filename = 'bookings.sqlite' if stage == 'TEST' else 'live-bookings.sqlite'
+        need(stage in ('TEST', 'LIVE') and item['path'] == saved_runtime['databases'][stage]
+             and item['backup'] == filename and sha(read(folder / filename, uid)) == item['sha256'],
+             'SQLite realm backup checksum/identity differs.')
+        with contextlib.closing(readonly_db(folder / filename)) as connection:
+            need(db_fingerprint(connection) == item['fingerprint'], 'SQLite realm backup fingerprint differs.')
+    config_bytes = read(folder / 'configuration-metadata.json', uid)
+    need(sha(config_bytes) == journal.get('configuration_sha256')
+         and json.loads(config_bytes) == saved_runtime['configuration'], 'Configuration backup inventory differs.')
+    for name, item in saved_runtime['configuration'].items():
+        need(sha(read(folder / ('config-' + sha(name.encode()) + '.bin'), uid)) == item['sha256'],
+             'Configuration backup checksum differs: ' + name)
+    # An installed release may subsequently receive an authorized activation or
+    # credential rotation. Its historical backup stays immutable; current binding
+    # validation is independent. A partial update cannot change its runtime scope.
+    if journal['state'] in ('prepared', 'restoring'):
+        need((runtime or runtime_state(root, db, uid)) == saved_runtime,
+             'Runtime binding/configuration changed during interrupted update; preserved.')
     return before, after, metas
 
 
 def installation_order(name):
+    if name == 'private/server/application-mode.php':
+        return -1, name
     if name in ('private/server/application.php', 'private/views/application-shell.php', 'public/portal-assets/application.css'):
         return 0, name
     if name == 'public/application-entry.php':
@@ -483,12 +694,12 @@ def maintenance_finish(path, value, uid):
 
 
 def bootstrap_boundary(root, uid, before, after, metas):
-    name = 'private/server/application.php'
-    path = root / 'server/application.php'
-    current = read(path, uid, True)
-    need(current in (before[name], after[name]) and (current is None or metadata(path) == metas[name]), 'Bootstrap changed before maintenance; preserved.')
-    if current != after[name]:
-        atomic(path, after[name], metas[name])
+    for name in ('private/server/application-mode.php', 'private/server/application.php'):
+        path = target(name, root, root)  # Both are private source files.
+        current = read(path, uid, True)
+        need(current in (before[name], after[name]) and (current is None or metadata(path) == metas[name]), 'Bootstrap changed before maintenance; preserved.')
+        if current != after[name]:
+            atomic(path, after[name], metas[name])
 
 
 @contextlib.contextmanager
@@ -557,6 +768,19 @@ def rollback_request_guard(db):
                 need('METHOD:CANCEL' not in message.get('ical', ''), 'Unsent cancellation draft preserved: repair forward; previous code cannot resume its exact saved provider draft.')
 
 
+def rollback_runtime_guard(runtime):
+    need(runtime['stage'] == 'TEST' and runtime['live_state'] != 'active',
+         'LIVE activation history preserved: repair forward; previous code cannot serve separate LIVE state.')
+    if 'LIVE' in runtime['databases']:
+        with contextlib.closing(readonly_db(pathlib.Path(runtime['databases']['LIVE']))) as connection:
+            identities = {'application_realm', 'portal_accounts', 'portal_profiles', 'portal_phone_identities', 'vendor_accounts'}
+            for (name,) in connection.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"):
+                if name not in identities:
+                    quoted = '"' + name.replace('"', '""') + '"'
+                    need(connection.execute('SELECT count(*) FROM ' + quoted).fetchone()[0] == 0,
+                         'LIVE operational records preserved: repair forward; no code rollback.')
+
+
 def apply(root, public, uid, before, after, metas, rollback=False, writer=atomic):
     order = sorted(after, key=installation_order, reverse=rollback)
     for name in order:
@@ -576,7 +800,7 @@ def apply(root, public, uid, before, after, metas, rollback=False, writer=atomic
         need(current == desired and (current is None or metadata(target(name, root, public)) == metas[name]), 'Final file verification differs: ' + name)
 
 
-def restore_rehearsal(root, public, db, journal, destination, uid):
+def restore_rehearsal(root, public, db, journal, destination, uid, stage='TEST'):
     for path in (root, public, db, destination):
         safe(path)
     need(destination != db and root not in destination.parents and public not in destination.parents and not destination.exists(),
@@ -585,9 +809,12 @@ def restore_rehearsal(root, public, db, journal, destination, uid):
     s = destination.parent.stat()
     need(s.st_uid == uid and stat.S_ISDIR(s.st_mode) and not s.st_mode & 0o077, 'Rehearsal parent must be private and account-owned.')
     folder = root / 'unified-deployments' / journal['backup']
-    need(sha(read(folder / 'bookings.sqlite', uid)) == journal['database_sha256'], 'Snapshot checksum differs.')
-    observed = snapshot(folder / 'bookings.sqlite', destination, uid, pwd.getpwuid(uid).pw_gid)
-    need(observed == journal['database'], 'Restored SQLite schema/row/content fingerprints differ.')
+    need(stage in ('TEST', 'LIVE') and stage in journal['databases'], 'No snapshot for the requested runtime mode.')
+    descriptor = journal['databases'][stage]
+    filename = 'bookings.sqlite' if stage == 'TEST' else 'live-bookings.sqlite'
+    need(descriptor['backup'] == filename and sha(read(folder / filename, uid)) == descriptor['sha256'], 'Snapshot checksum differs.')
+    observed = snapshot(folder / filename, destination, uid, pwd.getpwuid(uid).pw_gid)
+    need(observed == descriptor['fingerprint'], 'Restored SQLite schema/row/content fingerprints differ.')
 
 
 def main():
@@ -599,6 +826,8 @@ def main():
     parser.add_argument('--database', type=pathlib.Path)
     parser.add_argument('--account', default='sitesee')
     parser.add_argument('--php', default='/opt/cpanel/ea-php82/root/usr/bin/php')
+    parser.add_argument('--expect-runtime-binding', help='Expected nonsecret runtime identity SHA256 from preflight.')
+    parser.add_argument('--restore-realm', choices=('TEST', 'LIVE'), default='TEST')
     parser.add_argument('--first-upgrade-drained', action='store_true',
                         help='Attest the reviewed host traffic/worker pause and old PHP/OPCache drain completed before a first predecessor upgrade or code rollback.')
     actions = parser.add_mutually_exclusive_group(required=True)
@@ -615,7 +844,6 @@ def main():
     obj, files, manifest_sha = load(args.package, args.sha256)
     check_dirs(root, public, db, uid, files)
     journal_name = 'unified-' + obj['commit'][:12] + '-install.json'
-    test_settings(root, uid, journal_name)
     lint(files, args.php)
     lock = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
     try:
@@ -623,6 +851,15 @@ def main():
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
             raise Stop('Another deployment is running.')
+        # Activation and configuration writers take this same exclusive lock.
+        # Revalidate beneath it, rather than trusting an earlier unlocked check.
+        check_dirs(root, public, db, uid, files)
+        runtime = runtime_state(root, db, uid)
+        test_settings(root, uid, journal_name, runtime)
+        binding_sha = sha(encode(runtime_identity(runtime)))
+        if args.expect_runtime_binding:
+            need(re.fullmatch('[0-9a-f]{64}', args.expect_runtime_binding)
+                 and args.expect_runtime_binding == binding_sha, 'Runtime activation changed since approved preflight.')
         journal_path = root / journal_name
         raw = read(journal_path, uid, True)
         journal = json.loads(raw) if raw is not None else None
@@ -630,36 +867,46 @@ def main():
             need(args.preflight or args.install, 'No deployment journal; run preflight/install first.')
             before, after, metas = inspect(obj, files, root, public, uid, manifest_sha)
         else:
-            before, after, metas = recover_plan(obj, files, journal, args.sha256, root, public, db, uid, manifest_sha)
-        space(root, public, db, before, after)
+            before, after, metas = recover_plan(obj, files, journal, args.sha256, root, public, db, uid, manifest_sha, runtime)
+        prior = before['private/unified-release.json']
+        if prior is not None and json.loads(prior).get('commit') == PREDECESSOR_COMMIT:
+            need(runtime['stage'] == 'TEST' or (journal is not None and journal['state'] == 'installed'),
+                 'The first mode-capable code installation must leave TEST active.')
+        space(root, public, db, before, after, runtime)
         owner = {'uid': uid, 'gid': gid, 'mode': 0o600}
         if args.preflight:
-            with contextlib.closing(readonly_db(db)) as connection:
-                need(connection.execute('PRAGMA quick_check').fetchall() == [('ok',)], 'SQLite integrity check differs.')
+            for path in runtime['databases'].values():
+                with contextlib.closing(readonly_db(pathlib.Path(path))) as connection:
+                    need(connection.execute('PRAGMA quick_check').fetchall() == [('ok',)], 'SQLite integrity check differs.')
             print(json.dumps({'result': 'PREFLIGHT PASS', 'release': obj['release'], 'commit': obj['commit'],
                   'stage': 'TEST', 'deployment_files': len(files), 'changed_files': sum(before[n] != after[n] for n in after),
-                  'journal': None if journal is None else journal['state'], 'database': 'read-only integrity checked',
+                  'runtime_modes': obj['runtime_modes'], 'default_runtime_mode': obj['default_runtime_mode'],
+                  'runtime_stage': runtime['stage'], 'runtime_binding': runtime_identity(runtime),
+                  'runtime_binding_sha256': binding_sha, 'database_modes': sorted(runtime['databases']),
+                  'journal': None if journal is None else journal['state'], 'database': 'each present ledger read-only integrity checked',
                   'preserved_host_files': {n: sha(after[n]) for n in sorted(PRESERVED_PUBLIC)},
                   'fpm_and_connected_acceptance': 'pending; CLI is not FPM evidence'}))
             return
         if args.restore_rehearsal:
             need(journal is not None, 'Backup journal required.')
-            restore_rehearsal(root, public, db, journal, args.restore_rehearsal, uid)
-            print('RESTORE REHEARSAL PASS: isolated SQLite copy matches backup schema, rows and content. Operational data unchanged.')
+            restore_rehearsal(root, public, db, journal, args.restore_rehearsal, uid, args.restore_realm)
+            print('RESTORE REHEARSAL PASS: isolated ' + args.restore_realm + ' SQLite copy matches backup schema, rows and content. Operational data unchanged.')
             return
         if args.verify:
             need(journal is not None and journal['state'] == 'installed', 'Installation is not complete.')
             need(read(root / '.unified-maintenance.json', uid, True) is None, 'Maintenance is still active; finish the same package with --resume.')
-            print('VERIFY PASS: exact release files, ownership/modes, backup integrity and TEST gates. Connected acceptance pending.')
+            print('VERIFY PASS: exact release files, ownership/modes, both present ledger/configuration backups and current ' + runtime['stage'] + ' binding. Connected acceptance pending.')
             return
         if args.rollback_code:
             need(journal is not None, 'Backup journal required.')
             need(args.first_upgrade_drained, 'Code rollback requires the reviewed host traffic/worker pause and PHP drain; older restored routes do not enforce the new maintenance boundary.')
+            rollback_runtime_guard(runtime)
             rollback_request_guard(db)
             marker, value = maintenance_begin(root, uid, gid, obj, args.sha256)
             with calendar_boundary(root, uid, gid):
                 journal['state'] = 'restoring'; atomic(journal_path, encode(journal), owner)
                 apply(root, public, uid, before, after, metas, rollback=True)
+                need(runtime_state(root, db, uid) == runtime, 'Runtime configuration changed during code recovery; maintenance preserved.')
                 journal['state'] = 'restored'; atomic(journal_path, encode(journal), owner)
                 maintenance_finish(marker, value, uid)
             print('CODE RESTORED: original file bytes and modes. Database, configurations, provider state and sessions were not restored.')
@@ -668,17 +915,19 @@ def main():
         if before['private/unified-release.json'] is not None and before['private/unified-release.json'] != after['private/unified-release.json'] and (journal is None or journal['state'] == 'prepared'):
             need(args.first_upgrade_drained, 'First predecessor upgrade requires the reviewed host traffic/worker pause and old PHP/OPCache drain; do not add --first-upgrade-drained until that procedure is complete.')
         if journal is None:
-            journal = prepare(obj, args.sha256, root, public, db, uid, before, after, metas)
+            journal = prepare(obj, args.sha256, root, public, db, uid, before, after, metas, runtime)
             need(read(journal_path, uid, True) is None, 'Another journal appeared; preserved.')
             atomic(journal_path, encode(journal), owner)
         marker, value = maintenance_begin(root, uid, gid, obj, args.sha256)
         bootstrap_boundary(root, uid, before, after, metas)
         with calendar_boundary(root, uid, gid):
+            need(runtime_state(root, db, uid) == runtime, 'Runtime configuration changed before code update; maintenance preserved.')
             apply(root, public, uid, before, after, metas)
+            need(runtime_state(root, db, uid) == runtime, 'Runtime configuration changed during code update; maintenance preserved.')
             journal['state'] = 'installed'; atomic(journal_path, encode(journal), owner)
             maintenance_finish(marker, value, uid)
-        print('INSTALLED AND VERIFIED: ' + obj['release'] + '; Stripe TEST. Backup: ' + str(root / 'unified-deployments' / journal['backup']))
-        print('No database migration, provider operation, configuration/gate change, session reset, new worker or callback change.')
+        print('INSTALLED AND VERIFIED: ' + obj['release'] + '; active runtime ' + runtime['stage'] + '. Backup: ' + str(root / 'unified-deployments' / journal['backup']))
+        print('No activation, database migration, provider operation, configuration/gate change, session reset or schedule change. Existing callback URLs retain TEST ownership; LIVE aliases require separate activation.')
         if obj.get('runtime_schema'):
             print('On next normal application use: ' + obj['runtime_schema'])
     finally:

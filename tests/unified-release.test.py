@@ -53,7 +53,7 @@ class UnifiedRelease(unittest.TestCase):
         cls.obj, cls.files, cls.manifest_sha = installer.load(cls.package, cls.package_sha)
         # Build the installed release using its own pinned builder and installer.
         # Never derive historical record metadata from the candidate being tested.
-        cls.previous_commit = '201b1888abad434d37236e3f478b3e0b2068919b'
+        cls.previous_commit = 'e0bed2b3726c05b52c5d2c943ccd887cd3b376b8'
         previous_builder = cls.base / 'previous-builder.py'
         previous_builder.write_bytes(subprocess.check_output(
             ['git', 'show', cls.previous_commit + ':tools/build-unified-release.py'], cwd=ROOT))
@@ -63,7 +63,7 @@ class UnifiedRelease(unittest.TestCase):
         historical_builder.ROOT = ROOT
         cls.previous_package = historical_builder.build(cls.previous_commit, cls.base / 'previous-release')
         cls.previous_package_sha = installer.sha(cls.previous_package.read_bytes())
-        if cls.previous_package_sha != 'f7c94d3d65d206d98e08cf545a30996baffd4c27f133ce8e1b119d1a052d6285':
+        if cls.previous_package_sha != '82be15dbd74b6f0e22627c2992d0db0fc743adf752a47dfb9799e8a7702ad0b6':
             raise RuntimeError('Historical installed package differs from the verified operator release.')
         previous_installer = cls.previous_package.parent / 'install-unified.py'
         previous_spec = importlib.util.spec_from_file_location('previous_installer', previous_installer)

@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/application-mode.php';
 
 const PORTAL_IDLE_SECONDS = 1800;
 const PORTAL_ABSOLUTE_SECONDS = 43200;
@@ -7,7 +8,7 @@ const PORTAL_ABSOLUTE_SECONDS = 43200;
 function portal_session_start(): void
 {
     if (session_status() === PHP_SESSION_ACTIVE) throw new LogicException('A different session is active.');
-    $path = dirname(__DIR__) . '/data/portal-sessions';
+    $path = site_runtime_path('data/portal-sessions');
     if (!is_dir($path) && !mkdir($path, 0700, true) && !is_dir($path)) throw new RuntimeException('Session storage unavailable.');
     $root = realpath((string)($_SERVER['DOCUMENT_ROOT'] ?? ''));
     $real = realpath($path);
@@ -20,7 +21,7 @@ function portal_session_start(): void
     ini_set('session.use_trans_sid', '0');
     ini_set('session.gc_maxlifetime', (string)PORTAL_ABSOLUTE_SECONDS);
     session_save_path($path);
-    session_name('__Host-sitesee_portal');
+    session_name(site_runtime_cookie('__Host-sitesee_portal'));
     session_set_cookie_params(['lifetime'=>0,'path'=>'/','domain'=>'','secure'=>true,'httponly'=>true,'samesite'=>'Lax']);
     if (!session_start()) throw new RuntimeException('Session unavailable.');
     if (!isset($_SESSION['csrf'])) $_SESSION['csrf'] = bin2hex(random_bytes(32));

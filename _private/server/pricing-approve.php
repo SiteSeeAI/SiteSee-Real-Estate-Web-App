@@ -37,7 +37,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     }
 
     $accessToken = real_estate_pricing_create_access_token((string)$lead['email']);
-    $pricingLink = SITESEE_REAL_ESTATE_SITE_URL . '/pricing-confirm.php?token=' . rawurlencode($accessToken);
+    $pricingLink = SITESEE_REAL_ESTATE_SITE_URL . site_runtime_link_path('/pricing-confirm.php?token=') . rawurlencode($accessToken);
     $safePricingLink = pricing_approval_escape($pricingLink);
     $safeFirst = pricing_approval_escape((string)$lead['first_name']);
     $userHtml = '<div style="font-family:Arial,sans-serif;color:#01111e;max-width:640px;margin:auto"><div style="background:#01111e;padding:24px"><strong style="color:#fff;font-size:24px">SiteSee Real Estate</strong></div><div style="padding:34px;border:1px solid #d9dadb;border-top:0"><h1 style="font-size:30px">Your SiteSee Real Estate pricing access is ready.</h1><p style="font-size:17px;line-height:1.6">Hello ' . $safeFirst . ',</p><p style="font-size:17px;line-height:1.6">Your request has been reviewed and approved. Use the secure link below to open the current residential and commercial pricing tools.</p><p style="margin:28px 0"><a href="' . $safePricingLink . '" style="display:inline-block;background:#ffc107;color:#01111e;padding:15px 22px;text-decoration:none;font-weight:bold">View SiteSee Real Estate Pricing</a></p><p style="font-size:15px;line-height:1.6;color:#596267">This access link expires in ' . SITESEE_REAL_ESTATE_PRICING_ACCESS_HOURS . ' hours. The verified browser session lasts up to ' . SITESEE_REAL_ESTATE_PRICING_SESSION_HOURS . ' hours.</p><p style="font-size:15px;line-height:1.6">Questions: <a href="mailto:sales@sitesee.ai">sales@sitesee.ai</a></p></div></div>';

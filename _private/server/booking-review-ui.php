@@ -11,7 +11,7 @@ function staff_booking_next(array $row, ?array $claim, array $life, bool $pendin
     if ($changeMail && ($changeMail['submission_state'] !== 'sent_observed' || ($changeMail['crm_state'] ?? 'pending') !== 'associated' || ($changeReceiptAvailable && ($changeMail['delivery_state'] ?? 'unverified') !== 'recipient_copy_observed'))) return ['appointment', 'Verify the previous change notice', 'Check the saved notice before another appointment change. Do not resend it.'];
     if ($life['state'] !== 'active' && $claim) return ['appointment', 'Review the appointment status', 'Check the saved calendar status and any notice that needs attention.'];
     if ($row['reschedule_required']) return ['review', 'Request another arrival window', 'Keep the recorded deposit and provide the customer with a rescheduling link.'];
-    if (!$row['deposit_paid_at']) return ['review', 'Review the request and deposit', 'The appointment can be reviewed after the TEST deposit is recorded.'];
+    if (!$row['deposit_paid_at']) return ['review', 'Review the request and deposit', site_runtime_copy('The appointment can be reviewed after the TEST deposit is recorded.')];
     if (!$row['approved_at']) return ['review', 'Review the paid request', 'Check the scope, vendor and arrival window before saving the review.'];
     if ($workflow && !$workflow['link']) return ['readiness', 'Check readiness and the CRM contact', 'Verify the connections and link the customer before calendar confirmation.'];
     if (!$claim) return ['calendar', 'Confirm the appointment', 'Check the agreed window and reserve the appointment. Sending the invitation is a separate step.'];

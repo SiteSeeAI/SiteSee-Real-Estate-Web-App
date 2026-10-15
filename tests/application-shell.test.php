@@ -49,6 +49,8 @@ $manifest = json_decode(file_get_contents($root.'/documents/unified/shell-source
 foreach ($manifest['files'] as $path=>$item) {
     $before = base64_decode($item['before'], true);
     $after = file_get_contents($root.'/'.$path);
+    $mode=json_decode(file_get_contents($root.'/documents/unified/mode-source.json'),true)['files'][$path]??null;
+    if($mode){shell_check(hash('sha256',$after)===$mode['after_sha256']&&$after===base64_decode($mode['after'],true),'LIVE-001 source integrity: '.$path);$after=base64_decode($mode['before'],true);shell_check(hash('sha256',$after)===$mode['before_sha256'],'LIVE-001 predecessor integrity: '.$path);}
     $client=json_decode(file_get_contents($root.'/documents/unified/client-workspace-source.json'),true)['files'][$path]??null;
     if($client){shell_check(hash('sha256',$after)===$client['after_sha256'],'UX-003 source integrity: '.$path);$after=base64_decode($client['before'],true);}
     $readiness=json_decode(file_get_contents($root.'/documents/unified/readiness-source.json'),true)['files'][$path]??null;

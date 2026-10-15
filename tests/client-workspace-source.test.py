@@ -2,7 +2,7 @@
 import base64,hashlib,json,pathlib,subprocess,sys,tempfile,unittest
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
-from unified_source import before_client_update
+from unified_source import before_client_update, before_mode_update
 class ClientSource(unittest.TestCase):
     def test_exact_installed_source_and_reviewed_current_layer(self):
         m=json.loads((ROOT/'documents/unified/client-workspace-source.json').read_text())
@@ -13,8 +13,9 @@ class ClientSource(unittest.TestCase):
                 old=subprocess.run(['git','show',m['baseline_commit']+':'+name],cwd=ROOT,capture_output=True)
                 self.assertEqual(c['added'],old.returncode!=0)
                 self.assertEqual(base64.b64decode(c['before'],validate=True),old.stdout if old.returncode==0 else b'')
-                self.assertEqual(base64.b64decode(c['after'],validate=True),(ROOT/name).read_bytes())
-                self.assertEqual(hashlib.sha256((ROOT/name).read_bytes()).hexdigest(),c['after_sha256'])
+                actual=before_mode_update(ROOT,name)
+                self.assertEqual(base64.b64decode(c['after'],validate=True),actual)
+                self.assertEqual(hashlib.sha256(actual).hexdigest(),c['after_sha256'])
                 self.assertEqual(before_client_update(ROOT,name),old.stdout if old.returncode==0 else b'')
     def test_unknown_runtime_edit_rejected(self):
         with tempfile.TemporaryDirectory() as directory:

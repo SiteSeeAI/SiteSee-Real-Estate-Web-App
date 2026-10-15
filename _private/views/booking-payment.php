@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/../server/application-mode.php';
 
 function pay_escape(string $value): string { return htmlspecialchars($value,ENT_QUOTES,'UTF-8'); }
 function pay_money(int $cents): string { return '$'.number_format($cents/100,2); }
@@ -59,7 +60,7 @@ function pay_render(string $body, array $options=[]): string
         .'<style nonce="'.pay_escape($nonce).'">'.$css.'</style>';
     if ($config['enabled']??false) $html.='<script src="https://js.stripe.com/dahlia/stripe.js" defer></script>';
     $html.='</head><body><a href="#main" class="skip-link">Skip To Payment</a>'
-        .'<div class="test-banner"><span class="test-dot" aria-hidden="true"></span> Test Mode <span class="test-explainer">No live charge will be collected.</span></div>'
+        .(site_runtime_live()?'':'<div class="test-banner"><span class="test-dot" aria-hidden="true"></span> Test Mode <span class="test-explainer">No live charge will be collected.</span></div>')
         .'<header class="payment-header"><div class="header-inner"><a class="brand" href="/" aria-label="SiteSee Home">'
         .'<img src="/assets/images/sitesee-logo.png" alt="SiteSee" width="185" height="62"><span>Show More. Decide Faster.</span></a>'
         .'<a class="support-phone" href="tel:18002222053"><span>Questions? We’re Here.</span>800 222-2053</a></div></header>'

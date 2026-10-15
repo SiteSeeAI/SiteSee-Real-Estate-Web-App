@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/application-mode.php';
 /** Additive lifecycle journal. Financial columns and original invitation evidence are never reset. */
 function booking_lifecycle_schema(PDO $db): void
 {
@@ -64,6 +65,37 @@ function booking_lifecycle_assert_active(PDO $db, string $reference): void
 }
 /** Never expire uncertain writes. Hold both old and proposed intervals until readback resolves them. */
 function booking_lifecycle_busy(PDO $db, array $snapshot, ?string $exclude=null): array
+{
+    $snapshot=booking_lifecycle_busy_current($db,$snapshot,$exclude);
+    if (site_runtime_control()['stage']==='LIVE') {
+        // Both realms use the same business calendar and its original shared lock.
+        // Read TEST reservations only: never bootstrap or migrate the preserved DB.
+        $root=dirname(__DIR__);$dir=$root.(site_runtime_live()?'/data':'/runtime/live/data');$path=$dir.'/bookings.sqlite';
+        $parents=site_runtime_live()?[$dir]:[$root.'/runtime',$root.'/runtime/live',$dir];
+        foreach ($parents as $entry) {
+            $s=@lstat($entry);
+            if (!$s || ($s['mode']&0170000)!==0040000 || $s['uid']!==fileowner($root)
+                || ($s['mode']&0077)!==0) throw new RuntimeException('Preserved calendar reservations need review.');
+        }
+        foreach([$path,$path.'-wal',$path.'-shm',$path.'-journal'] as $entry){
+            clearstatcache(true,$entry);$s=@lstat($entry);
+            if(!$s&&$entry!==$path)continue;
+            if(!$s||($s['mode']&0170000)!==0100000||$s['uid']!==fileowner($root)||($s['mode']&0077)!==0||$s['nlink']!==1)throw new RuntimeException('Preserved calendar ledger needs review.');
+        }
+        $prior=new PDO('sqlite:file:'.$path.'?mode=ro',null,null,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC]);
+        $prior->exec('PRAGMA query_only=ON');
+        $bound=$prior->query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='application_realm'")->fetchColumn();
+        if($bound){
+            $binding=$prior->query('SELECT stage,realm,stripe_account FROM application_realm')->fetchAll(PDO::FETCH_ASSOC);
+            $control=site_runtime_control();$other=site_runtime_live()?'TEST':'LIVE';
+            if(count($binding)!==1||$binding[0]['stage']!==$other||($other==='LIVE'&&($binding[0]['realm']!==$control['realm']||$binding[0]['stripe_account']!==$control['stripe_account'])))throw new RuntimeException('Preserved calendar realm differs.');
+        }elseif(!site_runtime_live())throw new RuntimeException('Preserved LIVE calendar realm is missing.');
+        $snapshot=booking_lifecycle_busy_current($prior,$snapshot);
+    }
+    return $snapshot;
+}
+
+function booking_lifecycle_busy_current(PDO $db, array $snapshot, ?string $exclude=null): array
 {
     foreach($db->query('SELECT c.*,l.state AS lifecycle_state,l.actual_start,l.actual_end FROM booking_confirmations c LEFT JOIN booking_lifecycle l ON c.reference=l.reference')->fetchAll()as$c){
         if($c['reference']===$exclude)continue;

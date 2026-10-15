@@ -46,6 +46,13 @@ jobs:
           extensions: pdo_sqlite, curl, openssl
       - name: Check host protocol, drain and failed traffic reopening
         run: python3 tests/appointment-approval-host.test.py
+      - name: Verify synthetic LIVE financial and activation boundaries
+        run: |
+          python3 tests/deployment-mode.test.py
+          python3 tests/mode-source.test.py
+          php -d disable_functions=curl_exec tests/booking-finance.test.php --live
+          python3 -m unittest discover -s tests -p live_runtime_test.py
+          python3 -m unittest discover -s tests -p prepare_live_test.py
       - name: Rehearse release and every interrupted replacement
         run: python3 tests/unified-release.test.py
       - name: Require real privileged ownership checks without skips

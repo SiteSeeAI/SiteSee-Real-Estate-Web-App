@@ -46,7 +46,8 @@ foreach([['D32FFC7458',$sales],['SYNTHSALES',$sales],['SYNTHAGENT',strtoupper($a
     $db->prepare('INSERT INTO bookings VALUES (?,?,?)')->execute([$ref,$email,'deposit_paid_test']);
     $db->prepare('INSERT INTO booking_confirmations VALUES (?,?,?,?)')->execute([$ref,'confirmed','synthetic',time()+86400]);
 }
-$q=$db->prepare($match[1]);$q->execute(booking_test_recipients());$selected=$q->fetchAll(PDO::FETCH_COLUMN);sort($selected);
+check(substr_count($match[1],'$recipientClause')===1&&str_contains($source,"\$recipientClause=site_runtime_live()?'':'AND lower(b.email) IN (?,?)';"),'Only LIVE removes the TEST recipient clause.');
+$q=$db->prepare(str_replace('$recipientClause','AND lower(b.email) IN (?,?)',$match[1]));$q->execute(booking_test_recipients());$selected=$q->fetchAll(PDO::FETCH_COLUMN);sort($selected);
 check($selected===['SYNTHAGENT','SYNTHSALES'],'Cron selects only approved recipients and excludes protected booking');
 $mail=['recipient'=>$agent,'delivery_state'=>'unverified'];
 check(!booking_communication_receipt_available($mail)&&str_contains(booking_communication_receipt_status($mail),'Unverified'),'External delivery never implied');

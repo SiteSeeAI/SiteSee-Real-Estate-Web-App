@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/application-mode.php';
 require_once __DIR__ . '/booking-store.php';
 require_once __DIR__ . '/booking-calendar-client.php';
 require_once __DIR__ . '/booking-scheduling-provider.php';
@@ -8,11 +9,11 @@ require_once __DIR__ . '/booking-test-recipients.php';
 /** The existing read-only connection remains untouched. Writes use separate credentials. */
 function booking_confirmation_config(): array
 {
-    $config = booking_calendar_config(dirname(__DIR__) . '/zoho-confirmation.json');
+    $config = booking_calendar_config(site_runtime_path('zoho-confirmation.json'));
     $reader = booking_calendar_config();
     if ($config['calendar_uid'] !== $reader['calendar_uid']
         || ($config['calendar_owner_id'] ?? '') !== ($reader['calendar_owner_id'] ?? '')
-        || ($config['confirmation_stage'] ?? '') !== 'test'
+        || ($config['confirmation_stage'] ?? '') !== site_runtime_stage()
         || !is_bool($config['confirmation_enabled'] ?? null)
         || !is_bool($config['invitations_enabled'] ?? null)
         || !in_array('ZohoCalendar.event.CREATE', $config['requested_scopes'] ?? [], true)
@@ -31,13 +32,13 @@ function booking_confirmation_get(PDO $db, string $reference): array|false
 
 function booking_confirmation_gate(array $config, array $row): void
 {
-    if (!booking_test_enabled() || ($config['confirmation_stage'] ?? '') !== 'test'
+    if (!booking_test_enabled() || ($config['confirmation_stage'] ?? '') !== site_runtime_stage()
         || ($config['confirmation_enabled'] ?? false) !== true || ($config['enabled'] ?? false) !== true) {
         throw new InvalidArgumentException('Test appointment confirmation is disabled.');
     }
     if (!filter_var($row['email'], FILTER_VALIDATE_EMAIL)
         || !(booking_scheduling_is_microsoft($config)
-            ? booking_test_recipient_matches($row['email'], (string)($config['test_recipient_email'] ?? ''))
+            ? booking_recipient_matches($row['email'], (string)($config['test_recipient_email'] ?? ''))
             : strcasecmp($row['email'], (string)($config['test_recipient_email'] ?? '')) === 0)) {
         throw new InvalidArgumentException('This stage permits only the configured test recipient.');
     }
@@ -131,7 +132,7 @@ function booking_confirmation_event(array $row, array $window, string $marker): 
     $request = booking_request($row);
     $location = booking_confirmation_property($request['details']);
     if (strlen($location) > 255) throw new InvalidArgumentException('The property address is too long for the calendar location.');
-    return ['title'=>'SiteSee TEST Shoot ' . $row['reference'] . ' ' . $marker,
+    return ['title'=>(site_runtime_live()?'SiteSee Shoot ':'SiteSee TEST Shoot ') . $row['reference'] . ' ' . $marker,
         'dateandtime'=>['start'=>gmdate('Ymd\THis\Z', strtotime($window['planned_start_utc'])),
             'end'=>gmdate('Ymd\THis\Z', strtotime($window['planned_end_utc'])), 'timezone'=>'America/Chicago'],
         'isallday'=>false, 'isprivate'=>true, 'isrep'=>false, 'transparency'=>0,

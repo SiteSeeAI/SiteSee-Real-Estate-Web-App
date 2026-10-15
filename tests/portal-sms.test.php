@@ -3,6 +3,7 @@ declare(strict_types=1);
 function check(bool $v,string $m):void{if(!$v)throw new RuntimeException($m);}
 function refuse(callable $fn):void{try{$fn();}catch(RuntimeException){return;}throw new LogicException('Expected refusal.');}
 $root=sys_get_temp_dir().'/sitesee-sms-'.bin2hex(random_bytes(8));mkdir($root,0700);mkdir($root.'/server',0700);
+copy(__DIR__.'/../_private/server/application-mode.php',$root.'/server/application-mode.php');
 $source=file_get_contents(__DIR__.'/../_private/server/portal-sms.php');file_put_contents($root.'/server/sms.php',str_replace('function portal_sms_request(', 'function portal_sms_request_unused_fixture(', $source));
 function portal_sms_request(array $c,string $operation,array $fields):array{$GLOBALS['request']=[$operation,$fields];return $GLOBALS['response'];}
 try{
@@ -18,4 +19,4 @@ try{
     foreach(['sid'=>'VE'.str_repeat('e',32),'service_sid'=>'VA'.str_repeat('e',32),'account_sid'=>'AC'.str_repeat('e',32),'channel'=>'email','to'=>'+13125550101','status'=>'expired'] as $key=>$bad){$before=$GLOBALS['response'][$key];$GLOBALS['response'][$key]=$bad;refuse(fn()=>portal_sms_check('+13125550100','VE'.str_repeat('d',32),'123456'));$GLOBALS['response'][$key]=$before;}
     $c['stage']='LIVE';file_put_contents($path,json_encode($c));refuse(fn()=>portal_sms_config());
     echo "portal-sms: PASS (private configuration; allowed recipients; SMS-only requests; exact account/service/number/SID binding; approved-only authentication)\n";
-}finally{@unlink($path);@unlink($root.'/server/sms.php');@rmdir($root.'/server');@rmdir($root);}
+}finally{@unlink($path);@unlink($root.'/server/sms.php');@unlink($root.'/server/application-mode.php');@rmdir($root.'/server');@rmdir($root);}

@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/application-mode.php';
 require_once __DIR__ . '/booking-store.php';
 
 // Request-scoped version: never changes the Stripe account or webhook version.
@@ -7,15 +8,15 @@ const BOOKING_CHECKOUT_API_VERSION = '2026-08-26.dahlia';
 
 function booking_checkout_config(): array
 {
-    $path = dirname(__DIR__) . '/booking-checkout.json';
+    $path = site_runtime_path('booking-checkout.json');
     if (!is_file($path)) return ['enabled'=>false, 'publishable_key'=>''];
     if (is_link($path) || (fileperms($path) & 0077) !== 0 || filesize($path) > 4096) {
         throw new RuntimeException('Payment page configuration needs attention.');
     }
     $config = json_decode((string)file_get_contents($path), true, 8, JSON_THROW_ON_ERROR);
-    if (!is_array($config) || ($config['stage'] ?? '') !== 'TEST'
+    if (!is_array($config) || ($config['stage'] ?? '') !== site_runtime_mode()
         || !is_bool($config['enabled'] ?? null)
-        || !preg_match('/^pk_test_[A-Za-z0-9]{12,512}$/D', (string)($config['publishable_key'] ?? ''))) {
+        || !site_runtime_key_valid((string)($config['publishable_key'] ?? ''),'pk')) {
         throw new RuntimeException('Expected a Stripe test publishable key.');
     }
     return $config;
@@ -32,9 +33,9 @@ function booking_checkout_schema(PDO $db): void
 /** Validate every retrieved/created session against the authenticated booking. */
 function booking_checkout_validate(array $session, array $row, ?string $id = null): string
 {
-    if (!preg_match('/^cs_test_[A-Za-z0-9_]+$/D', (string)($session['id'] ?? ''))
+    if (!site_runtime_session_id((string)($session['id'] ?? ''))
         || ($id !== null && !hash_equals($id, (string)$session['id']))
-        || ($session['livemode'] ?? null) !== false || ($session['mode'] ?? '') !== 'payment'
+        || ($session['livemode'] ?? null) !== site_runtime_livemode() || ($session['mode'] ?? '') !== 'payment'
         || !in_array($session['ui_mode'] ?? '', ['embedded_page', 'embedded'], true)
         || ($session['client_reference_id'] ?? '') !== $row['reference']
         || ($session['metadata']['booking_reference'] ?? '') !== $row['reference']
@@ -130,7 +131,7 @@ function booking_checkout_start(PDO $db, string $reference, string $token, strin
         'line_items[0][quantity]'=>'1',
         'payment_intent_data[setup_future_usage]'=>'off_session',
         'payment_intent_data[metadata][booking_reference]'=>$reference,
-        'return_url'=>SITESEE_REAL_ESTATE_SITE_URL . '/booking-pay.php?result=return&reference=' . rawurlencode($reference),
+        'return_url'=>SITESEE_REAL_ESTATE_SITE_URL . site_runtime_link_path('/booking-pay.php?result=return&reference=') . rawurlencode($reference),
         'redirect_on_completion'=>'always',
         'branding_settings[display_name]'=>'SiteSee',
         'branding_settings[font_family]'=>'inter',
@@ -139,7 +140,8 @@ function booking_checkout_start(PDO $db, string $reference, string $token, strin
         'branding_settings[button_color]'=>'#ffc107',
     ];
     try {
-        $session = $call('POST', '', $body, 'sitesee-embedded-test-' . $reference . '-' . $attempt, $key);
+        $body=site_runtime_payment_body($body);
+        $session = $call('POST', '', $body, site_runtime_idempotency('sitesee-embedded-test-' . $reference . '-' . $attempt), $key);
         $result = booking_checkout_result($session, $row);
         $stmt = $db->prepare("UPDATE bookings SET stripe_session_id=?, stripe_checkout_url=NULL, checkout_state='open'
             WHERE reference=? AND checkout_state='creating' AND checkout_attempt=?");
@@ -173,11 +175,13 @@ function booking_checkout_return(PDO $db, array $row, ?callable $transport = nul
 /** No provider bodies, client secrets, API keys or payment details are logged. */
 function booking_checkout_request(string $method, string $id, array $body, string $idempotency, string $key): array
 {
-    if (!preg_match('/^sk_test_[A-Za-z0-9_]{12,}$/D',$key)
+    if($method!=='GET')site_runtime_provider_write();
+    if (!site_runtime_key_valid($key)
         || !in_array($method,['GET','POST'],true)
-        || ($method === 'GET' && !preg_match('/^cs_test_[A-Za-z0-9_]+$/D',$id))) {
+        || ($method === 'GET' && !site_runtime_session_id($id))) {
         throw new RuntimeException('Invalid Stripe test request.');
     }
+    site_runtime_stripe_account($key);
     $curl = curl_init('https://api.stripe.com/v1/checkout/sessions' . ($method === 'GET' ? '/' . rawurlencode($id) : ''));
     if ($curl === false) throw new RuntimeException('Stripe is unavailable.');
     $headers = ['Authorization: Bearer '.$key, 'Stripe-Version: '.BOOKING_CHECKOUT_API_VERSION];

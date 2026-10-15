@@ -83,7 +83,7 @@ if ($submission['action'] === 'request_appointment' && booking_test_enabled()) {
     try {
         $bookingDb = booking_db();
         $token = booking_capture($bookingDb, $submission, $reference, $depositFirst);
-        if ($depositFirst) $paymentUrl = '/booking-pay.php?reference=' . rawurlencode($reference) . '&token=' . rawurlencode($token);
+        if ($depositFirst) $paymentUrl = site_runtime_link_path('/booking-pay.php?reference=') . rawurlencode($reference) . '&token=' . rawurlencode($token);
     } catch (Throwable $error) {
         error_log('SiteSee booking request could not be stored: ' . $error->getMessage());
         real_estate_respond(['ok'=>false,'message'=>'We could not safely save your preferred-date request. Please try again later or email sales@sitesee.ai.'], 503);

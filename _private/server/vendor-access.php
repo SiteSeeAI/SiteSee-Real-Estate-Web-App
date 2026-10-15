@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/application-mode.php';
 require_once __DIR__.'/portal-phone.php';
 require_once __DIR__.'/portal-session.php';
 
@@ -166,12 +167,12 @@ function vendor_phone_consume(PDO $db,string $id,string $code,callable $verify,?
 function vendor_session_start(): void
 {
     if(session_status()===PHP_SESSION_ACTIVE)throw new LogicException('A different session is active.');
-    $path=dirname(__DIR__).'/data/vendor-sessions';
+    $path=site_runtime_path('data/vendor-sessions');
     if(!is_dir($path)&&!mkdir($path,0700,true)&&!is_dir($path))throw new RuntimeException('Session storage unavailable.');
     $root=realpath((string)($_SERVER['DOCUMENT_ROOT']??''));$real=realpath($path);
     if(is_link($path)||$real===false||(fileperms($path)&0077)!==0||($root!==false&&($real===$root||str_starts_with($real,$root.'/'))))throw new RuntimeException('Session storage must be private.');
     ini_set('session.use_strict_mode','1');ini_set('session.use_only_cookies','1');ini_set('session.use_trans_sid','0');ini_set('session.gc_maxlifetime','43200');
-    session_save_path($path);session_name('__Host-sitesee_vendor');
+    session_save_path($path);session_name(site_runtime_cookie('__Host-sitesee_vendor'));
     session_set_cookie_params(['lifetime'=>0,'path'=>'/','domain'=>'','secure'=>true,'httponly'=>true,'samesite'=>'Lax']);
     if(!session_start())throw new RuntimeException('Session unavailable.');
     if(!isset($_SESSION['csrf']))$_SESSION['csrf']=bin2hex(random_bytes(32));
