@@ -1,5 +1,7 @@
 # Existing-host TEST review
 
+Historical review for the initial `bd026c77d596` release. For the current application and accepted checks, use [the October 15 final TEST record](FINAL_TEST_2026-10-15.md). Do not replay the historical installation commands below for final testing.
+
 Use existing re.sitesee.ai, cPanel Terminal as sitesee, and /home/sitesee/staging. The operator declined a separate hostname. Working PHP 8.2 CLI: /opt/cpanel/ea-php82/root/usr/bin/php. Do not use the absent php-cli path or WHM root terminal.
 
 The current frozen candidate is source bd026c77d5963182000d06b58d80e9b7eb7fe944, package unified-test-bd026c77d596.tar.gz. Package SHA256: 9c6f292d4b78324c8a1f2794de4de1d5755701becb2a29729dff626ce25945c0. Matching standalone installer SHA256: 75b62c0188c2daa0fdf2d2375263f7da161599a189cbdaada4605103769b5cd6.

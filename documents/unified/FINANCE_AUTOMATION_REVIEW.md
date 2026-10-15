@@ -1,6 +1,6 @@
 # FIN-001: automatic cancellation refunds and replacement credits
 
-Status: exact source `8c3ae16c726d0a308b4595e827d6ba3ea80ddd0b` reviewed, tested, published, installed and verified as `unified-test-8c3ae16c726d`. Stripe stays TEST. Connected financial TEST acceptance remains pending.
+Status: exact source `8c3ae16c726d0a308b4595e827d6ba3ea80ddd0b` reviewed, tested, published, installed and verified as `unified-test-8c3ae16c726d`. Stripe stays TEST. The operator's October 13 confirmation accepts the preceding connected financial TEST checks; this updates acceptance without changing the frozen finance release. See [the final TEST record](FINAL_TEST_2026-10-15.md).
 
 The package's review file is an immutable preparation snapshot. This updated document and CHANGELOG record the final publication evidence without changing the frozen application payloads.
 
@@ -69,6 +69,6 @@ The operator supplied the complete successful transcript for this exact release:
 
 Backup: `/home/sitesee/.sitesee-real-estate/unified-deployments/unified-test-8c3ae16c726d-ln1nwjy0`. Keep the package, installer, backup, private configuration and deployment journal. No repeat installation is required. Five finance tables initialize during normal application use; financial activity requires repair forward.
 
-## Remaining connected TEST acceptance
+## Connected TEST acceptance
 
-Use approved TEST bookings only. Verify management cash refund, customer deposit refund at least 24 hours out, late customer deposit credit, automatic replacement deposit/balance use with unused value retained, and customer extra-prepayment staff review. Check Billing against Stripe's TEST refund records. Existing accepted calendar cancellation and notice checks need repetition only if these new scenarios reveal a regression. The existing worker log should report financial outbox processing without calendar/mail writes. The user has not yet accepted these connected finance scenarios.
+The requested acceptance covers management cash refund, customer deposit refund at least 24 hours out, late customer deposit credit, automatic replacement deposit/balance use with unused value retained, customer extra-prepayment staff review, and Billing against Stripe TEST refund records. The operator subsequently reported “All tests confirmed and verified. All in working order,” recorded in CHANGELOG UX-003 on October 13. Keep that acceptance; no new provider transactions were performed during the October 15 automated regression. Existing calendar cancellation and notice acceptance also remains valid. This is TEST acceptance and does not establish LIVE readiness.

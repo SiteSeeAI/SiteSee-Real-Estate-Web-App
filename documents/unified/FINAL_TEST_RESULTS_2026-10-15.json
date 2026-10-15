@@ -1,0 +1,124 @@
+{
+  "date": "2026-10-15",
+  "application_release": "unified-test-e0bed2b3726c",
+  "application_commit": "e0bed2b3726c05b52c5d2c943ccd887cd3b376b8",
+  "tested_fixture_source": "1682a1e0912cc969b5fd52e7dd3cff6f70060fba",
+  "runtime_and_deployment_installer_diff_from_application_commit": "none",
+  "local": {
+    "php": {
+      "8.2.34": {
+        "suites": 44,
+        "failed": 0
+      },
+      "8.3.35": {
+        "suites": 44,
+        "failed": 0
+      }
+    },
+    "node": {
+      "tests": 110,
+      "failed": 0,
+      "skipped": 0
+    },
+    "browser": {
+      "journeys": 7,
+      "failed": 0,
+      "external_egress": "blocked; synthetic providers"
+    },
+    "php_lint": {
+      "files": 193,
+      "failed": 0
+    },
+    "python_discovery": {
+      "cases": 153,
+      "errors": 0,
+      "failures": 0,
+      "unavailable_privilege_skips": 22
+    },
+    "historical_source_layers": {
+      "checks": 4,
+      "failed": 0
+    },
+    "date_helper": {
+      "checks": 55,
+      "independent_date_cases": 18996,
+      "failed": 0
+    }
+  },
+  "ci": [
+    {
+      "run": 38750940333,
+      "workflow": "Server Form CI",
+      "source": "1682a1e0912cc969b5fd52e7dd3cff6f70060fba",
+      "jobs": [
+        "validate",
+        "Historical Installer Ownership CI"
+      ],
+      "all_steps": "success",
+      "log_sha256": "998bb1484f2df4d5226b477e64ef5435932f8c22f6c11d008a2e26d688fcaf18",
+      "selected_evidence": [
+        "test_auth_csrf_and_origin_guard_new_actions (booking_workflow_http_test.StaffWorkflowHTTP.test_auth_csrf_and_origin_guard_new_actions) ... ok",
+        "test_inline_crm_prerequisite_and_forged_send_preserve_attempts (booking_workflow_http_test.StaffWorkflowHTTP.test_inline_crm_prerequisite_and_forged_send_preserve_attempts) ... ok",
+        "PASS: 168 privileged installer cases completed; no skips.",
+        "test_auth_csrf_and_origin_guard_new_actions (booking_workflow_http_test.StaffWorkflowHTTP.test_auth_csrf_and_origin_guard_new_actions) ... ok",
+        "test_inline_crm_prerequisite_and_forged_send_preserve_attempts (booking_workflow_http_test.StaffWorkflowHTTP.test_inline_crm_prerequisite_and_forged_send_preserve_attempts) ... ok",
+        "PASS: 168 privileged installer cases completed; no skips.",
+        "Fixture calendar: 55 checks passed.",
+        "Ran 153 tests in 25.205s",
+        "Fixture calendar: 55 checks passed.",
+        "Ran 153 tests in 25.205s"
+      ]
+    },
+    {
+      "run": 38750940310,
+      "workflow": "Customer Portal Checks",
+      "source": "1682a1e0912cc969b5fd52e7dd3cff6f70060fba",
+      "jobs": [
+        "portal"
+      ],
+      "all_steps": "success",
+      "log_sha256": "79ee4b5401dbd082d045463f25716fe0ef813b149531b23a18d18e27f76c4a6d",
+      "selected_evidence": [
+        "portal-preview: PASS (navigation, preserved answers, canonical prices, dependencies, escaped input, responsive widths)",
+        "portal-http: PASS (actual HTTPS phone-code journey; two customers; email routes disabled; both existing proof adapters; CSRF/origin; single use; expiry; logout replay; profile isolation; synthetic ordering; no external provider writes; 320/390/736/1200/1600 layout)",
+        "portal-staff: PASS (19 baseline states with preserved controls + required Vendor review + 3 external-agent cases; real readiness POST/two CRM candidates/explicit verified link/confirmation handoff; same-document choices/fresh consent/cache version; unchanged unrelated ledgers; no GET/provider calls; real HTTPS login/CSRF/origin/consent; state-selected screens; collapsed overview shortcut/open closeout step; paginated5/25/All lists; recovery; Central Time; keyboard; 320/390/736/1200/1600 layout)",
+        "portal-job-browser: PASS (real HTTPS staff/phone login; full repeatable catalog; server prices; commission exclusions; verbal closeout; Job Complete; one payment; decline recovery UI; drafts; unpaid release gate; paid links; refund review; preserved records; 320/390/736/1200 layout; synthetic providers only)",
+        "portal-vendor-browser: PASS (manager enrollment; no-assignment login; phone-only separate sessions; explicit job ownership; manager/customer isolation; CSRF; reassign/regrant revocation; current appointment; onsite pricing/commission; named verbal closeout; duplicate-charge protection; Production handoff; disabled sessions; preserved records; responsive layout; synthetic providers only)",
+        "portal-email-browser: PASS (native HTTPS forms; CSRF/origin; phone login; account/session isolation; GET/replay; responsive code form; retained orders; new-order email; no external calls)",
+        "Calendar notice browser: PASS (both quote markets and portal markets; native date validity; partial days; rush; stale selections; wrong device clock; Tokyo/Honolulu; server refresh)."
+      ]
+    }
+  ],
+  "operator_acceptance": {
+    "date": "2026-10-15",
+    "reply": "All three work",
+    "checks": [
+      "cancelled orders move from Open to Previous",
+      "order-detail sections open inline under appointment overview",
+      "Current Month reports display with readable PDF download"
+    ],
+    "previous_connected_acceptance": "retained; not repeated or independently reconstructed"
+  },
+  "release_diagnostic": {
+    "path": "documents/unified/check-installed-test-release.py",
+    "sha256": "8a4a2c4f593d9ee0d05c845d1551096eae72d9e74907a82979fc85339f430522",
+    "independent_synthetic_cases": 22,
+    "controls": 2,
+    "expected_stops": 20,
+    "host_result": "pending",
+    "excludes": [
+      "current FPM code",
+      "backup contents",
+      "provider bindings",
+      "LIVE readiness"
+    ]
+  },
+  "live": "blocked by intact TEST-only runtime gates; separate mode-aware release and TEST/LIVE data/provider separation required",
+  "boundaries": {
+    "stripe": "TEST",
+    "cleanup": "paused",
+    "ctc": "no access, including read-only",
+    "hosting_changes": "none",
+    "provider_writes": "none"
+  }
+}
