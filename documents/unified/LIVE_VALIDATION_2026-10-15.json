@@ -154,7 +154,7 @@
     "cleanup": "paused",
     "CTC": "excluded from access"
   },
-  "host_installation": false,
+  "host_installation": true,
   "live_activation": false,
   "publication": {
     "id": 38772014261,
@@ -178,7 +178,7 @@
     "credentials_in_chat": false,
     "actual_host_fpm_preflight": "passed; active runtime TEST, LIVE activation environment ready"
   },
-  "scope": "GitHub release and validation evidence plus operator-reported private preparation and WHM/FPM preflight; no host code installation or LIVE activation",
+  "scope": "Verified GitHub release plus operator-reported private preparation, WHM/FPM preflight and code installation in TEST; LIVE activation remains unperformed",
   "operator_host_preflight": {
     "evidence": "operator-reported WHM output",
     "wrapper_checksum": "OK",
@@ -264,6 +264,35 @@
     "ctc_application_files_settings": "excluded",
     "home_cleanup": "paused",
     "live_activation_approved": false,
-    "execution_result": "not yet reported"
+    "execution_result": "HOST UPDATE PASS; installed and verified in TEST"
+  },
+  "operator_installation": {
+    "evidence": "operator-reported completed WHM installation output",
+    "result": "HOST UPDATE PASS",
+    "release": "unified-test-fe96ebabe207",
+    "commit": "fe96ebabe207d0ab9f712939385a6aa26e7109ac",
+    "runtime": "TEST",
+    "deployment_files": 285,
+    "changed_files": 66,
+    "backup": "/home/sitesee/.sitesee-real-estate/unified-deployments/unified-test-fe96ebabe207-o2mkp54s",
+    "exact_files_ownership_modes_verified": true,
+    "both_present_ledger_and_configuration_backups_verified": true,
+    "actual_fpm_functions_and_compiled_code_refresh_verified": true,
+    "fpm_runtime_binding": {
+      "stage": "TEST",
+      "realm": null,
+      "stripe_account": null
+    },
+    "application_serving": true,
+    "activation": false,
+    "database_migration": false,
+    "provider_operation": false,
+    "configuration_gate_change": false,
+    "session_reset": false,
+    "schedule_change": false,
+    "existing_callback_ownership": "TEST",
+    "live_aliases": "require separate activation",
+    "prepared_live_configuration_check": "pending",
+    "connected_live_payment_acceptance": "pending"
   }
 }
