@@ -174,6 +174,7 @@ function site_runtime_link_path(string $path): string
 function site_runtime_staff_html(string $html): string
 {
     if(site_runtime_live()||site_runtime_control()['stage']!=='LIVE')return $html;
+    $html=str_replace('<form id="job-onsite"','<form id="job-onsite" data-preview-url="/staff-test-bookings.php"',$html);
     return preg_replace_callback('~\b(href|action|data-preview-url)="(/?staff-(?:bookings|production|vendors)\.php(?:[?#][^"]*)?)"~',
         static fn(array $m):string=>$m[1].'="'.site_runtime_link_path($m[2]).'"',$html);
 }

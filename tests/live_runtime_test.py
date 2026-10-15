@@ -148,6 +148,11 @@ class LiveRuntime(unittest.TestCase):
         self.assertIn('staff-bookings.php is saved customer text',result.stdout)
         self.assertNotIn('href="/staff-bookings.php"',result.stdout)
 
+    def test_test_staff_onsite_preview_posts_to_its_own_realm(self):
+        result=self.run_php("define('SITESEE_REQUEST_MODE','TEST');require $argv[1].'/server/application-mode.php';echo site_runtime_staff_html('<form id=\"job-onsite\" method=\"post\"><button>Preview</button></form>');")
+        self.assertIn('data-preview-url="/staff-test-bookings.php"',result.stdout)
+        self.assertNotIn('data-preview-url="/staff-bookings.php"',result.stdout)
+
     def test_test_recovery_refuses_intermediate_live_calendar_alias(self):
         outside=self.work/'preserved-runtime'
         (self.root/'runtime').rename(outside)
