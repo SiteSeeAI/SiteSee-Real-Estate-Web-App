@@ -12,6 +12,8 @@ The operator verified the original checker download, then received `Permission d
 
 The checker now uses Linux `O_PATH` search handles for the fixed root anchor and intermediate directories. Final application directories still use read handles for the existing private shared lock; payload reads, exact release/file-map pins, alias refusal and final root-identity checks remain unchanged. Actual UID-1000 mode-0111 directories reproduce errno 13 with the original read flags and accept the corrected search flags. Exact corrected checker SHA256: `899645d659242a1f3243b8e8908e8c3ab2dc64c9b8df39084cd9cb8445f6dd82`. Final verification remains a read-only cPanel Terminal command as `sitesee`, not a root installation. Accepted application tests are not repeated for this diagnostic-only correction.
 
+Independent audit closes the exact corrected bytes: all 22 prior regression cases and six actual unprivileged permission cases pass their expected outcomes. Both root and intermediate search-only directories reproduce the old failure and accept the new checker; final-directory read restrictions remain enforced. No outside-source reads occur. The published GitHub download matches the reviewed bytes exactly, and the operator command passes shell syntax checking. The corrected host check has not yet run.
+
 ## QA-001 — final TEST regression and acceptance — 2026-10-15
 
 Status: local application checks and exact-source CI pass after a fixture-only calendar correction; the three new connected client checks are accepted. Installed release-record/hash proof remains pending. No application, deployment-installer, provider, configuration or LIVE-mode change. Cleanup remains paused and CTC remains outside this work, including read-only access.

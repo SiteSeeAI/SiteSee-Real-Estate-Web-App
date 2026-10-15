@@ -43,6 +43,8 @@ Initial independent diagnostic review passes 22 synthetic cases: two complete co
 
 The operator subsequently verified that exact download but the check stopped with errno 13 opening `/`, before accessing application files. QA-002 corrects its unnecessary directory-read requirement: the root anchor and intermediate directories now use search-only Linux `O_PATH` handles, retaining `O_DIRECTORY` and `O_NOFOLLOW`. Actual unprivileged mode-0111 directory probes reproduce the old denial and accept the corrected handles. No server chmod, root terminal or installation is needed. Corrected checker SHA256: `899645d659242a1f3243b8e8908e8c3ab2dc64c9b8df39084cd9cb8445f6dd82`. Its host result remains pending; prior application acceptance is unchanged.
 
+The corrected checker independently passes all 28 expected outcomes: 22 previous regressions plus six actual UID-1000 permission cases. Outside-source reads remain zero. Published GitHub bytes match the exact reviewed hash, and the updated operator command passes shell syntax checking.
+
 ## LIVE preparation remains separate
 
 Changing Stripe keys alone cannot launch this build. The current bootstrap explicitly rejects LIVE stage and LIVE credentials. Payment/webhook, portal/SMS, calendar/mail and financial-worker paths also enforce TEST. Pure local probes independently confirm TEST succeeds and LIVE is rejected; those guards remain intact.
